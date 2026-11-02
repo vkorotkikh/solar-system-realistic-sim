@@ -1,0 +1,338 @@
+{
+ "renderer": "ANGLE (Microsoft Corporation, D3D12 (NVIDIA GeForce RTX 5090), OpenGL 4.6)",
+ "heapPostGC": [
+  {
+   "t": 0,
+   "heapMB_postGC": 40.67,
+   "live": {
+    "buf": 57,
+    "tex": 14,
+    "prog": 14,
+    "fb": 0
+   }
+  },
+  {
+   "t": 30,
+   "heapMB_postGC": 40.89,
+   "live": {
+    "buf": 57,
+    "tex": 14,
+    "prog": 14,
+    "fb": 0
+   }
+  },
+  {
+   "t": 60,
+   "heapMB_postGC": 41.06,
+   "live": {
+    "buf": 57,
+    "tex": 14,
+    "prog": 14,
+    "fb": 0
+   }
+  },
+  {
+   "t": 90,
+   "heapMB_postGC": 41.23,
+   "live": {
+    "buf": 57,
+    "tex": 14,
+    "prog": 14,
+    "fb": 0
+   }
+  },
+  {
+   "t": 120,
+   "heapMB_postGC": 41.43,
+   "live": {
+    "buf": 57,
+    "tex": 14,
+    "prog": 14,
+    "fb": 0
+   }
+  },
+  {
+   "t": 150,
+   "heapMB_postGC": 41.55,
+   "live": {
+    "buf": 57,
+    "tex": 14,
+    "prog": 14,
+    "fb": 0
+   }
+  },
+  {
+   "t": 180,
+   "heapMB_postGC": 41.77,
+   "live": {
+    "buf": 57,
+    "tex": 14,
+    "prog": 14,
+    "fb": 0
+   }
+  },
+  {
+   "t": 210,
+   "heapMB_postGC": 41.9,
+   "live": {
+    "buf": 57,
+    "tex": 15,
+    "prog": 14,
+    "fb": 0
+   }
+  },
+  {
+   "t": 240,
+   "heapMB_postGC": 42.04,
+   "live": {
+    "buf": 57,
+    "tex": 15,
+    "prog": 14,
+    "fb": 0
+   }
+  },
+  {
+   "t": 270,
+   "heapMB_postGC": 42.23,
+   "live": {
+    "buf": 57,
+    "tex": 15,
+    "prog": 14,
+    "fb": 0
+   }
+  },
+  {
+   "t": 300,
+   "heapMB_postGC": 42.36,
+   "live": {
+    "buf": 57,
+    "tex": 15,
+    "prog": 14,
+    "fb": 0
+   }
+  }
+ ],
+ "interactions": {
+  "default": {
+   "fps": 59.9,
+   "frameP99": 16.8,
+   "jsP95": 2.5,
+   "gpuP50": 7.55,
+   "gpuP95": 9.94,
+   "bufBytesPerFrame": 329632,
+   "draws": 44,
+   "sizeWrites": 0,
+   "canvas": [
+    1248,
+    900,
+    1248,
+    900
+   ],
+   "date": "2026-12-26",
+   "catalog": "Asteroids: verified Phase-1 catalog (100,000 rows, SHA-256)"
+  },
+  "paused": {
+   "fps": 59.9,
+   "frameP99": 16.8,
+   "jsP95": 2.5,
+   "gpuP50": 7.45,
+   "gpuP95": 9.74,
+   "bufBytesPerFrame": 329632,
+   "draws": 44,
+   "sizeWrites": 0,
+   "canvas": [
+    1248,
+    900,
+    1248,
+    900
+   ],
+   "date": "2026-12-26",
+   "catalog": "Asteroids: verified Phase-1 catalog (100,000 rows, SHA-256)"
+  },
+  "reverseMax": {
+   "fps": 59.9,
+   "frameP99": 16.8,
+   "jsP95": 2.5,
+   "gpuP50": 7.4,
+   "gpuP95": 10.17,
+   "bufBytesPerFrame": 329632,
+   "draws": 44,
+   "sizeWrites": 0,
+   "canvas": [
+    1248,
+    900,
+    1248,
+    900
+   ],
+   "date": "2024-09-07",
+   "catalog": "Asteroids: verified Phase-1 catalog (100,000 rows, SHA-256)",
+   "dateBefore": "2026-08-28"
+  },
+  "forwardMax": {
+   "fps": 59.9,
+   "frameP99": 16.8,
+   "jsP95": 2.5,
+   "gpuP50": 7.63,
+   "gpuP95": 9.95,
+   "bufBytesPerFrame": 329632,
+   "draws": 44,
+   "sizeWrites": 0,
+   "canvas": [
+    1248,
+    900,
+    1248,
+    900
+   ],
+   "date": "2026-12-28",
+   "catalog": "Asteroids: verified Phase-1 catalog (100,000 rows, SHA-256)"
+  },
+  "realisticScale": {
+   "fps": 59.9,
+   "frameP99": 16.8,
+   "jsP95": 2.5,
+   "gpuP50": 7.57,
+   "gpuP95": 9.59,
+   "bufBytesPerFrame": 329632,
+   "draws": 38,
+   "sizeWrites": 0,
+   "canvas": [
+    1248,
+    900,
+    1248,
+    900
+   ],
+   "date": "2029-06-15",
+   "catalog": "Asteroids: verified Phase-1 catalog (100,000 rows, SHA-256)"
+  },
+  "afterNow": {
+   "fps": 59.9,
+   "frameP99": 16.8,
+   "jsP95": 2.5,
+   "gpuP50": 7.57,
+   "gpuP95": 9.86,
+   "bufBytesPerFrame": 329632,
+   "draws": 42,
+   "sizeWrites": 0,
+   "canvas": [
+    1248,
+    900,
+    1248,
+    900
+   ],
+   "date": "2027-12-25",
+   "catalog": "Asteroids: verified Phase-1 catalog (100,000 rows, SHA-256)"
+  },
+  "layoutPerFrame": 1,
+  "styleRecalcPerFrame": 1,
+  "layoutMsPerFrame": 0.616,
+  "pageErrors": []
+ },
+ "dpr": {
+  "1": {
+   "fps": 59.9,
+   "frameP99": 16.8,
+   "jsP95": 2.4,
+   "gpuP50": 7.58,
+   "gpuP95": 10.06,
+   "bufBytesPerFrame": 329632,
+   "draws": 44,
+   "sizeWrites": 0,
+   "canvas": [
+    1248,
+    900,
+    1248,
+    900
+   ],
+   "date": "2026-12-25",
+   "catalog": "Asteroids: verified Phase-1 catalog (100,000 rows, SHA-256)"
+  },
+  "2": {
+   "fps": 59.9,
+   "frameP99": 16.8,
+   "jsP95": 2.5,
+   "gpuP50": 8.75,
+   "gpuP95": 11.05,
+   "bufBytesPerFrame": 329632,
+   "draws": 44,
+   "sizeWrites": 0,
+   "canvas": [
+    2496,
+    1800,
+    1248,
+    900
+   ],
+   "date": "2026-12-25",
+   "catalog": "Asteroids: verified Phase-1 catalog (100,000 rows, SHA-256)"
+  },
+  "3": {
+   "fps": 59.9,
+   "frameP99": 16.8,
+   "jsP95": 2.7,
+   "gpuP50": 7.7,
+   "gpuP95": 10.84,
+   "bufBytesPerFrame": 329632,
+   "draws": 44,
+   "sizeWrites": 0,
+   "canvas": [
+    2496,
+    1800,
+    1248,
+    900
+   ],
+   "date": "2026-12-25",
+   "catalog": "Asteroids: verified Phase-1 catalog (100,000 rows, SHA-256)"
+  }
+ },
+ "failureModes": {
+  "truncated": {
+   "catalog": "Asteroids: procedural fallback (catalog load failed)",
+   "bodies": "Bodies · 55,010",
+   "pageErrors": 0,
+   "warns": [
+    "[warning] [phase-1] Using procedural fallback for asteroid belt: Error: Asteroid catalog buffer is too small: expected 3600012, got 1000000.\n    at throwIfInvalidBuffer (http://127.0.0.1:5173/src/data/asteroidCatalogLoad"
+   ]
+  },
+  "corrupt_byte": {
+   "catalog": "Asteroids: procedural fallback (catalog rejected: sha256-mismatch)",
+   "bodies": "Bodies · 55,010",
+   "pageErrors": 0,
+   "warns": [
+    "[warning] [phase-1] Acceptance gates failed: [sha256-mismatch] SHA-256 mismatch: expected=a0b8328ca9b74399df500b1fa463e1157b9c30983cbf967c774745d78c08823d, actual=b7af6e9bfb01e9541d29428cf43b5b8934a5dcb300347caf97c2cea69"
+   ]
+  },
+  "meta_404": {
+   "catalog": "Asteroids: procedural fallback (catalog rejected: metadata-missing)",
+   "bodies": "Bodies · 55,010",
+   "pageErrors": 0,
+   "warns": [
+    "[warning] [phase-1] Acceptance gates failed: [metadata-missing] Failed to fetch Phase-1 catalog metadata (404): Not Found"
+   ]
+  },
+  "bin_404": {
+   "catalog": "Asteroids: procedural fallback (catalog load failed)",
+   "bodies": "Bodies · 55,010",
+   "pageErrors": 0,
+   "warns": [
+    "[warning] [phase-1] Using procedural fallback for asteroid belt: Error: Failed to fetch phase-1 catalog (404): Not Found\n    at loadPhase1AsteroidCatalog (http://127.0.0.1:5173/src/sim/phase1AsteroidCatalog.ts:483:11)"
+   ]
+  },
+  "slow_6s": {
+   "catalog": "Asteroids: verified Phase-1 catalog (100,000 rows, SHA-256)",
+   "bodies": "Bodies · 55,010",
+   "pageErrors": 0,
+   "warns": [
+    "[warning] [phase-1] Catalog load exceeded its performance budget: loadMs=11473.2 exceeded budgetMs=2000",
+    "[info] [phase-1] Loaded deterministic catalog from /data/asteroid-phase1/asteroid_phase1_main_100000.bin (100,000 source rows, 100,000 parsed records, version=1, checksum=a0b8328ca9b74399df500b1fa463e1157b9c30983cbf967c7"
+   ]
+  },
+  "backend_offline": {
+   "catalog": "Asteroids: verified Phase-1 catalog (100,000 rows, SHA-256)",
+   "bodies": "Bodies · 55,010",
+   "pageErrors": 0,
+   "warns": [
+    "[warning] [phase-1] Catalog load exceeded its performance budget: loadMs=5718.6 exceeded budgetMs=2000",
+    "[info] [phase-1] Loaded deterministic catalog from /data/asteroid-phase1/asteroid_phase1_main_100000.bin (100,000 source rows, 100,000 parsed records, version=1, checksum=a0b8328ca9b74399df500b1fa463e1157b9c30983cbf967c7"
+   ]
+  }
+ }
+}

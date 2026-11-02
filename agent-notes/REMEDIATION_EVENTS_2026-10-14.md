@@ -1,3 +1,5 @@
+> Historical event log retained during the 2026-10-31 integration. Current closure status is tracked in AUGUST_PARTIALS_CLOSURE_2026-10-31.md.
+
 # Events remediation, 2026-10-14
 
 Worktree: `/home/nomad/ai/projects/worktrees/solar-remediation-20261014-events`.

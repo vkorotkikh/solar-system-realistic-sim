@@ -1,0 +1,15 @@
+Origin http://localhost:5173
+HTTP/1.1 503 Service Unavailable
+content-type: application/json
+access-control-allow-credentials: true
+access-control-allow-origin: http://localhost:5173
+time_total=4.336273s size=60
+Origin http://localhost:4173
+HTTP/1.1 200 OK
+content-type: image/png
+cache-control: public, max-age=120
+x-solar-aia-channel: aia_193
+x-solar-aia-image-id: 192408172
+x-solar-aia-image-date: 2026-09-25 01:46:05
+access-control-allow-credentials: true
+time_total=0.663205s size=161296

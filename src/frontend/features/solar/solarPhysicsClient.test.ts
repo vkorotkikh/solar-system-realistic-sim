@@ -480,3 +480,91 @@ describe('SolarPhysicsClient failure classification', () => {
     expect(client.status().nextRefreshMs - 1_000_000).toBe(waitMs);
   });
 });
+
+describe('versioned render delivery', () => {
+  const version = 'a'.repeat(64);
+  function geometryPayload(epoch = 2_460_000.5) {
+    return {
+      ...validPayload(epoch),
+      delivery: { schema: { name: 'solar_render_delivery', version: 1 }, geometry_version: version, geometry_included: true },
+      corona: { features: [{ id: 'loop-1', arc: [[1, 0, 0], [1.2, 0.1, 0]] }] },
+      pfss_field_lines: { lines: [{ id: 'field-1', arc: [[1, 0, 0], [2.5, 0, 0]] }] },
+      heliosphere: { parker_spiral: { lines: [{ arc: [[1, 0, 0], [200, 1, 0]] }] } }
+    };
+  }
+
+  it('reuses identical arrays while refreshing the latest scalar state, and reconnects with full geometry', async () => {
+    const urls: string[] = [];
+    let count = 0;
+    vi.stubGlobal('fetch', vi.fn(async (input: string | URL | Request) => {
+      urls.push(String(input));
+      count++;
+      if (count === 2) return responseWith({
+        ...validPayload(), activity_index: 0.9, wall_epoch_jd_tdb: 2460001.5, wall_epoch_jd: 2460001.5,
+        delivery: { schema: { name: 'solar_render_delivery', version: 1 }, geometry_version: version, geometry_included: false },
+        corona: {}, pfss_field_lines: {}, heliosphere: { parker_spiral: {} }
+      });
+      return responseWith(geometryPayload());
+    }));
+    const client = new SolarPhysicsClient({ baseUrl: () => 'http://backend.test' });
+    expect(await client.maybeRefresh(2460000.5, true)).toBe(true);
+    const oldFeatures = client.latestState()?.corona?.features;
+    expect(await client.maybeRefresh(2460000.5, true)).toBe(true);
+    expect(client.latestState()?.activity_index).toBe(0.9);
+    expect(client.latestState()?.wall_epoch_jd_tdb).toBe(2460001.5);
+    expect(client.latestState()?.corona?.features).toBe(oldFeatures);
+    expect(new URL(urls[0]).searchParams.get('delivery')).toBe('render-v1');
+    expect(new URL(urls[1]).searchParams.get('geometry_version')).toBe(version);
+    client.dispose();
+    const reconnected = new SolarPhysicsClient({ baseUrl: () => 'http://backend.test' });
+    expect(await reconnected.maybeRefresh(2460000.5, true)).toBe(true);
+    expect(new URL(urls[2]).searchParams.has('geometry_version')).toBe(false);
+  });
+
+  it('rejects reuse with the wrong version, retains the last state, and asks for full geometry next', async () => {
+    const urls: string[] = [];
+    let count = 0;
+    vi.stubGlobal('fetch', vi.fn(async (input: string | URL | Request) => {
+      urls.push(String(input));
+      count++;
+      if (count === 2) return responseWith({
+        ...validPayload(), activity_index: 0.99,
+        delivery: { schema: { name: 'solar_render_delivery', version: 1 }, geometry_version: 'b'.repeat(64), geometry_included: false },
+        corona: {}, pfss_field_lines: {}, heliosphere: { parker_spiral: {} }
+      });
+      return responseWith(geometryPayload());
+    }));
+    const client = new SolarPhysicsClient({ baseUrl: () => 'http://backend.test' });
+    expect(await client.maybeRefresh(2460000.5, true)).toBe(true);
+    const previous = client.latestState();
+    expect(await client.maybeRefresh(2460000.5, true)).toBe(false);
+    expect(client.latestState()).toBe(previous);
+    expect(await client.maybeRefresh(2460000.5, true)).toBe(true);
+    expect(new URL(urls[2]).searchParams.has('geometry_version')).toBe(false);
+  });
+});
+
+describe('solar HTTP body bounds', () => {
+  it('rejects a decompressed body above two MiB and keeps the previous state', async () => {
+    let count = 0;
+    vi.stubGlobal('fetch', vi.fn(async () => ++count === 1
+      ? new Response(JSON.stringify(validPayload()))
+      : new Response(JSON.stringify({ ...validPayload(), oversized: 'x'.repeat(2 * 1024 * 1024) }))));
+    const client = new SolarPhysicsClient({ baseUrl: () => 'http://backend.test' });
+    expect(await client.maybeRefresh(2460000.5, true)).toBe(true);
+    const previous = client.latestState();
+    expect(await client.maybeRefresh(2460000.5, true)).toBe(false);
+    expect(client.latestState()).toBe(previous);
+    expect(client.lastError).toContain('decoded byte budget');
+  });
+});
+
+it('accepts a bounded complete legacy response when render delivery is unsupported', async () => {
+  const body = JSON.stringify({ ...validPayload(), legacyMetadata: 'x'.repeat(600_000) });
+  vi.stubGlobal('fetch', vi.fn(async () => new Response(body, {
+    headers: { 'Content-Length': `${body.length}` }
+  })));
+  const client = new SolarPhysicsClient({ baseUrl: () => 'http://backend.test' });
+  expect(await client.maybeRefresh(2460000.5, true)).toBe(true);
+  expect(client.latestState()?.activity_index).toBe(0.42);
+});

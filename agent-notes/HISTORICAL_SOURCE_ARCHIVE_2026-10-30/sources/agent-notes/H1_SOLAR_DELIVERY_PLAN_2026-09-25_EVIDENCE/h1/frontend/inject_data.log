@@ -1,0 +1,650 @@
+{
+ "scen": "data",
+ "physicsRequestCount": 110,
+ "physicsT": [
+  1405,
+  1660,
+  3106,
+  6470,
+  7741,
+  9015,
+  11570,
+  12819,
+  15427,
+  18147,
+  20636,
+  21920,
+  23185,
+  25756,
+  27041,
+  28364,
+  29649,
+  30956,
+  32091,
+  33197,
+  34288,
+  35439,
+  36521,
+  37618,
+  40336,
+  42558,
+  43700,
+  44735,
+  45792,
+  46923,
+  48021,
+  49120,
+  51317,
+  52399,
+  53468,
+  54528,
+  55597,
+  56714,
+  57764,
+  58871,
+  61037,
+  63201,
+  66696,
+  67815,
+  68898,
+  70063,
+  71361,
+  75700,
+  77069,
+  78356,
+  79701,
+  81069,
+  82291,
+  83417,
+  84735,
+  85961,
+  87149,
+  88343,
+  90880,
+  92006,
+  93094,
+  94380,
+  95571,
+  96790,
+  98073,
+  99279,
+  100549,
+  101825,
+  103074,
+  104256,
+  105407,
+  108302,
+  109614,
+  110905,
+  112152,
+  113417,
+  114616,
+  115821,
+  117052,
+  118334,
+  119721,
+  120960,
+  122309,
+  123615,
+  124928,
+  126252,
+  127668,
+  129118,
+  130591,
+  131978,
+  133327,
+  134701,
+  136045,
+  137496,
+  138803,
+  143059,
+  144345,
+  145651,
+  146925,
+  148186,
+  149430,
+  151870,
+  153087,
+  155515,
+  156750,
+  157955,
+  159180,
+  160453,
+  162862,
+  164102
+ ],
+ "jdFirstLast": [
+  "2461308.59797128",
+  "2461926.50644328"
+ ],
+ "aia": [
+  {
+   "kind": "aia",
+   "t": 1566,
+   "q": "?channel=aia_193&image_id=FAKE193&v=FAKE193",
+   "crossOriginModeHeader": null
+  },
+  {
+   "kind": "aia",
+   "t": 66765,
+   "q": "?channel=aia_304&image_id=FAKE304&v=FAKE304",
+   "crossOriginModeHeader": null
+  }
+ ],
+ "otherBackend": [],
+ "snapsBrief": {
+  "t14_default": {
+   "loops": {
+    "visible": true,
+    "children": 144,
+    "visibleChildren": 144,
+    "dataDriven": null,
+    "source": null,
+    "maxRadiusAU_local": 1.807
+   },
+   "parker": {
+    "visible": true,
+    "children": 6,
+    "visibleChildren": 6,
+    "dataDriven": null,
+    "source": null,
+    "maxRadiusAU_local": 242.241
+   },
+   "mag": {
+    "visible": false,
+    "children": 120,
+    "visibleChildren": 120,
+    "dataDriven": true,
+    "source": "synthetic",
+    "maxRadiusAU_local": 0.946
+   },
+   "flares": 0,
+   "surf": {
+    "observationMapIsBaseMap": false,
+    "observationMapImage": "http://sim.test:8042/solar/realtime/aia-tile?channel=aia_193&image_id=FAKE193&v=FAKE193",
+    "observationBlend": 0.85,
+    "observationEmission": 0.978,
+    "activity": 0.791,
+    "flarePoints": [
+     0,
+     0,
+     0
+    ]
+   },
+   "corona": {
+    "coronalHoleCount": 5,
+    "channelMode": 3,
+    "coronaColor": [
+     1,
+     0.72,
+     0.3
+    ],
+    "obsBlend": 0.85
+   },
+   "tr": {
+    "channelMode": 3,
+    "trOpacity": 0.183
+   },
+   "sunScale": 0.3755,
+   "solarText": [
+    "Live simulation",
+    "Asteroids: procedural fallback (catalog rejected: sha256-unavailable)"
+   ],
+   "json": [
+    {
+     "at": 1442,
+     "bodyReadAndParseMs": 90.1
+    },
+    {
+     "at": 1649,
+     "bodyReadAndParseMs": 3.3
+    },
+    {
+     "at": 3089,
+     "bodyReadAndParseMs": 2.2
+    },
+    {
+     "at": 4825,
+     "bodyReadAndParseMs": 2.9
+    },
+    {
+     "at": 6105,
+     "bodyReadAndParseMs": 3.2
+    },
+    {
+     "at": 7369,
+     "bodyReadAndParseMs": 2.3
+    },
+    {
+     "at": 9925,
+     "bodyReadAndParseMs": 3.4
+    },
+    {
+     "at": 11176,
+     "bodyReadAndParseMs": 3.3
+    },
+    {
+     "at": 13781,
+     "bodyReadAndParseMs": 2.6
+    }
+   ],
+   "longtasks": 2
+  },
+  "t18_magnetic_on": {
+   "loops": {
+    "visible": true,
+    "children": 144,
+    "visibleChildren": 144,
+    "dataDriven": null,
+    "source": null,
+    "maxRadiusAU_local": 1.807
+   },
+   "parker": {
+    "visible": true,
+    "children": 6,
+    "visibleChildren": 6,
+    "dataDriven": null,
+    "source": null,
+    "maxRadiusAU_local": 242.241
+   },
+   "mag": {
+    "visible": true,
+    "children": 120,
+    "visibleChildren": 120,
+    "dataDriven": true,
+    "source": "synthetic",
+    "maxRadiusAU_local": 0.946
+   },
+   "flares": 0,
+   "surf": {
+    "observationMapIsBaseMap": false,
+    "observationMapImage": "http://sim.test:8042/solar/realtime/aia-tile?channel=aia_193&image_id=FAKE193&v=FAKE193",
+    "observationBlend": 0.85,
+    "observationEmission": 0.978,
+    "activity": 0.791,
+    "flarePoints": [
+     0,
+     0,
+     0
+    ]
+   },
+   "corona": {
+    "coronalHoleCount": 5,
+    "channelMode": 3,
+    "coronaColor": [
+     1,
+     0.72,
+     0.3
+    ],
+    "obsBlend": 0.85
+   },
+   "tr": {
+    "channelMode": 3,
+    "trOpacity": 0.183
+   },
+   "sunScale": 0.3755,
+   "solarText": [
+    "Live simulation",
+    "Asteroids: procedural fallback (catalog rejected: sha256-unavailable)"
+   ],
+   "json": [
+    {
+     "at": 29314,
+     "bodyReadAndParseMs": 3
+    },
+    {
+     "at": 30448,
+     "bodyReadAndParseMs": 1.9
+    },
+    {
+     "at": 31551,
+     "bodyReadAndParseMs": 2.7
+    },
+    {
+     "at": 32644,
+     "bodyReadAndParseMs": 2.3
+    },
+    {
+     "at": 33792,
+     "bodyReadAndParseMs": 2.4
+    },
+    {
+     "at": 34875,
+     "bodyReadAndParseMs": 2.2
+    },
+    {
+     "at": 35973,
+     "bodyReadAndParseMs": 2.3
+    },
+    {
+     "at": 37059,
+     "bodyReadAndParseMs": 2.1
+    },
+    {
+     "at": 39280,
+     "bodyReadAndParseMs": 3
+    },
+    {
+     "at": 40425,
+     "bodyReadAndParseMs": 2.9
+    }
+   ],
+   "longtasks": 2
+  },
+  "t24_aia304": {
+   "loops": {
+    "visible": true,
+    "children": 144,
+    "visibleChildren": 144,
+    "dataDriven": null,
+    "source": null,
+    "maxRadiusAU_local": 1.807
+   },
+   "parker": {
+    "visible": true,
+    "children": 6,
+    "visibleChildren": 6,
+    "dataDriven": null,
+    "source": null,
+    "maxRadiusAU_local": 242.241
+   },
+   "mag": {
+    "visible": true,
+    "children": 120,
+    "visibleChildren": 120,
+    "dataDriven": true,
+    "source": "synthetic",
+    "maxRadiusAU_local": 0.946
+   },
+   "flares": 0,
+   "surf": {
+    "observationMapIsBaseMap": false,
+    "observationMapImage": "http://sim.test:8042/solar/realtime/aia-tile?channel=aia_193&image_id=FAKE193&v=FAKE193",
+    "observationBlend": 0.849,
+    "observationEmission": 0.978,
+    "activity": 0.791,
+    "flarePoints": [
+     0,
+     0,
+     0
+    ]
+   },
+   "corona": {
+    "coronalHoleCount": 5,
+    "channelMode": 3,
+    "coronaColor": [
+     1,
+     0.72,
+     0.3
+    ],
+    "obsBlend": 0.849
+   },
+   "tr": {
+    "channelMode": 3,
+    "trOpacity": 0.183
+   },
+   "sunScale": 0.3755,
+   "solarText": [
+    "Live simulation",
+    "Asteroids: procedural fallback (catalog rejected: sha256-unavailable)"
+   ],
+   "json": [
+    {
+     "at": 49121,
+     "bodyReadAndParseMs": 2.3
+    },
+    {
+     "at": 50193,
+     "bodyReadAndParseMs": 2.1
+    },
+    {
+     "at": 51252,
+     "bodyReadAndParseMs": 2.1
+    },
+    {
+     "at": 52320,
+     "bodyReadAndParseMs": 2.2
+    },
+    {
+     "at": 53437,
+     "bodyReadAndParseMs": 3.2
+    },
+    {
+     "at": 54488,
+     "bodyReadAndParseMs": 3.1
+    },
+    {
+     "at": 55594,
+     "bodyReadAndParseMs": 3.8
+    },
+    {
+     "at": 57759,
+     "bodyReadAndParseMs": 2.7
+    },
+    {
+     "at": 59924,
+     "bodyReadAndParseMs": 1.7
+    },
+    {
+     "at": 63471,
+     "bodyReadAndParseMs": 2.6
+    }
+   ],
+   "longtasks": 2
+  },
+  "t32_zoomed_out": {
+   "loops": {
+    "visible": true,
+    "children": 144,
+    "visibleChildren": 144,
+    "dataDriven": null,
+    "source": null,
+    "maxRadiusAU_local": 1.784
+   },
+   "parker": {
+    "visible": true,
+    "children": 6,
+    "visibleChildren": 6,
+    "dataDriven": null,
+    "source": null,
+    "maxRadiusAU_local": 242.241
+   },
+   "mag": {
+    "visible": true,
+    "children": 120,
+    "visibleChildren": 120,
+    "dataDriven": true,
+    "source": "synthetic",
+    "maxRadiusAU_local": 0.946
+   },
+   "flares": 0,
+   "surf": {
+    "observationMapIsBaseMap": false,
+    "observationMapImage": "http://sim.test:8042/solar/realtime/aia-tile?channel=aia_304&image_id=FAKE304&v=FAKE304",
+    "observationBlend": 0.927,
+    "observationEmission": 1,
+    "activity": 0.754,
+    "flarePoints": [
+     0,
+     0,
+     0
+    ]
+   },
+   "corona": {
+    "coronalHoleCount": 5,
+    "channelMode": 5,
+    "coronaColor": [
+     1,
+     0.18,
+     0.08
+    ],
+    "obsBlend": 0.927
+   },
+   "tr": {
+    "channelMode": 5,
+    "trOpacity": 0.739
+   },
+   "sunScale": 0.3755,
+   "solarText": [
+    "Live simulation",
+    "Asteroids: procedural fallback (catalog rejected: sha256-unavailable)"
+   ],
+   "json": [
+    {
+     "at": 115718,
+     "bodyReadAndParseMs": 2.5
+    },
+    {
+     "at": 117025,
+     "bodyReadAndParseMs": 2.3
+    },
+    {
+     "at": 118337,
+     "bodyReadAndParseMs": 2.2
+    },
+    {
+     "at": 119666,
+     "bodyReadAndParseMs": 3.4
+    },
+    {
+     "at": 121077,
+     "bodyReadAndParseMs": 2.6
+    },
+    {
+     "at": 122529,
+     "bodyReadAndParseMs": 3.9
+    },
+    {
+     "at": 124002,
+     "bodyReadAndParseMs": 3.3
+    },
+    {
+     "at": 125390,
+     "bodyReadAndParseMs": 3.6
+    },
+    {
+     "at": 126737,
+     "bodyReadAndParseMs": 2.5
+    },
+    {
+     "at": 128109,
+     "bodyReadAndParseMs": 3.5
+    }
+   ],
+   "longtasks": 2
+  },
+  "end": {
+   "loops": {
+    "visible": true,
+    "children": 144,
+    "visibleChildren": 144,
+    "dataDriven": null,
+    "source": null,
+    "maxRadiusAU_local": 1.784
+   },
+   "parker": {
+    "visible": true,
+    "children": 6,
+    "visibleChildren": 6,
+    "dataDriven": null,
+    "source": null,
+    "maxRadiusAU_local": 242.241
+   },
+   "mag": {
+    "visible": true,
+    "children": 120,
+    "visibleChildren": 120,
+    "dataDriven": true,
+    "source": "synthetic",
+    "maxRadiusAU_local": 0.946
+   },
+   "flares": 0,
+   "surf": {
+    "observationMapIsBaseMap": false,
+    "observationMapImage": "http://sim.test:8042/solar/realtime/aia-tile?channel=aia_304&image_id=FAKE304&v=FAKE304",
+    "observationBlend": 0.927,
+    "observationEmission": 1,
+    "activity": 0.754,
+    "flarePoints": [
+     0,
+     0,
+     0
+    ]
+   },
+   "corona": {
+    "coronalHoleCount": 5,
+    "channelMode": 5,
+    "coronaColor": [
+     1,
+     0.18,
+     0.08
+    ],
+    "obsBlend": 0.927
+   },
+   "tr": {
+    "channelMode": 5,
+    "trOpacity": 0.739
+   },
+   "sunScale": 0.3755,
+   "solarText": [
+    "Live simulation",
+    "Asteroids: procedural fallback (catalog rejected: sha256-unavailable)"
+   ],
+   "json": [
+    {
+     "at": 139939,
+     "bodyReadAndParseMs": 2.2
+    },
+    {
+     "at": 141184,
+     "bodyReadAndParseMs": 2
+    },
+    {
+     "at": 143623,
+     "bodyReadAndParseMs": 2.4
+    },
+    {
+     "at": 144842,
+     "bodyReadAndParseMs": 2.2
+    },
+    {
+     "at": 147269,
+     "bodyReadAndParseMs": 2.4
+    },
+    {
+     "at": 148504,
+     "bodyReadAndParseMs": 2.9
+    },
+    {
+     "at": 149711,
+     "bodyReadAndParseMs": 2.2
+    },
+    {
+     "at": 150933,
+     "bodyReadAndParseMs": 2.2
+    },
+    {
+     "at": 152207,
+     "bodyReadAndParseMs": 2.4
+    },
+    {
+     "at": 154616,
+     "bodyReadAndParseMs": 2.4
+    }
+   ],
+   "longtasks": 2
+  }
+ },
+ "logs": [
+  {
+   "t": 99,
+   "type": "error",
+   "text": "Failed to load resource: net::ERR_FAILED"
+  },
+  {
+   "t": 1551,
+   "type": "warning",
+   "text": "[phase-1] Acceptance gates failed: [sha256-unavailable] Unable to compute SHA-256 for the Phase-1 catalog: Cannot read properties of undefined (reading 'digest')"
+  }
+ ]
+}

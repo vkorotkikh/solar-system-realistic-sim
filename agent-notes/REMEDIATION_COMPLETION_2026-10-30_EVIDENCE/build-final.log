@@ -1,0 +1,19 @@
+
+> solar-system-realistic-sim@0.0.0 build
+> vite build --outDir /tmp/solar-remediation-completion-20261030/dist --emptyOutDir
+
+vite v7.3.7 building client environment for production...
+transforming...
+✓ 74 modules transformed.
+rendering chunks...
+computing gzip size...
+../../../../../../tmp/solar-remediation-completion-20261030/dist/index.html                       21.02 kB │ gzip:   4.76 kB
+../../../../../../tmp/solar-remediation-completion-20261030/dist/assets/modelWorker-BeAgDSIV.js   28.36 kB
+../../../../../../tmp/solar-remediation-completion-20261030/dist/assets/index-Ba7vuM9D.css        26.39 kB │ gzip:   5.96 kB
+../../../../../../tmp/solar-remediation-completion-20261030/dist/assets/index-DqKWndrl.js        980.64 kB │ gzip: 253.79 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 2.36s

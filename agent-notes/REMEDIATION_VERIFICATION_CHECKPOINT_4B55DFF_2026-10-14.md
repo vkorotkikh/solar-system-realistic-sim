@@ -1,5 +1,7 @@
 # Canonical remediation checkpoint: 4b55dff
 
+> **Current status (2026-10-30):** See the [verified remediation status](REMEDIATION_STATUS_2026-10-30.md) for all 83 dispositions, branch-specific fixes, remaining acceptance gates and the 25 completed working-note removals. The dated content below is historical evidence; it does not describe current main.
+
 Date: 2026-10-14. Construction branch: `remediation/canonical-register-20261014`.
 This is local integration evidence, not evidence of merge or deployment to `main`.
 

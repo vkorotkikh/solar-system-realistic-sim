@@ -1,0 +1,27 @@
+[
+  {
+    "manifest": "agent-notes/SCAN_EVIDENCE_ARCHIVE_2026-10-17.json",
+    "total": 164,
+    "matches": 164,
+    "failures": []
+  },
+  {
+    "manifest": "agent-notes/REMEDIATION_SOURCE_MANIFEST_2026-10-14.json",
+    "total": 4,
+    "matches": 2,
+    "failures": [
+      {
+        "path": "agent-notes/CODEBASE_SCAN_AND_ISSUE_TRACKER_2026-10-07.md",
+        "want": "6730fcaa970219191c2423bae44dd315834b4cfe2b7acbf09299e8f86ee209a4",
+        "actual": "8364bbe2fd98f2bfaa150cb63cb5c25d370970a9b478809339ccae6aafb9bf8e",
+        "actualBytes": 52324
+      },
+      {
+        "path": "agent-notes/CODEBASE_SCAN_AND_ISSUE_TRACKER_2026-10-10.md",
+        "want": "8014ecc734b4edbeb6aa09cf84ddac98c66b9fc9bdc57a3b0df781c6936a9bb1",
+        "actual": "95f60d946a4330df54dd9a557efe7d2623cf69c1ae0c4b1c21cb15bb1db41ec2",
+        "actualBytes": 186157
+      }
+    ]
+  }
+]

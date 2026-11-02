@@ -1,0 +1,72 @@
+{
+ "label": "R4-dev-proxy-origin-t20000",
+ "pageUrl": "http://localhost:5184/",
+ "rewritePort": "none",
+ "seconds": 45,
+ "pageOrigin": "http://localhost:5184",
+ "backendRequestOrigins": [
+  "http://localhost:5184"
+ ],
+ "summary": {
+  "/solar/physics :: http 200 acao=null": 4,
+  "/solar/realtime/aia-tile :: http 200 acao=http://localhost:5184": 1,
+  "/solar/physics :: pending": 1
+ },
+ "requests": [
+  {
+   "t": 1099,
+   "dur": 7553,
+   "url": "http://localhost:5184/solar/physics?jd=…&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "type": "fetch",
+   "origin": null,
+   "outcome": "http 200",
+   "acao": null
+  },
+  {
+   "t": 8656,
+   "dur": 3968,
+   "url": "http://localhost:5184/solar/realtime/aia-tile?channel=aia_304&image_id=192408248&v=192408248",
+   "type": "image",
+   "origin": "http://localhost:5184",
+   "outcome": "http 200",
+   "acao": "http://localhost:5184"
+  },
+  {
+   "t": 10804,
+   "dur": 9954,
+   "url": "http://localhost:5184/solar/physics?jd=…&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "type": "fetch",
+   "origin": null,
+   "outcome": "http 200",
+   "acao": null
+  },
+  {
+   "t": 21157,
+   "dur": 10282,
+   "url": "http://localhost:5184/solar/physics?jd=…&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "type": "fetch",
+   "origin": null,
+   "outcome": "http 200",
+   "acao": null
+  },
+  {
+   "t": 31561,
+   "dur": 8910,
+   "url": "http://localhost:5184/solar/physics?jd=…&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "type": "fetch",
+   "origin": null,
+   "outcome": "http 200",
+   "acao": null
+  },
+  {
+   "t": 42486,
+   "dur": null,
+   "url": "http://localhost:5184/solar/physics?jd=…&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "type": "fetch",
+   "origin": null,
+   "outcome": "pending",
+   "acao": null
+  }
+ ],
+ "console": []
+}

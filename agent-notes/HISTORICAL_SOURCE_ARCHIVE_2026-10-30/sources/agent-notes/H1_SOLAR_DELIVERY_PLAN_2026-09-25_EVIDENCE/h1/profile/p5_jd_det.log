@@ -1,0 +1,9 @@
+J_again  build=0.05s net=0 changed=0 feats=180 act=0.757428 aia=None
++1s      build=4.47s net=1 changed=9 feats=180 act=0.757428 aia=None
++1min    build=4.51s net=1 changed=10 feats=180 act=0.757436 aia=None
++10min   build=4.48s net=1 changed=11 feats=180 act=0.757505 aia=None
++1h      build=5.41s net=1 changed=11 feats=180 act=0.757887 aia=None
++6h      build=5.04s net=1 changed=12 feats=180 act=0.760184 aia=None
++1d      build=5.27s net=1 changed=11 feats=180 act=0.768417 aia=None
++7d      build=5.06s net=1 changed=11 feats=180 act=0.807086 aia=None
++27.27d  build=4.84s net=1 changed=11 feats=180 act=0.744030 aia=None

@@ -1,0 +1,80 @@
+58-Task exception was never retrieved
+59-future: <Task finished name='Task-51' coro=<_ws_send_loop() done, defined at /tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/wt/backend/server.py:1688> exception=WebSocketDisconnect()>
+60:Traceback (most recent call last):
+61-  File "/tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/venv/lib/python3.12/site-packages/starlette/websockets.py", line 92, in send
+62-    await self._send(message)
+63-  File "/tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 39, in sender
+64-    await send(message)
+65-  File "/tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/venv/lib/python3.12/site-packages/uvicorn/protocols/websockets/websockets_sansio_impl.py", line 436, in send
+66-    raise ClientDisconnected()
+67-uvicorn.protocols.utils.ClientDisconnected
+68-
+69-During handling of the above exception, another exception occurred:
+70-
+71:Traceback (most recent call last):
+72-  File "/tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/wt/backend/server.py", line 1711, in _ws_send_loop
+73-    await websocket.send_text(json.dumps(state))
+74-  File "/tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/venv/lib/python3.12/site-packages/starlette/websockets.py", line 172, in send_text
+75-    await self.send({"type": "websocket.send", "text": data})
+76-  File "/tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/venv/lib/python3.12/site-packages/starlette/websockets.py", line 95, in send
+77-    raise WebSocketDisconnect(code=1006)
+78-starlette.websockets.WebSocketDisconnect
+79-INFO:     127.0.0.1:59504 - "WebSocket /ws/sim" [accepted]
+80-INFO:     connection open
+81-INFO:     127.0.0.1:59518 - "WebSocket /ws/sim" [accepted]
+82-INFO:     connection open
+83-INFO:     127.0.0.1:59524 - "WebSocket /ws/sim" [accepted]
+84-INFO:     connection open
+85-INFO:     127.0.0.1:59526 - "WebSocket /ws/sim" [accepted]
+86-INFO:     connection open
+87-INFO:     127.0.0.1:59538 - "WebSocket /ws/sim" [accepted]
+88-INFO:     connection open
+89-INFO:     127.0.0.1:59554 - "WebSocket /ws/sim" [accepted]
+90-INFO:     connection open
+91-INFO:     127.0.0.1:59564 - "WebSocket /ws/sim" [accepted]
+92-INFO:     connection open
+93-INFO:     127.0.0.1:43264 - "WebSocket /ws/sim" [accepted]
+94-INFO:     connection open
+95-INFO:     127.0.0.1:43266 - "WebSocket /ws/sim" [accepted]
+96-INFO:     connection open
+97-INFO:     127.0.0.1:43274 - "WebSocket /ws/sim" [accepted]
+--
+129-Task exception was never retrieved
+130-future: <Task finished name='Task-99' coro=<_ws_send_loop() done, defined at /tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/wt/backend/server.py:1688> exception=WebSocketDisconnect()>
+131:Traceback (most recent call last):
+132-  File "/tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/venv/lib/python3.12/site-packages/starlette/websockets.py", line 92, in send
+133-    await self._send(message)
+134-  File "/tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 39, in sender
+135-    await send(message)
+136-  File "/tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/venv/lib/python3.12/site-packages/uvicorn/protocols/websockets/websockets_sansio_impl.py", line 436, in send
+137-    raise ClientDisconnected()
+138-uvicorn.protocols.utils.ClientDisconnected
+139-
+140-During handling of the above exception, another exception occurred:
+141-
+142:Traceback (most recent call last):
+143-  File "/tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/wt/backend/server.py", line 1711, in _ws_send_loop
+144-    await websocket.send_text(json.dumps(state))
+145-  File "/tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/venv/lib/python3.12/site-packages/starlette/websockets.py", line 172, in send_text
+146-    await self.send({"type": "websocket.send", "text": data})
+147-  File "/tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/venv/lib/python3.12/site-packages/starlette/websockets.py", line 95, in send
+148-    raise WebSocketDisconnect(code=1006)
+149-starlette.websockets.WebSocketDisconnect
+150-INFO:     203.0.113.7:0 - "GET /solar/physics?jd=2461307.5&fidelity=preview&max_features=8 HTTP/1.1" 200 OK
+151-INFO:     203.0.113.7:0 - "GET /solar/physics?jd=2461307.5&fidelity=preview&max_features=8 HTTP/1.1" 200 OK
+152-INFO:     203.0.113.7:0 - "GET /solar/physics?jd=2461307.5&fidelity=preview&max_features=8 HTTP/1.1" 200 OK
+153-INFO:     203.0.113.7:0 - "GET /solar/physics?jd=2461307.5&fidelity=preview&max_features=8 HTTP/1.1" 200 OK
+154-INFO:     203.0.113.7:0 - "GET /solar/physics?jd=2461307.5&fidelity=preview&max_features=8 HTTP/1.1" 200 OK
+155-INFO:     203.0.113.7:0 - "GET /solar/physics?jd=2461307.5&fidelity=preview&max_features=8 HTTP/1.1" 200 OK
+156-INFO:     203.0.113.7:0 - "GET /solar/physics?jd=2461307.5&fidelity=preview&max_features=8 HTTP/1.1" 200 OK
+157-INFO:     203.0.113.7:0 - "GET /solar/physics?jd=2461307.5&fidelity=preview&max_features=8 HTTP/1.1" 200 OK
+158-INFO:     203.0.113.7:0 - "GET /solar/physics?jd=2461307.5&fidelity=preview&max_features=8 HTTP/1.1" 200 OK
+159-INFO:     203.0.113.7:0 - "GET /solar/physics?jd=2461307.5&fidelity=preview&max_features=8 HTTP/1.1" 200 OK
+160-INFO:     203.0.113.7:0 - "GET /solar/physics?jd=2461307.5&fidelity=preview&max_features=8 HTTP/1.1" 200 OK
+161-INFO:     203.0.113.7:0 - "GET /solar/physics?jd=2461307.5&fidelity=preview&max_features=8 HTTP/1.1" 200 OK
+162-INFO:     203.0.113.7:0 - "GET /solar/physics?jd=2461307.5&fidelity=preview&max_features=8 HTTP/1.1" 200 OK
+163-INFO:     203.0.113.7:0 - "GET /solar/physics?jd=2461307.5&fidelity=preview&max_features=8 HTTP/1.1" 200 OK
+164-INFO:     203.0.113.7:0 - "GET /solar/physics?jd=2461307.5&fidelity=preview&max_features=8 HTTP/1.1" 200 OK
+165-INFO:     203.0.113.7:0 - "GET /solar/physics?jd=2461307.5&fidelity=preview&max_features=8 HTTP/1.1" 200 OK
+166-INFO:     203.0.113.7:0 - "GET /solar/physics?jd=2461307.5&fidelity=preview&max_features=8 HTTP/1.1" 200 OK
+167-INFO:     203.0.113.7:0 - "GET /solar/physics?jd=2461307.5&fidelity=preview&max_features=8 HTTP/1.1" 200 OK

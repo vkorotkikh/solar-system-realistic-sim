@@ -46,9 +46,9 @@ export interface RoundTripTestResult {
 
 const MAGIC = 'ACBF';
 const MAGIC_BYTES = new Uint8Array([65, 67, 66, 70]); // A C B F
-const VERSION = 1;
+const VERSION = 2;
 const HEADER_BYTES = 12;
-const STRIDE_BYTES = 36;
+const STRIDE_BYTES = 88;
 
 const ANGLE_SCALE_U16 = 65535;
 const ECENTRICITY_SCALE_U16 = 65535;
@@ -144,13 +144,16 @@ function readHeaderView(buffer: ArrayBuffer): AsteroidCatalogBinaryHeader {
   }
 
   const version = header.getUint8(4);
-  if (version !== VERSION) {
-    throw new Error(`Unsupported catalog version ${version}. Supported version is ${VERSION}.`);
+  if (version !== 1 && version !== VERSION) {
+    throw new Error(`Unsupported catalog version ${version}. Supported versions are 1 and ${VERSION}.`);
   }
 
   const strideBytes = header.getUint8(6);
-  if (strideBytes !== STRIDE_BYTES) {
-    throw new Error(`Unexpected record stride ${strideBytes}. Expected ${STRIDE_BYTES} bytes.`);
+  if (strideBytes !== (version === 1 ? 36 : STRIDE_BYTES)) {
+    throw new Error(`Unexpected record stride ${strideBytes} for version ${version}.`);
+  }
+  if (header.getUint8(5) !== 0 || header.getUint8(7) !== 0) {
+    throw new Error("Unsupported catalog header flags or reserved fields.");
   }
 
   return {
@@ -162,53 +165,41 @@ function readHeaderView(buffer: ArrayBuffer): AsteroidCatalogBinaryHeader {
   };
 }
 
-export function writeAsteroidCatalogBinary(records: readonly PackedAsteroidRecord[]): ArrayBuffer {
-  const count = records.length;
-  const bytes = HEADER_BYTES + count * STRIDE_BYTES;
-  const buffer = new ArrayBuffer(bytes);
-  const view = new DataView(buffer);
-  const header = toHeaderView(count);
-  new Uint8Array(buffer, 0, HEADER_BYTES).set(new Uint8Array(header.buffer));
+const FLOAT64_FIELDS = ['epochJd', 'aAu', 'e', 'iDeg', 'ascendingNodeDeg',
+  'argPeriapsisDeg', 'meanAnomalyDeg', 'periodDays', 'diameterKm', 'albedo'] as const;
 
-  const payloadStart = HEADER_BYTES;
-  for (let i = 0; i < count; i += 1) {
-    const record = records[i];
-    const baseOffset = payloadStart + i * STRIDE_BYTES;
-
-    const eClamped = clampNumber(record.e, 0, 1);
-    const epoch = clampNumber(record.epochJd, -Infinity, Infinity);
-    const aAu = clampNumber(record.aAu, 0.0001, 10_000);
-    const iDeg = clampNumber(record.iDeg, 0, 180);
-    const asc = normalizeAngle360(record.ascendingNodeDeg);
-    const arg = normalizeAngle360(record.argPeriapsisDeg);
-    const man = normalizeAngle360(record.meanAnomalyDeg);
-    const period = clampNumber(record.periodDays, 1, 10_000_000);
-    const diameter = clampNumber(record.diameterKm, 0.001, 1_000_000);
-    const albedo = clampNumber(record.albedo, 0, 1);
-
-    const eQ = packUnsignedShort(eClamped, 0, 1);
-    const iQ = packUnsignedShort(iDeg, 0, 180);
-    const ascQ = packUnsignedShort(asc, 0, 360);
-    const argQ = packUnsignedShort(arg, 0, 360);
-    const manQ = packUnsignedShort(man, 0, 360);
-    const albedoQ = packUnsignedShort(albedo, 0, 1);
-
-    view.setUint32(baseOffset, packSourceId(record.sourceId), true);
-    view.setFloat32(baseOffset + 4, epoch, true);
-    view.setFloat32(baseOffset + 8, aAu, true);
-    view.setUint16(baseOffset + 12, eQ, true);
-    view.setUint16(baseOffset + 14, iQ, true);
-    view.setUint16(baseOffset + 16, ascQ, true);
-    view.setUint16(baseOffset + 18, argQ, true);
-    view.setUint16(baseOffset + 20, manQ, true);
-    view.setFloat32(baseOffset + 22, period, true);
-    view.setFloat32(baseOffset + 26, diameter, true);
-    view.setUint16(baseOffset + 30, albedoQ, true);
-    view.setUint8(baseOffset + 32, packTaxonomyIndex(record.taxonomyIndex));
-    view.setUint8(baseOffset + 33, 0);
-    view.setUint16(baseOffset + 34, 0, true);
+function validateSourceRecord(record: PackedAsteroidRecord): void {
+  for (const field of FLOAT64_FIELDS) {
+    if (!Number.isFinite(record[field])) throw new Error(`Invalid catalog ${field}.`);
   }
+  if (!Number.isInteger(record.sourceId) || record.sourceId <= 0 || record.sourceId > 0xFFFFFFFF) {
+    throw new Error('Invalid catalog sourceId.');
+  }
+  if (!Number.isInteger(record.taxonomyIndex) || record.taxonomyIndex < 0 || record.taxonomyIndex > 255) {
+    throw new Error('Invalid catalog taxonomyIndex.');
+  }
+  for (const field of ['epochJd', 'aAu', 'periodDays', 'diameterKm'] as const) {
+    if (record[field] <= 0) throw new Error(`Invalid catalog ${field}.`);
+  }
+  if (record.e < 0 || record.e >= 1) throw new Error('Invalid catalog e.');
+  if (record.iDeg < 0 || record.iDeg > 180) throw new Error('Invalid catalog iDeg.');
+  if (record.albedo < 0 || record.albedo > 1) throw new Error('Invalid catalog albedo.');
+  for (const field of ['ascendingNodeDeg', 'argPeriapsisDeg', 'meanAnomalyDeg'] as const) {
+    if (record[field] < 0 || record[field] >= 360) throw new Error(`Invalid catalog ${field}.`);
+  }
+}
 
+export function writeAsteroidCatalogBinary(records: readonly PackedAsteroidRecord[]): ArrayBuffer {
+  const buffer = new ArrayBuffer(HEADER_BYTES + records.length * STRIDE_BYTES);
+  const view = new DataView(buffer);
+  new Uint8Array(buffer, 0, HEADER_BYTES).set(new Uint8Array(toHeaderView(records.length).buffer));
+  records.forEach((record, index) => {
+    validateSourceRecord(record);
+    const offset = HEADER_BYTES + index * STRIDE_BYTES;
+    view.setUint32(offset, record.sourceId, true);
+    FLOAT64_FIELDS.forEach((field, i) => view.setFloat64(offset + 4 + 8 * i, record[field], true));
+    view.setUint8(offset + 84, record.taxonomyIndex);
+  });
   return buffer;
 }
 
@@ -240,6 +231,17 @@ export function readAsteroidCatalogBinary<TRecord>(
 
   for (let i = 0; i < recordCount; i += 1) {
     const baseOffset = i * header.strideBytes;
+    if (header.version === 2) {
+      const record = { sourceId: view.getUint32(baseOffset, true),
+        taxonomyIndex: view.getUint8(baseOffset + 84) } as PackedAsteroidRecord;
+      FLOAT64_FIELDS.forEach((field, j) => { record[field] = view.getFloat64(baseOffset + 4 + 8 * j, true); });
+      validateSourceRecord(record);
+      if (view.getUint8(baseOffset + 85) || view.getUint16(baseOffset + 86, true)) {
+        throw new Error('Unsupported catalog reserved record fields.');
+      }
+      records[i] = mapRecord ? mapRecord(record, i) : record;
+      continue;
+    }
     const sourceId = view.getUint32(baseOffset, true);
     const epochJd = view.getFloat32(baseOffset + 4, true);
     const aAu = view.getFloat32(baseOffset + 8, true);
@@ -394,7 +396,7 @@ export function validatePackedCatalogRoundTrip(count: number): RoundTripTestResu
       deltaAlb
     ];
     if (errors[0] + errors[1] + errors[2] + errors[3] + errors[4] + errors[5] + errors[6] > 0) {
-      mismatched += asteroidRecordQuantizationFailures(sourceRecord, decoded).length > 0 ? 1 : 0;
+      mismatched += (Object.keys(sourceRecord) as (keyof PackedAsteroidRecord)[]).some(field => sourceRecord[field] !== decoded[field]) ? 1 : 0;
     }
     if (deltaEpoch > maxEpochError) maxEpochError = deltaEpoch;
     if (deltaAU > maxAUError) maxAUError = deltaAU;

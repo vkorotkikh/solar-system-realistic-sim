@@ -1,3 +1,31 @@
+# ACBF version 2 (maintained catalog)
+
+The 12-byte little-endian header uses magic `ACBF`, version `2`, flags `0`,
+record stride `88`, reserved byte `0`, and uint32 record count.
+Records use packed `<I10dBBH>`: uint32 source ID; ten Float64 values in order
+`epochJd`, `aAu`, `e`, `iDeg`, `ascendingNodeDeg`, `argPeriapsisDeg`,
+`meanAnomalyDeg`, `periodDays`, `diameterKm`, `albedo`; uint8 taxonomy;
+three zero reserved bytes. Zero albedo means unknown; taxonomy 255 is unknown.
+The writer rejects nonfinite or out-of-domain values instead of synthesizing them.
+The reader rejects unsupported versions, mismatched stride, reserved fields and
+truncated payloads; v2 records undergo the same domain validation as the writer.
+
+Float64 preserves the provider values after numeric parsing, including arbitrary
+fractional absolute Julian epochs. This is storage fidelity, not independent
+trajectory validation. The GPU still uses Float32, and propagation is a fixed
+two-body approximation. The 100k bundle increases from 3,600,012 to 8,800,012 bytes
+before HTTP compression. Legacy ACBF v1 and ASPH reads remain supported.
+
+The Python builder reproduces the maintained bundle offline from hash-checked
+provider inputs in `scripts/source-snapshots/catalogs`:
+
+```sh
+python3 scripts/build_asteroid_phase1_dataset.py --offline --write
+python3 scripts/build_asteroid_phase1_dataset.py --offline --check
+```
+
+---
+
 # Asteroid Compact Binary Format (`ACBF`), Version 1
 
 This file defines the compact binary payload consumed by
@@ -23,7 +51,7 @@ All integers are little-endian unless otherwise noted.
 
 Version-specific rules:
 - `version == 1` uses fixed stride `36` and the field layout below.
-- Any other version must be rejected by the reader.
+- Version 2 uses the higher-precision layout above; other versions are rejected.
 
 ## Record layout (`36` bytes, fixed)
 
@@ -67,7 +95,7 @@ Each record contains one asteroid body:
 ## Reader/writer checks
 
 - Magic must equal `ACBF`.
-- Version must be `1`.
+- Legacy version must be `1` (version 2 is defined above).
 - `recordStrideBytes` must equal `36`.
 - Buffer must contain at least `12 + recordCount * stride` bytes.
 - Reader and writer clamp/validate numeric ranges before serialization.

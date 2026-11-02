@@ -1,0 +1,200 @@
+{
+  "algorithm": "sha256",
+  "artifacts": [
+    {
+      "path": "/tmp/solar-remediation-completion-20261030/startup-diagnosis/continuous-dev-summary.log",
+      "bytes": 5224,
+      "sha256": "2084307c83761f36ebf1ad9cbb1dc39885b58fc6c355591964b403bb60f03ce5"
+    },
+    {
+      "path": "/tmp/solar-remediation-completion-20261030/startup-diagnosis/continuous-dev.cpuprofile",
+      "bytes": 157709,
+      "sha256": "02418c43de2a62ec3310c5b957f22682c51d964343daeb14e71fa4d7b7c4d7c6"
+    },
+    {
+      "path": "/tmp/solar-remediation-completion-20261030/startup-diagnosis/continuous-dev.json",
+      "bytes": 11175,
+      "sha256": "a631abdf98afcd96752f25c9199d827ff4ecb253a09dc1e370933cebc61ed914"
+    },
+    {
+      "path": "/tmp/solar-remediation-completion-20261030/startup-diagnosis/continuous-dev.log",
+      "bytes": 2651,
+      "sha256": "e38be87d1d659988ccbd31aaa00f34e01cf4fce280102a4e80243de0c272e098"
+    },
+    {
+      "path": "/tmp/solar-remediation-completion-20261030/startup-diagnosis/continuous-dev.summary.json",
+      "bytes": 19505,
+      "sha256": "73c7273ebaa7967af0b870116f8fd4542cc4d538468308b0cae6b7306eca74c8"
+    },
+    {
+      "path": "/tmp/solar-remediation-completion-20261030/startup-diagnosis/continuous-dev.trace.json",
+      "bytes": 18091100,
+      "sha256": "1e969c369c68480d4482d1f0a5bd4bc99b201776bcf078230d03617bdc69b762"
+    },
+    {
+      "path": "/tmp/solar-remediation-completion-20261030/startup-diagnosis/continuous-noquery-dev-summary.log",
+      "bytes": 123472,
+      "sha256": "e165a841d75a2625ebf3244f7cc5de071afe39c434bd3389f446733a06c0700c"
+    },
+    {
+      "path": "/tmp/solar-remediation-completion-20261030/startup-diagnosis/continuous-noquery-dev.cpuprofile",
+      "bytes": 160678,
+      "sha256": "983d9701082b799867cc1484fcc54505ca6e94a88cc0e81532069f0c150c2f95"
+    },
+    {
+      "path": "/tmp/solar-remediation-completion-20261030/startup-diagnosis/continuous-noquery-dev.json",
+      "bytes": 152437,
+      "sha256": "6d87689f4cdf98679a51e4ce213315e3b2395855dc9c475f5a6e77a8fd051d90"
+    },
+    {
+      "path": "/tmp/solar-remediation-completion-20261030/startup-diagnosis/continuous-noquery-dev.log",
+      "bytes": 2496,
+      "sha256": "1b91f8cf40cd69b8543cb1331aa5dadfeb138d4fc1069b9bc80c05c4420ef16e"
+    },
+    {
+      "path": "/tmp/solar-remediation-completion-20261030/startup-diagnosis/continuous-noquery-dev.summary.json",
+      "bytes": 139575,
+      "sha256": "8278abee6ef0f492192998b8ef096ad3352e7eacbd9230063fa9f37fb59df4b8"
+    },
+    {
+      "path": "/tmp/solar-remediation-completion-20261030/startup-diagnosis/continuous-noquery-dev.trace.json",
+      "bytes": 20439527,
+      "sha256": "9b84bfd082d7856ae9ebf4e6394862386ba894df83743403c574f26affca460f"
+    },
+    {
+      "path": "/tmp/solar-remediation-completion-20261030/startup-diagnosis/diagnose.mjs",
+      "bytes": 13265,
+      "sha256": "2f6aa43969f19f60220cc9e0383ce7b47d39035443b0c3d4984e6e30382de857"
+    },
+    {
+      "path": "/tmp/solar-remediation-completion-20261030/startup-diagnosis/gpu-detail-dev-summary.log",
+      "bytes": 190880,
+      "sha256": "78ffe1d7679aa8073c73f849e8269cf8feb767bcecf17cebd104b75656996849"
+    },
+    {
+      "path": "/tmp/solar-remediation-completion-20261030/startup-diagnosis/gpu-detail-dev.cpuprofile",
+      "bytes": 195873,
+      "sha256": "381477f8de497b975c85e0d9c11cbcbd4fadc754794025284b98dafdc72b54a3"
+    },
+    {
+      "path": "/tmp/solar-remediation-completion-20261030/startup-diagnosis/gpu-detail-dev.json",
+      "bytes": 336292,
+      "sha256": "2ae1a3ed0b338c670eb3989c6cfdc848d207ad50ba88dff1bd67d58dc6cae172"
+    },
+    {
+      "path": "/tmp/solar-remediation-completion-20261030/startup-diagnosis/gpu-detail-dev.log",
+      "bytes": 3833,
+      "sha256": "cdcba1cffdc8ebf35a34029ec82bd6398d34b6b6301c53e66fc48551e3349608"
+    },
+    {
+      "path": "/tmp/solar-remediation-completion-20261030/startup-diagnosis/gpu-detail-dev.summary.json",
+      "bytes": 207700,
+      "sha256": "e45595751460792d9576b1e9d2f0751caec63e1fb8e91ca14b1470c634fd32bb"
+    },
+    {
+      "path": "/tmp/solar-remediation-completion-20261030/startup-diagnosis/gpu-detail-dev.trace.json",
+      "bytes": 26131670,
+      "sha256": "283fbf1b37132e0da3ef21ebd2da281a8af7de120c5357913c9f393d27cec3d1"
+    },
+    {
+      "path": "/tmp/solar-remediation-completion-20261030/startup-diagnosis/input-noquery-dev-summary.log",
+      "bytes": 123634,
+      "sha256": "cb45825067cc2d504a52e0ad58ea196b3f6e52553c709c95f4d2e89512e2c831"
+    },
+    {
+      "path": "/tmp/solar-remediation-completion-20261030/startup-diagnosis/input-noquery-dev.json",
+      "bytes": 155593,
+      "sha256": "81acd3a944c3122012dc30fdf59031ce4113cd67fdf0e4d571f8845c38784b69"
+    },
+    {
+      "path": "/tmp/solar-remediation-completion-20261030/startup-diagnosis/input-noquery-dev.log",
+      "bytes": 3468,
+      "sha256": "d538da226960fb59dae628aca2b2018cec4567709203eefb3864d4b1e831e6b9"
+    },
+    {
+      "path": "/tmp/solar-remediation-completion-20261030/startup-diagnosis/input-noquery-dev.summary.json",
+      "bytes": 125531,
+      "sha256": "c27e31eb7ba261117864dfc9f360c26513d95ee0cbdbf1e1edb61776411e55e6"
+    },
+    {
+      "path": "/tmp/solar-remediation-completion-20261030/startup-diagnosis/input-shift-noquery-dev.json",
+      "bytes": 339055,
+      "sha256": "03f197d6e19f0f8fb8f8ddd2df7af88b62475684f676cc930a5583e70d997719"
+    },
+    {
+      "path": "/tmp/solar-remediation-completion-20261030/startup-diagnosis/input-shift-noquery-dev.log",
+      "bytes": 3978,
+      "sha256": "15169c30d2261987575f30d970cfc6d7c41f43453d74e5d8c381ab960cd74d82"
+    },
+    {
+      "path": "/tmp/solar-remediation-completion-20261030/startup-diagnosis/isolated-noquery-dev-summary.log",
+      "bytes": 115207,
+      "sha256": "2b16ebc15f0f654687735d062ac118478d6262382fc5df6302cb239eab05e0fe"
+    },
+    {
+      "path": "/tmp/solar-remediation-completion-20261030/startup-diagnosis/isolated-noquery-dev.cpuprofile",
+      "bytes": 146636,
+      "sha256": "1b85d598e241927a77442dc255498f575fbb84a58bd53164e57869de1cb03f91"
+    },
+    {
+      "path": "/tmp/solar-remediation-completion-20261030/startup-diagnosis/isolated-noquery-dev.json",
+      "bytes": 141335,
+      "sha256": "c77a4d6f89532bd919e211336dd3d7b007c75192608117de3b1f6c16cb585118"
+    },
+    {
+      "path": "/tmp/solar-remediation-completion-20261030/startup-diagnosis/isolated-noquery-dev.log",
+      "bytes": 1725,
+      "sha256": "934d11ca835b11320f00941187f9370eaf222c08b956c7076854e35f58a6b056"
+    },
+    {
+      "path": "/tmp/solar-remediation-completion-20261030/startup-diagnosis/isolated-noquery-dev.summary.json",
+      "bytes": 126515,
+      "sha256": "1d03f4564b62bc1963fa69d3df1637619deedb39b8e2bf1876ebab921b741155"
+    },
+    {
+      "path": "/tmp/solar-remediation-completion-20261030/startup-diagnosis/isolated-noquery-dev.trace.json",
+      "bytes": 19898520,
+      "sha256": "4a29db9ef31cd1d35e7412adce9f9f9880961e3b97bb9b0a07dec0037374b8b4"
+    },
+    {
+      "path": "/tmp/solar-remediation-completion-20261030/startup-diagnosis/native-sampling-capability.json",
+      "bytes": 180,
+      "sha256": "7bb201224428049d0c8bd7fef10a9e96069bdc21b9a217d841498706fa815c72"
+    },
+    {
+      "path": "/tmp/solar-remediation-completion-20261030/startup-diagnosis/no-probe-fence-dev.cpuprofile",
+      "bytes": 179604,
+      "sha256": "ca53de3cb950dda840445403f46c366bce1d883d05719936ac95a332eab86bb6"
+    },
+    {
+      "path": "/tmp/solar-remediation-completion-20261030/startup-diagnosis/no-probe-fence-dev.json",
+      "bytes": 147980,
+      "sha256": "b59d04c44d761e5981c5e45ad1fb0212ccdae2fc4328e1af9a0294e8554c8909"
+    },
+    {
+      "path": "/tmp/solar-remediation-completion-20261030/startup-diagnosis/no-probe-fence-dev.log",
+      "bytes": 3880,
+      "sha256": "6d18d23b13e6adce9296445f847b8de6f954925e663226c98f08f0dbeabd1e33"
+    },
+    {
+      "path": "/tmp/solar-remediation-completion-20261030/startup-diagnosis/no-probe-fence-dev.trace.json",
+      "bytes": 21919834,
+      "sha256": "fc5e94ad482a24da23b5fa83a0f953229f8ec26190684955a7c3554e09c5af63"
+    },
+    {
+      "path": "/tmp/solar-remediation-completion-20261030/startup-diagnosis/plan.json",
+      "bytes": 1306,
+      "sha256": "972371a0bca0741be1f9182ca6381f553405c469eedc756b8733c395f941b3fe"
+    },
+    {
+      "path": "/tmp/solar-remediation-completion-20261030/startup-diagnosis/summarize.mjs",
+      "bytes": 3984,
+      "sha256": "fcc0051a4732be6d9982b6e0a99fb442530c33423c13ced6708be7a2f254189e"
+    },
+    {
+      "path": "/tmp/solar-remediation-completion-20261030/startup-diagnosis/trace-categories.json",
+      "bytes": 22,
+      "sha256": "16d284e356c125e897ae722bbfc8c32546df713145f9ef18697e1bebdba74ba0"
+    }
+  ]
+}

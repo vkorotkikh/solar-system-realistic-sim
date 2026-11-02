@@ -1,0 +1,54 @@
+[
+ {
+  "fidelity": "high",
+  "forcing": "hybrid",
+  "live": true,
+  "maxf": 180,
+  "reps": 3,
+  "net": "live",
+  "build_med": 8.609,
+  "build_max": 8.808,
+  "total_med": 8.63,
+  "total_max": 8.831,
+  "pfss_med": 6.143,
+  "realtime_med": 2.368,
+  "net_calls": [
+   13,
+   8,
+   8
+  ],
+  "features": [
+   180,
+   180,
+   180
+  ],
+  "bytes_last": 653998,
+  "pfss_lines": 120
+ },
+ {
+  "fidelity": "high",
+  "forcing": "data_driven",
+  "live": true,
+  "maxf": 180,
+  "reps": 3,
+  "net": "live",
+  "build_med": 9.724,
+  "build_max": 9.947,
+  "total_med": 9.759,
+  "total_max": 9.982,
+  "pfss_med": 7.883,
+  "realtime_med": 1.775,
+  "net_calls": [
+   8,
+   8,
+   8
+  ],
+  "features": [
+   180,
+   180,
+   180
+  ],
+  "bytes_last": 706726,
+  "pfss_lines": 120
+ }
+]

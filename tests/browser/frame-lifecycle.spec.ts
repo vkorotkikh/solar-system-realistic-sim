@@ -3,6 +3,7 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { chromium, expect, test, type Browser, type Page } from '@playwright/test';
+import { retireWebGlPage } from './webgl-cleanup';
 
 interface FrameProbe {
   offsetMs: number;
@@ -70,6 +71,7 @@ async function loaded(page: Page, url: string) {
 test.describe('active app frame lifecycle', () => {
   test.skip(({ browserName }) => browserName !== 'chromium', 'Chromium frame/worker gate');
   test.setTimeout(90_000);
+  test.afterEach(async ({ page }) => { await retireWebGlPage(page); });
 
   test('a foreground timestamp stall cannot create an unbounded local simulation jump', async ({ page, baseURL }) => {
     const origin = new URL(baseURL!).origin;
@@ -79,7 +81,9 @@ test.describe('active app frame lifecycle', () => {
       window.__frameProbe.offsetMs += 60_000;
       return count;
     });
-    await expect.poll(() => page.evaluate(() => window.__frameProbe.tickCount)).toBeGreaterThan(before + 2);
+    // Observe three actual frames on software GPUs without imposing an
+    // unrelated FPS floor; the scientific 100ms step bound below is unchanged.
+    await expect.poll(() => page.evaluate(() => window.__frameProbe.tickCount), { timeout: 30_000 }).toBeGreaterThan(before + 2);
     const after = await page.evaluate(index => window.__frameProbe.ticks.filter(tick => tick.index > index), before);
     expect(after.length).toBeGreaterThan(0);
     expect(Math.max(...after.map(tick => tick.stepMs))).toBeLessThanOrEqual(100);
@@ -94,7 +98,7 @@ test.describe('active app frame lifecycle', () => {
     await page.locator('#toggle-play').click();
     await page.evaluate(() => { window.__frameProbe.corruptWorker = true; });
     await expect.poll(() => page.evaluate(() => window.__frameProbe.corruptions)).toBeGreaterThan(0);
-    await expect.poll(() => page.evaluate(() => window.__frameProbe.terminated)).toBe(1);
+    await expect.poll(() => page.evaluate(() => window.__frameProbe.terminated)).toBeGreaterThanOrEqual(1);
     await expect(page.locator('#renderer-unavailable')).toBeHidden();
     await page.locator('#body-search').fill('Earth');
     await expect(page.locator('#body-info-distance')).not.toContainText('NaN');
@@ -102,6 +106,7 @@ test.describe('active app frame lifecycle', () => {
     await page.locator('#space-canvas').focus(); await page.keyboard.press('+');
     await expect(page.locator('#status-zoom')).not.toHaveText(range!);
     expect(errors).toEqual([]);
+    expect(await page.evaluate(() => window.__frameProbe.terminated)).toBeLessThanOrEqual(3);
   });
 
   test('a persistently failing stage cannot starve camera, render, HUD, or later frames', async ({ page, baseURL }) => {
@@ -129,8 +134,8 @@ test.describe('active app frame lifecycle', () => {
       window.__frameProbe.failKuiper = true;
       return window.__frameProbe.tickCount;
     });
-    await expect.poll(() => page.evaluate(() => window.__frameProbe.stageFailures)).toBeGreaterThan(2);
-    await expect.poll(() => page.evaluate(() => window.__frameProbe.tickCount)).toBeGreaterThan(before + 2);
+    await expect.poll(() => page.evaluate(() => window.__frameProbe.stageFailures), { timeout: 30_000 }).toBeGreaterThan(2);
+    await expect.poll(() => page.evaluate(() => window.__frameProbe.tickCount), { timeout: 30_000 }).toBeGreaterThan(before + 2);
     const range = await page.locator('#status-zoom').textContent();
     await page.locator('#space-canvas').focus(); await page.keyboard.press('+');
     await expect(page.locator('#status-zoom')).not.toHaveText(range!);

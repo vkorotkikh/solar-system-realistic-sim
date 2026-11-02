@@ -1,0 +1,11 @@
+HTTP/1.1 200 OK
+date: Fri, 25 Sep 2026 02:39:40 GMT
+server: uvicorn
+content-length: 161457
+content-type: image/png
+cache-control: public, max-age=120
+x-solar-aia-channel: aia_193
+x-solar-aia-image-id: 192408731
+x-solar-aia-image-date: 2026-09-25 02:16:41
+vary: Origin
+

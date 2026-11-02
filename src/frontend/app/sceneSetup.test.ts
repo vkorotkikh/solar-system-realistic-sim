@@ -4,12 +4,35 @@ import { applyCameraAction } from './viewportCameraController';
 import { createSceneSetup } from './sceneSetup';
 import type { RuntimeUiConfig } from './runtimeConfig';
 
+const setupFaults = vi.hoisted(() => ({
+  pixelRatio: null as Error | null,
+  controls: null as Error | null,
+  rendererDispose: null as Error | null,
+  renderers: [] as Array<{ dispose: ReturnType<typeof vi.fn> }>,
+  controlsCreated: [] as Array<{ dispose: () => void }>,
+}));
+
 vi.mock('three', async () => {
   const actual = await vi.importActual<typeof import('three')>('three');
   class WebGLRendererDouble {
-    setPixelRatio(_pixelRatio: number): void {}
+    constructor() { setupFaults.renderers.push(this); }
+    dispose = vi.fn(() => { if (setupFaults.rendererDispose) throw setupFaults.rendererDispose; });
+    setPixelRatio(_pixelRatio: number): void { if (setupFaults.pixelRatio) throw setupFaults.pixelRatio; }
   }
   return { ...actual, WebGLRenderer: WebGLRendererDouble };
+});
+
+vi.mock('three/examples/jsm/controls/OrbitControls.js', async () => {
+  const actual = await vi.importActual<typeof import('three/examples/jsm/controls/OrbitControls.js')>(
+    'three/examples/jsm/controls/OrbitControls.js'
+  );
+  return { OrbitControls: class extends actual.OrbitControls {
+    constructor(...args: ConstructorParameters<typeof actual.OrbitControls>) {
+      super(...args);
+      setupFaults.controlsCreated.push(this);
+      if (setupFaults.controls) this.target.set = () => { throw setupFaults.controls; };
+    }
+  } };
 });
 
 type Listener = EventListenerOrEventListenerObject;
@@ -139,8 +162,39 @@ function targetRelativeMetrics({
 }
 
 afterEach(() => {
+  setupFaults.pixelRatio = null;
+  setupFaults.controls = null;
+  setupFaults.rendererDispose = null;
+  setupFaults.renderers.length = 0;
+  setupFaults.controlsCreated.length = 0;
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
+});
+
+describe('failed scene setup retains acquisition ownership', () => {
+  it.each([false, true])('disposes a renderer after initial configuration fails (cleanup throws=%s)', cleanupThrows => {
+    const original = new Error('initial pixel ratio failed');
+    setupFaults.pixelRatio = original;
+    if (cleanupThrows) setupFaults.rendererDispose = new Error('cleanup failed');
+    expect(() => makeSetup()).toThrow(original);
+    expect(setupFaults.renderers).toHaveLength(1);
+    expect(setupFaults.renderers[0].dispose).toHaveBeenCalledTimes(1);
+    expect(setupFaults.controlsCreated).toHaveLength(0);
+  });
+
+  it('disposes acquired real controls and renderer when controls configuration fails', () => {
+    vi.stubGlobal('window', { devicePixelRatio: 1 });
+    const canvas = new CanvasDouble();
+    const original = new Error('controls target configuration failed');
+    setupFaults.controls = original;
+    expect(() => createSceneSetup({ canvas: canvas as unknown as HTMLCanvasElement,
+      runtimeUiConfig, initialZoomSensitivity: 1, solarSystemMaxDistanceAu: 200 })).toThrow(original);
+    expect(setupFaults.controlsCreated).toHaveLength(1);
+    expect(setupFaults.renderers[0].dispose).toHaveBeenCalledTimes(1);
+    expect(canvas.listenerCount('pointerdown')).toBe(0);
+    expect(canvas.ownerDocument.listenerCount('keydown')).toBe(0);
+    expect(canvas.style.touchAction).toBe('auto');
+  });
 });
 
 describe('production scene camera up-axis contract (B023)', () => {

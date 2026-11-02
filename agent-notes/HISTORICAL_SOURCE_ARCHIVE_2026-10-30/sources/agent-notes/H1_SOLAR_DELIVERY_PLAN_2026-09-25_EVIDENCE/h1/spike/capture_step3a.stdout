@@ -1,0 +1,280 @@
+{
+ "tag": "step3a",
+ "tLoad": 6009,
+ "physics": {
+  "n": 7,
+  "by": {
+   "http_503": 1,
+   "http_200": 6
+  },
+  "cache": {
+   "MISS": 6
+  },
+  "hitDurMs": [],
+  "missDurMs": [
+   9343,
+   10906,
+   11042,
+   11514,
+   11700,
+   11863
+  ],
+  "okDurMs": {
+   "n": 6,
+   "min": 9343,
+   "p50": 11514,
+   "p95": 11863,
+   "max": 11863
+  },
+  "inFlightAtEnd": 0
+ },
+ "aia": {
+  "n": 1,
+  "by": {
+   "http_200": 1
+  },
+  "cache": {},
+  "hitDurMs": [],
+  "missDurMs": [],
+  "okDurMs": {
+   "n": 1,
+   "min": 1811,
+   "p50": 1811,
+   "p95": 1811,
+   "max": 1811
+  },
+  "inFlightAtEnd": 0
+ },
+ "nTimings": 12,
+ "timings": [
+  {
+   "t": 48667,
+   "phase": "fetch",
+   "headersAfterMs": 11868,
+   "bodyReadMs": 4.3,
+   "jsonParseMs": 1.8,
+   "chars": 682774,
+   "requestJd": 2461437.877457863
+  },
+  {
+   "t": 48673,
+   "phase": "apply",
+   "aiaKickMs": 0.9,
+   "normalizeMs": 1.9,
+   "blendMs": 0,
+   "rebuildFieldMs": 3,
+   "totalMs": 5.8,
+   "features": 180,
+   "fieldChildren": 120,
+   "pfssSource": "synthetic",
+   "activity": 0.4824153495431597,
+   "epochJd": 2461437.5,
+   "simJd": 2461478.1426578634,
+   "assim": {
+    "conf": 0.4585046890625,
+    "blendW": 0.410476641171875,
+    "observed": 0.24641985908235794,
+    "synthetic": 0.6467356174433527,
+    "silsoDate": "2026-08-31",
+    "aiaRequest": "2027-02-01T00:00:00Z",
+    "aiaLatest": "2026-09-25T02:18:22Z",
+    "preferred": "aia_304"
+   }
+  },
+  {
+   "t": 79137,
+   "phase": "fetch",
+   "headersAfterMs": 11047,
+   "bodyReadMs": 3.6,
+   "jsonParseMs": 1.5,
+   "chars": 566258,
+   "requestJd": 2461563.0726578636
+  },
+  {
+   "t": 79141,
+   "phase": "apply",
+   "aiaKickMs": 0,
+   "normalizeMs": 0.7,
+   "blendMs": 0,
+   "rebuildFieldMs": 2.7,
+   "totalMs": 3.4,
+   "features": 138,
+   "fieldChildren": 120,
+   "pfssSource": "synthetic",
+   "activity": 0.5010951165767868,
+   "epochJd": 2461562.5,
+   "simJd": 2461599.270657863,
+   "assim": {
+    "conf": 0.45809618549679487,
+    "blendW": 0.4103336649238782,
+    "observed": 0.24641985908235794,
+    "synthetic": 0.6783170903556205,
+    "silsoDate": "2026-08-31",
+    "aiaRequest": "2027-06-06T00:00:00Z",
+    "aiaLatest": "2026-09-25T02:18:22Z",
+    "preferred": "aia_304"
+   }
+  },
+  {
+   "t": 109970,
+   "phase": "fetch",
+   "headersAfterMs": 11518,
+   "bodyReadMs": 3.3,
+   "jsonParseMs": 0.9,
+   "chars": 553956,
+   "requestJd": 2461677.534257863
+  },
+  {
+   "t": 109971,
+   "phase": "apply",
+   "aiaKickMs": 0,
+   "normalizeMs": 0.1,
+   "blendMs": 0,
+   "rebuildFieldMs": 1.8,
+   "totalMs": 1.9,
+   "features": 128,
+   "fieldChildren": 120,
+   "pfssSource": "synthetic",
+   "activity": 0.4348562001750727,
+   "epochJd": 2461677.5,
+   "simJd": 2461708.4666578635,
+   "assim": {
+    "conf": 0.45771908588408117,
+    "blendW": 0.41020168005942836,
+    "observed": 0.24641985908235794,
+    "synthetic": 0.5659127004856731,
+    "silsoDate": "2026-08-31",
+    "aiaRequest": "2027-09-29T00:00:00Z",
+    "aiaLatest": "2026-09-25T02:18:22Z",
+    "preferred": "aia_304"
+   }
+  },
+  {
+   "t": 139797,
+   "phase": "fetch",
+   "headersAfterMs": 10909,
+   "bodyReadMs": 3.8,
+   "jsonParseMs": 1.3,
+   "chars": 646965,
+   "requestJd": 2461792.1298578633
+  },
+  {
+   "t": 139799,
+   "phase": "apply",
+   "aiaKickMs": 0,
+   "normalizeMs": 0.8,
+   "blendMs": 0,
+   "rebuildFieldMs": 1.2,
+   "totalMs": 2,
+   "features": 156,
+   "fieldChildren": 120,
+   "pfssSource": "synthetic",
+   "activity": 0.37628344431239436,
+   "epochJd": 2461791.5,
+   "simJd": 2461832.661857863,
+   "assim": {
+    "conf": 0.4573039467681624,
+    "blendW": 0.4100563813688568,
+    "observed": 0.24641985908235794,
+    "synthetic": 0.46654866652901056,
+    "silsoDate": "2026-08-31",
+    "aiaRequest": "2028-01-21T00:00:00Z",
+    "aiaLatest": "2026-09-25T02:18:22Z",
+    "preferred": "aia_304"
+   }
+  }
+ ],
+ "firstSamples": [
+  {
+   "t": 6009,
+   "date": "2026-10-08",
+   "scale": "+4.0 d/s",
+   "spike": {
+    "status": {
+     "lastError": null,
+     "lastSuccessMs": 0,
+     "lastRefreshMs": 1790304329946,
+     "lastLatencyMs": 0,
+     "pollIntervalMs": 30000,
+     "nextRefreshMs": 0
+    },
+    "hasState": false,
+    "epochJd": null,
+    "activity": null,
+    "obsTexture": false,
+    "obsChannel": null,
+    "obsImageId": null,
+    "fieldChildren": 52,
+    "fieldVisible": false,
+    "fieldSig": "6:analytical:synthetic"
+   }
+  },
+  {
+   "t": 11180,
+   "date": "2026-10-25",
+   "scale": "+4.0 d/s",
+   "spike": {
+    "status": {
+     "lastError": null,
+     "lastSuccessMs": 0,
+     "lastRefreshMs": 1790304329946,
+     "lastLatencyMs": 0,
+     "pollIntervalMs": 30000,
+     "nextRefreshMs": 0
+    },
+    "hasState": false,
+    "epochJd": null,
+    "activity": null,
+    "obsTexture": false,
+    "obsChannel": null,
+    "obsImageId": null,
+    "fieldChildren": 52,
+    "fieldVisible": false,
+    "fieldSig": "6:analytical:synthetic"
+   }
+  }
+ ],
+ "lastSample": {
+  "t": 179278,
+  "date": "2028-07-31",
+  "scale": "+4.0 d/s",
+  "spike": {
+   "status": {
+    "lastError": null,
+    "lastSuccessMs": 1790304496979,
+    "lastRefreshMs": 1790304487632,
+    "lastLatencyMs": 9347,
+    "pollIntervalMs": 30000,
+    "nextRefreshMs": 1790304517632
+   },
+   "hasState": true,
+   "epochJd": 2461907.5,
+   "activity": 0.3621405442664977,
+   "obsTexture": true,
+   "obsChannel": "aia_304",
+   "obsImageId": "192408802",
+   "fieldChildren": 120,
+   "fieldVisible": false,
+   "fieldSig": "4:pfss:synthetic:2337:tube-0459:0.94|tube-0151:0.84|tube-0475:0.63|tube-0111:0.60|tube-0131:0.59|tube-0355:0.70|tube-0531:0.66|tube-0159:0.59|tube-0179:0.57|tube-0474:0.64|tube-0324:0.63|tube-0523:0.71"
+  }
+ },
+ "shots": [
+  "t12",
+  "t16",
+  "firstSuccessPlus4s",
+  "end"
+ ],
+ "errorLogCount": 2,
+ "errorLogsHead": [
+  {
+   "t": 6116,
+   "type": "warning",
+   "text": "[phase-1] Catalog load exceeded its performance budget: loadMs=3915.2 exceeded budgetMs=2000"
+  },
+  {
+   "t": 14267,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+  }
+ ]
+}

@@ -1,0 +1,44 @@
+[
+  {
+    "flavor": "gtk",
+    "file": "/home/nomad/.cache/ms-playwright/webkit-2370/minibrowser-gtk/bin/MiniBrowser",
+    "code": 0,
+    "missing": []
+  },
+  {
+    "flavor": "gtk",
+    "file": "/home/nomad/.cache/ms-playwright/webkit-2370/minibrowser-gtk/bin/WebKitGPUProcess",
+    "code": 0,
+    "missing": []
+  },
+  {
+    "flavor": "gtk",
+    "file": "/home/nomad/.cache/ms-playwright/webkit-2370/minibrowser-gtk/bin/WebKitWebProcess",
+    "code": 0,
+    "missing": []
+  },
+  {
+    "flavor": "gtk",
+    "file": "/home/nomad/.cache/ms-playwright/webkit-2370/minibrowser-gtk/bin/WebKitNetworkProcess",
+    "code": 0,
+    "missing": []
+  },
+  {
+    "flavor": "gtk",
+    "file": "/home/nomad/.cache/ms-playwright/webkit-2370/minibrowser-gtk/lib/libwebkitgtk-6.0.so.4.20.0",
+    "code": 0,
+    "missing": []
+  },
+  {
+    "flavor": "gtk",
+    "file": "/home/nomad/.cache/ms-playwright/webkit-2370/minibrowser-gtk/lib/libjavascriptcoregtk-6.0.so.1",
+    "code": 0,
+    "missing": []
+  },
+  {
+    "flavor": "gtk",
+    "file": "/home/nomad/.cache/ms-playwright/webkit-2370/minibrowser-gtk/lib/libwebkitgtkinjectedbundle.so",
+    "code": 0,
+    "missing": []
+  }
+]

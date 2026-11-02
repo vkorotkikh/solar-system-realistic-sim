@@ -1,0 +1,37 @@
+
+import fs from 'node:fs';
+import { solveKepler } from './src/sim/orbitMath';
+import { parseMoonEphemerisArtifact } from './src/sim/moonEphemeris';
+import moonArtifact from './src/data/moonEphemerisChebyshev.json';
+import { propagateKBOPositions, propagateBinaryKBOPositions } from './src/sim/kuiperBelt';
+import { buildSolarFeatureBlendView, normalizeSolarFeatureSetFromState } from './src/frontend/features/solar/solarFeatureBlending';
+import { updateSunEruptionLayerFromBlendView } from './src/frontend/features/solar/sunVisuals';
+import { BufferGeometry, Float32BufferAttribute, Points, PointsMaterial } from 'three';
+const findings = [];
+const E = solveKepler(0.1,0.99,1e-12,0);
+findings.push({id:'SCN-022',input:{M:0.1,e:0.99,tolerance:1e-12,maxIterations:0},returnedE:E,residual:Math.abs(E-0.99*Math.sin(E)-0.1),defectReproduced:Math.abs(E-0.99*Math.sin(E)-0.1)>1e-12});
+let controlAccepted=false,corruptAccepted=false;
+parseMoonEphemerisArtifact(moonArtifact);controlAccepted=true;
+const corrupt=structuredClone(moonArtifact);
+corrupt.bodies.titan.validation.coverageEndpointErrors[0].positionErrorKm=1e9;
+try{parseMoonEphemerisArtifact(corrupt);corruptAccepted=true;}catch{}
+findings.push({id:'SCN-043',controlAccepted,endpointErrorKm:1e9,declaredLimitKm:corrupt.bodies.titan.validation.accuracyLimits.positionKm,corruptAccepted,defectReproduced:controlAccepted&&corruptAccepted});
+const JD=2451545,KM_PER_AU=149597870.7;
+const body={orbit:{epochJd:JD,aAu:40,e:0,iDeg:0,ascendingNodeDeg:0,argPeriapsisDeg:0,meanAnomalyDeg:0,periodDays:1024},dynClass:0,surfaceColor:0,diameterKm:100,albedo:.1,color:0xaabbcc,irregularity:.1,binary:{diameterKm:100,separationKm:100000,periodDays:8,meanAnomalyDeg:0,eccentricity:0,inclinationDeg:0,color:0xaabbcc,albedo:.1,irregularity:.1}};
+const primary=new Float32Array(3),companion=new Float32Array(3);
+propagateKBOPositions([body],JD,primary);
+propagateBinaryKBOPositions([body],JD,primary,[],companion);
+const separationKm=Math.hypot(...companion.map((v,i)=>v-primary[i]))*KM_PER_AU;
+findings.push({id:'SCN-054',expectedSeparationKm:100000,actualSeparationKm:separationKm,defectReproduced:Math.abs(separationKm-100000)>1000});
+const from=normalizeSolarFeatureSetFromState({corona:{features:[{id:'endpoint-probe',arc:[[1,0,0],[0,0,1]],brightness:.5}]}},2451552);
+const to=normalizeSolarFeatureSetFromState({corona:{features:[{id:'endpoint-probe',arc:[[0,1,0],[0,0,-1]],brightness:.5}]}},2451552);
+const blend=buildSolarFeatureBlendView({currentFeatureSet:from,targetFeatureSet:to,blendStartMs:0,blendDurationMs:1000,nowMs:0});
+const geometry=new BufferGeometry();const positions=new Float32Array(3);geometry.setAttribute('position',new Float32BufferAttribute(positions,3));
+const particles=new Points(geometry,new PointsMaterial());
+particles.userData.sunBursts={burstCount:1,positions,phases:new Float32Array([0]),directions:new Float32Array([1,0,0]),baseRadius:1};
+updateSunEruptionLayerFromBlendView({sunEruptionLayer:particles,blendView:blend,sunRadiusAu:1,timeSec:0,activity:.5});
+findings.push({id:'SCN-042',blendAlpha:blend.blendAlpha,expectedAxis:'positive X (source)',actualPosition:[...positions],defectReproduced:positions[0]===0&&positions[1]>0});
+geometry.dispose();particles.material.dispose();
+fs.writeFileSync('/tmp/solar-remediation-audit-20261029/frontend-defect-probes.json',JSON.stringify(findings,null,2)+'\n');
+console.log(JSON.stringify(findings,null,2));
+if(findings.some(f=>!f.defectReproduced))process.exitCode=1;

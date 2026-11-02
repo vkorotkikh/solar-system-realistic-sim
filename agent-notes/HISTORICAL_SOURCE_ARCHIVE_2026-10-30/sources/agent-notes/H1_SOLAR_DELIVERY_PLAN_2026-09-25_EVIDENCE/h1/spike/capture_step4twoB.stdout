@@ -1,0 +1,184 @@
+{
+ "tag": "step4twoB",
+ "tLoad": 1370,
+ "physics": {
+  "n": 6,
+  "by": {
+   "http_200": 1,
+   "http_503": 4,
+   "failed:undefined": 1
+  },
+  "cache": {
+   "HIT": 1
+  },
+  "hitDurMs": [
+   31
+  ],
+  "missDurMs": [],
+  "okDurMs": {
+   "n": 1,
+   "min": 31,
+   "p50": 31,
+   "p95": 31,
+   "max": 31
+  },
+  "inFlightAtEnd": 1
+ },
+ "aia": {
+  "n": 1,
+  "by": {
+   "http_200": 1
+  },
+  "cache": {},
+  "hitDurMs": [],
+  "missDurMs": [],
+  "okDurMs": {
+   "n": 1,
+   "min": 33,
+   "p50": 33,
+   "p95": 33,
+   "max": 33
+  },
+  "inFlightAtEnd": 0
+ },
+ "nTimings": 2,
+ "timings": [
+  {
+   "t": 1321,
+   "phase": "fetch",
+   "headersAfterMs": 680,
+   "bodyReadMs": 11.2,
+   "jsonParseMs": 1.4,
+   "chars": 624375,
+   "requestJd": 2461308.6248587896
+  },
+  {
+   "t": 1325,
+   "phase": "apply",
+   "aiaKickMs": 0.7,
+   "normalizeMs": 0.9,
+   "blendMs": 0,
+   "rebuildFieldMs": 2.4,
+   "totalMs": 4,
+   "features": 160,
+   "fieldChildren": 120,
+   "pfssSource": "synthetic",
+   "activity": 0.565818441763465,
+   "epochJd": 2461308.5,
+   "simJd": 2461308.6913227895,
+   "assim": {
+    "conf": 0.34480154655448714,
+    "blendW": 0.37068054129407046,
+    "observed": 0.24147102534568227,
+    "synthetic": 0.7568649352761629,
+    "silsoDate": "2026-08-31",
+    "aiaRequest": "2026-09-25T00:00:00Z",
+    "aiaLatest": "2026-09-25T00:00:10Z",
+    "preferred": "aia_304"
+   }
+  }
+ ],
+ "firstSamples": [
+  {
+   "t": 1370,
+   "date": "2026-09-25",
+   "scale": "+4.0 d/s",
+   "spike": {
+    "status": {
+     "lastError": null,
+     "lastSuccessMs": 1790305119738,
+     "lastRefreshMs": 1790305119058,
+     "lastLatencyMs": 680,
+     "pollIntervalMs": 30000,
+     "nextRefreshMs": 1790305149058
+    },
+    "hasState": true,
+    "epochJd": 2461308.5,
+    "activity": 0.565818441763465,
+    "obsTexture": true,
+    "obsChannel": "aia_304",
+    "obsImageId": "192406756",
+    "fieldChildren": 120,
+    "fieldVisible": false,
+    "fieldSig": "7:pfss:synthetic:2315:tube-0491:0.90|tube-0459:0.78|tube-0127:0.82|tube-0359:0.78|tube-0415:0.76|tube-0435:0.71|tube-0035:0.74|tube-0523:0.84|tube-0139:0.68|tube-0147:0.67|tube-0403:0.70|tube-0355:0.71"
+   }
+  },
+  {
+   "t": 35359,
+   "date": "2027-02-03",
+   "scale": "+4.0 d/s",
+   "spike": {
+    "status": {
+     "lastError": null,
+     "lastSuccessMs": 1790305119738,
+     "lastRefreshMs": 1790305149884,
+     "lastLatencyMs": 680,
+     "pollIntervalMs": 30000,
+     "nextRefreshMs": 1790305149058
+    },
+    "hasState": true,
+    "epochJd": 2461308.5,
+    "activity": 0.565818441763465,
+    "obsTexture": true,
+    "obsChannel": "aia_304",
+    "obsImageId": "192406756",
+    "fieldChildren": 120,
+    "fieldVisible": false,
+    "fieldSig": "7:pfss:synthetic:2315:tube-0491:0.90|tube-0459:0.78|tube-0127:0.82|tube-0359:0.78|tube-0415:0.76|tube-0435:0.71|tube-0035:0.74|tube-0523:0.84|tube-0139:0.68|tube-0147:0.67|tube-0403:0.70|tube-0355:0.71"
+   }
+  }
+ ],
+ "lastSample": {
+  "t": 148585,
+  "date": "2028-04-10",
+  "scale": "+4.0 d/s",
+  "spike": {
+   "status": {
+    "lastError": "Solar physics request failed (503)",
+    "lastSuccessMs": 1790305119738,
+    "lastRefreshMs": 1790305248417,
+    "lastLatencyMs": 680,
+    "pollIntervalMs": 30000,
+    "nextRefreshMs": 1790305278417
+   },
+   "hasState": true,
+   "epochJd": 2461308.5,
+   "activity": 0.565818441763465,
+   "obsTexture": true,
+   "obsChannel": "aia_304",
+   "obsImageId": "192406756",
+   "fieldChildren": 120,
+   "fieldVisible": false,
+   "fieldSig": "7:pfss:synthetic:2315:tube-0491:0.90|tube-0459:0.78|tube-0127:0.82|tube-0359:0.78|tube-0415:0.76|tube-0435:0.71|tube-0035:0.74|tube-0523:0.84|tube-0139:0.68|tube-0147:0.67|tube-0403:0.70|tube-0355:0.71"
+  }
+ },
+ "shots": [
+  "firstSuccessPlus4s",
+  "t12",
+  "t16",
+  "end"
+ ],
+ "errorLogCount": 4,
+ "errorLogsHead": [
+  {
+   "t": 43488,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+  },
+  {
+   "t": 76216,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+  },
+  {
+   "t": 109736,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+  },
+  {
+   "t": 143276,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+  }
+ ]
+}

@@ -1,0 +1,46 @@
+[WebServer] (node:2820697) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+
+Running 3 tests using 1 worker
+
+(node:2820710) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1/3] [chromium-tab-zoom] › tests/browser/tab-zoom.spec.ts:11:5 › native Chromium tab zoom › 200% genuine tab zoom preserves reflow and keyboard focus
+[chromium-tab-zoom] › tests/browser/tab-zoom.spec.ts:11:5 › native Chromium tab zoom › 200% genuine tab zoom preserves reflow and keyboard focus
+Native tab zoom evidence: {"factor":2,"browserVersion":"156.0.8078.4","renderer":"ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)","before":{"width":1280,"height":873,"outerWidth":1280,"outerHeight":960,"dpr":1,"visualScale":1,"rootFontSize":"16px","rootZoom":"1","bodyZoom":"1","scrollWidth":1280},"zoomed":{"width":640,"height":436,"outerWidth":1280,"outerHeight":960,"dpr":2,"visualScale":1,"rootFontSize":"16px","rootZoom":"1","bodyZoom":"1","scrollWidth":640},"reset":{"width":1280,"height":873,"outerWidth":1280,"outerHeight":960,"dpr":1,"visualScale":1,"rootFontSize":"16px","rootZoom":"1","bodyZoom":"1","scrollWidth":1280},"tabZoomSettings":{"defaultZoomFactor":1,"mode":"automatic","scope":"per-tab"},"keyboardStops":["panel-close","SUMMARY:Time","toggle-play","now-time","time-scale","SUMMARY:Display","toggle-orbits","toggle-magnetic-field","toggle-labels","toggle-realistic-scale","aia-channel","SUMMARY:Navigation","zoom-sensitivity","SUMMARY:Explorer","body-search","body-list","focus-body","follow-body","clear-follow","SUMMARY:Cataclysmic Events\n            \n            Advanced","agn-source","agn-preset","agn-hypothesis","agn-stochastic","trigger-agn-shockwave"],"siblingZoom":1}
+
+[2/3] [chromium-tab-zoom] › tests/browser/tab-zoom.spec.ts:11:5 › native Chromium tab zoom › 400% genuine tab zoom preserves reflow and keyboard focus
+  1) [chromium-tab-zoom] › tests/browser/tab-zoom.spec.ts:11:5 › native Chromium tab zoom › 400% genuine tab zoom preserves reflow and keyboard focus 
+
+    Test timeout of 90000ms exceeded.
+
+    attachment #2: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/4197/tab-zoom-native-Chromium-t-da461-s-reflow-and-keyboard-focus-chromium-tab-zoom/test-failed-2.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/4197/tab-zoom-native-Chromium-t-da461-s-reflow-and-keyboard-focus-chromium-tab-zoom/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/4197/tab-zoom-native-Chromium-t-da461-s-reflow-and-keyboard-focus-chromium-tab-zoom/error-context.md
+
+    attachment #5: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/4197/tab-zoom-native-Chromium-t-da461-s-reflow-and-keyboard-focus-chromium-tab-zoom/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/4197/tab-zoom-native-Chromium-t-da461-s-reflow-and-keyboard-focus-chromium-tab-zoom/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+(node:2828174) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[3/3] [chromium-tab-zoom] › tests/browser/tab-zoom.spec.ts:154:3 › native Chromium tab zoom › zoom evidence rejects viewport-only, CSS and pinch substitutes
+  1 failed
+    [chromium-tab-zoom] › tests/browser/tab-zoom.spec.ts:11:5 › native Chromium tab zoom › 400% genuine tab zoom preserves reflow and keyboard focus 
+  2 passed (2.3m)

@@ -1,0 +1,253 @@
+{
+ "tag": "step2",
+ "tLoad": 1056,
+ "physics": {
+  "n": 7,
+  "by": {
+   "http_200": 7
+  },
+  "okDurMs": {
+   "n": 7,
+   "min": 7725,
+   "p50": 9558,
+   "p95": 11675,
+   "max": 11675
+  },
+  "inFlightAtEnd": 0
+ },
+ "aia": {
+  "n": 2,
+  "by": {
+   "http_200": 2
+  },
+  "okDurMs": {
+   "n": 2,
+   "min": 277,
+   "p50": 1820,
+   "p95": 1820,
+   "max": 1820
+  },
+  "inFlightAtEnd": 0
+ },
+ "nTimings": 14,
+ "timings": [
+  {
+   "t": 12586,
+   "phase": "fetch",
+   "headersAfterMs": 12127,
+   "bodyReadMs": 5.3,
+   "jsonParseMs": 1.7,
+   "chars": 660791,
+   "requestJd": 2461308.6120920996
+  },
+  {
+   "t": 12590,
+   "phase": "apply",
+   "aiaKickMs": 0.9,
+   "normalizeMs": 1.3,
+   "blendMs": 0,
+   "rebuildFieldMs": 1.7,
+   "totalMs": 3.9,
+   "features": 180,
+   "fieldChildren": 120,
+   "pfssSource": "synthetic",
+   "activity": 0.5472325468428343,
+   "epochJd": 2461308.6120921,
+   "simJd": 2461976.8426361005,
+   "assim": {
+    "conf": 0.4631621765892094,
+    "blendW": 0.4121067618062233,
+    "observed": 0.24641985908235794,
+    "synthetic": 0.7580989671542301,
+    "silsoDate": "2026-08-31",
+    "aiaRequest": "2026-09-25T02:41:24.757447Z",
+    "aiaLatest": "2026-09-25T02:18:22Z",
+    "preferred": "aia_304"
+   }
+  },
+  {
+   "t": 39043,
+   "phase": "fetch",
+   "headersAfterMs": 7729,
+   "bodyReadMs": 4.1,
+   "jsonParseMs": 1.5,
+   "chars": 643941,
+   "requestJd": 2464368.7426361004
+  },
+  {
+   "t": 39047,
+   "phase": "apply",
+   "aiaKickMs": 0,
+   "normalizeMs": 0.9,
+   "blendMs": 0,
+   "rebuildFieldMs": 2.9,
+   "totalMs": 3.8,
+   "features": 180,
+   "fieldChildren": 120,
+   "pfssSource": "synthetic",
+   "activity": 0.6667559628805138,
+   "epochJd": 2464368.7426361,
+   "simJd": 2465284.714636101,
+   "assim": {
+    "conf": 0.4627870798344017,
+    "blendW": 0.4119754779420406,
+    "observed": 0.24641985908235794,
+    "synthetic": 0.9612473671717653,
+    "silsoDate": "2026-08-31",
+    "aiaRequest": "2035-02-10T05:49:23.759033Z",
+    "aiaLatest": "2026-09-25T02:18:22Z",
+    "preferred": "aia_304"
+   }
+  },
+  {
+   "t": 71452,
+   "phase": "fetch",
+   "headersAfterMs": 9504,
+   "bodyReadMs": 4.6,
+   "jsonParseMs": 1.3,
+   "chars": 659826,
+   "requestJd": 2467836.610636101
+  },
+  {
+   "t": 71455,
+   "phase": "apply",
+   "aiaKickMs": 0.1,
+   "normalizeMs": 1.3,
+   "blendMs": 0,
+   "rebuildFieldMs": 0.8,
+   "totalMs": 2.2,
+   "features": 163,
+   "fieldChildren": 120,
+   "pfssSource": "synthetic",
+   "activity": 0.47084119676987424,
+   "epochJd": 2467836.6106361,
+   "simJd": 2466804.6586361006,
+   "assim": {
+    "conf": 0.4623772422809829,
+    "blendW": 0.411832034798344,
+    "observed": 0.24641985908235794,
+    "synthetic": 0.627979806181096,
+    "silsoDate": "2026-08-31",
+    "aiaRequest": "2044-08-09T02:39:18.959055Z",
+    "aiaLatest": "2026-09-25T02:18:22Z",
+    "preferred": "aia_304"
+   }
+  },
+  {
+   "t": 100751,
+   "phase": "fetch",
+   "headersAfterMs": 8271,
+   "bodyReadMs": 4.9,
+   "jsonParseMs": 2,
+   "chars": 642201,
+   "requestJd": 2464384.7626360995
+  },
+  {
+   "t": 100752,
+   "phase": "apply",
+   "aiaKickMs": 0,
+   "normalizeMs": 0.4,
+   "blendMs": 0,
+   "rebuildFieldMs": 0.9,
+   "totalMs": 1.3,
+   "features": 180,
+   "fieldChildren": 120,
+   "pfssSource": "synthetic",
+   "activity": 0.613652212266709,
+   "epochJd": 2464384.7626361,
+   "simJd": 2463474.7786361002,
+   "assim": {
+    "conf": 0.4619615033119658,
+    "blendW": 0.411686526159188,
+    "observed": 0.24641985908235794,
+    "synthetic": 0.8706318982642415,
+    "silsoDate": "2026-08-31",
+    "aiaRequest": "2035-02-26T06:18:11.759035Z",
+    "aiaLatest": "2026-09-25T02:18:22Z",
+    "preferred": "aia_304"
+   }
+  }
+ ],
+ "firstSamples": [
+  {
+   "t": 1056,
+   "date": "2026-09-25",
+   "scale": "+4.0 d/s",
+   "spike": {
+    "status": {
+     "lastError": null,
+     "lastSuccessMs": 0,
+     "lastRefreshMs": 1790304015926,
+     "lastLatencyMs": 0,
+     "pollIntervalMs": 30000,
+     "nextRefreshMs": 0
+    },
+    "hasState": false,
+    "epochJd": null,
+    "activity": null,
+    "obsTexture": false,
+    "obsChannel": null,
+    "obsImageId": null,
+    "fieldChildren": 52,
+    "fieldVisible": false,
+    "fieldSig": "6:analytical:synthetic"
+   }
+  },
+  {
+   "t": 6065,
+   "date": "2027-02-28",
+   "scale": "+120.0 d/s",
+   "spike": {
+    "status": {
+     "lastError": null,
+     "lastSuccessMs": 0,
+     "lastRefreshMs": 1790304015926,
+     "lastLatencyMs": 0,
+     "pollIntervalMs": 30000,
+     "nextRefreshMs": 0
+    },
+    "hasState": false,
+    "epochJd": null,
+    "activity": null,
+    "obsTexture": false,
+    "obsChannel": null,
+    "obsImageId": null,
+    "fieldChildren": 52,
+    "fieldVisible": false,
+    "fieldSig": "6:analytical:synthetic"
+   }
+  }
+ ],
+ "lastSample": {
+  "t": 175938,
+  "date": "2027-01-04",
+  "scale": "+4.0 d/s",
+  "spike": {
+   "status": {
+    "lastError": null,
+    "lastSuccessMs": 1790304179063,
+    "lastRefreshMs": 1790304168873,
+    "lastLatencyMs": 10190,
+    "pollIntervalMs": 30000,
+    "nextRefreshMs": 1790304198873
+   },
+   "hasState": true,
+   "epochJd": 2461321.34663143,
+   "activity": 0.5527810891904603,
+   "obsTexture": true,
+   "obsChannel": "aia_304",
+   "obsImageId": "192408802",
+   "fieldChildren": 120,
+   "fieldVisible": false,
+   "fieldSig": "7:pfss:synthetic:2316:tube-0295:0.80|tube-0131:0.71|tube-0451:0.69|tube-0459:0.68|tube-0475:0.67|tube-0499:0.67|tube-0187:0.65|tube-0143:0.80|tube-0235:0.65|tube-0035:0.65|tube-0327:0.62|tube-0179:0.62"
+  }
+ },
+ "shots": [
+  "t12",
+  "firstSuccessPlus4s",
+  "t16",
+  "end"
+ ],
+ "errorLogCount": 0,
+ "errorLogsHead": []
+}

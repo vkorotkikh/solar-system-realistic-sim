@@ -50,6 +50,44 @@ describe('SCN-014 ACBF v1 quantization contract', () => {
   });
 });
 
+describe('ACBF v2 source precision', () => {
+  it('preserves every source double exactly, including arbitrary fractional epochs', () => {
+    const rows = [source, { ...source, epochJd: 2461320.123456789, taxonomyIndex: 255, albedo: 0 }];
+    const bytes = writeAsteroidCatalogBinary(rows);
+    expect(bytes.byteLength).toBe(12 + 88 * rows.length);
+    const parsed = readAsteroidCatalogBinary(bytes);
+    expect(parsed.header.version).toBe(2);
+    expect(parsed.records).toEqual(rows);
+    expect(validatePackedCatalogRoundTrip100k().maxEpochErrorDays).toBe(0);
+  });
+
+  it('decodes an independently encoded Float64 row', () => {
+    const bytes = new Uint8Array(100);
+    bytes.set([65, 67, 66, 70, 2, 0, 88, 0, 1, 0, 0, 0]);
+    const view = new DataView(bytes.buffer);
+    view.setUint32(12, source.sourceId, true);
+    Object.values(source).slice(1, 11).forEach((value, i) => view.setFloat64(16 + i * 8, value, true));
+    view.setUint8(96, source.taxonomyIndex);
+    expect(readAsteroidCatalogBinary(bytes.buffer).records).toEqual([source]);
+    view.setFloat64(16, NaN, true);
+    expect(() => readAsteroidCatalogBinary(bytes.buffer)).toThrow(/epochJd/);
+  });
+
+  it.each(['epochJd', 'aAu', 'e', 'periodDays', 'diameterKm', 'albedo'] as const)(
+    'rejects nonfinite source %s instead of manufacturing a value', field => {
+      expect(() => writeAsteroidCatalogBinary([{ ...source, [field]: NaN }])).toThrow(field);
+    },
+  );
+
+  it('rejects unsupported version, stride and reserved header fields', () => {
+    for (const [offset, value] of [[4, 3], [6, 36], [5, 1], [7, 1]]) {
+      const bytes = writeAsteroidCatalogBinary([source]);
+      new Uint8Array(bytes)[offset] = value;
+      expect(() => readAsteroidCatalogBinary(bytes)).toThrow();
+    }
+  });
+});
+
 describe('ACBF mapped decoding', () => {
   it('decodes validated row fields directly into mapped consumer records', () => {
     // Literal ACBF bytes keep this oracle independent of the binary writer.

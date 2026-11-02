@@ -1,0 +1,2451 @@
+{
+  "date": "2026-10-30",
+  "applicationSourceCommit": "09421c9b379debb9c944fc60ec8a0b67bd07cff4",
+  "branch": "fix/remediation-completion-20261030",
+  "counts": {
+    "VERIFIED_SCOPED": 75,
+    "PARTIAL": 8
+  },
+  "issues": [
+    {
+      "id": "SCN-001",
+      "priority": "P0",
+      "baselineVerdict": "CODE_CONFIRMED",
+      "currentVerdict": "VERIFIED_SCOPED",
+      "correction": "Normalized Schmidt/no-Condon-Shortley recurrence and a single normalization in weighted projection are present. The current streaming evaluator is exercised by the retained independent harmonic oracle.",
+      "remaining": [],
+      "baselineEvidence": [
+        {
+          "path": "backend/sim/spherical_harmonics.py",
+          "lines": "17-68",
+          "detail": "Shared normalized values and analytic theta derivatives, including pole limits."
+        },
+        {
+          "path": "backend/sim/pfss_evaluation.py",
+          "lines": "18-38",
+          "detail": "Current production projection design uses normalized recurrence; degree bound is now 90."
+        },
+        {
+          "path": "backend/sim/pfss_magnetogram.py",
+          "lines": "171-210",
+          "detail": "Area-weighted SVD projection, without an extra Schmidt coefficient multiplier."
+        },
+        {
+          "path": "backend/tests/test_pfss_harmonics.py",
+          "lines": "22-24,37-82,165-180",
+          "detail": "Exact low-degree values, immutable independent oracle through production streaming evaluator, orthogonality, and one-time projection normalization."
+        },
+        {
+          "path": "backend/tests/test_pfss_decomposition.py",
+          "lines": "24-45",
+          "detail": "Independent polynomial derivative basis recovers each isolated real harmonic mode."
+        }
+      ],
+      "baselineQualifiedBoundaries": [
+        "Central current-suite results pending. Observed-field calibration and spatial acceptance remain separate SCN-041/048 work; these tests do not certify observations."
+      ],
+      "integrationState": "Construction branch only; no new merge/push/main-resolution claim.",
+      "currentEvidence": [
+        "final-source-identity.json",
+        "backend-final.xml",
+        "frontend-final-verified.json",
+        "note-retirement.json"
+      ]
+    },
+    {
+      "id": "SCN-002",
+      "priority": "P1",
+      "baselineVerdict": "CODE_CONFIRMED",
+      "currentVerdict": "VERIFIED_SCOPED",
+      "correction": "The obsolete NumPy dtype/endian FITS path is replaced with bounded Astropy parsing, explicit scaling and finite float64 admission.",
+      "remaining": [],
+      "baselineEvidence": [
+        {
+          "path": "backend/sim/gong_magnetogram.py",
+          "lines": "721-785",
+          "detail": "Bounded single-primary-HDU parse; memmap disabled; BSCALE/BZERO and BLANK handled by Astropy once; conversion to float64 precedes finite-pixel and unit checks."
+        },
+        {
+          "path": "backend/tests/test_gong_fits.py",
+          "lines": "22-80",
+          "detail": "Calls actual parser on frozen synthetic FITS; checks scaling exactly once, BLANK rejection, nonfinite float pixels and equivalent magnetic units."
+        },
+        {
+          "path": "backend/tests/test_gong_fits.py",
+          "lines": "32-39",
+          "detail": "Fixture and generator hashes are pinned and fixture is explicitly synthetic, not provider pixels."
+        }
+      ],
+      "baselineQualifiedBoundaries": [
+        "Central current-suite results pending. Parser-to-solver snapshot authentication is separately SCN-051; real observed calibration is not established by the synthetic FITS fixture."
+      ],
+      "integrationState": "Construction branch only; no new merge/push/main-resolution claim.",
+      "currentEvidence": [
+        "final-source-identity.json",
+        "backend-final.xml",
+        "frontend-final-verified.json",
+        "note-retirement.json"
+      ]
+    },
+    {
+      "id": "SCN-003",
+      "priority": "P1",
+      "baselineVerdict": "CODE_CONFIRMED",
+      "currentVerdict": "VERIFIED_SCOPED",
+      "correction": "Explicit sine-latitude geometry, row orientation, longitude centers, exact cell areas and area-weighted harmonic decomposition are implemented and regression-covered.",
+      "remaining": [],
+      "baselineEvidence": [
+        {
+          "path": "backend/sim/magnetogram_grid.py",
+          "lines": "24-83",
+          "detail": "Validates declared grid geometry/order and uniformly sampled longitude; exact dmu area weights; immutable coordinate backing."
+        },
+        {
+          "path": "backend/sim/gong_magnetogram.py",
+          "lines": "560-582,650-692",
+          "detail": "Validates native CEA WCS and sentinels; south-to-north centers and LONG0+0.5 longitude centers are preserved without an inferred flip."
+        },
+        {
+          "path": "backend/sim/pfss_magnetogram.py",
+          "lines": "185-210",
+          "detail": "Explicit grid, undersampling and condition checks; sqrt(area) weighted SVD."
+        },
+        {
+          "path": "backend/tests/test_pfss_decomposition.py",
+          "lines": "15-88",
+          "detail": "Axial dipole, all real modes, shifted longitude, reversed row order and non-band-limited area residual tests."
+        },
+        {
+          "path": "backend/tests/test_gong_wcs.py",
+          "lines": "33-76,129-134",
+          "detail": "Literal independent pixel/edge sentinels, seam closure and field orientation assertions."
+        }
+      ],
+      "baselineQualifiedBoundaries": [
+        "Central current-suite results pending. Correct geometry does not establish observed-field accuracy or eligibility for spatial assimilation."
+      ],
+      "integrationState": "Construction branch only; no new merge/push/main-resolution claim.",
+      "currentEvidence": [
+        "final-source-identity.json",
+        "backend-final.xml",
+        "frontend-final-verified.json",
+        "note-retirement.json"
+      ]
+    },
+    {
+      "id": "SCN-004",
+      "priority": "P1",
+      "baselineVerdict": "PARTIAL",
+      "currentVerdict": "VERIFIED_SCOPED",
+      "correction": "POSIX owned-child transport checks pass; owner retained the documented Linux/WSL2 support contract.",
+      "remaining": [],
+      "baselineEvidence": [
+        {
+          "path": "backend/sim/solar_http_transport.py",
+          "lines": "29-37,47-118,123-154,172-202",
+          "detail": "poll() waits on bounded framed IPC; parent reads consume one absolute deadline; close kills and waits before closing pipes; worker has independent SIGALRM expiry."
+        },
+        {
+          "path": "backend/sim/solar_realtime_data.py",
+          "lines": "1229-1238",
+          "detail": "Active realtime transport constructs DeadlineHttpResponse and maps its typed failures."
+        },
+        {
+          "path": "backend/sim/gong_magnetogram.py",
+          "lines": "1074-1100",
+          "detail": "Public GONG transport uses the same owned response and total acquisition budget."
+        },
+        {
+          "path": "backend/tests/test_solar_http_deadline.py",
+          "lines": "21-63,115-180",
+          "detail": "Real subprocess DNS stalls, header/body drip, body cap, interruption and subsequent recovery; parent SIGKILL proven with child timer disabled."
+        },
+        {
+          "path": "backend/tests/test_solar_http_high_fd.py",
+          "lines": "54-87",
+          "detail": "Raises descriptors above 1024 and verifies successful response plus reaping and pipe closure."
+        }
+      ],
+      "baselineQualifiedBoundaries": [
+        "Central current-suite results pending. This is the declared POSIX implementation: select.poll and SIGALRM/setitimer are required; Windows operation is neither implemented by these mechanisms nor certified. Controlled loopback tests do not establish live upstream TLS/certificate acceptance."
+      ],
+      "integrationState": "Construction branch only; no new merge/push/main-resolution claim.",
+      "currentEvidence": [
+        "final-source-identity.json",
+        "backend-final.xml",
+        "frontend-final-verified.json",
+        "note-retirement.json"
+      ]
+    },
+    {
+      "id": "SCN-005",
+      "priority": "P1",
+      "baselineVerdict": "PARTIAL",
+      "currentVerdict": "PARTIAL",
+      "correction": "Landed binary/metadata overlap, mapped decoding, and owned final-scene shader warmup preserve the 100000-source/50000-display population and unchanged 2000 ms loader telemetry. Solar delivery uses a 30 s physics cadence/20 s browser deadline with independent realtime refresh and visible failure/source state. Dated Oct 28 evidence supports DEV cold-backend delivery and a PREVIEW warm-backend retry, not a complete cold-PREVIEW final gate.",
+      "remaining": [
+        "Catalog passes its unchanged2000ms metric and only one source-selected belt is built. Quiet current-source GPU completion observations remain6504.3ms DEV/6887.1ms PREVIEW; submission1859.8/1920.3ms, pause119/114ms and keyboard zoom3/4ms after completion. SCN005 performance work continues; no arbitrary full-scene budget is invented."
+      ],
+      "baselineEvidence": [
+        "src/sim/phase1AsteroidCatalog.ts:741-800: binary body and metadata overlap; timer includes parsing and SHA-256",
+        "src/data/asteroidCatalogLoader.ts:215-278: direct mapped decoding retains original header count and validates complete payload size",
+        "src/sim/phase1AsteroidCatalog.startup.test.ts:36-64: body starts before metadata; shared load and accepted cache",
+        "src/sim/phase1AsteroidCatalog.startup.test.ts:176-216: late timeout completion cannot replace retry; 2001 ms still fails the 2000 ms latency metric",
+        "src/main.ts:515-540: provisional procedural population/renderer allocated and later disposed/replaced",
+        "src/main.ts:564-623: typed acceptance/failure fallback and final catalog adoption promise",
+        "src/main.ts:1349-1362: await catalog adoption, owned warmup, then initial render and lifecycle start",
+        "src/frontend/app/rendererWarmup.ts:36-65: final program snapshot, KHR completion, link validation and owned polling deadline",
+        "src/frontend/app/rendererWarmup.test.ts:38-112: readiness, cancellation, failed links, timeout, context loss, compiler exceptions and disposed lifecycle",
+        "tests/browser/startup-warmup.spec.ts:43-98: actual-main recovery, context loss/unload and no-KHR regressions",
+        "src/frontend/features/solar/solarPhysicsClient.ts:9-11,381-430: bounded cadence and abortable request ownership",
+        "src/frontend/features/solar/solarPhysicsClient.test.ts:80-93,335-348: deadline/default and timeout status regressions",
+        "src/sunController.ts:740-746,854-907: realtime/texture refresh before physics gates; inspectable status and disposal",
+        "scripts/solar-delivery-metrics.test.mjs:5-43,59-84: incomplete/schema-invalid requests cannot count; activity evidence must match every program",
+        "agent-notes/REMEDIATION_STARTUP_WARMUP_2026-10-17.md:5-14,76-99: dated 3/3 DEV loader passes but full-scene fence observed at 6543.3-6918.5 ms; not usable-scene or PREVIEW acceptance",
+        "/home/nomad/ai/projects/worktrees/solar-scn005-final-acceptance-20261028/agent-notes/SCN005_DELIVERY_EVIDENCE_2026-10-28/dev/report.json:1,22701-22704: baseline bb29d4b; 300000 ms, 11/11 physics, 10/10 warm, 3/3 realtime, passing gate",
+        "/home/nomad/ai/projects/worktrees/solar-scn005-final-acceptance-20261028/agent-notes/SCN005_DELIVERY_EVIDENCE_2026-10-28/preview-repro/report.json:1,22914-22917: baseline bb29d4b; 300000 ms, 11/11 physics, 10/10 warm, 3/3 realtime, passing retry gate",
+        "/home/nomad/ai/projects/worktrees/solar-scn005-final-acceptance-20261028/agent-notes/SCN005_DELIVERY_EVIDENCE_2026-10-28/preview/fatal.json:2-6: page/context/browser closed; no final completed gate",
+        "/home/nomad/ai/projects/worktrees/solar-scn005-final-acceptance-20261028/agent-notes/SCN005_DELIVERY_EVIDENCE_2026-10-28/preview/checkpoint.json:2-3: cold PREVIEW last checkpoint elapsedMs=220406"
+      ],
+      "baselineQualifiedBoundaries": [
+        "Complete cold-backend PREVIEW delivery acceptance remains outstanding. User confirms backend was freshly restarted for aborted first PREVIEW and was NOT restarted for preview-repro. The first closure cause is UNKNOWN; external termination is not established.",
+        "Usable complete-scene startup is not established by loader telemetry or the solar-delivery gate. Oct 28 maximum frame intervals were 7118.5 ms DEV and 6568.4 ms PREVIEW retry; these include startup and do not alone measure cause or first GPU/compositor completion.",
+        "The landed path still creates a procedural renderer before catalog loading and replaces it on successful adoption. Its cost is a static optimization opportunity, not a newly measured explanation of the entire stall.",
+        "Do not credit uncommitted startupBelt work as completed or validated; its main wiring has a concrete wrong-identifier defect. Current baseline suites are centrally pending."
+      ],
+      "integrationState": "Construction branch only; no new merge/push/main-resolution claim.",
+      "currentEvidence": [
+        "final-source-identity.json",
+        "backend-final.xml",
+        "frontend-final-verified.json",
+        "note-retirement.json"
+      ]
+    },
+    {
+      "id": "SCN-006",
+      "priority": "P1",
+      "baselineVerdict": "CODE_CONFIRMED",
+      "currentVerdict": "VERIFIED_SCOPED",
+      "correction": "Default local CORS policy includes both localhost and loopback-IP Vite dev/preview origins. Exact-origin policy is retained; no product regression found in the assigned local-preview scope.",
+      "remaining": [],
+      "baselineEvidence": [
+        "backend/server.py:454-463",
+        "backend/server.py:1397-1400",
+        "backend/tests/test_solar_security.py:176-186",
+        "backend/tests/test_solar_security.py:122-147"
+      ],
+      "baselineQualifiedBoundaries": [
+        "Actual deployed-origin, authentication and TLS acceptance belongs to SCN-048/runtime; local preview closure does not certify deployment."
+      ],
+      "integrationState": "Construction branch only; no new merge/push/main-resolution claim.",
+      "currentEvidence": [
+        "final-source-identity.json",
+        "backend-final.xml",
+        "frontend-final-verified.json",
+        "note-retirement.json"
+      ]
+    },
+    {
+      "id": "SCN-007",
+      "priority": "P1",
+      "baselineVerdict": "CODE_CONFIRMED",
+      "currentVerdict": "VERIFIED_SCOPED",
+      "correction": "Rate identity uses authenticated subjects or the immediate peer unless an explicitly trusted proxy supplies a bounded valid forwarding chain. Three admission stores use capped TTL/LRU queues, preventing untrusted X-Forwarded-For rotation from expanding identity memory.",
+      "remaining": [],
+      "baselineEvidence": [
+        "backend/server.py:1661-1735",
+        "backend/server.py:1802-1843",
+        "backend/tests/test_solar_security.py:224-235",
+        "backend/tests/test_solar_security.py:236-329",
+        "backend/tests/test_solar_security.py:349-431"
+      ],
+      "baselineQualifiedBoundaries": [
+        "No concrete regression found in this bounded identity/cap review; deployment proxy configuration remains an operator/runtime acceptance concern."
+      ],
+      "integrationState": "Construction branch only; no new merge/push/main-resolution claim.",
+      "currentEvidence": [
+        "final-source-identity.json",
+        "backend-final.xml",
+        "frontend-final-verified.json",
+        "note-retirement.json"
+      ]
+    },
+    {
+      "id": "SCN-008",
+      "priority": "P1",
+      "baselineVerdict": "CODE_CONFIRMED",
+      "currentVerdict": "VERIFIED_SCOPED",
+      "correction": "Physics route rejects nonfinite aliases and finite epochs outside its configured J2000 +/- at most 200 Julian years before rate admission or worker execution. Errors are typed and nonretryable.",
+      "remaining": [],
+      "baselineEvidence": [
+        "backend/server.py:922-928",
+        "backend/server.py:1907-1946",
+        "backend/server.py:3423-3438",
+        "backend/tests/test_solar_physics_api.py:221-234",
+        "backend/tests/test_solar_physics_determinism.py:49-74"
+      ],
+      "baselineQualifiedBoundaries": [
+        "Scope is /solar/physics admission. AIA availability, scalar-JD leap-boundary policy and playback are separate contracts, owned by runtime/SCN-048 or SCN-053."
+      ],
+      "integrationState": "Construction branch only; no new merge/push/main-resolution claim.",
+      "currentEvidence": [
+        "final-source-identity.json",
+        "backend-final.xml",
+        "frontend-final-verified.json",
+        "note-retirement.json"
+      ]
+    },
+    {
+      "id": "SCN-009",
+      "priority": "P1",
+      "baselineVerdict": "CODE_CONFIRMED",
+      "currentVerdict": "VERIFIED_SCOPED",
+      "correction": "Unvalidated assimilation is explicitly disabled: hybrid returns unchanged synthetic activity, zero blend weight and disabled_unvalidated; data_driven raises before provider/compute work. This closes unsafe zero-confidence forcing by fail-closed behavior.",
+      "remaining": [],
+      "baselineEvidence": [
+        "backend/sim/solar_physics.py:351-387",
+        "backend/server.py:3455-3459",
+        "backend/tests/test_solar_physics_model.py:266-325",
+        "backend/tests/test_solar_physics_api.py:237-350"
+      ],
+      "baselineQualifiedBoundaries": [
+        "Validated observed assimilation is not implemented or certified. Future activation requires independent epoch/provenance and physical validation; that missing capability does not reopen this unsafe-assimilation mechanism."
+      ],
+      "integrationState": "Construction branch only; no new merge/push/main-resolution claim.",
+      "currentEvidence": [
+        "final-source-identity.json",
+        "backend-final.xml",
+        "frontend-final-verified.json",
+        "note-retirement.json"
+      ]
+    },
+    {
+      "id": "SCN-010",
+      "priority": "P1",
+      "baselineVerdict": "CODE_CONFIRMED",
+      "currentVerdict": "VERIFIED_SCOPED",
+      "correction": "Failed/partial refreshes use the 4.5-second backoff rather than a full successful-cache TTL. Exact-epoch bounded last-good SWPC storage preserves source age and detached payloads. Delivery recomputes eligibility/cache state, and refresh health remains separate from usable last-good data.",
+      "remaining": [],
+      "baselineEvidence": [
+        "backend/sim/solar_realtime_data.py:214",
+        "backend/sim/solar_realtime_data.py:382-433",
+        "backend/sim/solar_realtime_data.py:462-529",
+        "backend/sim/solar_realtime_data.py:597-609",
+        "backend/sim/solar_realtime_data.py:803-870",
+        "backend/tests/test_solar_realtime_recovery.py:34-125",
+        "backend/tests/test_solar_realtime_cache_state.py:8-93"
+      ],
+      "baselineQualifiedBoundaries": [
+        "No concrete remaining defect found in the assigned retry/LKG/cache-state contract. Actual upstream availability is not certified by cache regressions."
+      ],
+      "integrationState": "Construction branch only; no new merge/push/main-resolution claim.",
+      "currentEvidence": [
+        "final-source-identity.json",
+        "backend-final.xml",
+        "frontend-final-verified.json",
+        "note-retirement.json"
+      ]
+    },
+    {
+      "id": "SCN-011",
+      "priority": "P2",
+      "baselineVerdict": "CODE_CONFIRMED",
+      "currentVerdict": "VERIFIED_SCOPED",
+      "correction": "Backend canonicalizes accepted upstream AIA dates to an explicit UTC Z representation before caching/delivery. Browser freshness parses that unambiguous timestamp; valid historical coverage and wall-clock freshness remain separate.",
+      "remaining": [],
+      "baselineEvidence": [
+        "backend/sim/solar_realtime_data.py:2514-2548",
+        "backend/sim/solar_realtime_data.py:2607-2629",
+        "src/frontend/features/solar/solarObservationTexture.ts:77-82",
+        "backend/tests/test_solar_realtime_data_cache.py:1201-1243",
+        "backend/tests/test_solar_aia_epoch_coverage.py:52-77"
+      ],
+      "baselineQualifiedBoundaries": [
+        "No timezone-dependent ingestion defect found. Targeted tests inspect canonical Z output and an offset-zone request; no fresh multi-browser, multi-TZ sweep was performed by this reviewer."
+      ],
+      "integrationState": "Construction branch only; no new merge/push/main-resolution claim.",
+      "currentEvidence": [
+        "final-source-identity.json",
+        "backend-final.xml",
+        "frontend-final-verified.json",
+        "note-retirement.json"
+      ]
+    },
+    {
+      "id": "SCN-012",
+      "priority": "P0",
+      "baselineVerdict": "CODE_CONFIRMED",
+      "currentVerdict": "VERIFIED_SCOPED",
+      "correction": "Benchmark now uses independent fixed endpoint-state references for all three legacy windows, verifies provider artifacts and preserves historical tool totals as incomparable legacyCalibration. Undefined aggregate error/pass rate is null, not a false perfect zero. Regression requires 3/3 comparable and independently propagates returned states with DOP853; a wrong-velocity control must fail all three.",
+      "remaining": [],
+      "baselineEvidence": [
+        "backend/benchmark/accuracy.py:301-339",
+        "backend/benchmark/accuracy.py:485-503",
+        "backend/benchmark/accuracy.py:611-650",
+        "backend/tests/test_mission_window_references.py:10-40",
+        "backend/tests/test_benchmark_accuracy.py:46-76",
+        "agent-notes/REMEDIATION_MISSION_2026-10-14.md:10"
+      ],
+      "baselineQualifiedBoundaries": [
+        "This certifies the retained fixed-state Lambert comparisons, not live Kepler/SPICE accuracy or execution of historical GMAT/Orekit/Tudat campaigns. No concrete regression found in this canonical benchmark-truth contract."
+      ],
+      "integrationState": "Construction branch only; no new merge/push/main-resolution claim.",
+      "currentEvidence": [
+        "final-source-identity.json",
+        "backend-final.xml",
+        "frontend-final-verified.json",
+        "note-retirement.json"
+      ]
+    },
+    {
+      "id": "SCN-013",
+      "priority": "P1",
+      "baselineVerdict": "CODE_CONFIRMED",
+      "currentVerdict": "VERIFIED_SCOPED",
+      "correction": "The production asteroid renderer rebases mean anomaly and spin in CPU double precision every eight days and uploads only relative elapsed time. Signed small phases and safeguarded GLSL Kepler solving are retained; obsolete pseudo-perturbation inputs are inert.",
+      "remaining": [],
+      "baselineEvidence": [
+        "src/frontend/features/asteroids/beltRenderer.ts:62-68,161-175: relative-time shader inputs; no subtraction of absolute float Julian dates",
+        "src/frontend/features/asteroids/beltRenderer.ts:102-137: signed safeguarded Kepler root and small-angle residual evaluation",
+        "src/frontend/features/asteroids/beltRenderer.ts:413-440,511-516: CPU double phase rebasing, finite date fallback and inert planet setters",
+        "src/frontend/features/asteroids/beltPrecision.test.ts:6-43: second-scale increments at 1900/2026/2100 and window/reverse continuity",
+        "src/frontend/features/asteroids/beltRenderer.residuals.test.ts:14-45: signed 1e-20/1e-12 phases and inert nonfinite planet inputs",
+        "scripts/verify-asteroid-gpu.mjs:53-66,113-142: production shader transform feedback; independent bisection oracle, 125 position cases and one-minute motion",
+        "scripts/verify-asteroid-residuals.mjs:29-63,131-177: actual production solver/packed-phase residual and hardware-identity gates",
+        "scripts/asteroid-residual-oracle.mjs:1-35: independent bisection with six high-precision reference anchors",
+        "agent-notes/REMEDIATION_ASTEROID_RESIDUALS_2026-10-14.md:160-198: dated RTX 5090 numerical follow-up, not current performance evidence"
+      ],
+      "baselineQualifiedBoundaries": [
+        "Current frontend/GPU execution is not asserted; central baseline suites pending. Preserve sampled encoding/shader budgets, not an N-body or independent multi-epoch physical ephemeris claim. ACBF absolute source-epoch quantization remains an explicitly separate encoding limitation."
+      ],
+      "integrationState": "Construction branch only; no new merge/push/main-resolution claim.",
+      "currentEvidence": [
+        "final-source-identity.json",
+        "backend-final.xml",
+        "frontend-final-verified.json",
+        "note-retirement.json"
+      ]
+    },
+    {
+      "id": "SCN-014",
+      "priority": "P1",
+      "baselineVerdict": "CODE_CONFIRMED",
+      "currentVerdict": "VERIFIED_SCOPED",
+      "correction": "ACBF comparison uses encoding-derived half-float32-ULP and half-u16-bin budgets, exact integer identities, circular angular distance, and finite-value rejection. The full 100000-record synthetic round-trip regression remains present.",
+      "remaining": [],
+      "baselineEvidence": [
+        "src/data/asteroidCatalogLoader.ts:57-73: theoretical quantization and circular error definitions",
+        "src/data/asteroidCatalogLoader.ts:327-349: field-specific comparator with finite-value checks and identity equality",
+        "src/data/asteroidCatalogLoader.ts:352-424: deterministic full-population round-trip validator",
+        "src/data/asteroidCatalogLoader.test.ts:18-50: 100000 rows, circular wrap, per-field deliberate error and nonfinite comparison cases",
+        "src/data/asteroidCatalogLoader.test.ts:53-113: independent literal-byte mapped-reader and truncation regressions"
+      ],
+      "baselineQualifiedBoundaries": [
+        "Current tests centrally pending. Format-budget acceptance does not make float32 absolute epochs high-fidelity or establish source provenance or orbital accuracy."
+      ],
+      "integrationState": "Construction branch only; no new merge/push/main-resolution claim.",
+      "currentEvidence": [
+        "final-source-identity.json",
+        "backend-final.xml",
+        "frontend-final-verified.json",
+        "note-retirement.json"
+      ]
+    },
+    {
+      "id": "SCN-015",
+      "priority": "P2",
+      "baselineVerdict": "DECISION_REQUIRED",
+      "currentVerdict": "VERIFIED_SCOPED",
+      "correction": "Owner accepted the explicitly nonrepresentative largest-diameter prefix policy.",
+      "remaining": [],
+      "baselineEvidence": [
+        "scripts/build_asteroid_phase1_dataset.py:81-120,181-198: unique identities, stable diameter order and measured stored/display-prefix distributions",
+        "src/sim/asteroidBelt.ts:150-167: deterministic deduplicated prefix with no synthetic top-up when includeNamed=false",
+        "src/main.ts:218-219,586-600: 50000 display target from 100000 source limit and includeNamed=false on adoption",
+        "src/frontend/features/asteroids/catalogSourceStatus.ts:23-30: persistent largest-first/nonrepresentative/fidelity disclaimer",
+        "scripts/phase1-catalog-artifacts.test.mjs:8-24: real 100000-row artifact, exact 50000 identities, uniqueness, diameter boundary, unknown taxonomy/albedo",
+        "src/sim/phase1AsteroidCatalog.test.ts:383-398: prefix coverage and no synthetic top-up",
+        "agent-notes/CODEBASE_SCAN_AND_ISSUE_TRACKER_2026-10-10.md:76: canonical reconciliation explicitly identifies the implemented permitted alternative; old DECISION_REQUIRED is historical"
+      ],
+      "baselineQualifiedBoundaries": [
+        "Current tests centrally pending. This confirms the declared alternative, not owner endorsement of a representative survey or completeness of the physical asteroid belt. The historical DECISION_REQUIRED label alone is not an unresolved implementation requirement."
+      ],
+      "integrationState": "Construction branch only; no new merge/push/main-resolution claim.",
+      "currentEvidence": [
+        "final-source-identity.json",
+        "backend-final.xml",
+        "frontend-final-verified.json",
+        "note-retirement.json"
+      ]
+    },
+    {
+      "id": "SCN-016",
+      "priority": "P1",
+      "baselineVerdict": "CODE_CONFIRMED",
+      "currentVerdict": "VERIFIED_SCOPED",
+      "correction": "Runtime Earth is corrected from the source Earth-Moon barycentre by subtracting the Moon mass fraction of its parent-relative state, for position and velocity. Full nested orbit data survives the model-worker catalog path.",
+      "remaining": [],
+      "baselineEvidence": [
+        "src/data/planets.ts:84-94: raw Earth source elements remain the EMB row",
+        "src/sim/catalog.ts:850-855: runtime Earth companion correction with massFraction=0.01215058",
+        "src/sim/orbitMath.ts:272-302: subtract matching companion position/velocity with epoch alignment",
+        "src/workers/modelWorkerContract.ts:95-108 and src/workers/modelWorker.ts:19-25: preserve complete orbit object for worker propagation",
+        "src/sim/catalog.test.ts:140-159: hiding moons preserves Moon identity and Earth companion correction",
+        "src/sim/planetPositions.horizons.test.ts:102-119: runtime Earth target-399 velocity error under 2 m/s across six fixture epochs",
+        "src/sim/planetPositionCheck.ts:28-33: distinguishes barycentric source target and target-399 runtime truth",
+        "backend/tests/test_secular_ephemeris.py:22-38: independent multi-epoch source-reference state and explicit earth_moon_barycenter metadata"
+      ],
+      "baselineQualifiedBoundaries": [
+        "Current tests centrally pending. The source EMB row intentionally remains; the frontend runtime geocentre correction is scoped, not a full lunar/planetary ephemeris certification. Backend source-reference EMB metadata must not be mistaken for frontend runtime Earth."
+      ],
+      "integrationState": "Construction branch only; no new merge/push/main-resolution claim.",
+      "currentEvidence": [
+        "final-source-identity.json",
+        "backend-final.xml",
+        "frontend-final-verified.json",
+        "note-retirement.json"
+      ]
+    },
+    {
+      "id": "SCN-017",
+      "priority": "P1",
+      "baselineVerdict": "CODE_CONFIRMED",
+      "currentVerdict": "VERIFIED_SCOPED",
+      "correction": "Secular propagation routes through the shared source-frame model, whose velocity differentiates semimajor axis, eccentricity and all three changing rotations. Mean anomaly uses Ldot minus apsidal rate, or the integral of changing mean motion when longitude rate is absent.",
+      "remaining": [],
+      "baselineEvidence": [
+        "src/sim/orbitMath.ts:219-226,335-344: secular resolver and propagation route use shared full derivative",
+        "src/sim/sourceFrameOrbit.ts:158-179,195-243: integrated mean motion, secular rates and preserved apsidal invariant",
+        "src/sim/sourceFrameOrbit.ts:309-367: matching position and analytic velocity including product-rule rotating-frame terms",
+        "src/sim/secularRemediation.test.ts:10-40: nine planets plus all-rate synthetic case, five epochs, fourth-order differences at two step sizes",
+        "src/sim/orbitMath.accuracy.test.ts:143-178: fixed-element pre-correction numerical invariant",
+        "backend/tests/test_secular_ephemeris.py:22-38,49-60: independent sampled velocity accuracy and multi-epoch derivative gates"
+      ],
+      "baselineQualifiedBoundaries": [
+        "Current tests centrally pending. Internal derivative agreement and external sampled ephemeris error envelopes are separate claims; no continuous physical accuracy bound is inferred."
+      ],
+      "integrationState": "Construction branch only; no new merge/push/main-resolution claim.",
+      "currentEvidence": [
+        "final-source-identity.json",
+        "backend-final.xml",
+        "frontend-final-verified.json",
+        "note-retirement.json"
+      ]
+    },
+    {
+      "id": "SCN-018",
+      "priority": "P2",
+      "baselineVerdict": "CODE_CONFIRMED",
+      "currentVerdict": "VERIFIED_SCOPED",
+      "correction": "Pluto carries the shared secular coefficients and is included in the independent nine-body position gate. Shared model metadata declares legacy Pluto coefficient provenance and sampled 1900-2050 support; the backend additionally gates Pluto velocity against independent Horizons states.",
+      "remaining": [],
+      "baselineEvidence": [
+        "src/data/planets.ts:205-225: Pluto secular coefficients wired into the production definition",
+        "backend/data/ephemerides/planet_secular_model.json:5-22,99-105: legacy Pluto provenance, fit/support interval and rates",
+        "src/sim/planetPositions.horizons.test.ts:40-83,122-130: nine bodies, six epochs and independent per-body/aggregate position gates",
+        "src/sim/secularRemediation.test.ts:19-39: Pluto included in full derivative consistency cases",
+        "backend/data/secular_planets.py:8-32: attach shared rates, target definition, interval and accuracy metadata",
+        "backend/tests/test_secular_ephemeris.py:17-38,41-60: Pluto position cap 1600000 km, velocity cap 100 m/s and provider interval/derivative regressions"
+      ],
+      "baselineQualifiedBoundaries": [
+        "Current tests centrally pending. Approximate secular elements are not a high-fidelity Pluto geocentre ephemeris: shared backend metadata describes planetary-system barycentres. Frontend position fixtures extend through 2100 diagnostically; documented model support remains narrower. Frontend external velocity assertion is Earth-specific; Pluto has internal frontend derivative and independent backend velocity coverage."
+      ],
+      "integrationState": "Construction branch only; no new merge/push/main-resolution claim.",
+      "currentEvidence": [
+        "final-source-identity.json",
+        "backend-final.xml",
+        "frontend-final-verified.json",
+        "note-retirement.json"
+      ]
+    },
+    {
+      "id": "SCN-019",
+      "priority": "P1",
+      "baselineVerdict": "PARTIAL",
+      "currentVerdict": "VERIFIED_SCOPED",
+      "correction": "Continuous production/loss and departure versus delivered stock chronology corrected.",
+      "remaining": [],
+      "baselineEvidence": [
+        "backend/mission/vehicle_service.py:66-109,121-165: one mass ledger adds cargo at the requested burn and tracks propellant/stage disposal",
+        "backend/mission/vehicle_service.py:169-212: capacity closure against the cargo-loaded rocket equation, with finite/progress bounds",
+        "backend/mission/agents.py:208-230,246-260: size cargo and load it at burn index 2",
+        "backend/mission/agents.py:513-532: includes outbound and return travel in storage age, then uses deliverable_cargo_kg as return-departure availability",
+        "backend/mission/mining_service.py:37-42,63-66: storablePayloadKg already applies losses over mining plus transport; deliverable helper returns this post-transit quantity",
+        "backend/mission/mining_service.py:79-93: capacity and returned mass use the same already-decayed quantity",
+        "backend/mission/agents.py:559-573: risk reclosure is seeded from final returned payload, so it also lacks a separate larger departure mass",
+        "backend/tests/test_mission_mass_flow.py:21-42,140-147: acquired cargo raises return fuel cost, capacity sensitivity and no double propellant subtraction",
+        "backend/tests/test_mission_propulsion_contract.py:60-76: real planner four-burn cargo loading test explicitly sets storage_loss_rate_per_day=0, so it misses this residual"
+      ],
+      "baselineQualifiedBoundaries": [
+        "With nonzero storage losses the ledger underloads the return-departure burn: e.g. a physical 1000 kg departure stock with 0.5 transit survival must load 1000 kg before transit, not the 500 kg finally delivered. Current code uses the latter concept for both.",
+        "Outbound travel also ages product that does not yet exist; production throughout mining is treated as if all material existed at its start. Preserve the original acquired-cargo fix while introducing distinct departure/arrival quantities and chronology regressions.",
+        "Baseline tests centrally pending. Local repair and its regression suite have not been executed by this audit and are not landed evidence."
+      ],
+      "integrationState": "Construction branch only; no new merge/push/main-resolution claim.",
+      "currentEvidence": [
+        "final-source-identity.json",
+        "backend-final.xml",
+        "frontend-final-verified.json",
+        "note-retirement.json"
+      ]
+    },
+    {
+      "id": "SCN-020",
+      "priority": "P1",
+      "baselineVerdict": "PARTIAL",
+      "currentVerdict": "VERIFIED_SCOPED",
+      "correction": "Risk reports realized delivery after reclosure and zero delivered cargo on failure; original30-sample floor retained.",
+      "remaining": [],
+      "baselineEvidence": [
+        "backend/mission/vehicle_service.py:86 (reserve floor)",
+        "backend/mission/vehicle_service.py:141 (onboard/protected/discarded accounting)",
+        "backend/mission/vehicle_service.py:160 (usable margin)",
+        "backend/mission/risk_service.py:84 (sample-specific reclosure)",
+        "backend/mission/risk_service.py:90 (failure counting)",
+        "backend/mission/risk_service.py:95 (BUG: uncapped positive payload appended even on failure)",
+        "backend/tests/test_mission_mass_flow.py:150 (infeasible-plan regression)",
+        "backend/tests/test_mission_propulsion_contract.py:21 (mass/margin regressions)",
+        "backend/tests/test_mission_propulsion_contract.py:38 (zero exhausted margin)"
+      ],
+      "baselineQualifiedBoundaries": "Returned-payload envelopes remain incorrect: with positive base cargo, zero dispersions and every reclosure infeasible, failureProbability is 1 but all returnedPayloadKg quantiles equal the positive base cargo. Successful positive extraction excursions also exceed the cargo actually passed to reclosure. Original failure-probability/margin roots are repaired; realized-yield reporting is not. Uncertainty factors remain a declared heuristic rather than an independently calibrated mission uncertainty model. Current frontend/backend suites are centrally pending; no tests were run for this audit.",
+      "integrationState": "Construction branch only; no new merge/push/main-resolution claim.",
+      "currentEvidence": [
+        "final-source-identity.json",
+        "backend-final.xml",
+        "frontend-final-verified.json",
+        "note-retirement.json"
+      ]
+    },
+    {
+      "id": "SCN-021",
+      "priority": "P1",
+      "baselineVerdict": "CODE_CONFIRMED",
+      "currentVerdict": "VERIFIED_SCOPED",
+      "correction": "Both SMBH Schwarzschild radii are calculated from 2GM/c^2 in consistent CGS units; Sgr A* ISCO and photon radii derive from that radius.",
+      "remaining": [],
+      "baselineEvidence": [
+        "src/frontend/features/superluminal-modeling/smbhPhysicsConstants.ts:54",
+        "src/frontend/features/superluminal-modeling/smbhPhysicsConstants.ts:68",
+        "src/frontend/features/superluminal-modeling/smbhPhysicsConstants.ts:169",
+        "src/frontend/features/superluminal-modeling/smbhPhysics.test.ts:6 (independent solar-GM/c oracle)",
+        "src/frontend/features/superluminal-modeling/smbhPhysics.test.ts:10"
+      ],
+      "baselineQualifiedBoundaries": "Scope is radius/unit arithmetic; source direction and jet kinematics belong to SCN-069. Current frontend/backend suites are centrally pending; no tests were run for this audit.",
+      "integrationState": "Construction branch only; no new merge/push/main-resolution claim.",
+      "currentEvidence": [
+        "final-source-identity.json",
+        "backend-final.xml",
+        "frontend-final-verified.json",
+        "note-retirement.json"
+      ]
+    },
+    {
+      "id": "SCN-022",
+      "priority": "P2",
+      "baselineVerdict": "PARTIAL",
+      "currentVerdict": "VERIFIED_SCOPED",
+      "correction": "Both direct Kepler implementations reject uncertified exhaustion and preserve valid near-unity eccentricity.",
+      "remaining": [],
+      "baselineEvidence": [
+        "src/sim/orbitMath.ts:181 (landed fast helper)",
+        "src/sim/orbitMath.test.ts:74 (fast-helper residual sweep)",
+        "src/sim/orbitMath.ts:193 (general direct helper)",
+        "src/sim/orbitMath.ts:199 (BUG: silently clamps valid e above 0.9999999)",
+        "src/sim/orbitMath.ts:202 (uncertified iteration exhaustion)",
+        "src/sim/orbitMath.ts:212 (unconditional result)",
+        "src/sim/orbitMath.ts:355 (production propagation calls general helper)",
+        "backend/mission/orbital.py:35 (analogous direct helper)"
+      ],
+      "baselineQualifiedBoundaries": "The original fast-helper improvement is landed, but broad CPU solver closure is incomplete. Exported solveKepler changes a valid e=0.99999999 to 0.9999999; it therefore solves a different equation even when a tighter tolerance is requested. It also returns after an exhausted/zero iteration budget without a convergence certificate. For example maxIterations=0, M=0.1, e=0.99 returns the starter pi. The production general propagation path calls this helper. GLSL verification is a separate SCN-049 child; no GPU claim is made. Current frontend/backend suites are centrally pending; no tests were run for this audit.",
+      "integrationState": "Construction branch only; no new merge/push/main-resolution claim.",
+      "currentEvidence": [
+        "final-source-identity.json",
+        "backend-final.xml",
+        "frontend-final-verified.json",
+        "note-retirement.json"
+      ]
+    },
+    {
+      "id": "SCN-023",
+      "priority": "P1",
+      "baselineVerdict": "CODE_CONFIRMED",
+      "currentVerdict": "VERIFIED_SCOPED",
+      "correction": "Metric kinematics return independent display offsets. The live scene composes offsets on Object3D nodes, and the worker emits canonical model state without consuming metric inputs.",
+      "remaining": [],
+      "baselineEvidence": [
+        "src/sim/solarSystemModel.ts:169 (offset map, no canonical writes)",
+        "src/sim/solarSystemModel.ts:201",
+        "src/frontend/features/superluminal-modeling/metricDisplay.ts:46",
+        "src/frontend/features/superluminal-modeling/metricDisplay.ts:56 (node-only writes)",
+        "src/main.ts:1254 (live integration)",
+        "src/workers/modelWorker.ts:99",
+        "src/frontend/features/superluminal-modeling/metricDisplay.test.ts:85 (toggle/no-drift/canonical-invariance regression)"
+      ],
+      "baselineQualifiedBoundaries": "H29 remains an illustrative display deformation. No new canonical-state mutation found in the inspected production/worker path. Current frontend/backend suites are centrally pending; no tests were run for this audit.",
+      "integrationState": "Construction branch only; no new merge/push/main-resolution claim.",
+      "currentEvidence": [
+        "final-source-identity.json",
+        "backend-final.xml",
+        "frontend-final-verified.json",
+        "note-retirement.json"
+      ]
+    },
+    {
+      "id": "SCN-024",
+      "priority": "P2",
+      "baselineVerdict": "CODE_CONFIRMED",
+      "currentVerdict": "VERIFIED_SCOPED",
+      "correction": "Kuiper updater skips identical Julian dates before primary/companion propagation or renderer calls. Renderer independently avoids matrix writes/uploads for equal Float32 positions.",
+      "remaining": [],
+      "baselineEvidence": [
+        "src/frontend/features/asteroids/kuiperBeltUpdater.ts:13",
+        "src/frontend/features/asteroids/kuiperBeltUpdater.ts:15",
+        "src/main.ts:1251",
+        "src/frontend/features/asteroids/beltRenderer.ts:660",
+        "src/frontend/features/asteroids/beltRenderer.ts:687",
+        "src/frontend/features/asteroids/beltRenderer.ts:693",
+        "src/frontend/features/asteroids/kuiperPaused.test.ts:7 (600 unchanged frames)",
+        "src/frontend/features/asteroids/kuiperPaused.test.ts:42 (unchanged-buffer upload regression)"
+      ],
+      "baselineQualifiedBoundaries": "Regression covers propagation, matrix-write and upload-request counters; it is not a fresh browser/GPU bandwidth measurement. Current frontend/backend suites are centrally pending; no tests were run for this audit.",
+      "integrationState": "Construction branch only; no new merge/push/main-resolution claim.",
+      "currentEvidence": [
+        "final-source-identity.json",
+        "backend-final.xml",
+        "frontend-final-verified.json",
+        "note-retirement.json"
+      ]
+    },
+    {
+      "id": "SCN-025",
+      "priority": "P1",
+      "baselineVerdict": "CODE_CONFIRMED",
+      "currentVerdict": "VERIFIED_SCOPED",
+      "correction": "Strict TypeScript compiles the complete source tree with zero diagnostics; strict CI gate retained.",
+      "remaining": [],
+      "baselineEvidence": [
+        "tsconfig.json:9",
+        "package.json:20",
+        ".github/workflows/r3-r4-science.yml:61"
+      ],
+      "baselineQualifiedBoundaries": "Explicit-any cleanup is maintenance, not a claim that strict checking is disabled.",
+      "integrationState": "Construction branch only; no new merge/push/main-resolution claim.",
+      "currentEvidence": [
+        "final-source-identity.json",
+        "backend-final.xml",
+        "frontend-final-verified.json",
+        "note-retirement.json"
+      ]
+    },
+    {
+      "id": "SCN-026",
+      "priority": "P1",
+      "baselineVerdict": "CODE_CONFIRMED",
+      "currentVerdict": "VERIFIED_SCOPED",
+      "correction": "Vitest discovery includes product/script trees and excludes copied audit suites.",
+      "remaining": [],
+      "baselineEvidence": [
+        "vitest.config.ts:9"
+      ],
+      "baselineQualifiedBoundaries": "None for audit-directory test discovery.",
+      "integrationState": "Construction branch only; no new merge/push/main-resolution claim.",
+      "currentEvidence": [
+        "final-source-identity.json",
+        "backend-final.xml",
+        "frontend-final-verified.json",
+        "note-retirement.json"
+      ]
+    },
+    {
+      "id": "SCN-027",
+      "priority": "P1",
+      "baselineVerdict": "CODE_CONFIRMED",
+      "currentVerdict": "VERIFIED_SCOPED",
+      "correction": "README documents the pinned backend test requirements including httpx and the complete backend invocation.",
+      "remaining": [],
+      "baselineEvidence": [
+        "README.md:486",
+        "ci/backend-test-requirements.txt:1"
+      ],
+      "baselineQualifiedBoundaries": "Optional native runtimes retain their own environments; the default CI environment does not certify them.",
+      "integrationState": "Construction branch only; no new merge/push/main-resolution claim.",
+      "currentEvidence": [
+        "final-source-identity.json",
+        "backend-final.xml",
+        "frontend-final-verified.json",
+        "note-retirement.json"
+      ]
+    },
+    {
+      "id": "SCN-028",
+      "priority": "P1",
+      "baselineVerdict": "CODE_CONFIRMED",
+      "currentVerdict": "VERIFIED_SCOPED",
+      "correction": "Pinned install succeeds on Node22.23.2/npm10.9.8 and reports zero registry advisories.",
+      "remaining": [],
+      "baselineEvidence": [
+        "package.json:7",
+        "package.json:36",
+        "package-lock.json:1"
+      ],
+      "baselineQualifiedBoundaries": "Advisory assessment is time-scoped; unknown vulnerabilities are outside this result.",
+      "integrationState": "Construction branch only; no new merge/push/main-resolution claim.",
+      "currentEvidence": [
+        "final-source-identity.json",
+        "backend-final.xml",
+        "frontend-final-verified.json",
+        "note-retirement.json"
+      ]
+    },
+    {
+      "id": "SCN-029",
+      "priority": "P1",
+      "baselineVerdict": "CODE_CONFIRMED",
+      "currentVerdict": "VERIFIED_SCOPED",
+      "correction": "Blocking backend and scientific CI jobs retain fail-closed verifier contracts; six current baselines pass and six mutations are killed.",
+      "remaining": [],
+      "baselineEvidence": [
+        ".github/workflows/r3-r4-science.yml:9",
+        "scripts/ci/tests/test_r3_r4_workflow.py:89",
+        "scripts/ci/verify_r3_r4.py:854"
+      ],
+      "baselineQualifiedBoundaries": "Browser workflow is nonblocking at origin/main and branch-protection settings were not queried; release gaps are SCN047.",
+      "integrationState": "Construction branch only; no new merge/push/main-resolution claim.",
+      "currentEvidence": [
+        "final-source-identity.json",
+        "backend-final.xml",
+        "frontend-final-verified.json",
+        "note-retirement.json"
+      ]
+    },
+    {
+      "id": "SCN-030",
+      "priority": "P1",
+      "baselineVerdict": "PARTIAL",
+      "currentVerdict": "PARTIAL",
+      "correction": "R1-R8 production reflow, modal focus, keyboard/tap camera, deduplicated time/search output, native-picker fallback and authoritative experiment presentation are landed. Current-main layout/camera defects and manual acceptance still prevent complete closure.",
+      "remaining": [
+        "Actual NVDA/VoiceOver/OS text-resize/physical touch not run; gradient contrast remains an explicit manual review item. Corrected named groups pass automated rules in three engines."
+      ],
+      "baselineEvidence": [
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/app/panelController.ts:19-25",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/app/panelController.ts:31-58",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/app/panelController.ts:60-92",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/app/viewportCameraController.ts:56-72",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/main.ts:1256-1281",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/style.css:1355-1463",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/app/timeController.ts:74-85",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/app/timeController.test.ts:10-22",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/app/bodyPickerPresentation.ts:1-25",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/app/explorerController.ts:19-24",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/tests/browser/panel.spec.ts:3-38",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/tests/browser/reflow.spec.ts:3-31",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/tests/browser/camera.spec.ts:3-37",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/tests/browser/tab-zoom.spec.ts:10-50",
+        "/home/nomad/ai/projects/worktrees/solar-scn030-scn031-browser-gate-20261027/src/frontend/app/panelController.ts:58-91",
+        "/home/nomad/ai/projects/worktrees/solar-scn030-scn031-browser-gate-20261027/src/frontend/app/viewportCameraController.ts:56-71",
+        "/home/nomad/ai/projects/worktrees/solar-scn030-scn031-browser-gate-20261027/agent-notes/SCN030_SCN031_BROWSER_GATE_2026-10-27.md:13-28"
+      ],
+      "baselineQualifiedBoundaries": "Native zoom can change CSS layout before even a fresh matchMedia result changes; main still derives modality exclusively from matchMedia. Main also queues camera input until a render-frame stage and publishes Range only after rendering, delaying response on slow rendering. Candidate width-driven reconciliation and microtask camera feedback exist only as uncommitted local changes. Manual NVDA/VoiceOver, OS text resize, physical touch/pinch and final WebKit/pinned-environment acceptance remain outstanding; current central suites pending.",
+      "integrationState": "Construction branch only; no new merge/push/main-resolution claim.",
+      "currentEvidence": [
+        "final-source-identity.json",
+        "backend-final.xml",
+        "frontend-final-verified.json",
+        "note-retirement.json"
+      ]
+    },
+    {
+      "id": "SCN-031",
+      "priority": "P2",
+      "baselineVerdict": "CODE_CONFIRMED",
+      "currentVerdict": "VERIFIED_SCOPED",
+      "correction": "Renderer construction failure and actual WebGL context loss expose a named recovery surface, keep drawer/reload accessible, disable simulation inputs and stop owned frames, camera input, worker and solar delivery. Restored contexts require explicit reload.",
+      "remaining": [],
+      "baselineEvidence": [
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/app/rendererRecovery.ts:5-27",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/main.ts:234-259",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/main.ts:1286-1300",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/main.ts:1349-1362",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/tests/browser/app-smoke.spec.ts:26-36",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/app/rendererWarmup.ts:28-65",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/tests/browser/startup-warmup.spec.ts:56-91",
+        "/home/nomad/ai/projects/worktrees/solar-scn030-scn031-browser-gate-20261027/agent-notes/SCN030_SCN031_BROWSER_GATE_2026-10-27.md:13-19"
+      ],
+      "baselineQualifiedBoundaries": "Current tests centrally pending. Pending-warmup browser fixtures on main assume a shader extension that SwiftShader may omit; the local candidate makes the extension deterministic in pending-mode tests. This is fixture evidence debt, not a demonstrated regression of the recovery implementation. Real restoration auto-restart is deliberately not offered; no fresh hardware or platform-wide recovery certification.",
+      "integrationState": "Construction branch only; no new merge/push/main-resolution claim.",
+      "currentEvidence": [
+        "final-source-identity.json",
+        "backend-final.xml",
+        "frontend-final-verified.json",
+        "note-retirement.json"
+      ]
+    },
+    {
+      "id": "SCN-032",
+      "priority": "P1",
+      "baselineVerdict": "PARTIAL",
+      "currentVerdict": "VERIFIED_SCOPED",
+      "correction": "README counts, checksum, source links, entry/API scope, fitted moon delivery and branch title corrected.",
+      "remaining": [],
+      "baselineEvidence": [
+        "README.md:8",
+        "README.md:15",
+        "README.md:26",
+        "README.md:27",
+        "README.md:65"
+      ],
+      "baselineQualifiedBoundaries": "README still advertises 1.9M Phase1 particles rather than50k rendered instances, has three broken source links (main.ts, modelWorker.ts, asteroidCatalogLoader.ts), and claims an unconfirmed FNV1a checksum fallback. Recheck that fallback claim with catalog reviewer before final wording.",
+      "integrationState": "Construction branch only; no new merge/push/main-resolution claim.",
+      "currentEvidence": [
+        "final-source-identity.json",
+        "backend-final.xml",
+        "frontend-final-verified.json",
+        "note-retirement.json"
+      ]
+    },
+    {
+      "id": "SCN-033",
+      "priority": "P2",
+      "baselineVerdict": "CODE_CONFIRMED",
+      "currentVerdict": "VERIFIED_SCOPED",
+      "correction": "Moon maintenance tooling validates shape/count/orbits, requires explicit count-change admission, and publishes with atomic rename.",
+      "remaining": [],
+      "baselineEvidence": [
+        "scripts/update-moons-data.mjs:130",
+        "scripts/update-moons-data.mjs:182",
+        "scripts/update-moons-data.test.mjs:68"
+      ],
+      "baselineQualifiedBoundaries": "No remaining defect identified within this tooling scope.",
+      "integrationState": "Construction branch only; no new merge/push/main-resolution claim.",
+      "currentEvidence": [
+        "final-source-identity.json",
+        "backend-final.xml",
+        "frontend-final-verified.json",
+        "note-retirement.json"
+      ]
+    },
+    {
+      "id": "SCN-034",
+      "priority": "P2",
+      "baselineVerdict": "CODE_CONFIRMED",
+      "currentVerdict": "VERIFIED_SCOPED",
+      "correction": "Explicit publication opt-in integrated with exact Gaia identity/full-query cache prerequisites.",
+      "remaining": [],
+      "baselineEvidence": [
+        "scripts/catalog_sources.py:30-50: manifest schema, exact URL, raw length and SHA-256 source verification",
+        "scripts/catalog_sources.py:53-112: fsynced single-file replacement and Linux atomic directory exchange, safe filenames and symlink-directory refusal",
+        "scripts/build_asteroid_phase1_dataset.py:156-180,204-213: pinned source validation and check/dry-run/publication branches",
+        "scripts/generate_moon_ephemeris.py:175-252,263-294: offline source fetch, provider/target/centre/frame/units/GM and complete-grid validation",
+        "scripts/generate_moon_ephemeris.py:788-809,818-871: aggregate generation before single publication; body-set replacement guard and byte-only check",
+        "scripts/test_catalog_generation.py:71-116,174-223: injected exchange/rename/second-target failures, missing/corrupt pins, no-write modes, unsafe names and subset replacement rejection",
+        "scripts/test_catalog_science_review.py:16-51: permissions preservation and offline resumed-source corruption rejection"
+      ],
+      "baselineQualifiedBoundaries": [
+        "Current tests centrally pending. Atomic directory exchange requires Linux renameat2/filesystem support; unsupported replacement fails closed. Separate client opens can straddle generations, so runtime SHA-256 rejection remains necessary.",
+        "Additional CLI safety hardening to make asteroid generation preview-only by default exists locally but is not landed; baseline invocation still publishes unless --check/--dry-run is specified. This is recorded separately from the repaired pinned-input/external-path/transactional-generation root."
+      ],
+      "integrationState": "Construction branch only; no new merge/push/main-resolution claim.",
+      "currentEvidence": [
+        "final-source-identity.json",
+        "backend-final.xml",
+        "frontend-final-verified.json",
+        "note-retirement.json"
+      ]
+    },
+    {
+      "id": "SCN-035",
+      "priority": "P1",
+      "baselineVerdict": "DECISION_REQUIRED",
+      "currentVerdict": "PARTIAL",
+      "correction": "NOTICE records source attribution and unresolved redistribution terms.",
+      "remaining": [
+        "Permission-required original-code policy is selected. Deimos and remaining per-product permissions/notices, including SILSO distribution disposition, remain unresolved."
+      ],
+      "baselineEvidence": [
+        "NOTICE.md:1",
+        "NOTICE.md:9",
+        "NOTICE.md:23",
+        "agent-notes/REMEDIATION_PROVENANCE_2026-10-14.md:30"
+      ],
+      "baselineQualifiedBoundaries": "No original-code license file exists; owner distribution/license decision, SILSO terms disposition, Deimos permission/replacement and complete release inventory remain.",
+      "integrationState": "Construction branch only; no new merge/push/main-resolution claim.",
+      "currentEvidence": [
+        "final-source-identity.json",
+        "backend-final.xml",
+        "frontend-final-verified.json",
+        "note-retirement.json"
+      ]
+    },
+    {
+      "id": "SCN-036",
+      "priority": "P1",
+      "baselineVerdict": "CODE_CONFIRMED",
+      "currentVerdict": "VERIFIED_SCOPED",
+      "correction": "Network profile fails closed without configured credentials, authenticates before admission/engine setup, and enforces bounded exact per-subject and global WebSocket leases plus bounded command input.",
+      "remaining": [],
+      "baselineEvidence": [
+        {
+          "path": "backend/server.py",
+          "lines": "513-564,1588-1639",
+          "detail": "Network startup credential requirement, bounded unique headers and constant-time digest comparison."
+        },
+        {
+          "path": "backend/server.py",
+          "lines": "855-900,1999-2047,2061-2091",
+          "detail": "Hard command shape/size limits; per-subject counts and single-release ownership tokens; URL credentials rejected."
+        },
+        {
+          "path": "backend/server.py",
+          "lines": "5280-5311",
+          "detail": "Network authentication and Origin checks precede capacity/accept/engine setup; exact lease released in finally."
+        },
+        {
+          "path": "backend/tests/test_ws_resource_contract.py",
+          "lines": "248-287,480-578,592-622,680-700,729-747",
+          "detail": "Scoped fairness and reuse; reject unauthenticated/query credentials before work; gateway header admission; exact release; oversized and unsafe command rejection."
+        },
+        {
+          "path": "backend/tests/test_solar_security.py",
+          "lines": "66-89,526-574",
+          "detail": "Missing network credentials fail startup and all protected HTTP route families require authentication."
+        }
+      ],
+      "baselineQualifiedBoundaries": [
+        "Central current-suite results pending. Multiple valid subjects can still fill the global cap; semaphores are per process, not a cross-worker global quota. Actual deployment/gateway/TLS verification remains SCN-048."
+      ],
+      "integrationState": "Construction branch only; no new merge/push/main-resolution claim.",
+      "currentEvidence": [
+        "final-source-identity.json",
+        "backend-final.xml",
+        "frontend-final-verified.json",
+        "note-retirement.json"
+      ]
+    },
+    {
+      "id": "SCN-037",
+      "priority": "P2",
+      "baselineVerdict": "DECISION_REQUIRED",
+      "currentVerdict": "VERIFIED_SCOPED",
+      "correction": "Owner accepted fixed-step timing and explicit clock-policy telemetry.",
+      "remaining": [],
+      "baselineEvidence": [
+        {
+          "path": "backend/server.py",
+          "lines": "4382-4388,4518-4523,4558-4586,4624-4653,5228-5245",
+          "detail": "Fixed-step implementation, nominal days/second semantics, per-tick pacing and clock_policy on handshake/state."
+        },
+        {
+          "path": "backend/tests/test_runtime_recovery_contract.py",
+          "lines": "74-90",
+          "detail": "Deliberately slow engine must retain identical 4/240-day increments and fixed_step telemetry."
+        },
+        {
+          "path": "agent-notes/CODEBASE_SCAN_AND_ISSUE_TRACKER_2026-10-07.md",
+          "lines": "129",
+          "detail": "Original closure permits declaring fixed-step semantics; a bounded elapsed-time accumulator is conditional on a wall-time promise."
+        }
+      ],
+      "baselineQualifiedBoundaries": [
+        "Central current-suite results pending. This confirms the declared fixed-step option; it does not invent owner acceptance of a wall-clock rate guarantee or certify optional N-body UI integration."
+      ],
+      "integrationState": "Construction branch only; no new merge/push/main-resolution claim.",
+      "currentEvidence": [
+        "final-source-identity.json",
+        "backend-final.xml",
+        "frontend-final-verified.json",
+        "note-retirement.json"
+      ]
+    },
+    {
+      "id": "SCN-038",
+      "priority": "P2",
+      "baselineVerdict": "DECISION_REQUIRED",
+      "currentVerdict": "VERIFIED_SCOPED",
+      "correction": "Owner accepted scientific/decorative clock separation and pause/reverse/reduced-motion semantics.",
+      "remaining": [],
+      "baselineEvidence": [
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/sunController.ts:257-260",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/sunController.ts:617-631",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/sunController.ts:729-736",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/main.ts:302-308",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/main.ts:1252-1255",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/index.html:292-295",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/sunController.events.test.ts:61-85"
+      ],
+      "baselineQualifiedBoundaries": "Current central suites pending. The former DECISION_REQUIRED tracker value is stale for this implemented, visible policy. Provider polling remains wall-clock delivery; this code confirmation does not certify all solar scientific or screen-space behavior.",
+      "integrationState": "Construction branch only; no new merge/push/main-resolution claim.",
+      "currentEvidence": [
+        "final-source-identity.json",
+        "backend-final.xml",
+        "frontend-final-verified.json",
+        "note-retirement.json"
+      ]
+    },
+    {
+      "id": "SCN-039",
+      "priority": "P2",
+      "baselineVerdict": "DECISION_REQUIRED",
+      "currentVerdict": "VERIFIED_SCOPED",
+      "correction": "Owner accepted consumed explicit-origin/viewport/render-scale configuration.",
+      "remaining": [],
+      "baselineEvidence": [
+        {
+          "path": "src/frontend/app/runtimeConfig.ts",
+          "lines": "6-35",
+          "detail": "Canonical backend origin, mixed-content checks, bounded config values and actual drawing-buffer pixel ratio."
+        },
+        {
+          "path": "src/main.ts",
+          "lines": "234-258,1103-1131",
+          "detail": "Active composition root consumes config; backendBaseUrl returns its origin; resize applies drawing-buffer scale and observes canvas/shell."
+        },
+        {
+          "path": "src/frontend/app/runtimeConfig.test.ts",
+          "lines": "4-26",
+          "detail": "Nondefault origin/port, same-origin fallback, rejection of query redirect/mixed content and actual independent viewport/render overrides."
+        },
+        {
+          "path": "tests/browser/app-smoke.spec.ts",
+          "lines": "5-24",
+          "detail": "Actual app test checks 500x700 CSS size, 250x350 drawing buffer and requests to nondefault 9142 rather than 8042."
+        },
+        {
+          "path": "docs/frontend-configuration.md",
+          "lines": "3-20",
+          "detail": "Standalone dev routing, proxy/CORS requirements, viewport ranges and optional API/library-only N-body scope are documented."
+        }
+      ],
+      "baselineQualifiedBoundaries": [
+        "Central current-suite results pending. Current browser acceptance was not rerun here. Owner selection/verification of actual production URL, auth gateway and TLS remains SCN-048. SimulationClient is retained as an optional library and its own port default is outside the consumed default-UI contract."
+      ],
+      "integrationState": "Construction branch only; no new merge/push/main-resolution claim.",
+      "currentEvidence": [
+        "final-source-identity.json",
+        "backend-final.xml",
+        "frontend-final-verified.json",
+        "note-retirement.json"
+      ]
+    },
+    {
+      "id": "SCN-040",
+      "priority": "P1",
+      "baselineVerdict": "PARTIAL",
+      "currentVerdict": "VERIFIED_SCOPED",
+      "correction": "All577 selected September/H1 originals retained byte-identically in committed archive; original checkout untouched.",
+      "remaining": [],
+      "baselineEvidence": [
+        "agent-notes/SCAN_EVIDENCE_ARCHIVE_2026-10-17.json:1",
+        "agent-notes/REMEDIATION_SOURCE_MANIFEST_2026-10-14.json:1"
+      ],
+      "baselineQualifiedBoundaries": "Older September/H1 raw materials remain outside the declared archive; two report files evolved after their historical manifest. Current worktree-only evidence must remain distinguished from committed baseline.",
+      "integrationState": "Construction branch only; no new merge/push/main-resolution claim.",
+      "currentEvidence": [
+        "final-source-identity.json",
+        "backend-final.xml",
+        "frontend-final-verified.json",
+        "note-retirement.json"
+      ]
+    },
+    {
+      "id": "SCN-041",
+      "priority": "P1",
+      "baselineVerdict": "PARTIAL",
+      "currentVerdict": "PARTIAL",
+      "correction": "Landed bounded degree-90 streaming evaluation, common scalar/batch near-pole handling, nonfinite-angle rejection and explicit native-spectral entry point repair the prior degree/performance blocker. Retained three-epoch native-coefficient/provider-line comparisons and complete cold-worker reports meet their original budgets. This does not establish observed GONG ingestion or empirical WSA-speed calibration.",
+      "remaining": [
+        "Actual degree90 map admission condition fails; lower-degree provider-feature gates fail. Independent application speed, 1AU propagation and broader observed-frame calibration remain absent."
+      ],
+      "baselineEvidence": [
+        "backend/sim/pfss_evaluation.py:14-15",
+        "backend/sim/pfss_evaluation.py:41-123",
+        "backend/sim/pfss_magnetogram.py:235-275",
+        "backend/sim/pfss_magnetogram.py:927-955",
+        "backend/sim/pfss_magnetogram.py:1147-1197",
+        "backend/sim/pfss_magnetogram.py:67",
+        "backend/sim/gong_magnetogram.py:695-709",
+        "backend/tests/test_pfss_streaming_review.py:96-112",
+        "backend/tests/test_pfss_streaming_review.py:228-258",
+        "backend/tests/test_pfss_azimuth_validation.py:23-68",
+        "backend/tests/test_pfss_spectral.py:20-60",
+        "backend/tests/test_solar_reference_comparison.py:28-53",
+        "agent-notes/solar-reference-2026-10-14/production-degree90-azimuth-final-baseline-202610121744.json:154-155",
+        "agent-notes/solar-reference-2026-10-14/production-degree90-azimuth-final-heldout-202610140814.json:154-155",
+        "agent-notes/solar-reference-2026-10-14/production-degree90-azimuth-final-heldout-202610142114.json:154-155",
+        "agent-notes/solar-reference-2026-10-14/cold-degree90-azimuth-final-high.json:22",
+        "agent-notes/solar-reference-2026-10-14/cold-degree90-azimuth-final-ultra.json:22",
+        "agent-notes/SCN041_HELDOUT_ACCEPTANCE_2026-10-14.md:19-54",
+        "agent-notes/REMEDIATION_SOLAR_WIND_OVERLAP_2026-10-14.md:35-44"
+      ],
+      "baselineQualifiedBoundaries": [
+        "Landed GONG parser rejects the retained real zqs input: its ~0.040735 signed/unsigned flux fraction exceeds the roundoff-only bound at gong_magnetogram.py:700-702. Bounded provider-corroborated polarity scaling and its observational regression exist only locally.",
+        "Default sampled-grid route remains degree 15, capped for conditioning. Native degree-90 numerical acceptance must not be represented as enabled or accurate observed HTTP delivery; default degree-15 reference test intentionally preserves the failed broad-domain budget.",
+        "Independent application speed-map/in-situ calibration, propagation to 1 AU and observed provider-to-scene adaptation remain unfulfilled. WSA_CALIBRATION_STATUS stays unvalidated; public observed forcing stays disabled.",
+        "The overlap capture removes the old claim that no ACE overlap exists: 11 external NASA/ACE matches exist, MAE 171.599 km/s. It evaluates the external forecast, not application output."
+      ],
+      "integrationState": "Construction branch only; no new merge/push/main-resolution claim.",
+      "currentEvidence": [
+        "final-source-identity.json",
+        "backend-final.xml",
+        "frontend-final-verified.json",
+        "note-retirement.json"
+      ]
+    },
+    {
+      "id": "SCN-042",
+      "priority": "P1",
+      "baselineVerdict": "PARTIAL",
+      "currentVerdict": "PARTIAL",
+      "correction": "Production uses explicit right-handed solar-frame adapters and per-layer synthetic provenance admission. Controller owns surface orientation, attaches frozen geometry under translation, replaces same-epoch PFSS geometry and uses a decorative blend clock. The loop zero-alpha fix and assembled shader/single-sample diagnostic corrections are landed; historical actual-main hardware acceptance reaches 6/6 cases, 156/156 markers and 235/235 surface probes with all three geometric controls detected.",
+      "remaining": [
+        "Current actual-main diagnostic frame oracle passes. Broader artistic layers/camera/epoch acceptance and the user-observed square eruption particles remain open."
+      ],
+      "baselineEvidence": [
+        "src/frontend/features/solar/solarFrame.ts:35-88",
+        "src/frontend/features/solar/solarGeometryContract.ts:13-69",
+        "src/sunController.ts:263-292",
+        "src/sunController.ts:387-411",
+        "src/sunController.ts:756-796",
+        "src/main.ts:1245-1255",
+        "src/frontend/features/solar/sunVisuals.ts:1416-1419",
+        "src/frontend/features/solar/sunVisuals.ts:1653-1677",
+        "src/frontend/features/solar/solarFeatureBlending.ts:251-275",
+        "src/frontend/features/solar/solarFrame.test.ts:11-64",
+        "src/frontend/features/solar/solarGeometryContract.test.ts:81-138",
+        "src/sunController.frameReview.test.ts:27-49,93-150",
+        "src/frontend/features/solar/sunVisuals.blendAlpha.test.ts:21-50",
+        "src/frontend/features/asteroids/beltRenderer.ts:71-72",
+        "tests/browser/asteroid-shader.spec.ts:3-58",
+        "scripts/verify_solar_main_frame.py:53-97,284-303",
+        "agent-notes/SCN042_RENDERING_REPAIR_2026-10-17/after/results.json:2466-2473",
+        "agent-notes/SCN042_RENDERING_REPAIR_2026-10-17/startup-negative-control/results.json:2452-2459"
+      ],
+      "baselineQualifiedBoundaries": [
+        "Concrete incomplete repair: eruption-particle renderer still evaluates clampUnit(Number(blendView?.blendAlpha) || 1) at sunVisuals.ts:1655. At a new blend's alpha=0, both weights=1 and differing source/target arcs, this supplies alpha=1 to sampleSolarFeatureEntryPoint and samples the target; the loop renderer correctly samples the source. The live controller calls this eruption path at sunController.ts:708-714. Target particles can flash for the first blend frame. Existing zero-alpha geometry regression only calls the loop renderer.",
+        "Observed geometry remains UNRESOLVED_OBSERVED/nonrenderable and the global calibration flag remains false. Fixed camera/epoch diagnostic pixels do not certify all artistic fragments, layers, epochs, provider inputs or application delivery.",
+        "The central Chromium browser baseline is still pending per controller; no new local browser run was performed."
+      ],
+      "integrationState": "Construction branch only; no new merge/push/main-resolution claim.",
+      "currentEvidence": [
+        "final-source-identity.json",
+        "backend-final.xml",
+        "frontend-final-verified.json",
+        "note-retirement.json"
+      ]
+    },
+    {
+      "id": "SCN-043",
+      "priority": "P1",
+      "baselineVerdict": "PARTIAL",
+      "currentVerdict": "VERIFIED_SCOPED",
+      "correction": "All424 records have committed models, source pins and independent state checks; 410 lazy shards preserve both Puck aliases and original13 hashes. Compressed HTTP, certificate and response ownership defects corrected.",
+      "remaining": [],
+      "baselineEvidence": [
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/sim/loadMoonEphemerides.ts:4-21 -- five artifact imports; no additional-body argument, HTTP manifest, or lazy shard loader",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/sim/loadMoonEphemerides.test.ts:9-17 -- preservation and union of all five base artifacts",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/data/moonEphemerisChebyshev.json:1 -- 4 bodies",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/data/moonEphemerisRepairs.json:1 -- 6 bodies",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/data/moonEphemerisSpkRepairs.json:1 -- s2025_u_1",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/data/moonEphemerisDaphnis.json:1 -- daphnis",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/data/moonEphemerisS2023S38.json:1 -- s2023_s38",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/sim/moonCatalogRepair.horizons.test.ts:18-21,39-50 -- 424-record denominator retained; absent fits explicitly skipped; candidate override remains test-only",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/sim/moonEphemeris.ts:215-243,325-366 -- catalog identity, exceptional source domains, post-selection audit, and native handoff rejection",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/scripts/generate_s2023_s38_ephemeris.py:149-215 -- pinned-input schema, identity, provider header, digest and query-epoch replay validation",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/sim/moonSourceExceptionIndependentReview.test.ts:57-101,105-138 -- original-source runtime comparisons and original parser rejection regressions",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/scripts/test_moon_source_exception_independent_review.py:252-268,271-314 -- offline reproduction, no adaptation to failed audit, and four provenance rejection mutations",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/sim/moonEphemeris.ts:279-284,306-323 -- endpoint errors only checked for finiteness; aggregate acceptance only compares maxima",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/main.ts:179-189 -- shipped UI sets showMoons=false, so default application does not load or propagate the fitted moon catalog"
+      ],
+      "baselineQualifiedBoundaries": [
+        "Integrate reviewed lazy code, source pins and published shards before claiming coverage beyond 13/424. Static main inventory leaves 411 records without a fitted artifact; duplicate Puck makes these 410 additional unique models.",
+        "Resolve the current main endpoint/aggregate certificate gap. Existing fixes with regression tests on fix/markdown-audit-20261024 are not in origin/main.",
+        "Before lazy promotion, enforce the independent vectorOracle certificate (alias IDs, seven samples per alias, nonnegative ordered statistics within fixed caps) and endpoint error limits.",
+        "Before lazy promotion, cancel or abort HTTP-failure and advertised-size-rejected response bodies before returning a concurrency slot; add targeted cleanup assertions.",
+        "Resolve storage/publication integration for 396307773 bytes of source pins plus published lazy assets, exclusive of the source README. Historical bulk approval remains false in the local handoff; no integration-ready lazy commit exists.",
+        "Current baseline frontend/backend results are centrally pending. Historical passes and local all-424 candidate acceptance are not fresh main acceptance."
+      ],
+      "integrationState": "Construction branch only; no new merge/push/main-resolution claim.",
+      "currentEvidence": [
+        "final-source-identity.json",
+        "backend-final.xml",
+        "frontend-final-verified.json",
+        "note-retirement.json"
+      ]
+    },
+    {
+      "id": "SCN-044",
+      "priority": "P2",
+      "baselineVerdict": "CODE_CONFIRMED",
+      "currentVerdict": "VERIFIED_SCOPED",
+      "correction": "Bounded beam search certifies unpowered flyby speed continuity and body-specific periapsis floors, reports truncation/termination honestly, and has a dated independently closed two-assist quality witness.",
+      "remaining": [],
+      "baselineEvidence": [
+        "backend/trajectory/mga.py:134 (explicit bounded/nonoptimal telemetry)",
+        "backend/trajectory/mga.py:536 (unpowered flyby validation)",
+        "backend/trajectory/mga.py:568 (periapsis policy)",
+        "backend/trajectory/mga.py:578 (feasibility conjunction)",
+        "backend/tests/test_mga_independent_window.py:13 (Earth-Jupiter-Venus-Mars witness/score floor)",
+        "backend/tests/test_mga_independent_window.py:25 (speed continuity)",
+        "backend/tests/test_mga_independent_window.py:32 (independent physical floors)",
+        "backend/tests/test_mga_independent_window.py:35 (DOP853 endpoint checks)",
+        "backend/tests/test_mga_independent_window.py:44 (budget-exhaustion regression)",
+        "agent-notes/REMEDIATION_MISSION_2026-10-14.md:87 (oracle provenance and witness scope)"
+      ],
+      "baselineQualifiedBoundaries": "Acceptance establishes a feasible quality floor for frozen approximate catalog geometry, not global optimization, exhaustive windows, or precision ephemeris validation. Current witness result awaits central execution. Current frontend/backend suites are centrally pending; no tests were run for this audit.",
+      "integrationState": "Construction branch only; no new merge/push/main-resolution claim.",
+      "currentEvidence": [
+        "final-source-identity.json",
+        "backend-final.xml",
+        "frontend-final-verified.json",
+        "note-retirement.json"
+      ]
+    },
+    {
+      "id": "SCN-045",
+      "priority": "P2",
+      "baselineVerdict": "CODE_CONFIRMED",
+      "currentVerdict": "VERIFIED_SCOPED",
+      "correction": "Universal-variable solver explicitly rejects exactly collinear endpoints without a supplied plane, brackets/certifies roots, separates multi-revolution branches and handles hyperbolic cases. Independent endpoint propagation covers rotated boundaries and both senses/branches for 1-3 revolutions.",
+      "remaining": [],
+      "baselineEvidence": [
+        "backend/trajectory/lambert.py:620 (no uncertified root fallback)",
+        "backend/trajectory/lambert.py:733 (capability and exact-collinearity contract)",
+        "backend/trajectory/lambert.py:772 (revolution/branch controls)",
+        "backend/trajectory/lambert.py:803 (exact-collinearity rejection)",
+        "backend/trajectory/lambert.py:884 (hyperbolic bracket extension)",
+        "backend/tests/test_lambert_independent_boundaries.py:20",
+        "backend/tests/test_lambert_independent_boundaries.py:41",
+        "backend/tests/test_lambert_independent_boundaries.py:54",
+        "backend/tests/test_lambert_solver_reference.py:251 (independent Izzo values)",
+        "backend/server.py:3630 (public plane policy)"
+      ],
+      "baselineQualifiedBoundaries": "No exact-180-degree plane-selection feature is claimed. Near-zero retrograde Sun-intersecting arcs are intentionally rejected under the default solar-radius floor. Current frontend/backend suites are centrally pending; no tests were run for this audit.",
+      "integrationState": "Construction branch only; no new merge/push/main-resolution claim.",
+      "currentEvidence": [
+        "final-source-identity.json",
+        "backend-final.xml",
+        "frontend-final-verified.json",
+        "note-retirement.json"
+      ]
+    },
+    {
+      "id": "SCN-046",
+      "priority": "P2",
+      "baselineVerdict": "CODE_CONFIRMED",
+      "currentVerdict": "VERIFIED_SCOPED",
+      "correction": "The new pinned release has reproducible serialization, immutable capture timestamps, and byte-comparison modes. A targeted test rebuilds asteroid artifacts twice with network calls forbidden and compares all committed bytes and all 100000 source periods/diameters/albedos. Moon generation reconstructs and validates its four-body artifact from the 16 pinned source responses before --check comparison.",
+      "remaining": [],
+      "baselineEvidence": [
+        "scripts/source-snapshots/catalogs/README.md:3-20: real raw-source release, 17 responses and explicit population/scope",
+        "scripts/source-snapshots/catalogs/manifest.json:23-31: SBDB URL, exact raw-byte length/hash and capture time",
+        "scripts/build_asteroid_phase1_dataset.py:187-201,204-210: capture-time metadata, deterministic artifacts and byte comparison",
+        "scripts/test_catalog_generation.py:119-171: two network-disabled builds, all three committed artifacts, full raw-source period/diameter/albedo and population comparisons",
+        "scripts/generate_moon_ephemeris.py:725-726,737-785: pinned source time, held-out validation and continuity before publication",
+        "scripts/generate_moon_ephemeris.py:788-815,852-871: deterministic source-provenanced serialization and complete-artifact byte check",
+        "agent-notes/REMEDIATION_CATALOGS_2026-10-14.md:79-85,97-104: dated two-generator byte-identity results and artifact hashes"
+      ],
+      "baselineQualifiedBoundaries": [
+        "Current baseline tests and any explicit offline generator --check reruns are centrally pending; this audit performed no regeneration or test. The Oct 14 moon byte-identity pass is dated evidence, not a fresh check.",
+        "Reproduction is for the replaced pinned release on the documented Python/Linux platform. Old mutable/unpinned historical artifacts were replaced, not proved reproducible. Four-moon same-provider fit checks do not certify every moon or every interpreter/libm platform."
+      ],
+      "integrationState": "Construction branch only; no new merge/push/main-resolution claim.",
+      "currentEvidence": [
+        "final-source-identity.json",
+        "backend-final.xml",
+        "frontend-final-verified.json",
+        "note-retirement.json"
+      ]
+    },
+    {
+      "id": "SCN-047",
+      "priority": "P1",
+      "baselineVerdict": "PARTIAL",
+      "currentVerdict": "PARTIAL",
+      "correction": "Fresh frontend/type/build/science checks and current source/evidence reconciliation are recorded.",
+      "remaining": [
+        "Integrated local gates improve; manual, licensing, broad science/render/capacity, architecture and deployed acceptance remain incomplete."
+      ],
+      "baselineEvidence": [
+        ".github/workflows/frontend-ui.yml:29",
+        "agent-notes/REMEDIATION_CLOSURE_PLAN_2026-10-15.md:38"
+      ],
+      "baselineQualifiedBoundaries": "Full backend/browser results pending at report creation; global acceptance also needs moons, startup, manual accessibility, deployment/TLS and scientific/render calibration. No single all-subsystem release pass exists.",
+      "integrationState": "Construction branch only; no new merge/push/main-resolution claim.",
+      "currentEvidence": [
+        "final-source-identity.json",
+        "backend-final.xml",
+        "frontend-final-verified.json",
+        "note-retirement.json"
+      ]
+    },
+    {
+      "id": "SCN-048",
+      "priority": "P1",
+      "baselineVerdict": "PARTIAL",
+      "currentVerdict": "PARTIAL",
+      "correction": "Request-relative AIA coverage, cache revalidation and fail-closed observation eligibility exist, along with route-wide network authentication and a repeatable local two-worker HTTP/proxy gate. Scalar-JD leap identity and real deployed TLS/auth acceptance remain unclosed.",
+      "remaining": [
+        "Owner knows no deployed target. Local HTTP/ASGI checks do not establish deployed TLS/auth/proxy/provider behavior. Actual degree90 map admission condition fails; lower-degree provider-feature gates fail. Independent application speed, 1AU propagation and broader observed-frame calibration remain absent."
+      ],
+      "baselineEvidence": [
+        {
+          "path": "backend/sim/solar_time.py",
+          "lines": "153-159",
+          "detail": "Only scalar float JDTDB is accepted and passed directly to Astropy UTC datetime conversion; no ambiguous-bin policy or precise two-part input exists."
+        },
+        {
+          "path": "backend/tests/test_solar_time_precision_evidence.py",
+          "lines": "18-69,74-83,111-127",
+          "detail": "Diagnostic tests establish four midnight/leap scalar collisions, prove two-part representation retains identity, and show leap-start bins can have ordinary centers. These tests demonstrate the residual, not its remediation."
+        },
+        {
+          "path": "backend/sim/solar_realtime_data.py",
+          "lines": "553-582,2676-2687,2812-2826",
+          "detail": "AIA request-relative validation and acquisition use the scalar adapter. A conversion failure becomes failed source status, so a valid leap-boundary midnight can lose AIA availability before metadata acquisition."
+        },
+        {
+          "path": "backend/tests/test_solar_aia_epoch_coverage.py",
+          "lines": "24-66,96-159",
+          "detail": "Retained-provider replay tests time coverage, invalid refresh/cache isolation and binary rejection. Lines 105-108 intentionally use noon to bypass the unresolved midnight conversion defect."
+        },
+        {
+          "path": "backend/server.py",
+          "lines": "1907-1953,3191-3216",
+          "detail": "HTTP epoch parser reduces text to one finite float; two-part input or explicit ambiguity rejection is absent."
+        },
+        {
+          "path": "scripts/verify_deployment_contract.py",
+          "lines": "53-74,82-86,127-160",
+          "detail": "Gate explicitly declares remoteProductionVerified=false, runs HTTP loopback/proxy, checks network auth/CORS and 64 metadata requests. HTTPS Origin is an origin string, not a TLS transport."
+        },
+        {
+          "path": "agent-notes/REMEDIATION_DEPLOYMENT_2026-10-14.md",
+          "lines": "13-46",
+          "detail": "Historical local two-worker results explicitly exclude remote deployment, TLS, deployed credentials and scientific/provider coverage certification."
+        }
+      ],
+      "baselineQualifiedBoundaries": [
+        "Choose and implement strict ambiguous scalar-bin rejection plus precise two-part input, or an explicit documented rounding policy; add acceptance tests for midnight and genuine leap interiors under that chosen contract. Direct scalar conversion currently still fails for valid midnight inputs whose rounded value lies in the leap second.",
+        "Obtain actual deployment URL, authentication/gateway method and TLS/proxy evidence, including a representative protected operation. The no-network audit cannot supply those operational facts.",
+        "Observed provider/frame/spatial calibration and continuous archive coverage remain separate solar acceptance work; raw temporal coverage is not spatial eligibility. Central current-suite results pending."
+      ],
+      "integrationState": "Construction branch only; no new merge/push/main-resolution claim.",
+      "currentEvidence": [
+        "final-source-identity.json",
+        "backend-final.xml",
+        "frontend-final-verified.json",
+        "note-retirement.json"
+      ]
+    },
+    {
+      "id": "SCN-049",
+      "priority": "P2",
+      "baselineVerdict": "PARTIAL",
+      "currentVerdict": "PARTIAL",
+      "correction": "Landed children include frame/socket ownership, hidden-tab timing reset, negotiated Kuiper activation identities with stale rejection, payload/metadata retention and explicit solar nonfinite numerical policy. The broad verification/architecture/lifecycle umbrella is not a single closed bug.",
+      "remaining": [
+        "Remaining server composition/shared-executor and permanently hung native-thread ownership requirements are not established by bounded failure tests. Remaining orphan-asset disposition and final browser integration requirements remain open."
+      ],
+      "baselineEvidence": [
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/app/frameLifecycle.ts:36-80",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/app/frameLifecycle.test.ts:52-86",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/app/frameLifecycle.ownershipReview.test.ts:34-37",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/app/simulationClient.ts:263-307",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/app/simulationClient.ts:322-328",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/app/simulationClient.ts:426-444",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/app/simulationClient.ts:468-477",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/app/simulationClient.ts:506-531",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/app/simulationClient.subscription.test.ts:47-136",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/app/simulationClient.lifecycleReview.test.ts:41-179",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/backend/server.py:4641-4644",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/backend/server.py:4782-4806",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/backend/server.py:5232-5233",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/backend/tests/test_kuiper_subscription_ordering.py:38-148",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/backend/tests/test_kuiper_subscription_ordering.py:151-185",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/backend/sim/solar_physics.py:42-45",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/backend/sim/solar_physics.py:129-165",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/backend/sim/pfss_magnetogram.py:108-115",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/backend/tests/test_solar_numerical_policy.py:16-88",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/main.ts:1312-1321",
+        "/home/nomad/ai/projects/worktrees/solar-scn-049-browser-acceptance/tests/browser/scn049-kuiper-subscription.spec.ts:108-117",
+        "/home/nomad/ai/projects/worktrees/solar-scn-049-browser-acceptance/tests/browser/scn049-kuiper-subscription.spec.ts:169-196"
+      ],
+      "baselineQualifiedBoundaries": "Actual-browser Kuiper regression is absent from main and is FIX_LOCAL_ONLY as a branch-only test/evidence child. It uses retained native frames and an imported client, not a live backend-connected visualization. Legacy peers intentionally retain stale-reactivation ambiguity. Quadtree cleanup is omitted from composition unload cleanup. Other Section 7 visual, capacity, schema and architectural verification children are not closed by these bounded repairs; coordinate/science and overall release owners must keep their own scope. Current central suites pending.",
+      "integrationState": "Construction branch only; no new merge/push/main-resolution claim.",
+      "currentEvidence": [
+        "final-source-identity.json",
+        "backend-final.xml",
+        "frontend-final-verified.json",
+        "note-retirement.json"
+      ]
+    },
+    {
+      "id": "SCN-050",
+      "priority": "P2",
+      "baselineVerdict": "CODE_CONFIRMED",
+      "currentVerdict": "VERIFIED_SCOPED",
+      "correction": "Backend and active frontend fallback normalize the Hathaway curve at the parameterized stationary point exp(s)*(3-2s)=3c. Both share an independently generated high-precision fixture and the frontend regression rejects the clipped plateau. Later landed cycle-tail overlap also preserves continuity across cycle minimum.",
+      "remaining": [],
+      "baselineEvidence": [
+        "backend/sim/solar_physics.py:144-172",
+        "src/sunController.ts:104-143",
+        "backend/tests/test_solar_cycle_reference.py:9-17",
+        "src/frontend/features/solar/solarCycle.test.ts:5-44",
+        "agent-notes/REMEDIATION_SOLAR_2026-10-14.md:43-47"
+      ],
+      "baselineQualifiedBoundaries": [
+        "No concrete normalization regression found. This is analytic consistency, not new observed-cycle fitting."
+      ],
+      "integrationState": "Construction branch only; no new merge/push/main-resolution claim.",
+      "currentEvidence": [
+        "final-source-identity.json",
+        "backend-final.xml",
+        "frontend-final-verified.json",
+        "note-retirement.json"
+      ]
+    },
+    {
+      "id": "SCN-051",
+      "priority": "P2",
+      "baselineVerdict": "CODE_CONFIRMED",
+      "currentVerdict": "VERIFIED_SCOPED",
+      "correction": "Admission authenticates bounded retained expanded FITS bytes and native-header hashes, reparses the exact bytes and compares field/grid/provenance. It does not attempt to reconstruct integer/float FITS pixels from scaled science arrays. Twelve BITPIX/unit roundtrips and byte/field/digest tampering regressions are present; native bytes remain private.",
+      "remaining": [],
+      "baselineEvidence": [
+        "backend/sim/gong_magnetogram.py:245-247",
+        "backend/sim/gong_magnetogram.py:861-869",
+        "backend/sim/pfss_magnetogram.py:1561-1595",
+        "backend/sim/pfss_magnetogram.py:1619-1638",
+        "backend/tests/test_gong_encoding_roundtrip.py:12-54"
+      ],
+      "baselineQualifiedBoundaries": [
+        "No concrete remaining native-encoding roundtrip defect found. The real-input flux-balance admission failure is a separate SCN-041 policy/provenance gap, not evidence that the native-byte roundtrip repair failed."
+      ],
+      "integrationState": "Construction branch only; no new merge/push/main-resolution claim.",
+      "currentEvidence": [
+        "final-source-identity.json",
+        "backend-final.xml",
+        "frontend-final-verified.json",
+        "note-retirement.json"
+      ]
+    },
+    {
+      "id": "SCN-052",
+      "priority": "P1",
+      "baselineVerdict": "CODE_CONFIRMED",
+      "currentVerdict": "VERIFIED_SCOPED",
+      "correction": "Protected reserve is a fixed fraction of each stage initial propellant, rather than a shrinking fraction of remaining fuel; exhausted stages retain that reserve when discarded.",
+      "remaining": [],
+      "baselineEvidence": [
+        "backend/mission/vehicle_service.py:86",
+        "backend/mission/vehicle_service.py:87",
+        "backend/mission/vehicle_service.py:114",
+        "backend/tests/test_mission_reserve_partition.py:31 (partition invariant)",
+        "backend/tests/test_mission_reserve_partition.py:48 (initial reserve floor)",
+        "backend/tests/test_mission_reserve_partition.py:56 (unequal stages/cargo)",
+        "backend/tests/test_mission_reserve_partition.py:71 (exact/near jettison boundaries)"
+      ],
+      "baselineQualifiedBoundaries": "Discarded-fuel margin and risk-yield reporting are separately assessed under SCN-020. Current frontend/backend suites are centrally pending; no tests were run for this audit.",
+      "integrationState": "Construction branch only; no new merge/push/main-resolution claim.",
+      "currentEvidence": [
+        "final-source-identity.json",
+        "backend-final.xml",
+        "frontend-final-verified.json",
+        "note-retirement.json"
+      ]
+    },
+    {
+      "id": "SCN-053",
+      "priority": "P1",
+      "baselineVerdict": "CODE_CONFIRMED",
+      "currentVerdict": "VERIFIED_SCOPED",
+      "correction": "REBOUND step validates the derived target JD against the same finite inclusive interval as seeks before integration, preserving state on rejection.",
+      "remaining": [],
+      "baselineEvidence": [
+        "backend/sim/rebound_nbody.py:122",
+        "backend/sim/rebound_nbody.py:471",
+        "backend/sim/rebound_nbody.py:475",
+        "backend/tests/test_rebound_epoch_contract.py:18 (both interval boundaries)",
+        "backend/tests/test_rebound_epoch_contract.py:28 (rejection without epoch mutation)",
+        "backend/tests/test_rebound_epoch_contract.py:35 (forward/backward in-range stepping)"
+      ],
+      "baselineQualifiedBoundaries": "This is playback epoch enforcement, distinct from planning epochs in SCN-072. Current frontend/backend suites are centrally pending; no tests were run for this audit.",
+      "integrationState": "Construction branch only; no new merge/push/main-resolution claim.",
+      "currentEvidence": [
+        "final-source-identity.json",
+        "backend-final.xml",
+        "frontend-final-verified.json",
+        "note-retirement.json"
+      ]
+    },
+    {
+      "id": "SCN-054",
+      "priority": "P2",
+      "baselineVerdict": "PARTIAL",
+      "currentVerdict": "VERIFIED_SCOPED",
+      "correction": "Rendered companion origin and orbital phase corrected; osculating initial-state scope retained.",
+      "remaining": [],
+      "baselineEvidence": [
+        "backend/sim/kuiper.py:128",
+        "backend/sim/kuiper.py:161",
+        "backend/sim/kuiper.py:178",
+        "backend/sim/kuiper.py:375 (massless primaries)",
+        "backend/sim/kuiper.py:415 (massless companions)",
+        "backend/sim/kuiper.py:468 (wire precision)",
+        "backend/sim/kuiper.py:484 (initial-state-only label)",
+        "backend/tests/test_ephemeris_remediation.py:19 (nine vis-viva/angular-momentum/barycenter cases)",
+        "backend/tests/test_ephemeris_remediation.py:33 (1000 km serialization)",
+        "src/sim/kuiperBelt.ts:285 (phase-dependent axes)",
+        "src/sim/kuiperBelt.ts:340 (phase applied again)",
+        "src/sim/kuiperBelt.ts:346 (barycentric offset definitions)",
+        "src/sim/kuiperBelt.ts:467 (primary already shifted)",
+        "src/sim/kuiperBelt.ts:510 (BUG: companion offset added to shifted primary)"
+      ],
+      "baselineQualifiedBoundaries": "Frontend production companion path adds a barycenter-relative companion offset to an already primary-offset position. The rendered relative separation is the companion barycentric share, r/(1+q), instead of r: equal masses give half the intended separation (before Float32 rounding). The mutual anomaly also appears in both orientation axes and Cartesian coordinates, producing phase distortion. Backend invariant tests do not exercise this frontend consumer. Both backend members remain massless, so mutual binary persistence is not implemented; initial-osculating-state closure must not be promoted to sustained physical binary dynamics. Current frontend/backend suites are centrally pending; no tests were run for this audit.",
+      "integrationState": "Construction branch only; no new merge/push/main-resolution claim.",
+      "currentEvidence": [
+        "final-source-identity.json",
+        "backend-final.xml",
+        "frontend-final-verified.json",
+        "note-retirement.json"
+      ]
+    },
+    {
+      "id": "SCN-055",
+      "priority": "P2",
+      "baselineVerdict": "CODE_CONFIRMED",
+      "currentVerdict": "VERIFIED_SCOPED",
+      "correction": "Tudat energy reconstructs Sun-relative states into one SSB origin for kinetic/potential terms and uses native force-model GMs, including Pluto-system GM.",
+      "remaining": [],
+      "baselineEvidence": [
+        "backend/sim/tudatpy_hooks.py:553",
+        "backend/sim/tudatpy_hooks.py:561",
+        "backend/sim/tudatpy_hooks.py:570",
+        "backend/tests/test_ephemeris_remediation.py:105 (synthetic translation invariance)",
+        "backend/tests/test_ephemeris_remediation.py:163 (native chunk/energy gate)",
+        "backend/tests/test_tudat_science_review.py:43 (independent native-GM energy reconstruction)",
+        "agent-notes/REMEDIATION_NATIVE_TUDAT_2026-10-14.md:46",
+        "agent-notes/REMEDIATION_NATIVE_TUDAT_2026-10-14.md:74"
+      ],
+      "baselineQualifiedBoundaries": "Diagnostic is explicitly point-mass energy excluding harmonic potential; it is not exact conservation for J2/J4 dynamics. Native acceptance is historical and limited to the recorded TudatPy 1.0.0/resources 2.4 environment. No fresh native run or older-SDK compatibility acceptance. Current frontend/backend suites are centrally pending; no tests were run for this audit.",
+      "integrationState": "Construction branch only; no new merge/push/main-resolution claim.",
+      "currentEvidence": [
+        "final-source-identity.json",
+        "backend-final.xml",
+        "frontend-final-verified.json",
+        "note-retirement.json"
+      ]
+    },
+    {
+      "id": "SCN-056",
+      "priority": "P2",
+      "baselineVerdict": "CODE_CONFIRMED",
+      "currentVerdict": "VERIFIED_SCOPED",
+      "correction": "run_family registers its family policy before executing episodes; run_families delegates to that same path.",
+      "remaining": [],
+      "baselineEvidence": [
+        "backend/mission/epo/runners.py:71",
+        "backend/mission/epo/runners.py:79",
+        "backend/tests/test_epo_single_family_policy.py:30 (direct/aggregate policy parity)"
+      ],
+      "baselineQualifiedBoundaries": "Historical tracker assertion that this fix is unmerged is stale: commit 2605f25 is an ancestor of the audited origin/main. Smoke truth is separately SCN-079. Current frontend/backend suites are centrally pending; no tests were run for this audit.",
+      "integrationState": "Construction branch only; no new merge/push/main-resolution claim.",
+      "currentEvidence": [
+        "final-source-identity.json",
+        "backend-final.xml",
+        "frontend-final-verified.json",
+        "note-retirement.json"
+      ]
+    },
+    {
+      "id": "SCN-057",
+      "priority": "P2",
+      "baselineVerdict": "CODE_CONFIRMED",
+      "currentVerdict": "VERIFIED_SCOPED",
+      "correction": "SRP/tidal callbacks dereference the supported REBOUND ctypes pointer; beta values come from a caller-owned index mapping, and the combined callback passes that mapping through.",
+      "remaining": [],
+      "baselineEvidence": [
+        "backend/sim/radiation_pressure.py:178",
+        "backend/sim/radiation_pressure.py:187 (map ownership/reordering limitation)",
+        "backend/sim/radiation_pressure.py:193",
+        "backend/sim/galactic_tide.py:140",
+        "backend/sim/galactic_tide.py:162",
+        "backend/tests/test_ephemeris_remediation.py:67 (actual REBOUND SRP/tide/combined acceleration cases)"
+      ],
+      "baselineQualifiedBoundaries": "Dormant callbacks were not activated in the production engine. Caller must rebuild beta_by_index after particle removal/reordering; PR drag is not installed by the SRP callback. Current frontend/backend suites are centrally pending; no tests were run for this audit.",
+      "integrationState": "Construction branch only; no new merge/push/main-resolution claim.",
+      "currentEvidence": [
+        "final-source-identity.json",
+        "backend-final.xml",
+        "frontend-final-verified.json",
+        "note-retirement.json"
+      ]
+    },
+    {
+      "id": "SCN-058",
+      "priority": "P1",
+      "baselineVerdict": "CODE_CONFIRMED",
+      "currentVerdict": "VERIFIED_SCOPED",
+      "correction": "Splits release the parent mesh reference; merges destroy children and restore a leaf. Initial six-face coverage and current planet-frame camera coordinates prevent disappearing Earth/Mars trees and stale-parent LOD decisions.",
+      "remaining": [],
+      "baselineEvidence": [
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/planetary/quadtreeLOD.ts:60-69",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/planetary/quadtreeLOD.ts:91-130",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/planetary/quadtreeLOD.ts:175-185",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/planetary/quadtreeLOD.ts:252-259",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/planetary/quadtreeLOD.test.ts:10-78",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/main.ts:1258-1268"
+      ],
+      "baselineQualifiedBoundaries": "Current central suites pending. Regressions exercise 12 repeated near/far cycles, six complete faces, bounded leaves and transformed parents/cameras. Root unload cleanup does not invoke tree.dispose; this separate composition lifecycle omission is recorded under SCN-049 and finding FE-005, without reopening the repaired split/merge disappearance mechanism.",
+      "integrationState": "Construction branch only; no new merge/push/main-resolution claim.",
+      "currentEvidence": [
+        "final-source-identity.json",
+        "backend-final.xml",
+        "frontend-final-verified.json",
+        "note-retirement.json"
+      ]
+    },
+    {
+      "id": "SCN-059",
+      "priority": "P1",
+      "baselineVerdict": "CODE_CONFIRMED",
+      "currentVerdict": "VERIFIED_SCOPED",
+      "correction": "setRadius updates effective radius and relief proportionally and reevaluates LOD. Scale-mode composition calls it and reframes the selected body. Focus and minimum distances use 20 and 1.1 live radii respectively.",
+      "remaining": [],
+      "baselineEvidence": [
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/planetary/quadtreeLOD.ts:262-270",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/planetary/quadtreeLOD.ts:152-156",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/planetary/planetView.ts:1-6",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/main.ts:629-647",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/main.ts:750-764",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/main.ts:1088-1100",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/planetary/quadtreeLOD.test.ts:81-104",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/planetary/planetView.test.ts:6-25",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/main.focusBody.test.ts:195-211"
+      ],
+      "baselineQualifiedBoundaries": "Current central suites pending. Historical software/RTX screen coverage is dated. The targeted assertions cover Earth/Mars scale changes, geometry/material reuse, framing and clearance; no fresh GPU/performance result is inferred.",
+      "integrationState": "Construction branch only; no new merge/push/main-resolution claim.",
+      "currentEvidence": [
+        "final-source-identity.json",
+        "backend-final.xml",
+        "frontend-final-verified.json",
+        "note-retirement.json"
+      ]
+    },
+    {
+      "id": "SCN-060",
+      "priority": "P2",
+      "baselineVerdict": "CODE_CONFIRMED",
+      "currentVerdict": "VERIFIED_SCOPED",
+      "correction": "Quadtree groups expose mean-radius sphere raycasting with body identity, world transforms, visibility and clipping checks. Main double-click picking uses these group proxies nonrecursively, independent of displaced plane children.",
+      "remaining": [],
+      "baselineEvidence": [
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/planetary/quadtreeLOD.ts:203-224",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/planetary/quadtreeLOD.ts:147-151",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/main.ts:1195-1207",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/planetary/quadtreeLOD.test.ts:106-135"
+      ],
+      "baselineQualifiedBoundaries": "Current central suites pending. These are deliberate mean-sphere hits, not terrain-triangle intersections. Targeted real Three Raycaster coverage exists for both scales, near/far LOD, transformed parents, misses, far limits and hidden ancestors; full DOM double-click acceptance is not supplied by that isolated test.",
+      "integrationState": "Construction branch only; no new merge/push/main-resolution claim.",
+      "currentEvidence": [
+        "final-source-identity.json",
+        "backend-final.xml",
+        "frontend-final-verified.json",
+        "note-retirement.json"
+      ]
+    },
+    {
+      "id": "SCN-061",
+      "priority": "P1",
+      "baselineVerdict": "CODE_CONFIRMED",
+      "currentVerdict": "VERIFIED_SCOPED",
+      "correction": "Per-draw face transforms apply before cube-to-sphere normalization; patch meshes remain in the body frame. Pole-safe finite differences and inward skirts repair NaN centers, doubled patch transforms and fine/coarse seam cracks.",
+      "remaining": [],
+      "baselineEvidence": [
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/planetary/quadtreeLOD.ts:136-163",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/planetary/planetShaders.ts:164-204",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/scripts/planetShaderGeometry.test.mjs:7-10",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/scripts/planetShaderGeometry.test.mjs:22-48",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/scripts/planetShaderGeometry.test.mjs:57-75",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/agent-notes/REMEDIATION_PLANETS_2026-10-14.md:93-105",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/agent-notes/REMEDIATION_HARDWARE_2026-10-14.md:19-29"
+      ],
+      "baselineQualifiedBoundaries": "Current central suites pending. The production GLSL regression exists but is explicitly skipped unless PLANET_SHADER_GPU_TEST=1; an ordinary frontend suite pass is not current shader-execution evidence. Historical software/RTX pixel coverage remains dated, with no fresh hardware, georeferenced terrain or cross-vendor claim.",
+      "integrationState": "Construction branch only; no new merge/push/main-resolution claim.",
+      "currentEvidence": [
+        "final-source-identity.json",
+        "backend-final.xml",
+        "frontend-final-verified.json",
+        "note-retirement.json"
+      ]
+    },
+    {
+      "id": "SCN-062",
+      "priority": "P2",
+      "baselineVerdict": "CODE_CONFIRMED",
+      "currentVerdict": "VERIFIED_SCOPED",
+      "correction": "Flare/CME lifetime derives from positive flash duration rather than a fixed extent inside the enlarged Sun; CME travel uses the display-radius extent. Both enlarged and physical scales retain events beyond their first frame and expire them later.",
+      "remaining": [],
+      "baselineEvidence": [
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/solar/solarFlares.ts:232-239",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/solar/solarFlares.ts:256-280",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/solar/solarFlares.test.ts:64-88"
+      ],
+      "baselineQualifiedBoundaries": "Current central suites pending. This confirms the scoped lifetime bug only. Capacity/sustained event-load behavior and separate solar coordinates are not certified by the lifetime tests.",
+      "integrationState": "Construction branch only; no new merge/push/main-resolution claim.",
+      "currentEvidence": [
+        "final-source-identity.json",
+        "backend-final.xml",
+        "frontend-final-verified.json",
+        "note-retirement.json"
+      ]
+    },
+    {
+      "id": "SCN-063",
+      "priority": "P2",
+      "baselineVerdict": "DECISION_REQUIRED",
+      "currentVerdict": "VERIFIED_SCOPED",
+      "correction": "Owned Horizons deadline/kill/reap verified; owner accepted POSIX support declaration.",
+      "remaining": [],
+      "baselineEvidence": [
+        {
+          "path": "backend/mission/ephemeris_service.py",
+          "lines": "139-142,1208-1274,1293-1337,1339-1375",
+          "detail": "Active owned transport, context-governed queue admission, single upstream deadline, bounded body loop and permit release only after response cleanup."
+        },
+        {
+          "path": "backend/sim/solar_http_transport.py",
+          "lines": "81-118,123-154",
+          "detail": "Deadline covers parent IPC waits; close kills/reaps and closes pipes; child has independent expiry."
+        },
+        {
+          "path": "backend/tests/test_horizons_owned_transport.py",
+          "lines": "165-206,245-283,286-300,340-357",
+          "detail": "Checks waitpid reports already reaped, both descriptors close before permit release, repeated DNS/header/body SIGKILL recovery, cancellation, exact/over-cap and short reads, and spawn failure recovery."
+        },
+        {
+          "path": "agent-notes/REMEDIATION_RUNTIME_REVIEW_2026-10-14.md",
+          "lines": "104",
+          "detail": "Earlier review explicitly corrected invented owner acceptance and requested terminable transport."
+        },
+        {
+          "path": "agent-notes/REMEDIATION_HORIZONS_TRANSPORT_2026-10-14.md",
+          "lines": "16-38,130-143",
+          "detail": "Later report supplies that implementation and supersedes the earlier starvation tradeoff wording."
+        }
+      ],
+      "baselineQualifiedBoundaries": [
+        "Central current-suite results pending. Kill/reap evidence is POSIX-scoped. Cancellation does not promise instant remote-capacity reuse before the admitted deadline/cleanup; the key invariant is no permanent live-child permit loss. Loopback child tests replace the HTTPS wire and do not certify live NASA availability or TLS certificates."
+      ],
+      "integrationState": "Construction branch only; no new merge/push/main-resolution claim.",
+      "currentEvidence": [
+        "final-source-identity.json",
+        "backend-final.xml",
+        "frontend-final-verified.json",
+        "note-retirement.json"
+      ]
+    },
+    {
+      "id": "SCN-064",
+      "priority": "P1",
+      "baselineVerdict": "CODE_CONFIRMED",
+      "currentVerdict": "VERIFIED_SCOPED",
+      "correction": "Transfer angle uses atan2 of cross magnitude and dot product, and near-collinear A recovery uses stable normalized-vector geometry, preserving velocity recovery near pi/zero.",
+      "remaining": [],
+      "baselineEvidence": [
+        "backend/trajectory/lambert.py:519",
+        "backend/trajectory/lambert.py:523",
+        "backend/trajectory/lambert.py:806",
+        "backend/tests/test_lambert_near_antiparallel.py:72 (analytic circular velocity controls)",
+        "backend/tests/test_lambert_near_antiparallel.py:80 (independent endpoint propagation)",
+        "backend/tests/test_lambert_near_antiparallel.py:92 (near-zero state recovery)",
+        "backend/tests/test_lambert_near_antiparallel.py:113 (collinear refusal retained)"
+      ],
+      "baselineQualifiedBoundaries": "Exact collinearity remains the declared SCN-045 capability boundary. Current frontend/backend suites are centrally pending; no tests were run for this audit.",
+      "integrationState": "Construction branch only; no new merge/push/main-resolution claim.",
+      "currentEvidence": [
+        "final-source-identity.json",
+        "backend-final.xml",
+        "frontend-final-verified.json",
+        "note-retirement.json"
+      ]
+    },
+    {
+      "id": "SCN-065",
+      "priority": "P2",
+      "baselineVerdict": "CODE_CONFIRMED",
+      "currentVerdict": "VERIFIED_SCOPED",
+      "correction": "SunController updates the AGN engine without requiring a foreground event. Stochastic scheduling keeps each full 120-second window, preserves overshoot, supports deterministic random injection and ignores nonpositive/nonfinite deltas.",
+      "remaining": [],
+      "baselineEvidence": [
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/sunController.ts:729-736",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts:196-199",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts:357-387",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/superluminal-modeling/smbhPropagation.ts:684-704",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/superluminal-modeling/eventsRemediation.test.ts:53-96",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/sunController.events.test.ts:49-59"
+      ],
+      "baselineQualifiedBoundaries": "Current central suites pending. Tests assert the same 102 bursts for a 240-second batch and 2400 smaller updates, empty-window preservation, idempotence, invalid deltas and a controller background flare with no foreground timeline. No observation-calibrated event-rate or capacity/soak claim.",
+      "integrationState": "Construction branch only; no new merge/push/main-resolution claim.",
+      "currentEvidence": [
+        "final-source-identity.json",
+        "backend-final.xml",
+        "frontend-final-verified.json",
+        "note-retirement.json"
+      ]
+    },
+    {
+      "id": "SCN-066",
+      "priority": "P2",
+      "baselineVerdict": "CODE_CONFIRMED",
+      "currentVerdict": "VERIFIED_SCOPED",
+      "correction": "Shared selection resolver gives named presets ownership of source, energy and model; explicit source/model changes clear the preset. A single experiment controller updates labels/help and dispatches the resolved selection. The ineffective observer UI control is removed and zero observer angle survives nullish defaults.",
+      "remaining": [],
+      "baselineEvidence": [
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts:65-75",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts:309-322",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts:347-352",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/app/experimentController.ts:21-59",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/main.ts:1217",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/superluminal-modeling/eventsRemediation.test.ts:33-47",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/app/experimentController.test.ts:9-20",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/tests/browser/experiment.spec.ts:24-34"
+      ],
+      "baselineQualifiedBoundaries": "Current central suites pending. index.html contains older initial energy-only preset help at line 321, but the active authoritative controller immediately replaces it at experimentController.ts:46-53; this is not evidence that runtime dispatch still uses the old contract. Compatibility setObserverFrameMode remains an intentional no-op API without the removed UI.",
+      "integrationState": "Construction branch only; no new merge/push/main-resolution claim.",
+      "currentEvidence": [
+        "final-source-identity.json",
+        "backend-final.xml",
+        "frontend-final-verified.json",
+        "note-retirement.json"
+      ]
+    },
+    {
+      "id": "SCN-067",
+      "priority": "P2",
+      "baselineVerdict": "CODE_CONFIRMED",
+      "currentVerdict": "VERIFIED_SCOPED",
+      "correction": "GW and H29 grids start hidden, suppress hidden animation, reset uniforms and visibility, detach on disposal and follow foreground event replacement/completion synchronously. Warp position conversion uses one AU conversion.",
+      "remaining": [],
+      "baselineEvidence": [
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/solar/gravitationalWaves.ts:187-218",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/solar/gravitationalWaves.ts:251-255",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/superluminal-modeling/warpSlipstreamVisuals.ts:124-146",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/superluminal-modeling/warpSlipstreamVisuals.ts:156-157",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/superluminal-modeling/warpSlipstreamVisuals.ts:182-186",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts:173-194",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts:414-421",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/sunController.ts:604-614",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/sunController.ts:902-911",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/superluminal-modeling/eventsRemediation.test.ts:100-130",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/sunController.events.test.ts:88-100"
+      ],
+      "baselineQualifiedBoundaries": "Current central suites pending. Unit lifecycle coverage is present; the later dated hardware result additionally reports zero reset draw calls (events note:152). This does not recertify all SCN-042 graphics or provide a fresh browser/GPU submission trace.",
+      "integrationState": "Construction branch only; no new merge/push/main-resolution claim.",
+      "currentEvidence": [
+        "final-source-identity.json",
+        "backend-final.xml",
+        "frontend-final-verified.json",
+        "note-retirement.json"
+      ]
+    },
+    {
+      "id": "SCN-068",
+      "priority": "P2",
+      "baselineVerdict": "CODE_CONFIRMED",
+      "currentVerdict": "VERIFIED_SCOPED",
+      "correction": "smbhPropagation explicitly imports SGR_A and metricFrameDragPeak defaults its third parameter to SGR_A.massG. A direct two-argument regression compares the explicit-mass call.",
+      "remaining": [],
+      "baselineEvidence": [
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/superluminal-modeling/smbhPropagation.ts:17-21",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/superluminal-modeling/smbhPropagation.ts:127-132",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/superluminal-modeling/eventsRemediation.test.ts:49-51"
+      ],
+      "baselineQualifiedBoundaries": "Current central suites pending; no remaining missing-reference defect found in the assigned default-mass path.",
+      "integrationState": "Construction branch only; no new merge/push/main-resolution claim.",
+      "currentEvidence": [
+        "final-source-identity.json",
+        "backend-final.xml",
+        "frontend-final-verified.json",
+        "note-retirement.json"
+      ]
+    },
+    {
+      "id": "SCN-069",
+      "priority": "P2",
+      "baselineVerdict": "CODE_CONFIRMED",
+      "currentVerdict": "VERIFIED_SCOPED",
+      "correction": "A single cited ICRS/J2000 source catalog rotates directions into fixed ECLIPJ2000 axes. Cen A/M87 intrinsic jet speeds derive consistently from apparent speed and assumed inclination; hypothetical and illustrative inputs are explicitly labeled and surfaced in experiment status.",
+      "remaining": [],
+      "baselineEvidence": [
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/superluminal-modeling/sourceCoordinates.ts:1-41",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts:79-91",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/superluminal-modeling/smbhPhysicsConstants.ts:87-94",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/superluminal-modeling/smbhPhysicsConstants.ts:108-129",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/superluminal-modeling/smbhPhysicsConstants.ts:148-181",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/app/experimentController.ts:23-28",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/superluminal-modeling/eventsRemediation.test.ts:133-155",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/superluminal-modeling/agnFrameOracle.test.ts:13-35"
+      ],
+      "baselineQualifiedBoundaries": "Current central suites pending. Source direction is not a jet-axis measurement; Maffei uses host-galaxy precision. No proper motion, observer parallax, aberration, true-of-date frame or empirical validation of illustrative jet assumptions follows. Retained provenance is inspected offline, not independently reacquired.",
+      "integrationState": "Construction branch only; no new merge/push/main-resolution claim.",
+      "currentEvidence": [
+        "final-source-identity.json",
+        "backend-final.xml",
+        "frontend-final-verified.json",
+        "note-retirement.json"
+      ]
+    },
+    {
+      "id": "SCN-070",
+      "priority": "P2",
+      "baselineVerdict": "CODE_CONFIRMED",
+      "currentVerdict": "VERIFIED_SCOPED",
+      "correction": "Recoverable read-only command failures produce command_failed without freezing propagation. A seek that may have mutated native state latches fatal state, blocks engine-reuse commands and cannot resume; telemetry failures clear stale published snapshots.",
+      "remaining": [],
+      "baselineEvidence": [
+        {
+          "path": "backend/server.py",
+          "lines": "4498-4516,4535-4545,4666-4674,4692-4731",
+          "detail": "Separate recoverable exception boundary and mutating seek fatal latch; failed engine reuse is rejected; outer worker failure clears stale state."
+        },
+        {
+          "path": "backend/tests/test_runtime_recovery_contract.py",
+          "lines": "50-71",
+          "detail": "Live runner continues after command error; fatal resume returns engine_unavailable."
+        },
+        {
+          "path": "backend/tests/test_runtime_review_regressions.py",
+          "lines": "445-522",
+          "detail": "Partial seek mutation cannot step/resume, reuse commands blocked, telemetry failures cannot advertise a stale healthy worker and same-frame Kuiper failure is fatal."
+        },
+        {
+          "path": "backend/tests/test_runtime_review_regressions.py",
+          "lines": "775-873",
+          "detail": "Actual REBOUND through ASGI proves read-only recovery versus partial native seek failure; no integration steps occur after fatal mutation."
+        }
+      ],
+      "baselineQualifiedBoundaries": [
+        "Central current-suite results pending. Native tests present in source are not a fresh native test pass. API/backend contract credit is independent of the intentionally unintegrated optional SimulationClient UI."
+      ],
+      "integrationState": "Construction branch only; no new merge/push/main-resolution claim.",
+      "currentEvidence": [
+        "final-source-identity.json",
+        "backend-final.xml",
+        "frontend-final-verified.json",
+        "note-retirement.json"
+      ]
+    },
+    {
+      "id": "SCN-071",
+      "priority": "P2",
+      "baselineVerdict": "CODE_CONFIRMED",
+      "currentVerdict": "VERIFIED_SCOPED",
+      "correction": "Cooperative ASGI accept/send/close deadlines, bounded idle/fair response handling and cancellation-safe ownership are implemented. Cleanup shields worker stop/join and socket tasks through repeated cancellation. Startup now occurs off the event loop while retaining the admission lease until initialization exits.",
+      "remaining": [],
+      "baselineEvidence": [
+        {
+          "path": "backend/server.py",
+          "lines": "4412-4428,4837-4843,4895-4920",
+          "detail": "Stop attempts cancellation, joins; shielded cleanup retains ownership and original cancellation provenance."
+        },
+        {
+          "path": "backend/server.py",
+          "lines": "5049-5101,5173-5202,5221-5277,5307-5311",
+          "detail": "Response drain count/time budget, snapshot-identity liveness, off-loop shielded initialization, FIRST_COMPLETED peer cleanup, and release only after owned serving returns."
+        },
+        {
+          "path": "backend/tests/test_runtime_recovery_contract.py",
+          "lines": "98-167,329-380",
+          "detail": "Startup, send/accept and idle deadlines reclaim cooperative session resources."
+        },
+        {
+          "path": "backend/tests/test_runtime_review_regressions.py",
+          "lines": "553-703,903-966,969-988,991-1099",
+          "detail": "Repeated cancellation during stop/join and delayed transport cleanup cannot release a live lease; stale versus fresh paused snapshots, response flood fairness, AnyIO provenance and peer task completion are covered."
+        },
+        {
+          "path": "backend/tests/test_ws_resource_contract.py",
+          "lines": "153-245",
+          "detail": "Real-engine first construction/initial reads occur on one non-event-loop thread; cancellation during blocked initialization retains admission until actual exit."
+        },
+        {
+          "path": "agent-notes/REMEDIATION_RUNTIME_REVIEW_2026-10-14.md",
+          "lines": "97-101",
+          "detail": "Explicitly excludes arbitrary native hangs and cancellation-suppressing transports from closure."
+        }
+      ],
+      "baselineQualifiedBoundaries": [
+        "Central current-suite results pending. There is still no hard initialization/native-operation deadline or forcible termination of SimulationRunner threads. A permanently hung native initialization/step or a transport that indefinitely suppresses cancellation can retain its slot indefinitely; bounded capacity recovery for such work would require process ownership or a different explicit contract.",
+        "The newer off-event-loop setup removes the old synchronous event-loop startup residual, but does not create a hard startup deadline. CODE_CONFIRMED is scoped to the cooperative ownership/deadline contract and targeted regressions, not unconditional termination or deployed saturation acceptance."
+      ],
+      "integrationState": "Construction branch only; no new merge/push/main-resolution claim.",
+      "currentEvidence": [
+        "final-source-identity.json",
+        "backend-final.xml",
+        "frontend-final-verified.json",
+        "note-retirement.json"
+      ]
+    },
+    {
+      "id": "SCN-072",
+      "priority": "P2",
+      "baselineVerdict": "CODE_CONFIRMED",
+      "currentVerdict": "VERIFIED_SCOPED",
+      "correction": "Core/HTTP planning enforce the inclusive [2447892.5,2469807.5] JDTDB interval for supplied/derived epochs, including mission dwell. MGA skips search-generated arrivals beyond the interval before charging work.",
+      "remaining": [],
+      "baselineEvidence": [
+        "backend/trajectory/contracts.py:17",
+        "backend/trajectory/contracts.py:36 (structured trajectory_epoch_out_of_range)",
+        "backend/trajectory/mga.py:285 (generated out-of-window legs skipped)",
+        "backend/mission/agents.py:323",
+        "backend/mission/agents.py:482 (actual return departure sent through planner)",
+        "backend/server.py:2468",
+        "backend/server.py:3840",
+        "backend/server.py:3954",
+        "backend/tests/test_planning_epoch_contract.py:9",
+        "backend/tests/test_planning_epoch_contract.py:35",
+        "backend/tests/test_planning_epoch_contract.py:50",
+        "backend/tests/test_planning_epoch_contract.py:69",
+        "backend/tests/test_planning_epoch_contract.py:76"
+      ],
+      "baselineQualifiedBoundaries": "Current behavior is more nuanced than the original note: malformed supplied epochs get typed 422; generated infeasible arrival candidates are skipped, and a completed search with no route returns trajectory_no_feasible_route. The interval is computational scope, not continuous scientific validation. Current frontend/backend suites are centrally pending; no tests were run for this audit.",
+      "integrationState": "Construction branch only; no new merge/push/main-resolution claim.",
+      "currentEvidence": [
+        "final-source-identity.json",
+        "backend-final.xml",
+        "frontend-final-verified.json",
+        "note-retirement.json"
+      ]
+    },
+    {
+      "id": "SCN-073",
+      "priority": "P2",
+      "baselineVerdict": "CODE_CONFIRMED",
+      "currentVerdict": "VERIFIED_SCOPED",
+      "correction": "Automatic redirects are disabled. Initial and every admitted redirect URL require HTTPS, exact NASA host, default/443 port, no credentials and no nonempty fragment. Redirects have one shared deadline, at most three hops and one reservation per outbound request; missing/duplicate Location is rejected.",
+      "remaining": [],
+      "baselineEvidence": [
+        {
+          "path": "backend/sim/solar_http_transport.py",
+          "lines": "137-139,172-181",
+          "detail": "Actual worker opener disables urllib automatic redirects and exposes status/headers to the owner."
+        },
+        {
+          "path": "backend/mission/ephemeris_service.py",
+          "lines": "145-154,1225-1258,1263-1285",
+          "detail": "Validates initial/final/redirect URLs, reserves initial request after admission, validates target before the next outbound hop, charges each hop and preserves the absolute deadline."
+        },
+        {
+          "path": "backend/tests/test_horizons_redirect_contract.py",
+          "lines": "17-85",
+          "detail": "Actual urllib boundary with controlled HTTPS handler rejects escapes, follows allowed relative redirect and enforces reservations/hop cap."
+        },
+        {
+          "path": "backend/tests/test_horizons_owned_transport.py",
+          "lines": "220-242,303-337",
+          "detail": "Same policy through real children: forbidden host/scheme/port/credential/fragment, all redirect statuses, missing/duplicate Location, no-request budget, loops and one deadline."
+        }
+      ],
+      "baselineQualifiedBoundaries": [
+        "Central current-suite results pending. Controlled HTTPS-handler/loopback tests establish redirect ownership and policy, not live NASA TLS/certificate or production network acceptance."
+      ],
+      "integrationState": "Construction branch only; no new merge/push/main-resolution claim.",
+      "currentEvidence": [
+        "final-source-identity.json",
+        "backend-final.xml",
+        "frontend-final-verified.json",
+        "note-retirement.json"
+      ]
+    },
+    {
+      "id": "SCN-074",
+      "priority": "P2",
+      "baselineVerdict": "CODE_CONFIRMED",
+      "currentVerdict": "VERIFIED_SCOPED",
+      "correction": "Each explicit-element-epoch fallback body is inserted in an evolved active-system copy at its declared epoch, integrated back to the common seed epoch, then integrated to the requested epoch. Approximate quality and exact-configuration sampled caps survive serialization.",
+      "remaining": [],
+      "baselineEvidence": [
+        "backend/sim/rebound_nbody.py:354 (caps only for matching orbit/IAS15/active model)",
+        "backend/sim/rebound_nbody.py:369",
+        "backend/sim/rebound_nbody.py:408",
+        "backend/sim/rebound_nbody.py:416",
+        "backend/sim/rebound_nbody.py:436",
+        "backend/sim/rebound_nbody.py:450",
+        "backend/sim/rebound_nbody.py:490",
+        "backend/tests/test_fallback_ephemeris_accuracy.py:16 (all 13 body caps)",
+        "backend/tests/test_fallback_ephemeris_accuracy.py:22 (four independent epochs)",
+        "backend/tests/test_fallback_ephemeris_accuracy.py:44 (modified inputs lose canonical claims)",
+        "backend/tests/test_ephemeris_remediation.py:183",
+        "backend/tests/test_ephemeris_remediation.py:204"
+      ],
+      "baselineQualifiedBoundaries": "Claims cover the 13 named canonical fallback bodies at sampled epochs under IAS15/full active-body conditions. They are not continuous bounds or guarantees for altered inputs/other fallback bodies. Current frontend/backend suites are centrally pending; no tests were run for this audit.",
+      "integrationState": "Construction branch only; no new merge/push/main-resolution claim.",
+      "currentEvidence": [
+        "final-source-identity.json",
+        "backend-final.xml",
+        "frontend-final-verified.json",
+        "note-retirement.json"
+      ]
+    },
+    {
+      "id": "SCN-075",
+      "priority": "P1",
+      "baselineVerdict": "PARTIAL",
+      "currentVerdict": "VERIFIED_SCOPED",
+      "correction": "Absolute hemispheric/cycle Hale polarity and model/cache identity corrected with literal independent expectations.",
+      "remaining": [],
+      "baselineEvidence": [
+        "backend/sim/solar_active_regions.py:17",
+        "backend/sim/solar_active_regions.py:34-50",
+        "backend/sim/solar_active_regions.py:58-91",
+        "backend/sim/solar_physics.py:232-244",
+        "backend/sim/pfss_magnetogram.py:145-155",
+        "backend/tests/test_solar_region_consistency.py:17-21",
+        "backend/tests/test_solar_region_consistency.py:240-276",
+        "backend/tests/test_solar_region_consistency.py:279-306",
+        "/home/nomad/ai/projects/worktrees/solar-five-audit-bugs-v2/backend/sim/solar_active_regions.py:17",
+        "/home/nomad/ai/projects/worktrees/solar-five-audit-bugs-v2/backend/sim/solar_active_regions.py:47",
+        "/home/nomad/ai/projects/worktrees/solar-five-audit-bugs-v2/backend/tests/test_solar_region_consistency.py:238-273"
+      ],
+      "baselineQualifiedBoundaries": [
+        "At solar_active_regions.py:47, Cycle 25 leading polarity is seeded as -hemisphere: northern regions become negative-leading and southern positive-leading, opposite the absolute Cycle 25 convention documented by the local correction's retained reference. Both PFSS and coronal layers consistently inherit the wrong sign.",
+        "Landed test at test_solar_region_consistency.py:243 explicitly injects -hemisphere and line 250 expects the same reversed sign; current generic green gates do not independently catch the defect.",
+        "Review/integrate the local correction and its literal Cycle 24/25/26 hemispheric expectations, region-model identity bump and cache-identity changes. Current central passes apply to bb29d4b, not this local fix.",
+        "FIX_LOCAL_ONLY applies to the remaining absolute-sign repair; the original continuity/spatial-consistency portion is already landed. Synthetic emergence/rotation assumptions are still not measured active-region reconstruction."
+      ],
+      "integrationState": "Construction branch only; no new merge/push/main-resolution claim.",
+      "currentEvidence": [
+        "final-source-identity.json",
+        "backend-final.xml",
+        "frontend-final-verified.json",
+        "note-retirement.json"
+      ]
+    },
+    {
+      "id": "SCN-076",
+      "priority": "P2",
+      "baselineVerdict": "CODE_CONFIRMED",
+      "currentVerdict": "VERIFIED_SCOPED",
+      "correction": "PR drag restores the radial term: -beta*GM/(r^2*c)*(v_r*r_hat+v), independently separated from static outward SRP.",
+      "remaining": [],
+      "baselineEvidence": [
+        "backend/sim/radiation_pressure.py:102",
+        "backend/sim/radiation_pressure.py:134",
+        "backend/sim/radiation_pressure.py:138",
+        "backend/tests/test_ephemeris_remediation.py:51 (independent polar components)",
+        "backend/tests/test_ephemeris_remediation.py:53 (circular, inward/outward radial and eccentric cases)",
+        "backend/tests/test_ephemeris_remediation.py:64 (dissipated-power invariant)"
+      ],
+      "baselineQualifiedBoundaries": "Formula repair does not activate PR drag in production or constitute a broader radiation-force validation. Current frontend/backend suites are centrally pending; no tests were run for this audit.",
+      "integrationState": "Construction branch only; no new merge/push/main-resolution claim.",
+      "currentEvidence": [
+        "final-source-identity.json",
+        "backend-final.xml",
+        "frontend-final-verified.json",
+        "note-retirement.json"
+      ]
+    },
+    {
+      "id": "SCN-077",
+      "priority": "P2",
+      "baselineVerdict": "CODE_CONFIRMED",
+      "currentVerdict": "VERIFIED_SCOPED",
+      "correction": "Tudat chunks continue from integrated boundary states in either direction with one SPICE seed per initialization, signed steps/exact termination and TDB metadata. Later repairs support current SDK namespace, explicit Saturn gravity, Pluto-system identity, bounded transactional seeks and fail-closed solver histories.",
+      "remaining": [],
+      "baselineEvidence": [
+        "backend/sim/tudatpy_hooks.py:76 (SDK imports)",
+        "backend/sim/tudatpy_hooks.py:295 (transactional initialization)",
+        "backend/sim/tudatpy_hooks.py:354 (Saturn gravity)",
+        "backend/sim/tudatpy_hooks.py:421 (TDB state contract)",
+        "backend/sim/tudatpy_hooks.py:514 (transactional bounded seeks)",
+        "backend/sim/tudatpy_hooks.py:704 (continuous boundary handoff)",
+        "backend/sim/tudatpy_hooks.py:714 (initial-only SPICE seed)",
+        "backend/sim/tudatpy_hooks.py:735 (signed integration/exact termination)",
+        "backend/sim/tudatpy_hooks.py:759 (validate successful complete finite history)",
+        "backend/tests/test_tudat_native_runtime.py:16 (require-native mode fails instead of skipping)",
+        "backend/tests/test_tudat_native_runtime.py:41 (ten-body advance/reverse)",
+        "backend/tests/test_tudat_native_runtime.py:61 (real harmonics and single-seed gate)",
+        "backend/tests/test_tudat_science_review.py:85",
+        "backend/tests/test_tudat_science_review.py:114",
+        "agent-notes/REMEDIATION_NATIVE_TUDAT_2026-10-14.md:48"
+      ],
+      "baselineQualifiedBoundaries": "Native acceptance is dated/version-bounded (TudatPy 1.0.0, resources 2.4). Old SDK fallback unexecuted; default-suite optional skips do not renew native acceptance. Linear interpolation, force truncation, kernel coverage and approximate Pluto-system representation remain explicit limitations. Current frontend/backend suites are centrally pending; no tests were run for this audit.",
+      "integrationState": "Construction branch only; no new merge/push/main-resolution claim.",
+      "currentEvidence": [
+        "final-source-identity.json",
+        "backend-final.xml",
+        "frontend-final-verified.json",
+        "note-retirement.json"
+      ]
+    },
+    {
+      "id": "SCN-078",
+      "priority": "P1",
+      "baselineVerdict": "CODE_CONFIRMED",
+      "currentVerdict": "VERIFIED_SCOPED",
+      "correction": "Mass closure consumes four chronological impulsive circular-parking patched-conic burns: outbound departure, target capture, target departure and return capture. Cargo loads before burn index 2, after target capture.",
+      "remaining": [],
+      "baselineEvidence": [
+        "backend/mission/propulsion.py:18 (unsupported mass/radius rejection)",
+        "backend/mission/propulsion.py:33 (energy-derived burn)",
+        "backend/mission/propulsion.py:42 (four-event schedule)",
+        "backend/mission/propulsion.py:62 (chronology and assumptions)",
+        "backend/mission/agents.py:527 (planner uses schedule)",
+        "backend/mission/agents.py:557 (risk uses propulsive burns)",
+        "backend/tests/test_mission_propulsion_contract.py:14",
+        "backend/tests/test_mission_propulsion_contract.py:48 (independent specific-energy cases)",
+        "backend/tests/test_mission_propulsion_contract.py:60 (four burns and cargo ordering)",
+        "backend/mission/schemas.py:116 (200 km default)"
+      ],
+      "baselineQualifiedBoundaries": "Model assumes aligned circular parking planes and cargo supplied in target orbit; no surface ascent/descent, finite thrust, plane changes or aerocapture. Unsupported body mass/radius is rejected. Current frontend/backend suites are centrally pending; no tests were run for this audit.",
+      "integrationState": "Construction branch only; no new merge/push/main-resolution claim.",
+      "currentEvidence": [
+        "final-source-identity.json",
+        "backend-final.xml",
+        "frontend-final-verified.json",
+        "note-retirement.json"
+      ]
+    },
+    {
+      "id": "SCN-079",
+      "priority": "P2",
+      "baselineVerdict": "CODE_CONFIRMED",
+      "currentVerdict": "VERIFIED_SCOPED",
+      "correction": "EPO verifier reads recommendation.verification; sample objectives are supported; runner converts typed unsupported requests to failed episodes; smoke exits nonzero for empty, failed or exceptional totals.",
+      "remaining": [],
+      "baselineEvidence": [
+        "backend/mission/epo/verifier.py:30",
+        "backend/mission/epo/verifier.py:48",
+        "backend/mission/epo/runners.py:34",
+        "backend/mission/epo/smoke_test.py:50",
+        "backend/tests/test_epo_smoke_contract.py:11 (conflicting top-level/nested verification)",
+        "backend/tests/test_epo_smoke_contract.py:21 (sample objective policy)",
+        "backend/tests/test_epo_smoke_contract.py:27 (real known-pass/known-fail missions)",
+        "backend/tests/test_epo_smoke_contract.py:43 (process exit policy)",
+        "agent-notes/REMEDIATION_MISSION_2026-10-14.md:51 (historical 0/30 feasible, exit 1)"
+      ],
+      "baselineQualifiedBoundaries": "The documented default campaign was 0/30 feasible with exit 1; it is retained as dated failure evidence, not a successful campaign or a fresh run. Current frontend/backend suites are centrally pending; no tests were run for this audit.",
+      "integrationState": "Construction branch only; no new merge/push/main-resolution claim.",
+      "currentEvidence": [
+        "final-source-identity.json",
+        "backend-final.xml",
+        "frontend-final-verified.json",
+        "note-retirement.json"
+      ]
+    },
+    {
+      "id": "SCN-080",
+      "priority": "P2",
+      "baselineVerdict": "CODE_CONFIRMED",
+      "currentVerdict": "VERIFIED_SCOPED",
+      "correction": "Frontend/backend share secular coefficient data. Backend differentiates changing elements and rotating bases, emits approximate barycenter/model metadata and rejects extrapolation outside supported 1900-2050 interval.",
+      "remaining": [],
+      "baselineEvidence": [
+        "backend/data/secular_planets.py:5",
+        "backend/data/secular_planets.py:17",
+        "src/data/planets.ts:1",
+        "backend/mission/orbital.py:108 (full state derivative)",
+        "backend/mission/orbital.py:143",
+        "backend/mission/orbital.py:153",
+        "backend/mission/ephemeris_service.py:918 (range rejection)",
+        "backend/mission/ephemeris_service.py:938 (metadata)",
+        "backend/data/ephemerides/planet_secular_model.json:5 (Pluto provenance)",
+        "backend/data/ephemerides/planet_secular_model.json:10 (supported interval)",
+        "backend/data/ephemerides/planet_secular_model.json:21 (sampled-only accuracy)",
+        "backend/tests/test_secular_ephemeris.py:22 (nine targets/five independent epochs)",
+        "backend/tests/test_secular_ephemeris.py:41 (range)",
+        "backend/tests/test_secular_ephemeris.py:49 (finite-difference state derivative)"
+      ],
+      "baselineQualifiedBoundaries": "These are sampled approximate-model gates, not continuous precision mission ephemerides. Earth is EMB; Pluto legacy coefficients are separately gated against target 9. Broad direct-Kepler edge defects are recorded under SCN-022 rather than treating nine low-e planet tests as universal solver certification. Current frontend/backend suites are centrally pending; no tests were run for this audit.",
+      "integrationState": "Construction branch only; no new merge/push/main-resolution claim.",
+      "currentEvidence": [
+        "final-source-identity.json",
+        "backend-final.xml",
+        "frontend-final-verified.json",
+        "note-retirement.json"
+      ]
+    },
+    {
+      "id": "SCN-081",
+      "priority": "P2",
+      "baselineVerdict": "CODE_CONFIRMED",
+      "currentVerdict": "VERIFIED_SCOPED",
+      "correction": "Generic moon node direction is -sign(cos(native inclination)), zero at polar inclination, with measured signed overrides retained.",
+      "remaining": [],
+      "baselineEvidence": [
+        "src/sim/catalog.ts:505",
+        "src/sim/catalog.ts:515",
+        "src/sim/catalog.ts:520",
+        "src/sim/catalog.ts:522",
+        "src/sim/catalog.ts:831 (native source-frame elements)",
+        "src/sim/secularRemediation.test.ts:43",
+        "src/sim/secularRemediation.test.ts:60 (independent Carme/Himalia element slopes)",
+        "src/sim/secularRemediation.test.ts:74 (prograde/retrograde/polar synthetic cases)",
+        "src/sim/secularRemediation.test.ts:81 (catalog signs/Triton override)"
+      ],
+      "baselineQualifiedBoundaries": "Representative nodal direction/rate validation does not establish full position accuracy for every moon. SCN-043 completeness remains assigned to the separate agent. Current frontend/backend suites are centrally pending; no tests were run for this audit.",
+      "integrationState": "Construction branch only; no new merge/push/main-resolution claim.",
+      "currentEvidence": [
+        "final-source-identity.json",
+        "backend-final.xml",
+        "frontend-final-verified.json",
+        "note-retirement.json"
+      ]
+    },
+    {
+      "id": "SCN-082",
+      "priority": "P2",
+      "baselineVerdict": "CODE_CONFIRMED",
+      "currentVerdict": "VERIFIED_SCOPED",
+      "correction": "Pinned catalog conversion retains source periods, observed diameter/albedo and unknown spectral classification. It does not infer taxonomy from semimajor axis, conflate ambiguous X/E with metallic M, or estimate diameter without known albedo. Missing albedo and taxonomy decode to null/Unknown, and visible status distinguishes integrity from scientific fidelity.",
+      "remaining": [],
+      "baselineEvidence": [
+        "scripts/fetch_jpl_sbdb.py:38-47: phase-1 requests source albedo/spectra and full-prec=true",
+        "scripts/build_asteroid_phase1_dataset.py:32-71,95-119: explicit unknown taxonomy, conservative visual families, diameter coefficient 1329 and source physical fields",
+        "scripts/build_asteroid_phase1_dataset.py:130-138,177-180,195-196: unknown encoding, SBDB-only diameters for committed population, quantization and fidelity disclosures",
+        "src/sim/phase1AsteroidCatalog.ts:249-278,313-319,442-459: source conversion, null albedo/Unknown, descriptive taxonomy coverage rather than fabricated completeness",
+        "src/frontend/features/asteroids/catalogSourceStatus.ts:23-30: integrity checked, nonrepresentative prefix, scientific accuracy not certified",
+        "scripts/test_catalog_generation.py:28-55,119-171: unknowns independent of belt radius, full source precision, ambiguous X and full-artifact source comparisons",
+        "src/sim/phase1AsteroidCatalog.test.ts:366-380: unknown fields remain null/255 while honest homogeneous prefix stays accepted",
+        "scripts/phase1-catalog-artifacts.test.mjs:16-24: actual known-class coverage 1367/100000, 48667 unknown displayed rows, 85 unknown displayed albedos",
+        "public/data/asteroid-phase1/asteroid_phase1_main_100000.meta.json:18-26,59-73,102-108: honest fidelity and actual stored/displayed unknown distributions"
+      ],
+      "baselineQualifiedBoundaries": [
+        "Current tests centrally pending. This repairs synthetic fields in the pinned real-catalog path; intentionally procedural fallback taxonomy/albedo and illustrative colors/irregularity remain disclosed visualization behavior, not new observations. Integrity hashes do not certify orbital science."
+      ],
+      "integrationState": "Construction branch only; no new merge/push/main-resolution claim.",
+      "currentEvidence": [
+        "final-source-identity.json",
+        "backend-final.xml",
+        "frontend-final-verified.json",
+        "note-retirement.json"
+      ]
+    },
+    {
+      "id": "SCN-083",
+      "priority": "P2",
+      "baselineVerdict": "CODE_CONFIRMED",
+      "currentVerdict": "VERIFIED_SCOPED",
+      "correction": "Cited IAU fixed-J2000 poles and signed mean prime-meridian rates replace obliquity-derived spin. Equatorial-to-ecliptic adaptation preserves raw orbital obliquity separately, and production applyBodySpin applies direction once around the cited local north.",
+      "remaining": [],
+      "baselineEvidence": [
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/data/planetaryRotation.ts:28-39",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/data/planetaryRotation.ts:41-77",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/sim/catalog.ts:759-769",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/main.ts:361-373",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/main.ts:769-786",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/planetary/bodySpin.ts:10-19",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/planetary/planetRotation.test.ts:18-74"
+      ],
+      "baselineQualifiedBoundaries": "Current central suites pending. Independent CSPICE fixture checks all nine poles and signed angular velocities, and finite production spin sweeps cover Earth/Venus/Uranus/Pluto. Fixed J2000/mean-rate presentation does not establish full PCK evolution, EOP/ITRF Earth orientation or absolute texture meridians.",
+      "integrationState": "Construction branch only; no new merge/push/main-resolution claim.",
+      "currentEvidence": [
+        "final-source-identity.json",
+        "backend-final.xml",
+        "frontend-final-verified.json",
+        "note-retirement.json"
+      ]
+    }
+  ]
+}

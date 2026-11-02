@@ -1,0 +1,5 @@
+step1ab_B1 vs step1ab_B2: canvas: meanAbs=1.15 frac>24=0.000 | sunbox: meanAbs=1.92 frac>24=0.000 | sunbox meanRGB [252, 225, 166] -> [252, 226, 166]
+step1ab_B2 vs step1ab_A1: canvas: meanAbs=23.02 frac>24=0.217 | sunbox: meanAbs=18.65 frac>24=0.196 | sunbox meanRGB [252, 226, 166] -> [255, 245, 199]
+step1ab_A1 vs step1ab_A2: canvas: meanAbs=0.91 frac>24=0.000 | sunbox: meanAbs=1.72 frac>24=0.000 | sunbox meanRGB [255, 245, 199] -> [255, 246, 199]
+step1ab_A2 vs step1ab_A3field: canvas: meanAbs=1.35 frac>24=0.007 | sunbox: meanAbs=1.72 frac>24=0.001 | sunbox meanRGB [255, 246, 199] -> [255, 246, 199]
+step1ab_B1 vs step1ab_A2: canvas: meanAbs=23.64 frac>24=0.220 | sunbox: meanAbs=19.23 frac>24=0.203 | sunbox meanRGB [252, 225, 166] -> [255, 246, 199]

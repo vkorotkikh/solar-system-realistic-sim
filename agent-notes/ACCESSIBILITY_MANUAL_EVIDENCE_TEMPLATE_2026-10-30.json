@@ -1,0 +1,438 @@
+{
+  "record_type": "UNEXECUTED_MANUAL_PROTOCOL_TEMPLATE",
+  "status": "NOT_RUN",
+  "application_commit": null,
+  "application_url": null,
+  "deployed_url": null,
+  "date_time": null,
+  "operator": null,
+  "allowed_outcomes": [
+    "PASS",
+    "FAIL",
+    "NOT_RUN"
+  ],
+  "lanes": [
+    {
+      "id": "nvda_chrome",
+      "required_environment": "Real Windows with NVDA/Chrome frontend; backend remains supported Linux/WSL",
+      "status": "NOT_RUN",
+      "reason": "No manual device/AT session supplied or performed",
+      "hardware": null,
+      "os_version": null,
+      "browser_version": null,
+      "assistive_technology_version": null,
+      "at_settings_keyboard_layout": null,
+      "native_zoom_percent": null,
+      "text_scaling": null,
+      "viewport_orientation": null,
+      "cases": [
+        {
+          "id": "desktop_discovery",
+          "outcome": "NOT_RUN",
+          "actions": [],
+          "expected_observation": null,
+          "actual_observation": null,
+          "spoken_output": null,
+          "focus_destination": null,
+          "evidence_paths": [],
+          "reason": "Not executed; see manual-protocol.md"
+        },
+        {
+          "id": "mobile_drawer_closed",
+          "outcome": "NOT_RUN",
+          "actions": [],
+          "expected_observation": null,
+          "actual_observation": null,
+          "spoken_output": null,
+          "focus_destination": null,
+          "evidence_paths": [],
+          "reason": "Not executed; see manual-protocol.md"
+        },
+        {
+          "id": "mobile_drawer_open",
+          "outcome": "NOT_RUN",
+          "actions": [],
+          "expected_observation": null,
+          "actual_observation": null,
+          "spoken_output": null,
+          "focus_destination": null,
+          "evidence_paths": [],
+          "reason": "Not executed; see manual-protocol.md"
+        },
+        {
+          "id": "search_and_announcements",
+          "outcome": "NOT_RUN",
+          "actions": [],
+          "expected_observation": null,
+          "actual_observation": null,
+          "spoken_output": null,
+          "focus_destination": null,
+          "evidence_paths": [],
+          "reason": "Not executed; see manual-protocol.md"
+        },
+        {
+          "id": "real_app_recovery",
+          "outcome": "NOT_RUN",
+          "actions": [],
+          "expected_observation": null,
+          "actual_observation": null,
+          "spoken_output": null,
+          "focus_destination": null,
+          "evidence_paths": [],
+          "reason": "Not executed; see manual-protocol.md"
+        },
+        {
+          "id": "native_zoom_and_text",
+          "outcome": "NOT_RUN",
+          "actions": [],
+          "expected_observation": null,
+          "actual_observation": null,
+          "spoken_output": null,
+          "focus_destination": null,
+          "evidence_paths": [],
+          "reason": "Not executed; see manual-protocol.md"
+        },
+        {
+          "id": "physical_touch",
+          "outcome": "NOT_RUN",
+          "actions": [],
+          "expected_observation": null,
+          "actual_observation": null,
+          "spoken_output": null,
+          "focus_destination": null,
+          "evidence_paths": [],
+          "reason": "Not executed; see manual-protocol.md"
+        },
+        {
+          "id": "axe_incomplete_review",
+          "outcome": "NOT_RUN",
+          "actions": [],
+          "expected_observation": null,
+          "actual_observation": null,
+          "spoken_output": null,
+          "focus_destination": null,
+          "evidence_paths": [],
+          "reason": "Not executed; see manual-protocol.md"
+        }
+      ]
+    },
+    {
+      "id": "voiceover_safari_macos",
+      "required_environment": "Real Mac with VoiceOver/Safari",
+      "status": "NOT_RUN",
+      "reason": "No manual device/AT session supplied or performed",
+      "hardware": null,
+      "os_version": null,
+      "browser_version": null,
+      "assistive_technology_version": null,
+      "at_settings_keyboard_layout": null,
+      "native_zoom_percent": null,
+      "text_scaling": null,
+      "viewport_orientation": null,
+      "cases": [
+        {
+          "id": "desktop_discovery",
+          "outcome": "NOT_RUN",
+          "actions": [],
+          "expected_observation": null,
+          "actual_observation": null,
+          "spoken_output": null,
+          "focus_destination": null,
+          "evidence_paths": [],
+          "reason": "Not executed; see manual-protocol.md"
+        },
+        {
+          "id": "mobile_drawer_closed",
+          "outcome": "NOT_RUN",
+          "actions": [],
+          "expected_observation": null,
+          "actual_observation": null,
+          "spoken_output": null,
+          "focus_destination": null,
+          "evidence_paths": [],
+          "reason": "Not executed; see manual-protocol.md"
+        },
+        {
+          "id": "mobile_drawer_open",
+          "outcome": "NOT_RUN",
+          "actions": [],
+          "expected_observation": null,
+          "actual_observation": null,
+          "spoken_output": null,
+          "focus_destination": null,
+          "evidence_paths": [],
+          "reason": "Not executed; see manual-protocol.md"
+        },
+        {
+          "id": "search_and_announcements",
+          "outcome": "NOT_RUN",
+          "actions": [],
+          "expected_observation": null,
+          "actual_observation": null,
+          "spoken_output": null,
+          "focus_destination": null,
+          "evidence_paths": [],
+          "reason": "Not executed; see manual-protocol.md"
+        },
+        {
+          "id": "real_app_recovery",
+          "outcome": "NOT_RUN",
+          "actions": [],
+          "expected_observation": null,
+          "actual_observation": null,
+          "spoken_output": null,
+          "focus_destination": null,
+          "evidence_paths": [],
+          "reason": "Not executed; see manual-protocol.md"
+        },
+        {
+          "id": "native_zoom_and_text",
+          "outcome": "NOT_RUN",
+          "actions": [],
+          "expected_observation": null,
+          "actual_observation": null,
+          "spoken_output": null,
+          "focus_destination": null,
+          "evidence_paths": [],
+          "reason": "Not executed; see manual-protocol.md"
+        },
+        {
+          "id": "physical_touch",
+          "outcome": "NOT_RUN",
+          "actions": [],
+          "expected_observation": null,
+          "actual_observation": null,
+          "spoken_output": null,
+          "focus_destination": null,
+          "evidence_paths": [],
+          "reason": "Not executed; see manual-protocol.md"
+        },
+        {
+          "id": "axe_incomplete_review",
+          "outcome": "NOT_RUN",
+          "actions": [],
+          "expected_observation": null,
+          "actual_observation": null,
+          "spoken_output": null,
+          "focus_destination": null,
+          "evidence_paths": [],
+          "reason": "Not executed; see manual-protocol.md"
+        }
+      ]
+    },
+    {
+      "id": "physical_touch",
+      "required_environment": "Real phone/tablet; record actual browser and AT state",
+      "status": "NOT_RUN",
+      "reason": "No manual device/AT session supplied or performed",
+      "hardware": null,
+      "os_version": null,
+      "browser_version": null,
+      "assistive_technology_version": null,
+      "at_settings_keyboard_layout": null,
+      "native_zoom_percent": null,
+      "text_scaling": null,
+      "viewport_orientation": null,
+      "cases": [
+        {
+          "id": "desktop_discovery",
+          "outcome": "NOT_RUN",
+          "actions": [],
+          "expected_observation": null,
+          "actual_observation": null,
+          "spoken_output": null,
+          "focus_destination": null,
+          "evidence_paths": [],
+          "reason": "Not executed; see manual-protocol.md"
+        },
+        {
+          "id": "mobile_drawer_closed",
+          "outcome": "NOT_RUN",
+          "actions": [],
+          "expected_observation": null,
+          "actual_observation": null,
+          "spoken_output": null,
+          "focus_destination": null,
+          "evidence_paths": [],
+          "reason": "Not executed; see manual-protocol.md"
+        },
+        {
+          "id": "mobile_drawer_open",
+          "outcome": "NOT_RUN",
+          "actions": [],
+          "expected_observation": null,
+          "actual_observation": null,
+          "spoken_output": null,
+          "focus_destination": null,
+          "evidence_paths": [],
+          "reason": "Not executed; see manual-protocol.md"
+        },
+        {
+          "id": "search_and_announcements",
+          "outcome": "NOT_RUN",
+          "actions": [],
+          "expected_observation": null,
+          "actual_observation": null,
+          "spoken_output": null,
+          "focus_destination": null,
+          "evidence_paths": [],
+          "reason": "Not executed; see manual-protocol.md"
+        },
+        {
+          "id": "real_app_recovery",
+          "outcome": "NOT_RUN",
+          "actions": [],
+          "expected_observation": null,
+          "actual_observation": null,
+          "spoken_output": null,
+          "focus_destination": null,
+          "evidence_paths": [],
+          "reason": "Not executed; see manual-protocol.md"
+        },
+        {
+          "id": "native_zoom_and_text",
+          "outcome": "NOT_RUN",
+          "actions": [],
+          "expected_observation": null,
+          "actual_observation": null,
+          "spoken_output": null,
+          "focus_destination": null,
+          "evidence_paths": [],
+          "reason": "Not executed; see manual-protocol.md"
+        },
+        {
+          "id": "physical_touch",
+          "outcome": "NOT_RUN",
+          "actions": [],
+          "expected_observation": null,
+          "actual_observation": null,
+          "spoken_output": null,
+          "focus_destination": null,
+          "evidence_paths": [],
+          "reason": "Not executed; see manual-protocol.md"
+        },
+        {
+          "id": "axe_incomplete_review",
+          "outcome": "NOT_RUN",
+          "actions": [],
+          "expected_observation": null,
+          "actual_observation": null,
+          "spoken_output": null,
+          "focus_destination": null,
+          "evidence_paths": [],
+          "reason": "Not executed; see manual-protocol.md"
+        }
+      ]
+    },
+    {
+      "id": "voiceover_touch_ios_optional",
+      "required_environment": "Optional real iOS/iPadOS with VoiceOver/Safari",
+      "status": "NOT_RUN",
+      "reason": "No manual device/AT session supplied or performed",
+      "hardware": null,
+      "os_version": null,
+      "browser_version": null,
+      "assistive_technology_version": null,
+      "at_settings_keyboard_layout": null,
+      "native_zoom_percent": null,
+      "text_scaling": null,
+      "viewport_orientation": null,
+      "cases": [
+        {
+          "id": "desktop_discovery",
+          "outcome": "NOT_RUN",
+          "actions": [],
+          "expected_observation": null,
+          "actual_observation": null,
+          "spoken_output": null,
+          "focus_destination": null,
+          "evidence_paths": [],
+          "reason": "Not executed; see manual-protocol.md"
+        },
+        {
+          "id": "mobile_drawer_closed",
+          "outcome": "NOT_RUN",
+          "actions": [],
+          "expected_observation": null,
+          "actual_observation": null,
+          "spoken_output": null,
+          "focus_destination": null,
+          "evidence_paths": [],
+          "reason": "Not executed; see manual-protocol.md"
+        },
+        {
+          "id": "mobile_drawer_open",
+          "outcome": "NOT_RUN",
+          "actions": [],
+          "expected_observation": null,
+          "actual_observation": null,
+          "spoken_output": null,
+          "focus_destination": null,
+          "evidence_paths": [],
+          "reason": "Not executed; see manual-protocol.md"
+        },
+        {
+          "id": "search_and_announcements",
+          "outcome": "NOT_RUN",
+          "actions": [],
+          "expected_observation": null,
+          "actual_observation": null,
+          "spoken_output": null,
+          "focus_destination": null,
+          "evidence_paths": [],
+          "reason": "Not executed; see manual-protocol.md"
+        },
+        {
+          "id": "real_app_recovery",
+          "outcome": "NOT_RUN",
+          "actions": [],
+          "expected_observation": null,
+          "actual_observation": null,
+          "spoken_output": null,
+          "focus_destination": null,
+          "evidence_paths": [],
+          "reason": "Not executed; see manual-protocol.md"
+        },
+        {
+          "id": "native_zoom_and_text",
+          "outcome": "NOT_RUN",
+          "actions": [],
+          "expected_observation": null,
+          "actual_observation": null,
+          "spoken_output": null,
+          "focus_destination": null,
+          "evidence_paths": [],
+          "reason": "Not executed; see manual-protocol.md"
+        },
+        {
+          "id": "physical_touch",
+          "outcome": "NOT_RUN",
+          "actions": [],
+          "expected_observation": null,
+          "actual_observation": null,
+          "spoken_output": null,
+          "focus_destination": null,
+          "evidence_paths": [],
+          "reason": "Not executed; see manual-protocol.md"
+        },
+        {
+          "id": "axe_incomplete_review",
+          "outcome": "NOT_RUN",
+          "actions": [],
+          "expected_observation": null,
+          "actual_observation": null,
+          "spoken_output": null,
+          "focus_destination": null,
+          "evidence_paths": [],
+          "reason": "Not executed; see manual-protocol.md"
+        }
+      ]
+    }
+  ],
+  "axe_incomplete_dispositions": [],
+  "limitations": [
+    "This file is a blank recording template, not evidence.",
+    "Absent environments remain NOT_RUN.",
+    "No deployed URL or manual certification is inferred."
+  ]
+}

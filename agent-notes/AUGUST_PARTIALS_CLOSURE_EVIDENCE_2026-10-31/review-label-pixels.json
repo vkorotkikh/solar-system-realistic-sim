@@ -1,0 +1,49 @@
+{
+  "source": "actual createLabelCanvas/createLabelSprite extracted verbatim except TypeScript parameter annotations; production updateBodyLabel; actual WebGL SwiftShader",
+  "results": [
+    {
+      "distanceAu": 0.0001,
+      "dpr": 1,
+      "far": 0.45,
+      "accepted": true,
+      "litPixels": 447,
+      "widthCss": 51,
+      "heightCss": 15,
+      "labelBottomCss": 46,
+      "bodyProjectedRadiusCss": 23.091811267474224
+    },
+    {
+      "distanceAu": 1000,
+      "dpr": 1,
+      "far": 20000,
+      "accepted": true,
+      "litPixels": 447,
+      "widthCss": 51,
+      "heightCss": 15,
+      "labelBottomCss": 46,
+      "bodyProjectedRadiusCss": 23.09181126747422
+    },
+    {
+      "distanceAu": 0.0001,
+      "dpr": 2,
+      "far": 0.45,
+      "accepted": true,
+      "litPixels": 1630,
+      "widthCss": 51,
+      "heightCss": 14,
+      "labelBottomCss": 46.5,
+      "bodyProjectedRadiusCss": 23.091811267474224
+    },
+    {
+      "distanceAu": 1000,
+      "dpr": 2,
+      "far": 20000,
+      "accepted": true,
+      "litPixels": 1630,
+      "widthCss": 51,
+      "heightCss": 14,
+      "labelBottomCss": 46.5,
+      "bodyProjectedRadiusCss": 23.09181126747422
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+builder wall 10.25s
+         20125991 function calls (20125856 primitive calls) in 10.247 seconds
+
+   Ordered by: cumulative time
+   List reduced from 510 to 22 due to restriction <22>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        1    0.000    0.000   10.247   10.247 /tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/wt-h1/backend/server.py:389(_build_solar_physics_state)
+        1    0.001    0.001   10.239   10.239 /tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/wt-h1/backend/sim/solar_physics.py:1015(sample_state)
+        1    0.000    0.000   10.179   10.179 /tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/wt-h1/backend/sim/pfss_magnetogram.py:1175(get_or_compute)
+        1    0.001    0.001   10.179   10.179 /tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/wt-h1/backend/sim/pfss_magnetogram.py:1238(_compute)
+        1    0.028    0.028    6.949    6.949 /tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/wt-h1/backend/sim/pfss_magnetogram.py:649(trace_field_lines)
+    15396    0.100    0.000    6.812    0.000 /tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/wt-h1/backend/sim/pfss_magnetogram.py:466(evaluate_cartesian)
+    15276    0.019    0.000    6.780    0.000 /tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/wt-h1/backend/sim/pfss_magnetogram.py:743(_normalized_field)
+    15396    3.100    0.000    6.673    0.000 /tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/wt-h1/backend/sim/pfss_magnetogram.py:402(evaluate)
+        1    0.033    0.033    3.155    3.155 /tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/wt-h1/backend/sim/pfss_magnetogram.py:840(compute_wsa_velocity_map)
+      676    0.048    0.000    3.089    0.005 /tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/wt-h1/backend/sim/pfss_magnetogram.py:898(_norm_batch)
+      678    0.057    0.000    3.069    0.005 /tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/wt-h1/backend/sim/pfss_magnetogram.py:532(evaluate_cartesian_batch)
+      678    2.049    0.003    3.006    0.004 /tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/wt-h1/backend/sim/pfss_magnetogram.py:559(_evaluate_batch)
+    15396    1.778    0.000    2.677    0.000 /tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/wt-h1/backend/sim/pfss_magnetogram.py:488(_legendre_at_point)
+ 11091283    1.162    0.000    1.162    0.000 {method 'get' of 'dict' objects}
+      678    0.806    0.001    0.923    0.001 /tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/wt-h1/backend/sim/pfss_magnetogram.py:605(_legendre_batch)
+  3899817    0.297    0.000    0.297    0.000 {built-in method math.sqrt}
+  2138232    0.213    0.000    0.213    0.000 {built-in method math.cos}
+  2163309    0.198    0.000    0.198    0.000 {built-in method math.sin}
+    11734    0.083    0.000    0.083    0.000 {built-in method builtins.round}
+        1    0.063    0.063    0.068    0.068 /tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/wt-h1/backend/sim/pfss_magnetogram.py:201(synthetic_magnetogram)
+   287487    0.063    0.000    0.063    0.000 {built-in method numpy.zeros}
+      180    0.017    0.000    0.043    0.000 /tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/wt-h1/backend/sim/solar_physics.py:657(_build_feature_arc)
+
+
+

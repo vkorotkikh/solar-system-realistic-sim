@@ -1,0 +1,211 @@
+{
+  "schema_version": 1,
+  "date": "2026-11-01",
+  "status": "complete_all_16_independently_verified",
+  "branch": "fix/close-august-partials-20261031",
+  "implementation_commit": "a1977f828aea76a2828869823ccb7eae86b00aec",
+  "production_commit": "8b4d3207a33a8e5cdcb0276183ec93e7e66ddaf8",
+  "qualification": "a1977f8 changes only the independently reviewed browser fault fixture. Source/UI/script/build/frontend results at 8b4d320 cover identical production files; fixture UI typecheck and real browser rerun passed before its commit. Final documentation is outside runtime/test behavior.",
+  "environment": {
+    "node": "22.23.2",
+    "npm": "10.9.8",
+    "python": "3.12.13",
+    "backend_requirements": "ci/backend-test-requirements.txt",
+    "science_requirements": "ci/r3-r4-requirements.txt",
+    "python_environment": {
+      "PYTHONDONTWRITEBYTECODE": "1",
+      "PYTHONHASHSEED": "0",
+      "OMP_NUM_THREADS": "1",
+      "OPENBLAS_NUM_THREADS": "1",
+      "MKL_NUM_THREADS": "1",
+      "NUMEXPR_NUM_THREADS": "1",
+      "TZ": "UTC"
+    },
+    "backend_PYTHONPATH": "backend",
+    "node_path": "/home/nomad/.npm/_npx/f4985f1adc097c41/node_modules/node/bin",
+    "npm_cli": "/home/nomad/.npm/_npx/f4985f1adc097c41/node_modules/npm/bin/npm-cli.js"
+  },
+  "completed_runs": [
+    {
+      "gate": "clean-install",
+      "command": "npm ci --prefix /tmp/solar-partials-clean-install-20261031",
+      "log": "clean-install-nov01.txt",
+      "exit_code": 0,
+      "result": {
+        "added": 51,
+        "audited": 52,
+        "reported_vulnerabilities": 0
+      }
+    },
+    {
+      "gate": "strict-types",
+      "command": "tsc -p tsconfig.json --strict --noEmit && tsc -p tsconfig.ui-tests.json --noEmit && tsc -p tsconfig.scripts.json --noEmit && node scripts/ci/typescript-error-ratchet.mjs && node scripts/check-ui-types.mjs",
+      "log": "types-final-nov01.txt",
+      "exit_code": 0,
+      "result": {
+        "diagnostics": 0
+      }
+    },
+    {
+      "gate": "frontend",
+      "command": "npm test -- --maxWorkers=2 --reporter=dot",
+      "log": "frontend-final-nov01.txt",
+      "exit_code": 0,
+      "result": {
+        "passed": 1752,
+        "skipped": 2,
+        "passed_files": 114,
+        "skipped_files": 1
+      }
+    },
+    {
+      "gate": "backend",
+      "command": "uv run --offline --no-project --python 3.12.13 --with-requirements ci/backend-test-requirements.txt python -m pytest -p no:cacheprovider backend/tests -q -rs",
+      "log": "backend-final-nov01.txt",
+      "exit_code": 0,
+      "result": {
+        "passed": 4510,
+        "skipped": 13,
+        "warnings": 2
+      }
+    },
+    {
+      "gate": "build",
+      "command": "npm run build",
+      "log": "build-final-nov01.txt",
+      "exit_code": 0,
+      "result": {
+        "curated_maps": 8,
+        "packaged_notices": 4,
+        "large_chunk_advisory": true
+      }
+    },
+    {
+      "gate": "science-runner-contracts",
+      "command": "uv run --offline --no-project --python 3.12.13 --with-requirements ci/r3-r4-requirements.txt python -m pytest --noconftest -p no:cacheprovider -q scripts/ci/tests/test_verify_r3_r4_runner.py scripts/ci/tests/test_r3_r4_workflow.py",
+      "log": "science-runner-contracts-nov01.txt",
+      "exit_code": 0,
+      "result": {
+        "passed": 21
+      }
+    },
+    {
+      "gate": "science-baseline-mutations",
+      "command": "uv run --offline --no-project --python 3.12.13 --with-requirements ci/r3-r4-requirements.txt python scripts/ci/verify_r3_r4.py --repo . --manifest ci/r3-r4-science-verification.json --artifacts agent-notes/AUGUST_PARTIALS_CLOSURE_EVIDENCE_2026-10-31/science-final-nov01 all",
+      "log": "science-final-nov01.txt",
+      "exit_code": 0,
+      "result": {
+        "baseline_passed": 11,
+        "mutations_detected": 8
+      }
+    },
+    {
+      "gate": "corrected-worker-browser",
+      "command": "UI_TEST_PORT=4188 node node_modules/@playwright/test/cli.js test tests/browser/app-smoke.spec.ts --project=chromium --grep \"silently terminated\"",
+      "log": "browser-worker-corrected-nov01.txt",
+      "exit_code": 0,
+      "result": {
+        "passed": 1
+      }
+    },
+    {
+      "gate": "asteroid-gpu",
+      "command": "node scripts/verify-asteroid-gpu.mjs",
+      "log": "asteroid-gpu-final-nov01.txt",
+      "exit_code": 0,
+      "result": {
+        "planar_cases": 125,
+        "inclined_cases": 2,
+        "renderer": "Chromium SwiftShader WebGL2",
+        "maximum_planar_error_au": 2.080942241489669e-05,
+        "acceptance_error_au": 5e-05
+      }
+    },
+    {
+      "gate": "final-fixture-types",
+      "command": "node node_modules/typescript/bin/tsc -p tsconfig.ui-tests.json --noEmit",
+      "log": "ui-fixture-types-final-nov01.txt",
+      "exit_code": 0,
+      "result": {
+        "diagnostics": 0
+      }
+    },
+    {
+      "gate": "complete-browser-matrix",
+      "command": "env -u PLAYWRIGHT_SKIP_VALIDATE_HOST_REQUIREMENTS -u PLAYWRIGHT_BROWSERS_PATH -u LD_LIBRARY_PATH UI_TEST_PORT=4187 FRAME_NATIVE_VISIBILITY=1 PLAYWRIGHT_JSON_OUTPUT_NAME=<evidence>/browser-qualified-matrix-nov01.json node node_modules/@playwright/test/cli.js test --config=/home/nomad/.cache/solar-webkit-noble-20261101/playwright.config.ts --reporter=list,json",
+      "log": "browser-qualified-matrix-nov01.txt",
+      "report": "browser-qualified-matrix-nov01.json",
+      "summary": "browser-summary-nov01.json",
+      "exit_code": 0,
+      "result": {
+        "passed": 136,
+        "skipped": 34,
+        "failed": 0,
+        "flaky": 0,
+        "projects": {
+          "chromium": {
+            "expected": 57
+          },
+          "firefox": {
+            "expected": 38,
+            "skipped": 17
+          },
+          "webkit": {
+            "expected": 38,
+            "skipped": 17
+          },
+          "chromium-tab-zoom": {
+            "expected": 3
+          }
+        }
+      }
+    }
+  ],
+  "not_final_passes": [
+    "backend-suite.txt",
+    "browser-matrix.txt",
+    "browser-hardware.txt",
+    "browser-final-nov01.txt",
+    "browser-webkit-final-nov01.txt"
+  ],
+  "skip_qualification": {
+    "frontend": "Two opt-in EGL planet-shader cases; not counted as passing.",
+    "backend": "One optional spiceypy case and twelve optional tudatpy cases; full reasons in backend-final-nov01.txt.",
+    "browser": {
+      "WebGL2 assembled-material regression": 2,
+      "Chromium frame/worker gate": 8,
+      "Actual WebGL startup ownership": 10,
+      "Actual WebGL startup ownership regression": 8,
+      "Chrome tabs API is Chromium-specific, not Safari/Firefox zoom evidence": 6
+    }
+  },
+  "final_test_only_commit": {
+    "commit": "a1977f828aea76a2828869823ccb7eae86b00aec",
+    "finding": "F-001",
+    "subject": "test(F-001): inject worker failure at the first actual tick",
+    "review": "final-sweep.md"
+  },
+  "independent_review": {
+    "report": "final-sweep.md",
+    "reviewed_implementation_commit": "a1977f828aea76a2828869823ccb7eae86b00aec",
+    "blocking_findings": 0,
+    "approved_findings": [
+      "F-001",
+      "F-006",
+      "F-009",
+      "F-012",
+      "F-013",
+      "F-018",
+      "F-021",
+      "F-022",
+      "F-023",
+      "F-025",
+      "F-026",
+      "F-027",
+      "F-028",
+      "F-029",
+      "F-030",
+      "F-031"
+    ]
+  }
+}

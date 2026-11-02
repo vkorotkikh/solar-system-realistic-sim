@@ -1,0 +1,13 @@
+
+ RUN  v5.0.4 /home/nomad/ai/projects/worktrees/solar-remediation-completion-20261030
+
+ ✓ src/sim/moonCatalogRepair.horizons.test.ts (425 tests) 101ms
+ ✓ src/sim/lazyMoonEphemerides.test.ts (61 tests) 2378ms
+   ✓ loads verified decoded shards from native br HTTP responses 1064ms
+
+ Test Files  2 passed (2)
+      Tests  486 passed (486)
+   Start at  01:17:56
+   Duration  2.59s (tests 67%, import 29%, transform 4%)
+
+JSON report written to /tmp/solar-remediation-completion-20261030/moon-encoding-green.json

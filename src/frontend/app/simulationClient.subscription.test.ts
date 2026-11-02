@@ -83,6 +83,35 @@ describe('native producer stale-reactivation proof', () => {
 });
 
 describe('negotiated subscription contract boundaries', () => {
+  it.each([true, false])('fences legacy replacement on a new socket (deactivate=%s)', deactivate => {
+    start({ type: 'connected', protocol_version: 1 });
+    const retired = Socket.current;
+    const delayedDelivery = retired.onmessage;
+    if (deactivate) client.deactivateKuiper();
+    activate(2);
+    expect(Socket.current).not.toBe(retired);
+    expect(retired.readyState).toBe(3);
+    delayedDelivery?.({ data: JSON.stringify(captured.late_old) });
+    expect(client.latestState).toBeNull();
+    expect(client.latestKuiperSnapshot).toBeNull();
+    Socket.current.onopen?.();
+    Socket.current.message({ type: 'connected', protocol_version: 1 });
+    const { kuiper_subscription_id: _id, ...replacement } = captured.replacement;
+    Socket.current.message(replacement);
+    expect(client.latestState).toEqual(replacement);
+    expect(client.latestKuiperSnapshot).toEqual(replacement.kuiper);
+    const { subscription_id: _subscriptionId, ...command } = captured.commands[2];
+    expect(Socket.current.sent).toEqual([command]);
+  });
+
+  it('does not replace a legacy socket for an identical active request', () => {
+    start({ type: 'connected', protocol_version: 1 });
+    const socket = Socket.current;
+    activate(0);
+    expect(Socket.current).toBe(socket);
+    expect(socket.sent).toHaveLength(1);
+  });
+
   it.each([undefined, null, 1, {}, 'other-activation'])(
     'ignores an unmatched identity %j without discarding body updates', identity => {
       start(); reactivate();
@@ -115,6 +144,8 @@ describe('negotiated subscription contract boundaries', () => {
   it('preserves legacy commands and untagged snapshots when capability is absent', () => {
     start({ type: 'connected', protocol_version: 1 });
     reactivate();
+    Socket.current.onopen?.();
+    Socket.current.message({ type: 'connected', protocol_version: 1 });
     const { kuiper_subscription_id: _id, ...legacy } = captured.replacement;
     Socket.current.message(legacy);
     expect(client.latestKuiperSnapshot).toEqual(legacy.kuiper);

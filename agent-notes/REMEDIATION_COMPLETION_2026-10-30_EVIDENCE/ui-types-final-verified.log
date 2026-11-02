@@ -1,0 +1,4 @@
+
+> solar-system-realistic-sim@0.0.0 test:types:ui
+> tsc -p tsconfig.ui-tests.json --noEmit
+

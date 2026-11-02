@@ -1,0 +1,25 @@
+{
+  "date": "2026-10-30",
+  "source": "User response to the remediation session questions",
+  "policyQuestion": "Retain POSIX backend support, disclosed largest-diameter asteroid sample, fixed-step timing, decorative motion frozen during pause/reverse/reduced-motion, and explicit backend-origin configuration?",
+  "policyAnswer": "Retain these documented policies",
+  "licenseAnswer": "personal license - only open to distribution and copying if asked",
+  "externalEvidenceAnswer": "not that I know of. feel free to research and improve the current test approach",
+  "recordedImplementation": [
+    "docs/supported-product-policies.md",
+    "docs/backend-platform-support.md",
+    "LICENSE",
+    "NOTICE.md"
+  ],
+  "boundaries": [
+    "Original-code permission policy does not resolve third-party rights.",
+    "No deployed target, manual assistive-device acceptance or physical-touch evidence was supplied.",
+    "Additional automated checks cannot be credited as actual screen-reader or physical-device use."
+  ],
+  "primaryReferences": [
+    "https://docs.github.com/en/site-policy/github-terms/github-terms-of-service",
+    "https://docs.github.com/en/enterprise-cloud%40latest/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/licensing-a-repository",
+    "https://www.w3.org/WAI/test-evaluate/tools/selecting/",
+    "https://www.nvaccess.org/get-help/"
+  ]
+}

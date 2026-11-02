@@ -1,0 +1,328 @@
+{
+ "scen": "S5d",
+ "url": "http://127.0.0.1:5191/",
+ "t0wall": 1790350235704,
+ "t0iso": "2026-09-25T15:30:35.704Z",
+ "seconds": 30,
+ "phase2": 0,
+ "loadedAt": 3.59,
+ "killedAt": null,
+ "chipLog": [
+  {
+   "t": 0.03,
+   "why": "initial",
+   "state": "connecting",
+   "text": "Sun: procedural fallback (connecting to solar model server)",
+   "titleMatches": null
+  },
+  {
+   "t": 3.63,
+   "why": "mutation",
+   "state": "error",
+   "text": "Sun: procedural fallback (solar server sent an invalid response)",
+   "titleMatches": true
+  }
+ ],
+ "chipChanges": 2,
+ "textFlips": 1,
+ "stateFlips": 1,
+ "rawChipMutationRecords": 3,
+ "distinctTexts": [
+  "Sun: procedural fallback (connecting to solar model server)",
+  "Sun: procedural fallback (solar server sent an invalid response)"
+ ],
+ "announcements": [
+  {
+   "t": 3.63,
+   "why": "mutation",
+   "text": "Sun data unavailable: solar server error. Showing the procedural Sun."
+  }
+ ],
+ "solarConsole": [
+  {
+   "t": 3.64,
+   "type": "warning",
+   "text": "[solar] Sun: procedural fallback (solar server sent an invalid response)"
+  }
+ ],
+ "finalChip": {
+  "t": 33.59,
+  "label": "phase1",
+  "text": "Sun: procedural fallback (solar server sent an invalid response)",
+  "state": "error",
+  "ann": "Sun data unavailable: solar server error. Showing the procedural Sun."
+ },
+ "samples": [
+  {
+   "t": 8.59,
+   "label": "phase1",
+   "text": "Sun: procedural fallback (solar server sent an invalid response)",
+   "state": "error",
+   "ann": "Sun data unavailable: solar server error. Showing the procedural Sun."
+  },
+  {
+   "t": 13.6,
+   "label": "phase1",
+   "text": "Sun: procedural fallback (solar server sent an invalid response)",
+   "state": "error",
+   "ann": "Sun data unavailable: solar server error. Showing the procedural Sun."
+  },
+  {
+   "t": 18.6,
+   "label": "phase1",
+   "text": "Sun: procedural fallback (solar server sent an invalid response)",
+   "state": "error",
+   "ann": "Sun data unavailable: solar server error. Showing the procedural Sun."
+  },
+  {
+   "t": 23.61,
+   "label": "phase1",
+   "text": "Sun: procedural fallback (solar server sent an invalid response)",
+   "state": "error",
+   "ann": "Sun data unavailable: solar server error. Showing the procedural Sun."
+  },
+  {
+   "t": 30.58,
+   "label": "phase1",
+   "text": "Sun: procedural fallback (solar server sent an invalid response)",
+   "state": "error",
+   "ann": "Sun data unavailable: solar server error. Showing the procedural Sun."
+  },
+  {
+   "t": 33.59,
+   "label": "phase1",
+   "text": "Sun: procedural fallback (solar server sent an invalid response)",
+   "state": "error",
+   "ann": "Sun data unavailable: solar server error. Showing the procedural Sun."
+  }
+ ],
+ "attrs": {
+  "chip": {
+   "role": null,
+   "live": null,
+   "atomic": null,
+   "cls": "",
+   "x": 1088,
+   "y": 840,
+   "w": 336,
+   "h": 44,
+   "inStatusBar": true
+  },
+  "announcer": {
+   "role": "status",
+   "live": null,
+   "atomic": null,
+   "cls": "visually-hidden",
+   "x": 351,
+   "y": 899,
+   "w": 1,
+   "h": 1,
+   "inStatusBar": false
+  }
+ },
+ "requestTally": {
+  "physics cors http_200": 9
+ },
+ "probesPerAttempt": [
+  {
+   "t": 1.5,
+   "outcome": "http_200",
+   "ms": 4,
+   "probes": []
+  },
+  {
+   "t": 7.05,
+   "outcome": "http_200",
+   "ms": 2,
+   "probes": []
+  },
+  {
+   "t": 13.1,
+   "outcome": "http_200",
+   "ms": 2,
+   "probes": []
+  },
+  {
+   "t": 19.76,
+   "outcome": "http_200",
+   "ms": 2,
+   "probes": []
+  },
+  {
+   "t": 28.11,
+   "outcome": "http_200",
+   "ms": 2,
+   "probes": []
+  },
+  {
+   "t": 34.67,
+   "outcome": "http_200",
+   "ms": 2,
+   "probes": []
+  },
+  {
+   "t": 41.47,
+   "outcome": "http_200",
+   "ms": 3,
+   "probes": []
+  },
+  {
+   "t": 48.28,
+   "outcome": "http_200",
+   "ms": 2,
+   "probes": []
+  },
+  {
+   "t": 56.33,
+   "outcome": "http_200",
+   "ms": 2,
+   "probes": []
+  }
+ ],
+ "requests": [
+  {
+   "t": 1.5,
+   "tEnd": 3.64,
+   "k": "physics",
+   "mode": "cors",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461309.14704926&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "http_200",
+   "status": 200,
+   "acao": "http://127.0.0.1:5191",
+   "ms": 4,
+   "origin": null
+  },
+  {
+   "t": 7.05,
+   "tEnd": 7.05,
+   "k": "physics",
+   "mode": "cors",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461331.34648127&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "http_200",
+   "status": 200,
+   "acao": "http://127.0.0.1:5191",
+   "ms": 2,
+   "origin": null
+  },
+  {
+   "t": 13.1,
+   "tEnd": 13.1,
+   "k": "physics",
+   "mode": "cors",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461355.54568126&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "http_200",
+   "status": 200,
+   "acao": "http://127.0.0.1:5191",
+   "ms": 2,
+   "origin": null
+  },
+  {
+   "t": 19.76,
+   "tEnd": 19.76,
+   "k": "physics",
+   "mode": "cors",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461382.21088127&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "http_200",
+   "status": 200,
+   "acao": "http://127.0.0.1:5191",
+   "ms": 2,
+   "origin": null
+  },
+  {
+   "t": 28.11,
+   "tEnd": 28.11,
+   "k": "physics",
+   "mode": "cors",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461415.60968126&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "http_200",
+   "status": 200,
+   "acao": "http://127.0.0.1:5191",
+   "ms": 2,
+   "origin": null
+  },
+  {
+   "t": 34.67,
+   "tEnd": 34.68,
+   "k": "physics",
+   "mode": "cors",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461433.94208127&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "http_200",
+   "status": 200,
+   "acao": "http://127.0.0.1:5191",
+   "ms": 2,
+   "origin": null
+  },
+  {
+   "t": 41.47,
+   "tEnd": 41.47,
+   "k": "physics",
+   "mode": "cors",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461461.14128127&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "http_200",
+   "status": 200,
+   "acao": "http://127.0.0.1:5191",
+   "ms": 3,
+   "origin": null
+  },
+  {
+   "t": 48.28,
+   "tEnd": 48.28,
+   "k": "physics",
+   "mode": "cors",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461488.40648127&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "http_200",
+   "status": 200,
+   "acao": "http://127.0.0.1:5191",
+   "ms": 2,
+   "origin": null
+  },
+  {
+   "t": 56.33,
+   "tEnd": 56.33,
+   "k": "physics",
+   "mode": "cors",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461520.60568127&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "http_200",
+   "status": 200,
+   "acao": "http://127.0.0.1:5191",
+   "ms": 2,
+   "origin": null
+  }
+ ],
+ "bodies": [],
+ "consoleWarnErrorOther": [
+  {
+   "t": 3.77,
+   "type": "warning",
+   "text": "[phase-1] Catalog load exceeded its performance budget: loadMs=3226.2 exceeded budgetMs=2000"
+  }
+ ],
+ "pageErrors": [],
+ "externalRequests": [
+  {
+   "url": "https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600&family=Oxanium:wght@500;600;700&display=swap",
+   "status": 200
+  },
+  {
+   "url": "https://fonts.gstatic.com/s/chakrapetch/v13/cIflMapbsEk7TDLdtEz1BwkeQI51R5_F.woff2",
+   "status": 200
+  },
+  {
+   "url": "https://fonts.gstatic.com/s/chakrapetch/v13/cIflMapbsEk7TDLdtEz1BwkebIl1R5_F.woff2",
+   "status": 200
+  },
+  {
+   "url": "https://fonts.gstatic.com/s/oxanium/v21/RrQQboN_4yJ0JmiMe2LE0Q.woff2",
+   "status": 200
+  }
+ ]
+}

@@ -1,0 +1,42 @@
+{
+  "hunks": [
+    {
+      "executed_lines": [
+        137
+      ],
+      "lines": [
+        137
+      ],
+      "path": "backend/sim/pfss_tracing.py"
+    }
+  ],
+  "node": "backend/tests/test_pfss_tracing.py::test_open_endpoint_does_not_overshoot",
+  "reports": [
+    {
+      "exception_message": null,
+      "exception_type": null,
+      "is_assertion_error": false,
+      "node": "backend/tests/test_pfss_tracing.py::test_open_endpoint_does_not_overshoot",
+      "outcome": "passed",
+      "phase": "setup"
+    },
+    {
+      "exception_message": "R4-TRACE-EXACT-CROSSING\nassert 0.00500000000000389 <= 1e-06\n +  where 0.00500000000000389 = abs((2.505000000000004 - 2.5))\n +    where 2.505000000000004 = <built-in function hypot>(*[1.2127279102811974, 0.0, 2.1918750000000045])\n +      where <built-in function hypot> = math.hypot",
+      "exception_type": "builtins.AssertionError",
+      "is_assertion_error": true,
+      "node": "backend/tests/test_pfss_tracing.py::test_open_endpoint_does_not_overshoot",
+      "outcome": "failed",
+      "phase": "call"
+    },
+    {
+      "exception_message": null,
+      "exception_type": null,
+      "is_assertion_error": false,
+      "node": "backend/tests/test_pfss_tracing.py::test_open_endpoint_does_not_overshoot",
+      "outcome": "passed",
+      "phase": "teardown"
+    }
+  ],
+  "schema_version": 1,
+  "trace_intact": true
+}

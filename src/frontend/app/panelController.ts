@@ -6,7 +6,7 @@ export function derivePanelState(state: PanelState) {
 export interface PanelControllerArgs {
   app: HTMLElement; panel: HTMLElement; viewport: HTMLElement;
   toggle: HTMLButtonElement; close: HTMLButtonElement; backdrop: HTMLElement;
-  breakpoint: MediaQueryList; onLayoutChange: () => void;
+  breakpoint: MediaQueryList; isMobileLayout: () => boolean; onLayoutChange: () => void;
 }
 function rendered(element: HTMLElement): boolean {
   if (!element.getClientRects().length || element.closest('[hidden], [inert]')) return false;
@@ -16,15 +16,13 @@ function rendered(element: HTMLElement): boolean {
   }
   return true;
 }
-export function createPanelController({ app, panel, viewport, toggle, close, backdrop, breakpoint, onLayoutChange }: PanelControllerArgs) {
+export function createPanelController({ app, panel, viewport, toggle, close, backdrop, breakpoint, isMobileLayout, onLayoutChange }: PanelControllerArgs) {
   const doc = panel.ownerDocument;
   const view = doc.defaultView;
-  // WebKit can retain the old matches value until its queued change event.
-  // A fresh query keeps an intervening action in the correct remembered state.
-  const isMobile = () => view?.matchMedia(breakpoint.media).matches ?? breakpoint.matches;
-  const state: PanelState = { mobile: isMobile(), desktopOpen: true, mobileOpen: false };
+  const state: PanelState = { mobile: isMobileLayout(), desktopOpen: true, mobileOpen: false };
   let modal = false;
   let disposed = false;
+  let settleTimer: number | undefined;
   panel.tabIndex = -1;
   function destination() { return !close.disabled && rendered(close) ? close : panel; }
   function focusInside() { destination().focus({ preventScroll: true }); }
@@ -58,18 +56,28 @@ export function createPanelController({ app, panel, viewport, toggle, close, bac
     onLayoutChange();
   }
   function setOpen(open: boolean) {
-    state.mobile = isMobile();
+    state.mobile = isMobileLayout();
     if (state.mobile) state.mobileOpen = open; else state.desktopOpen = open;
     apply(true);
   }
   const openPanel = () => setOpen(true);
   const closePanel = () => setOpen(false);
   const onBackdrop = () => { if (state.mobile) closePanel(); };
-  const onBreakpoint = () => {
-    const mobile = isMobile();
+  const reconcileLayout = (mobile: boolean) => {
     if (state.mobile === mobile) return;
     state.mobile = mobile;
     apply();
+  };
+  const onLayoutSignal = () => {
+    if (disposed) return;
+    reconcileLayout(isMobileLayout());
+    if (!view || settleTimer !== undefined) return;
+    // Native zoom can deliver the resize before innerWidth settles. Recheck
+    // once in the next task without waiting for the application's render frame.
+    settleTimer = view.setTimeout(() => {
+      settleTimer = undefined;
+      if (!disposed) reconcileLayout(isMobileLayout());
+    }, 0);
   };
   const onFocus = (event: FocusEvent) => { if (modal && !panel.contains(event.target as Node)) focusInside(); };
   function onKey(event: KeyboardEvent) {
@@ -87,17 +95,20 @@ export function createPanelController({ app, panel, viewport, toggle, close, bac
     }
   }
   toggle.addEventListener('click', openPanel); close.addEventListener('click', closePanel);
-  backdrop.addEventListener('click', onBackdrop); breakpoint.addEventListener('change', onBreakpoint);
-  // A rapid round trip can coalesce away the media-query change event entirely.
-  view?.addEventListener('resize', onBreakpoint);
+  backdrop.addEventListener('click', onBackdrop); breakpoint.addEventListener('change', onLayoutSignal);
+  // Native tab zoom can resize layout before matchMedia catches up. Read the
+  // actual layout width on resize and retain the query event as a fallback.
+  view?.addEventListener('resize', onLayoutSignal); view?.visualViewport?.addEventListener('resize', onLayoutSignal);
   doc.addEventListener('keydown', onKey); doc.addEventListener('focusin', onFocus);
   apply();
   return { setOpen, dispose() {
     if (disposed) return;
     setOpen(false); disposed = true; modal = false;
+    if (settleTimer !== undefined) view?.clearTimeout(settleTimer);
+    settleTimer = undefined;
     toggle.removeEventListener('click', openPanel); close.removeEventListener('click', closePanel);
-    backdrop.removeEventListener('click', onBackdrop); breakpoint.removeEventListener('change', onBreakpoint);
-    view?.removeEventListener('resize', onBreakpoint);
+    backdrop.removeEventListener('click', onBackdrop); breakpoint.removeEventListener('change', onLayoutSignal);
+    view?.removeEventListener('resize', onLayoutSignal); view?.visualViewport?.removeEventListener('resize', onLayoutSignal);
     doc.removeEventListener('keydown', onKey); doc.removeEventListener('focusin', onFocus);
     viewport.inert = false; viewport.removeAttribute('aria-hidden');
     panel.inert = false; panel.removeAttribute('aria-hidden'); panel.removeAttribute('aria-modal'); panel.removeAttribute('role');

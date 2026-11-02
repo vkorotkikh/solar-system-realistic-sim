@@ -50,11 +50,11 @@
     },
     {
       "path": "backend/sim/gong_magnetogram.py",
-      "sha256": "49757ec54791abd6e96fc0e3072001732d3aff29c90e580221838124219127d0"
+      "sha256": "66cf2588f2a6f878aefd347b670155c943d338431400b7f31c018532e7cf4649"
     },
     {
       "path": "backend/sim/pfss_magnetogram.py",
-      "sha256": "29c09b898b1c8e4e7c4cb55b1ce4ad5cc51021ca77d9185c3885a60feea557bd"
+      "sha256": "aada87526b748d350028c659dacbc28a7aad0cc02f96eb93690e951fdc390aa8"
     },
     {
       "path": "backend/sim/pfss_tracing.py",
@@ -106,14 +106,14 @@
     },
     {
       "path": "backend/tests/solar_observational_acceptance.py",
-      "sha256": "4bb336a67f3ae71fc0b407f7a7a985088cf784860fcd8e2f600387d258213b74"
+      "sha256": "91cbe2aabc54b8aa6036c1366aa991c468683745243b4b510112b3d8aa480f96"
     },
     {
       "path": "backend/tests/test_solar_observational_acceptance.py",
-      "sha256": "de7ba12989caaac611f8e80d80ffcdc21c023d7f9affb76b006df1fdc1e146d3"
+      "sha256": "66685486b24e738bad937a8caaf815f65f1d24fc230d0285dedb7c08685b8fe0"
     },
     {
-      "path": "agent-notes/solar-observational-acceptance-2026-10-17/nso_gong_zqs_202610121744.fits.gz",
+      "path": "backend/tests/fixtures/solar/observational_20261012/nso_gong_zqs_202610121744.fits.gz",
       "sha256": "e405550e1f8844bf5556419e7137aa6eb9bce79e0292a628df2c1ece28872ee8"
     },
     {

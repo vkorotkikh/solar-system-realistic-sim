@@ -1,0 +1,21 @@
+INFO:     Started server process [1755212]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8042 (Press CTRL+C to quit)
+INFO:     127.0.0.1:39202 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39208 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59580 - "GET /solar/physics?jd=2461361.12070787&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:56382 - "GET /solar/physics?jd=2461394.25270787&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:47754 - "GET /solar/physics?jd=2461483.31590787&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:43770 - "GET /solar/physics?jd=2461510.44790787&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:34590 - "GET /solar/physics?jd=2461616.71070787&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:35316 - "GET /solar/physics?jd=2461646.30950787&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:33190 - "GET /solar/physics?jd=2461671.10870787&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:49316 - "GET /solar/physics?jd=2461748.70550787&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:49324 - "GET /solar/physics?jd=2461776.17110787&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:38110 - "GET /solar/physics?jd=2461854.96790787&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:52812 - "GET /solar/physics?jd=2461880.96670787&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [1755212]

@@ -1,0 +1,149 @@
+INFO:     Started server process [1495674]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8042 (Press CTRL+C to quit)
+INFO:     127.0.0.1:41212 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41224 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41236 - "GET /solar/physics?fidelity=preview HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41238 - "GET /solar/physics?fidelity=preview HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41250 - "GET /solar/physics?fidelity=preview HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41258 - "GET /solar/physics?fidelity=preview HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55354 - "GET /solar/physics?jd=2461355.52031717&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:53068 - "GET /solar/physics?jd=2461495.69031717&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:37474 - "GET /solar/physics?jd=2461593.11551717&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:53330 - "GET /solar/physics?jd=2461730.01791717&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:53078 - "GET /solar/physics?jd=2461802.63671717&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:60406 - "GET /solar/physics?jd=2461827.10991717&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:39574 - "GET /solar/physics?jd=2461893.32671717&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:39580 - "GET /solar/physics?jd=2461917.46631717&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:38244 - "GET /solar/physics?jd=2461987.68471717&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:38250 - "GET /solar/physics?jd=2462060.10351717&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:36514 - "GET /solar/physics?jd=2462126.85431717&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:48588 - "GET /solar/physics?jd=2462199.20631717&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:52210 - "GET /solar/physics?jd=2462294.29791716&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:52220 - "GET /solar/physics?jd=2462318.37071716&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:40222 - "GET /solar/physics?jd=2461448.91200495&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:54510 - "GET /solar/physics?jd=2461544.93680501&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:37252 - "GET /solar/physics?jd=2461677.43800511&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:57948 - "GET /solar/physics?jd=2461749.45640516&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:47374 - "GET /solar/physics?jd=2461815.34040521&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:43692 - "GET /solar/physics?jd=2461887.35920526&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:46856 - "GET /solar/physics?jd=2461953.24320529&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:39672 - "GET /solar/physics?jd=2462025.26160534&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:48392 - "GET /solar/physics?jd=2462091.27880539&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:48394 - "GET /solar/physics?jd=2462115.28520541&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:58800 - "GET /solar/physics?jd=2462187.30400546&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:44880 - "GET /solar/physics?jd=2461448.91200495&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44894 - "GET /solar/physics?jd=2461448.9&fidelity=high&max_features=180&forcing=hybrid&live_data=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60356 - "GET /solar/physics?jd=2461448.9&fidelity=operational&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60370 - "GET /solar/physics?jd=2461448.9&fidelity=high&max_features=180&forcing=synthetic&live_data=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40740 - "GET /solar/physics?jd=2461500.25&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40742 - "GET /solar/physics?jd=2461500.25&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38982 - "GET /solar/physics?jd=2461500.25&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42010 - "GET /solar/physics?jd=2461500.30&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42018 - "GET /solar/physics?jd=2461500.35&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34002 - "GET /solar/physics?jd=2461359.16759472&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:45670 - "GET /solar/physics?jd=2461424.91799477&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:45672 - "GET /solar/physics?jd=2461448.92439479&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:40672 - "GET /solar/physics?jd=2461539.48119485&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:40680 - "GET /solar/physics?jd=2461563.48759486&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:43634 - "GET /solar/physics?jd=2461677.31719494&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:35508 - "GET /solar/physics?jd=2461815.08639504&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:51016 - "GET /solar/physics?jd=2461887.10519508&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:52948 - "GET /solar/physics?jd=2461952.72239513&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:33984 - "GET /solar/physics?jd=2462024.74079518&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:48016 - "GET /solar/physics?jd=2462090.35799523&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:35636 - "GET /solar/physics?jd=2462160.50959528&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:57078 - "GET /solar/physics?jd=2462232.52839532&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:59840 - "GET /solar/physics?jd=2462298.21199537&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:43834 - "GET /solar/physics?jd=2462370.23039542&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:56726 - "GET /solar/physics?jd=2462435.71439547&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:50444 - "GET /solar/physics?jd=2462507.73319552&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:36626 - "GET /solar/physics?jd=2461308.46784080&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:59242 - "GET /solar/physics?jd=2461334.00784080&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:40482 - "GET /solar/physics?jd=2461158.74944082&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:40488 - "GET /solar/physics?jd=2460682.62544079&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:46806 - "GET /solar/physics?jd=2463499.34944098&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:47464 - "GET /solar/physics?jd=2461359.00222680&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:37938 - "GET /solar/physics?jd=2461424.21942685&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:58982 - "GET /solar/physics?jd=2461562.18862694&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:34122 - "GET /solar/physics?jd=2461586.19462696&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:44486 - "GET /solar/physics?jd=2461699.55782704&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:60380 - "GET /solar/physics?jd=2461723.56422706&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:37170 - "GET /solar/physics?jd=2461812.92062712&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:39564 - "GET /solar/physics?jd=2461884.93942717&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:49024 - "GET /solar/physics?jd=2461949.95622722&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:36318 - "GET /solar/physics?jd=2461973.96262724&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:35734 - "GET /solar/physics?jd=2462045.98102728&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:54010 - "GET /solar/physics?jd=2462111.53142734&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:40414 - "GET /solar/physics?jd=2462183.21662739&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:50522 - "GET /solar/physics?jd=2462207.22302741&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:44386 - "GET /solar/physics?jd=2462279.24142746&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:55050 - "GET /solar/physics?jd=2462344.65862751&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:36836 - "GET /solar/physics?jd=2462368.66502753&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:38830 - "GET /solar/physics?jd=2462458.15502759&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:38842 - "GET /solar/physics?jd=2462482.16142761&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:58268 - "GET /solar/physics?jd=2462554.17982766&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:39748 - "GET /solar/physics?jd=2461134.35407734&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:55042 - "GET /solar/physics?jd=2462146.60207740&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:39734 - "GET /solar/physics?jd=2462866.79407745&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:46582 - "GET /solar/physics?jd=2461376.56232838&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:49440 - "GET /solar/physics?jd=2461448.58152842&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:33268 - "GET /solar/physics?jd=2461633.49592856&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:44746 - "GET /solar/physics?jd=2461705.51432861&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:43368 - "GET /solar/physics?jd=2461770.99832866&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:49392 - "GET /solar/physics?jd=2461859.75472873&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:58688 - "GET /solar/physics?jd=2461883.76112874&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:49110 - "GET /solar/physics?jd=2461955.77952879&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:37982 - "GET /solar/physics?jd=2462021.46352884&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:33430 - "GET /solar/physics?jd=2462045.46992885&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:35522 - "GET /solar/physics?jd=2462117.02152891&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:41740 - "GET /solar/physics?jd=2462189.04032896&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:59906 - "GET /solar/physics?jd=2462254.25712901&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:45554 - "GET /solar/physics?jd=2462278.26352903&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:45558 - "GET /solar/physics?jd=2462302.26952904&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:51140 - "GET /solar/physics?jd=2462374.28872910&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:51140 - "GET /solar/physics?jd=2462391.62632911&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:56254 - "GET /solar/physics?jd=2462463.64512917&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:39416 - "GET /solar/physics?jd=2462528.99512922&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:40860 - "GET /solar/physics?jd=2461400.76858011&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:40836 - "GET /solar/physics?jd=2461938.90858015&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:60676 - "GET /solar/physics?jd=2461662.57444522&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:49756 - "GET /solar/physics?jd=2461334.01860771&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:46590 - "GET /solar/physics?jd=2461308.47918361&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:38088 - "GET /solar/physics?jd=2461358.22518363&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:38100 - "GET /solar/physics?jd=2461382.23158364&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:43054 - "GET /solar/physics?jd=2461351.29065211&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:41440 - "GET /solar/physics?jd=2461308.47964488&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:41440 - "GET /solar/physics?jd=2461334.08604489&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:47902 - "GET /solar/physics?jd=2461351.35782332&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:57708 - "GET /solar/physics?jd=2461308.48001938&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:57708 - "GET /solar/physics?jd=2461334.02001938&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:49280 - "GET /solar/physics?jd=2461351.22499741&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:43306 - "GET /solar/physics?jd=2461375.23139742&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:37290 - "GET /solar/physics?jd=2461359.14235199&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:58288 - "GET /solar/physics?jd=2461431.69475203&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:50964 - "GET /solar/physics?jd=2461593.06995214&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:40004 - "GET /solar/physics?jd=2461706.69955222&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:57162 - "GET /solar/physics?jd=2461778.71835227&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:40904 - "GET /solar/physics?jd=2461844.40235232&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:35544 - "GET /solar/physics?jd=2461868.40835234&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:42576 - "GET /solar/physics?jd=2461940.42715239&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:56242 - "GET /solar/physics?jd=2462029.31675245&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:52274 - "GET /solar/physics?jd=2462094.40035249&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:42574 - "GET /solar/physics?jd=2462118.40675251&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:33812 - "GET /solar/physics?jd=2462190.42555256&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:48604 - "GET /solar/physics?jd=2462255.24235260&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:54050 - "GET /solar/physics?jd=2462327.26075265&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:50088 - "GET /solar/physics?jd=2461359.17199100&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:48440 - "GET /solar/physics?jd=2461308.48513412&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:47110 - "GET /solar/physics?jd=2461309.88335590&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:47110 - "GET /solar/physics?jd=2461326.68775591&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:44202 - "GET /solar/physics?jd=2461308.48545470&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:51960 - "GET /solar/physics?jd=2461307.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39236 - "GET /solar/physics?jd=2461307.5&fidelity=preview&max_features=64&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36242 - "GET /solar/physics?jd=2461363.55332072&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:59978 - "GET /solar/physics?jd=2461389.61892072&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:35566 - "GET /solar/physics?jd=2447892.5&fidelity=preview&max_features=64&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44810 - "GET /solar/physics?jd=2461307.5&fidelity=preview&max_features=64&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44816 - "GET /solar/realtime HTTP/1.1" 200 OK

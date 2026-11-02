@@ -1,0 +1,20 @@
+[
+ {
+  "label": "default display radius 0.3755 AU",
+  "singleEventExpiredAfterFirst16msUpdate": true,
+  "manager10s": {
+   "spawnedTotal": 6,
+   "maxLiveEventsAfterUpdate": 0,
+   "framesWithSurfaceFlare": 0
+  }
+ },
+ {
+  "label": "realistic radius 0.00465 AU",
+  "singleEventExpiredAfterFirst16msUpdate": false,
+  "manager10s": {
+   "spawnedTotal": 4,
+   "maxLiveEventsAfterUpdate": 4,
+   "framesWithSurfaceFlare": 600
+  }
+ }
+]

@@ -1,0 +1,116 @@
+INFO:     Started server process [1585217]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8074 (Press CTRL+C to quit)
+INFO:     127.0.0.1:48836 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48844 - "GET /solar/physics?jd=2461308.5&fidelity=preview&max_features=64&forcing=synthetic&live_data=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48844 - "GET /solar/physics?jd=2461308.5&fidelity=preview&max_features=64&forcing=synthetic&live_data=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48844 - "OPTIONS /solar/physics?jd=2461308.5&fidelity=preview&max_features=64&forcing=synthetic&live_data=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48844 - "GET /solar/realtime/aia-tile?channel=not_a_channel HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:48844 - "OPTIONS /solar/realtime/aia-tile?channel=not_a_channel HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48844 - "GET /solar/physics?jd=2461308.5&fidelity=preview&max_features=64&forcing=synthetic&live_data=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48844 - "OPTIONS /solar/physics?jd=2461308.5&fidelity=preview&max_features=64&forcing=synthetic&live_data=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48844 - "GET /solar/realtime/aia-tile?channel=not_a_channel HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:48844 - "OPTIONS /solar/realtime/aia-tile?channel=not_a_channel HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48844 - "GET /solar/physics?jd=2461308.5&fidelity=preview&max_features=64&forcing=synthetic&live_data=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48844 - "OPTIONS /solar/physics?jd=2461308.5&fidelity=preview&max_features=64&forcing=synthetic&live_data=false HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:48844 - "GET /solar/realtime/aia-tile?channel=not_a_channel HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:48844 - "OPTIONS /solar/realtime/aia-tile?channel=not_a_channel HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:48844 - "GET /solar/physics?jd=2461308.5&fidelity=preview&max_features=64&forcing=synthetic&live_data=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48844 - "OPTIONS /solar/physics?jd=2461308.5&fidelity=preview&max_features=64&forcing=synthetic&live_data=false HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:48844 - "GET /solar/realtime/aia-tile?channel=not_a_channel HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:48844 - "OPTIONS /solar/realtime/aia-tile?channel=not_a_channel HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:48844 - "GET /solar/physics?jd=2461308.5&fidelity=preview&max_features=64&forcing=synthetic&live_data=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48844 - "OPTIONS /solar/physics?jd=2461308.5&fidelity=preview&max_features=64&forcing=synthetic&live_data=false HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:48844 - "GET /solar/realtime/aia-tile?channel=not_a_channel HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:48844 - "OPTIONS /solar/realtime/aia-tile?channel=not_a_channel HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:48844 - "GET /solar/physics?jd=2461308.5&fidelity=preview&max_features=64&forcing=synthetic&live_data=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48844 - "OPTIONS /solar/physics?jd=2461308.5&fidelity=preview&max_features=64&forcing=synthetic&live_data=false HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:48844 - "GET /solar/realtime/aia-tile?channel=not_a_channel HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:48844 - "OPTIONS /solar/realtime/aia-tile?channel=not_a_channel HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:48844 - "GET /solar/physics?jd=2461308.5&fidelity=preview&max_features=64&forcing=synthetic&live_data=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48844 - "OPTIONS /solar/physics?jd=2461308.5&fidelity=preview&max_features=64&forcing=synthetic&live_data=false HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:48844 - "GET /solar/realtime/aia-tile?channel=not_a_channel HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:48844 - "OPTIONS /solar/realtime/aia-tile?channel=not_a_channel HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:48844 - "GET /solar/physics?jd=2461308.5&fidelity=preview&max_features=64&forcing=synthetic&live_data=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48844 - "OPTIONS /solar/physics?jd=2461308.5&fidelity=preview&max_features=64&forcing=synthetic&live_data=false HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:48844 - "GET /solar/realtime/aia-tile?channel=not_a_channel HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:48844 - "OPTIONS /solar/realtime/aia-tile?channel=not_a_channel HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:48844 - "GET /solar/physics?jd=2461308.5&fidelity=preview&max_features=64&forcing=synthetic&live_data=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48844 - "OPTIONS /solar/physics?jd=2461308.5&fidelity=preview&max_features=64&forcing=synthetic&live_data=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48844 - "GET /solar/realtime/aia-tile?channel=not_a_channel HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:48844 - "OPTIONS /solar/realtime/aia-tile?channel=not_a_channel HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48844 - "GET /solar/physics?jd=2461308.5&fidelity=preview&max_features=64&forcing=synthetic&live_data=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48844 - "OPTIONS /solar/physics?jd=2461308.5&fidelity=preview&max_features=64&forcing=synthetic&live_data=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48844 - "GET /solar/realtime/aia-tile?channel=not_a_channel HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:48844 - "OPTIONS /solar/realtime/aia-tile?channel=not_a_channel HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48844 - "GET /solar/physics?jd=2461308.5&fidelity=preview&max_features=64&forcing=synthetic&live_data=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48844 - "OPTIONS /solar/physics?jd=2461308.5&fidelity=preview&max_features=64&forcing=synthetic&live_data=false HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:48844 - "GET /solar/realtime/aia-tile?channel=not_a_channel HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:48844 - "OPTIONS /solar/realtime/aia-tile?channel=not_a_channel HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:48844 - "GET /solar/physics?jd=2461308.5&fidelity=preview&max_features=64&forcing=synthetic&live_data=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48844 - "OPTIONS /solar/physics?jd=2461308.5&fidelity=preview&max_features=64&forcing=synthetic&live_data=false HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:48844 - "GET /solar/realtime/aia-tile?channel=not_a_channel HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:48844 - "OPTIONS /solar/realtime/aia-tile?channel=not_a_channel HTTP/1.1" 400 Bad Request
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [1585217]
+INFO:     Started server process [1585298]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8074 (Press CTRL+C to quit)
+INFO:     127.0.0.1:38216 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38228 - "GET /solar/physics?jd=2461308.5&fidelity=preview&max_features=64&forcing=synthetic&live_data=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38228 - "GET /solar/physics?jd=2461308.5&fidelity=preview&max_features=64&forcing=synthetic&live_data=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38228 - "OPTIONS /solar/physics?jd=2461308.5&fidelity=preview&max_features=64&forcing=synthetic&live_data=false HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:38228 - "GET /solar/realtime/aia-tile?channel=not_a_channel HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:38228 - "OPTIONS /solar/realtime/aia-tile?channel=not_a_channel HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:38228 - "GET /solar/physics?jd=2461308.5&fidelity=preview&max_features=64&forcing=synthetic&live_data=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38228 - "OPTIONS /solar/physics?jd=2461308.5&fidelity=preview&max_features=64&forcing=synthetic&live_data=false HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:38228 - "GET /solar/realtime/aia-tile?channel=not_a_channel HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:38228 - "OPTIONS /solar/realtime/aia-tile?channel=not_a_channel HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:38228 - "GET /solar/physics?jd=2461308.5&fidelity=preview&max_features=64&forcing=synthetic&live_data=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38228 - "OPTIONS /solar/physics?jd=2461308.5&fidelity=preview&max_features=64&forcing=synthetic&live_data=false HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:38228 - "GET /solar/realtime/aia-tile?channel=not_a_channel HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:38228 - "OPTIONS /solar/realtime/aia-tile?channel=not_a_channel HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:38228 - "GET /solar/physics?jd=2461308.5&fidelity=preview&max_features=64&forcing=synthetic&live_data=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38228 - "OPTIONS /solar/physics?jd=2461308.5&fidelity=preview&max_features=64&forcing=synthetic&live_data=false HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:38228 - "GET /solar/realtime/aia-tile?channel=not_a_channel HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:38228 - "OPTIONS /solar/realtime/aia-tile?channel=not_a_channel HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:38228 - "GET /solar/physics?jd=2461308.5&fidelity=preview&max_features=64&forcing=synthetic&live_data=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38228 - "OPTIONS /solar/physics?jd=2461308.5&fidelity=preview&max_features=64&forcing=synthetic&live_data=false HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:38228 - "GET /solar/realtime/aia-tile?channel=not_a_channel HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:38228 - "OPTIONS /solar/realtime/aia-tile?channel=not_a_channel HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:38228 - "GET /solar/physics?jd=2461308.5&fidelity=preview&max_features=64&forcing=synthetic&live_data=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38228 - "OPTIONS /solar/physics?jd=2461308.5&fidelity=preview&max_features=64&forcing=synthetic&live_data=false HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:38228 - "GET /solar/realtime/aia-tile?channel=not_a_channel HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:38228 - "OPTIONS /solar/realtime/aia-tile?channel=not_a_channel HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:38228 - "GET /solar/physics?jd=2461308.5&fidelity=preview&max_features=64&forcing=synthetic&live_data=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38228 - "OPTIONS /solar/physics?jd=2461308.5&fidelity=preview&max_features=64&forcing=synthetic&live_data=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38228 - "GET /solar/realtime/aia-tile?channel=not_a_channel HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:38228 - "OPTIONS /solar/realtime/aia-tile?channel=not_a_channel HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38228 - "GET /solar/physics?jd=2461308.5&fidelity=preview&max_features=64&forcing=synthetic&live_data=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38228 - "OPTIONS /solar/physics?jd=2461308.5&fidelity=preview&max_features=64&forcing=synthetic&live_data=false HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:38228 - "GET /solar/realtime/aia-tile?channel=not_a_channel HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:38228 - "OPTIONS /solar/realtime/aia-tile?channel=not_a_channel HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:38228 - "GET /solar/physics?jd=2461308.5&fidelity=preview&max_features=64&forcing=synthetic&live_data=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38228 - "OPTIONS /solar/physics?jd=2461308.5&fidelity=preview&max_features=64&forcing=synthetic&live_data=false HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:38228 - "GET /solar/realtime/aia-tile?channel=not_a_channel HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:38228 - "OPTIONS /solar/realtime/aia-tile?channel=not_a_channel HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:38228 - "GET /solar/physics?jd=2461308.5&fidelity=preview&max_features=64&forcing=synthetic&live_data=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38228 - "OPTIONS /solar/physics?jd=2461308.5&fidelity=preview&max_features=64&forcing=synthetic&live_data=false HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:38228 - "GET /solar/realtime/aia-tile?channel=not_a_channel HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:38228 - "OPTIONS /solar/realtime/aia-tile?channel=not_a_channel HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:38228 - "GET /solar/physics?jd=2461308.5&fidelity=preview&max_features=64&forcing=synthetic&live_data=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38228 - "OPTIONS /solar/physics?jd=2461308.5&fidelity=preview&max_features=64&forcing=synthetic&live_data=false HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:38228 - "GET /solar/realtime/aia-tile?channel=not_a_channel HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:38228 - "OPTIONS /solar/realtime/aia-tile?channel=not_a_channel HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:38228 - "GET /solar/physics?jd=2461308.5&fidelity=preview&max_features=64&forcing=synthetic&live_data=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38228 - "OPTIONS /solar/physics?jd=2461308.5&fidelity=preview&max_features=64&forcing=synthetic&live_data=false HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:38228 - "GET /solar/realtime/aia-tile?channel=not_a_channel HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:38228 - "OPTIONS /solar/realtime/aia-tile?channel=not_a_channel HTTP/1.1" 400 Bad Request
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [1585298]

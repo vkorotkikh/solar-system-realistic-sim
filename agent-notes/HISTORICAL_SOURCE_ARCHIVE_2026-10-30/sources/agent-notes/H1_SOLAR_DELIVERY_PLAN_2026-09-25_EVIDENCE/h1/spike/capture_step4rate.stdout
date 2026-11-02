@@ -1,0 +1,351 @@
+{
+ "tag": "step4rate",
+ "tLoad": 7416,
+ "physics": {
+  "n": 75,
+  "by": {
+   "http_200": 72,
+   "http_429": 3
+  },
+  "cache": {
+   "HIT": 72
+  },
+  "hitDurMs": [
+   0,
+   2,
+   8,
+   26,
+   27,
+   27,
+   28,
+   28,
+   29,
+   29,
+   29,
+   29,
+   29,
+   29,
+   29,
+   30,
+   31,
+   31,
+   31,
+   32,
+   32,
+   32,
+   32,
+   32,
+   32,
+   33,
+   33,
+   33,
+   33,
+   33,
+   33,
+   33,
+   34,
+   34,
+   34,
+   34,
+   34,
+   34,
+   35,
+   35,
+   35,
+   36,
+   36,
+   36,
+   37,
+   37,
+   37,
+   38,
+   38,
+   38,
+   39,
+   39,
+   39,
+   40,
+   40,
+   40,
+   40,
+   41,
+   41,
+   41,
+   43,
+   45,
+   51,
+   56,
+   58,
+   63,
+   63,
+   64,
+   65,
+   68,
+   69,
+   75
+  ],
+  "missDurMs": [],
+  "okDurMs": {
+   "n": 72,
+   "min": 0,
+   "p50": 34,
+   "p95": 65,
+   "max": 75
+  },
+  "inFlightAtEnd": 0
+ },
+ "aia": {
+  "n": 1,
+  "by": {
+   "http_200": 1
+  },
+  "cache": {},
+  "hitDurMs": [],
+  "missDurMs": [],
+  "okDurMs": {
+   "n": 1,
+   "min": 6427,
+   "p50": 6427,
+   "p95": 6427,
+   "max": 6427
+  },
+  "inFlightAtEnd": 0
+ },
+ "nTimings": 142,
+ "timings": [
+  {
+   "t": 974,
+   "phase": "fetch",
+   "headersAfterMs": 523,
+   "bodyReadMs": 14.9,
+   "jsonParseMs": 0.9,
+   "chars": 624375,
+   "requestJd": 2461308.6221897267
+  },
+  {
+   "t": 978,
+   "phase": "apply",
+   "aiaKickMs": 0.7,
+   "normalizeMs": 0.6,
+   "blendMs": 0,
+   "rebuildFieldMs": 1.9,
+   "totalMs": 3.2,
+   "features": 160,
+   "fieldChildren": 120,
+   "pfssSource": "synthetic",
+   "activity": 0.565818441763465,
+   "epochJd": 2461308.5,
+   "simJd": 2461308.7552697267,
+   "assim": {
+    "conf": 0.34480154655448714,
+    "blendW": 0.37068054129407046,
+    "observed": 0.24147102534568227,
+    "synthetic": 0.7568649352761629,
+    "silsoDate": "2026-08-31",
+    "aiaRequest": "2026-09-25T00:00:00Z",
+    "aiaLatest": "2026-09-25T00:00:10Z",
+    "preferred": "aia_304"
+   }
+  },
+  {
+   "t": 7516,
+   "phase": "fetch",
+   "headersAfterMs": 63,
+   "bodyReadMs": 3.2,
+   "jsonParseMs": 1.1,
+   "chars": 624375,
+   "requestJd": 2461308.6222746805
+  },
+  {
+   "t": 7517,
+   "phase": "apply",
+   "aiaKickMs": 0,
+   "normalizeMs": 0.9,
+   "blendMs": 0.1,
+   "rebuildFieldMs": 0,
+   "totalMs": 1,
+   "features": 160,
+   "fieldChildren": 120,
+   "pfssSource": "synthetic",
+   "activity": 0.565818441763465,
+   "epochJd": 2461308.5,
+   "simJd": 2461308.6222746805,
+   "assim": {
+    "conf": 0.34480154655448714,
+    "blendW": 0.37068054129407046,
+    "observed": 0.24147102534568227,
+    "synthetic": 0.7568649352761629,
+    "silsoDate": "2026-08-31",
+    "aiaRequest": "2026-09-25T00:00:00Z",
+    "aiaLatest": "2026-09-25T00:00:10Z",
+    "preferred": "aia_304"
+   }
+  },
+  {
+   "t": 8566,
+   "phase": "fetch",
+   "headersAfterMs": 30,
+   "bodyReadMs": 2.6,
+   "jsonParseMs": 0.8,
+   "chars": 624375,
+   "requestJd": 2461308.6222746805
+  },
+  {
+   "t": 8566,
+   "phase": "apply",
+   "aiaKickMs": 0,
+   "normalizeMs": 0.2,
+   "blendMs": 0,
+   "rebuildFieldMs": 0,
+   "totalMs": 0.2,
+   "features": 160,
+   "fieldChildren": 120,
+   "pfssSource": "synthetic",
+   "activity": 0.565818441763465,
+   "epochJd": 2461308.5,
+   "simJd": 2461308.6222746805,
+   "assim": {
+    "conf": 0.34480154655448714,
+    "blendW": 0.37068054129407046,
+    "observed": 0.24147102534568227,
+    "synthetic": 0.7568649352761629,
+    "silsoDate": "2026-08-31",
+    "aiaRequest": "2026-09-25T00:00:00Z",
+    "aiaLatest": "2026-09-25T00:00:10Z",
+    "preferred": "aia_304"
+   }
+  },
+  {
+   "t": 9682,
+   "phase": "fetch",
+   "headersAfterMs": 34,
+   "bodyReadMs": 3.8,
+   "jsonParseMs": 0.8,
+   "chars": 624375,
+   "requestJd": 2461308.6222746805
+  },
+  {
+   "t": 9682,
+   "phase": "apply",
+   "aiaKickMs": 0,
+   "normalizeMs": 0.2,
+   "blendMs": 0,
+   "rebuildFieldMs": 0,
+   "totalMs": 0.2,
+   "features": 160,
+   "fieldChildren": 120,
+   "pfssSource": "synthetic",
+   "activity": 0.565818441763465,
+   "epochJd": 2461308.5,
+   "simJd": 2461308.6222746805,
+   "assim": {
+    "conf": 0.34480154655448714,
+    "blendW": 0.37068054129407046,
+    "observed": 0.24147102534568227,
+    "synthetic": 0.7568649352761629,
+    "silsoDate": "2026-08-31",
+    "aiaRequest": "2026-09-25T00:00:00Z",
+    "aiaLatest": "2026-09-25T00:00:10Z",
+    "preferred": "aia_304"
+   }
+  }
+ ],
+ "firstSamples": [
+  {
+   "t": 14146,
+   "date": "2026-09-25",
+   "scale": "+4.0 d/s",
+   "spike": {
+    "status": {
+     "lastError": null,
+     "lastSuccessMs": 1790304902028,
+     "lastRefreshMs": 1790304901991,
+     "lastLatencyMs": 37,
+     "pollIntervalMs": 900,
+     "nextRefreshMs": 1790304902891
+    },
+    "hasState": true,
+    "epochJd": 2461308.5,
+    "activity": 0.565818441763465,
+    "obsTexture": true,
+    "obsChannel": "aia_304",
+    "obsImageId": "192406756",
+    "fieldChildren": 120,
+    "fieldVisible": false,
+    "fieldSig": "7:pfss:synthetic:2315:tube-0491:0.90|tube-0459:0.78|tube-0127:0.82|tube-0359:0.78|tube-0415:0.76|tube-0435:0.71|tube-0035:0.74|tube-0523:0.84|tube-0139:0.68|tube-0147:0.67|tube-0403:0.70|tube-0355:0.71"
+   }
+  },
+  {
+   "t": 39136,
+   "date": "2026-09-25",
+   "scale": "+4.0 d/s",
+   "spike": {
+    "status": {
+     "lastError": null,
+     "lastSuccessMs": 1790304925856,
+     "lastRefreshMs": 1790304926984,
+     "lastLatencyMs": 45,
+     "pollIntervalMs": 900,
+     "nextRefreshMs": 1790304926711
+    },
+    "hasState": true,
+    "epochJd": 2461308.5,
+    "activity": 0.565818441763465,
+    "obsTexture": true,
+    "obsChannel": "aia_304",
+    "obsImageId": "192406756",
+    "fieldChildren": 120,
+    "fieldVisible": false,
+    "fieldSig": "7:pfss:synthetic:2315:tube-0491:0.90|tube-0459:0.78|tube-0127:0.82|tube-0359:0.78|tube-0415:0.76|tube-0435:0.71|tube-0035:0.74|tube-0523:0.84|tube-0139:0.68|tube-0147:0.67|tube-0403:0.70|tube-0355:0.71"
+   }
+  }
+ ],
+ "lastSample": {
+  "t": 99684,
+  "date": "2026-09-25",
+  "scale": "+4.0 d/s",
+  "spike": {
+   "status": {
+    "lastError": null,
+    "lastSuccessMs": 1790304986713,
+    "lastRefreshMs": 1790304986675,
+    "lastLatencyMs": 38,
+    "pollIntervalMs": 900,
+    "nextRefreshMs": 1790304987575
+   },
+   "hasState": true,
+   "epochJd": 2461308.5,
+   "activity": 0.565818441763465,
+   "obsTexture": true,
+   "obsChannel": "aia_304",
+   "obsImageId": "192406756",
+   "fieldChildren": 120,
+   "fieldVisible": false,
+   "fieldSig": "7:pfss:synthetic:2315:tube-0491:0.90|tube-0459:0.78|tube-0127:0.82|tube-0359:0.78|tube-0415:0.76|tube-0435:0.71|tube-0035:0.74|tube-0523:0.84|tube-0139:0.68|tube-0147:0.67|tube-0403:0.70|tube-0355:0.71"
+  }
+ },
+ "shots": [
+  "firstSuccessPlus4s",
+  "t12",
+  "t16",
+  "end"
+ ],
+ "errorLogCount": 3,
+ "errorLogsHead": [
+  {
+   "t": 55078,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 429 (Too Many Requests)"
+  },
+  {
+   "t": 61962,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 429 (Too Many Requests)"
+  },
+  {
+   "t": 77494,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 429 (Too Many Requests)"
+  }
+ ]
+}

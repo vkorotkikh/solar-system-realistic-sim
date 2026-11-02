@@ -1,0 +1,52 @@
+{
+  "stats": {
+    "startTime": "2026-10-29T04:26:53.013Z",
+    "duration": 418682.546,
+    "expected": 41,
+    "skipped": 1,
+    "unexpected": 2,
+    "flaky": 0
+  },
+  "failures": [
+    {
+      "title": "startup-warmup.spec.ts / context loss cancels pending warmup and restoration cannot restart it",
+      "file": "startup-warmup.spec.ts",
+      "line": 56,
+      "project": "chromium",
+      "errors": [
+        "\u001b[31mTest timeout of 60000ms exceeded.\u001b[39m",
+        "Error: page.waitForFunction: Test timeout of 60000ms exceeded.\n\n  57 |   const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));\n  58 |   await instrument(page, 'pending'); await page.goto('/');\n> 59 |   await page.waitForFunction('window.__warmupTest.completionReads > 0');\n     |              ^\n  60 |   await page.evaluate(() => {\n  61 |     const gl = document.querySelector('canvas')!.getContext('webgl2')!;\n  62 |     const extension = gl.getExtension('WEBGL_lose_context')!;\n    at /home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/tests/browser/startup-warmup.spec.ts:59:14"
+      ],
+      "attachments": [
+        {
+          "name": "error-context",
+          "path": "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/test-results/4175/startup-warmup-context-los-ea524-storation-cannot-restart-it-chromium/error-context.md"
+        },
+        {
+          "name": "trace",
+          "path": "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/test-results/4175/startup-warmup-context-los-ea524-storation-cannot-restart-it-chromium/trace.zip"
+        }
+      ]
+    },
+    {
+      "title": "startup-warmup.spec.ts / unload disposes materials only after cancelling pending warmup",
+      "file": "startup-warmup.spec.ts",
+      "line": 80,
+      "project": "chromium",
+      "errors": [
+        "\u001b[31mTest timeout of 60000ms exceeded.\u001b[39m",
+        "Error: page.waitForFunction: Test timeout of 60000ms exceeded.\n\n  81 |   const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));\n  82 |   await instrument(page, 'pending'); await page.goto('/');\n> 83 |   await page.waitForFunction('window.__warmupTest.completionReads > 0');\n     |              ^\n  84 |   await page.evaluate(() => window.dispatchEvent(new Event('beforeunload')));\n  85 |   const stopped = await capture(page);\n  86 |   await page.waitForTimeout(60);\n    at /home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/tests/browser/startup-warmup.spec.ts:83:14"
+      ],
+      "attachments": [
+        {
+          "name": "error-context",
+          "path": "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/test-results/4175/startup-warmup-unload-disp-d9ac0-r-cancelling-pending-warmup-chromium/error-context.md"
+        },
+        {
+          "name": "trace",
+          "path": "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/test-results/4175/startup-warmup-unload-disp-d9ac0-r-cancelling-pending-warmup-chromium/trace.zip"
+        }
+      ]
+    }
+  ]
+}

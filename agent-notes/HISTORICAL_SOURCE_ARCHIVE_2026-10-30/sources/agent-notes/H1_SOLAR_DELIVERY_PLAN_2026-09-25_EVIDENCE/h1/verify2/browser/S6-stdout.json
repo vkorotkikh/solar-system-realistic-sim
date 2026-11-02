@@ -1,0 +1,65 @@
+{
+ "scen": "S6",
+ "t0iso": "2026-09-25T15:35:27.275Z",
+ "loadedAt": 1.21,
+ "killedAt": null,
+ "chipChanges": 6,
+ "textFlips": 5,
+ "stateFlips": 2,
+ "chipLog": [
+  "0.05s [connecting] Sun: procedural fallback (connecting to solar model server)",
+  "14.6s [error] Sun: procedural fallback (solar server ran out of compute time, HTTP 503)",
+  "47.7s [backend] Sun: backend solar model (hybrid forcing, observations blended 41%) · updated 15:36 UTC",
+  "50.08s [backend] Sun: backend solar model (hybrid forcing, observations blended 41%; AIA 304 image) · updated 15:36 UTC",
+  "107.26s [backend] Sun: backend solar model (hybrid forcing, observations blended 41%; AIA 304 image) · updated 15:37 UTC",
+  "168.34s [backend] Sun: backend solar model (hybrid forcing, observations blended 41%; AIA 304 image) · updated 15:38 UTC"
+ ],
+ "announcements": [
+  "14.6s mutation: Sun data unavailable: solar server too slow or busy. Showing the procedural Sun.",
+  "47.7s mutation: Sun data: backend solar model connected."
+ ],
+ "solarConsole": [
+  "14.6s warning [solar] Sun: procedural fallback (solar server ran out of compute time, HTTP 503)"
+ ],
+ "requestTally": {
+  "physics cors http_503": 1,
+  "physics cors http_200": 6,
+  "aia cors http_200": 1
+ },
+ "probesPerAttempt": [
+  "1.05s http_503 12014ms probes=[]",
+  "35.31s http_200 10333ms probes=[]",
+  "65.43s http_200 9775ms probes=[]",
+  "95.73s http_200 11528ms probes=[]",
+  "126.26s http_200 10464ms probes=[]",
+  "156.57s http_200 11768ms probes=[]",
+  "187.35s http_200 11337ms probes=[]"
+ ],
+ "bodies": 6,
+ "pageErrors": [],
+ "externalN": 4,
+ "attrs": {
+  "chip": {
+   "role": null,
+   "live": null,
+   "atomic": null,
+   "cls": "",
+   "x": 1088,
+   "y": 825,
+   "w": 336,
+   "h": 59,
+   "inStatusBar": true
+  },
+  "announcer": {
+   "role": "status",
+   "live": null,
+   "atomic": null,
+   "cls": "visually-hidden",
+   "x": 351,
+   "y": 899,
+   "w": 1,
+   "h": 1,
+   "inStatusBar": false
+  }
+ }
+}

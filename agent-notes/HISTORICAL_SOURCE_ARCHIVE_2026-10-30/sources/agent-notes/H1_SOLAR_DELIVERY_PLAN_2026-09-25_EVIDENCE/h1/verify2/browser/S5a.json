@@ -1,0 +1,397 @@
+{
+ "scen": "S5a",
+ "url": "http://127.0.0.1:5191/",
+ "t0wall": 1790349962031,
+ "t0iso": "2026-09-25T15:26:02.031Z",
+ "seconds": 30,
+ "phase2": 0,
+ "loadedAt": 3.33,
+ "killedAt": null,
+ "chipLog": [
+  {
+   "t": 0.02,
+   "why": "initial",
+   "state": "connecting",
+   "text": "Sun: procedural fallback (connecting to solar model server)",
+   "titleMatches": null
+  },
+  {
+   "t": 3.34,
+   "why": "mutation",
+   "state": "error",
+   "text": "Sun: procedural fallback (solar server rate limit reached, HTTP 429)",
+   "titleMatches": true
+  }
+ ],
+ "chipChanges": 2,
+ "textFlips": 1,
+ "stateFlips": 1,
+ "rawChipMutationRecords": 3,
+ "distinctTexts": [
+  "Sun: procedural fallback (connecting to solar model server)",
+  "Sun: procedural fallback (solar server rate limit reached, HTTP 429)"
+ ],
+ "announcements": [
+  {
+   "t": 3.34,
+   "why": "mutation",
+   "text": "Sun data unavailable: solar server too slow or busy. Showing the procedural Sun."
+  }
+ ],
+ "solarConsole": [
+  {
+   "t": 3.34,
+   "type": "warning",
+   "text": "[solar] Sun: procedural fallback (solar server rate limit reached, HTTP 429)"
+  }
+ ],
+ "finalChip": {
+  "t": 35.19,
+  "label": "phase1",
+  "text": "Sun: procedural fallback (solar server rate limit reached, HTTP 429)",
+  "state": "error",
+  "ann": "Sun data unavailable: solar server too slow or busy. Showing the procedural Sun."
+ },
+ "samples": [
+  {
+   "t": 8.34,
+   "label": "phase1",
+   "text": "Sun: procedural fallback (solar server rate limit reached, HTTP 429)",
+   "state": "error",
+   "ann": "Sun data unavailable: solar server too slow or busy. Showing the procedural Sun."
+  },
+  {
+   "t": 13.34,
+   "label": "phase1",
+   "text": "Sun: procedural fallback (solar server rate limit reached, HTTP 429)",
+   "state": "error",
+   "ann": "Sun data unavailable: solar server too slow or busy. Showing the procedural Sun."
+  },
+  {
+   "t": 18.34,
+   "label": "phase1",
+   "text": "Sun: procedural fallback (solar server rate limit reached, HTTP 429)",
+   "state": "error",
+   "ann": "Sun data unavailable: solar server too slow or busy. Showing the procedural Sun."
+  },
+  {
+   "t": 23.35,
+   "label": "phase1",
+   "text": "Sun: procedural fallback (solar server rate limit reached, HTTP 429)",
+   "state": "error",
+   "ann": "Sun data unavailable: solar server too slow or busy. Showing the procedural Sun."
+  },
+  {
+   "t": 28.35,
+   "label": "phase1",
+   "text": "Sun: procedural fallback (solar server rate limit reached, HTTP 429)",
+   "state": "error",
+   "ann": "Sun data unavailable: solar server too slow or busy. Showing the procedural Sun."
+  },
+  {
+   "t": 35.19,
+   "label": "phase1",
+   "text": "Sun: procedural fallback (solar server rate limit reached, HTTP 429)",
+   "state": "error",
+   "ann": "Sun data unavailable: solar server too slow or busy. Showing the procedural Sun."
+  }
+ ],
+ "attrs": {
+  "chip": {
+   "role": null,
+   "live": null,
+   "atomic": null,
+   "cls": "",
+   "x": 1088,
+   "y": 840,
+   "w": 336,
+   "h": 44,
+   "inStatusBar": true
+  },
+  "announcer": {
+   "role": "status",
+   "live": null,
+   "atomic": null,
+   "cls": "visually-hidden",
+   "x": 351,
+   "y": 899,
+   "w": 1,
+   "h": 1,
+   "inStatusBar": false
+  }
+ },
+ "requestTally": {
+  "physics cors http_429": 10
+ },
+ "probesPerAttempt": [
+  {
+   "t": 1.21,
+   "outcome": "http_429",
+   "ms": 4,
+   "probes": []
+  },
+  {
+   "t": 9.1,
+   "outcome": "http_429",
+   "ms": 2,
+   "probes": []
+  },
+  {
+   "t": 17.53,
+   "outcome": "http_429",
+   "ms": 3,
+   "probes": []
+  },
+  {
+   "t": 25.35,
+   "outcome": "http_429",
+   "ms": 5,
+   "probes": []
+  },
+  {
+   "t": 33.93,
+   "outcome": "http_429",
+   "ms": 3,
+   "probes": []
+  },
+  {
+   "t": 40,
+   "outcome": "http_429",
+   "ms": 5,
+   "probes": []
+  },
+  {
+   "t": 46.52,
+   "outcome": "http_429",
+   "ms": 9,
+   "probes": []
+  },
+  {
+   "t": 53.66,
+   "outcome": "http_429",
+   "ms": 3,
+   "probes": []
+  },
+  {
+   "t": 62.53,
+   "outcome": "http_429",
+   "ms": 3,
+   "probes": []
+  },
+  {
+   "t": 68.65,
+   "outcome": "http_429",
+   "ms": 4,
+   "probes": []
+  }
+ ],
+ "requests": [
+  {
+   "t": 1.21,
+   "tEnd": 3.34,
+   "k": "physics",
+   "mode": "cors",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461309.14388140&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "http_429",
+   "status": 429,
+   "acao": "http://127.0.0.1:5191",
+   "ms": 4,
+   "origin": null
+  },
+  {
+   "t": 9.1,
+   "tEnd": 9.1,
+   "k": "physics",
+   "mode": "cors",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461340.74273741&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "http_429",
+   "status": 429,
+   "acao": "http://127.0.0.1:5191",
+   "ms": 2,
+   "origin": null
+  },
+  {
+   "t": 17.53,
+   "tEnd": 17.53,
+   "k": "physics",
+   "mode": "cors",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461374.40793741&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "http_429",
+   "status": 429,
+   "acao": "http://127.0.0.1:5191",
+   "ms": 3,
+   "origin": null
+  },
+  {
+   "t": 25.35,
+   "tEnd": 25.35,
+   "k": "physics",
+   "mode": "cors",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461405.73993741&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "http_429",
+   "status": 429,
+   "acao": "http://127.0.0.1:5191",
+   "ms": 5,
+   "origin": null
+  },
+  {
+   "t": 33.93,
+   "tEnd": 33.93,
+   "k": "physics",
+   "mode": "cors",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461432.60593741&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "http_429",
+   "status": 429,
+   "acao": "http://127.0.0.1:5191",
+   "ms": 3,
+   "origin": null
+  },
+  {
+   "t": 40,
+   "tEnd": 40,
+   "k": "physics",
+   "mode": "cors",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461456.87153741&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "http_429",
+   "status": 429,
+   "acao": "http://127.0.0.1:5191",
+   "ms": 5,
+   "origin": null
+  },
+  {
+   "t": 46.52,
+   "tEnd": 46.52,
+   "k": "physics",
+   "mode": "cors",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461482.93673741&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "http_429",
+   "status": 429,
+   "acao": "http://127.0.0.1:5191",
+   "ms": 9,
+   "origin": null
+  },
+  {
+   "t": 53.66,
+   "tEnd": 53.66,
+   "k": "physics",
+   "mode": "cors",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461511.53593741&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "http_429",
+   "status": 429,
+   "acao": "http://127.0.0.1:5191",
+   "ms": 3,
+   "origin": null
+  },
+  {
+   "t": 62.53,
+   "tEnd": 62.53,
+   "k": "physics",
+   "mode": "cors",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461547.00113741&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "http_429",
+   "status": 429,
+   "acao": "http://127.0.0.1:5191",
+   "ms": 3,
+   "origin": null
+  },
+  {
+   "t": 68.65,
+   "tEnd": 68.65,
+   "k": "physics",
+   "mode": "cors",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461564.06713741&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "http_429",
+   "status": 429,
+   "acao": "http://127.0.0.1:5191",
+   "ms": 4,
+   "origin": null
+  }
+ ],
+ "bodies": [],
+ "consoleWarnErrorOther": [
+  {
+   "t": 1.24,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 429 (Too Many Requests)"
+  },
+  {
+   "t": 3.45,
+   "type": "warning",
+   "text": "[phase-1] Catalog load exceeded its performance budget: loadMs=2915.8 exceeded budgetMs=2000"
+  },
+  {
+   "t": 9.1,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 429 (Too Many Requests)"
+  },
+  {
+   "t": 17.53,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 429 (Too Many Requests)"
+  },
+  {
+   "t": 25.35,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 429 (Too Many Requests)"
+  },
+  {
+   "t": 33.93,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 429 (Too Many Requests)"
+  },
+  {
+   "t": 40,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 429 (Too Many Requests)"
+  },
+  {
+   "t": 46.52,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 429 (Too Many Requests)"
+  },
+  {
+   "t": 53.66,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 429 (Too Many Requests)"
+  },
+  {
+   "t": 62.53,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 429 (Too Many Requests)"
+  },
+  {
+   "t": 68.65,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 429 (Too Many Requests)"
+  }
+ ],
+ "pageErrors": [],
+ "externalRequests": [
+  {
+   "url": "https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600&family=Oxanium:wght@500;600;700&display=swap",
+   "status": 200
+  },
+  {
+   "url": "https://fonts.gstatic.com/s/chakrapetch/v13/cIflMapbsEk7TDLdtEz1BwkeQI51R5_F.woff2",
+   "status": 200
+  },
+  {
+   "url": "https://fonts.gstatic.com/s/chakrapetch/v13/cIflMapbsEk7TDLdtEz1BwkebIl1R5_F.woff2",
+   "status": 200
+  },
+  {
+   "url": "https://fonts.gstatic.com/s/oxanium/v21/RrQQboN_4yJ0JmiMe2LE0Q.woff2",
+   "status": 200
+  }
+ ]
+}

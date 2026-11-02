@@ -1,5 +1,7 @@
 # SCN-041 matched-provider comparison follow-up
 
+> **Current status (2026-10-30):** See the [verified remediation status](REMEDIATION_STATUS_2026-10-30.md) for all 83 dispositions, branch-specific fixes, remaining acceptance gates and the 25 completed working-note removals. The dated content below is historical evidence; it does not describe current main.
+
 Status: **accuracy budget FAILED; SCN-041 remains open**. This is now a numerical comparison with independently integrated NASA PFSS field lines, not merely capture integrity. No production calibration label, degree cap or scientific claim was changed.
 
 ## Matched input, frame, units and radius

@@ -1,0 +1,4 @@
+2026-09-25T02:07:00.012Z swpc_plasma 404 0.039203 196 text/html; charset=iso-8859-1 https://services.swpc.noaa.gov/products/solar-wind/plasma-1-day.json
+2026-09-25T02:07:01.827Z swpc_mag 404 0.034054 196 text/html; charset=iso-8859-1 https://services.swpc.noaa.gov/products/solar-wind/mag-1-day.json
+2026-09-25T02:07:01.870Z silso_daily 200 0.919515 2896132 text/csv https://www.sidc.be/SILSO/DATA/SN_d_tot_V2.0.csv
+2026-09-25T02:07:02.816Z hv_closest_193 200 0.189046 312 application/json https://api.helioviewer.org/v2/getClosestImage/?date=2026-09-25T02:07:02Z&sourceId=11&verbose=true

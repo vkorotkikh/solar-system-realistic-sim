@@ -1,0 +1,4 @@
+alone porkchop 200 0.02 s 
+during-2-solar-misses porkchop 503 8.02 s {"detail":"Trajectory porkchop scan timed out. Try again later."}
+solar {2470000.5: (503, 12.04, None), 2470001.5: (503, 12.04, None)}
+third solar after 503 0.07

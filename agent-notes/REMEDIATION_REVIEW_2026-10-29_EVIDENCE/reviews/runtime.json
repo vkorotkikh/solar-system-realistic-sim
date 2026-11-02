@@ -1,0 +1,825 @@
+{
+  "domain": "runtime",
+  "snapshot": {
+    "root": "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029",
+    "HEAD": "bb29d4be393c9dedca7049fc9b83511ed955be40",
+    "origin/main": "bb29d4be393c9dedca7049fc9b83511ed955be40",
+    "assessmentDate": "2026-10-29",
+    "repositoryDiffAtInspection": "No tracked product/source differences from HEAD in inspected backend/src/scripts/docs/tests paths."
+  },
+  "notesCovered": [
+    "agent-notes/REMEDIATION_HORIZONS_TRANSPORT_2026-10-14.md",
+    "agent-notes/REMEDIATION_RUNTIME_2026-10-14.md",
+    "agent-notes/REMEDIATION_RUNTIME_CLIENT_2026-10-14.md",
+    "agent-notes/REMEDIATION_RUNTIME_REVIEW_2026-10-14.md",
+    "agent-notes/REMEDIATION_DEPLOYMENT_2026-10-14.md",
+    "agent-notes/REMEDIATION_LIFECYCLE_OWNERSHIP_REVIEW_2026-10-14.md"
+  ],
+  "noteVariants": [
+    {
+      "note": "agent-notes/REMEDIATION_HORIZONS_TRANSPORT_2026-10-14.md",
+      "distinctContentVariants": 1,
+      "sha256": [
+        "d6979f62add4358d0f1506257ba1ee71b884343772f172590492972e3ab38797"
+      ],
+      "conflictingAlternateVariant": false,
+      "assessment": "Inventory contains one content hash across local copies; no alternative claims under this assigned filename. Cross-report temporal contradictions are reconciled separately."
+    },
+    {
+      "note": "agent-notes/REMEDIATION_RUNTIME_2026-10-14.md",
+      "distinctContentVariants": 1,
+      "sha256": [
+        "7504ad8ece69e2ae4a63eb70fa87b5016fd0b4d0e271433f88eadfce779d3239"
+      ],
+      "conflictingAlternateVariant": false,
+      "assessment": "Inventory contains one content hash across local copies; no alternative claims under this assigned filename. Cross-report temporal contradictions are reconciled separately."
+    },
+    {
+      "note": "agent-notes/REMEDIATION_RUNTIME_CLIENT_2026-10-14.md",
+      "distinctContentVariants": 1,
+      "sha256": [
+        "2bb00c3caddb6b80414a0a35adc2e9048074596c0e73c9c58fc7ef311d65a7cf"
+      ],
+      "conflictingAlternateVariant": false,
+      "assessment": "Inventory contains one content hash across local copies; no alternative claims under this assigned filename. Cross-report temporal contradictions are reconciled separately."
+    },
+    {
+      "note": "agent-notes/REMEDIATION_RUNTIME_REVIEW_2026-10-14.md",
+      "distinctContentVariants": 1,
+      "sha256": [
+        "9a7734c13fc69b881629239679b2fe47b918e40d0e6caea41ab0caa3c137489b"
+      ],
+      "conflictingAlternateVariant": false,
+      "assessment": "Inventory contains one content hash across local copies; no alternative claims under this assigned filename. Cross-report temporal contradictions are reconciled separately."
+    },
+    {
+      "note": "agent-notes/REMEDIATION_DEPLOYMENT_2026-10-14.md",
+      "distinctContentVariants": 1,
+      "sha256": [
+        "6e9509c2b04600aae796c47afc3b89ead62dc2d28b10d4a28e39dc57aad66199"
+      ],
+      "conflictingAlternateVariant": false,
+      "assessment": "Inventory contains one content hash across local copies; no alternative claims under this assigned filename. Cross-report temporal contradictions are reconciled separately."
+    },
+    {
+      "note": "agent-notes/REMEDIATION_LIFECYCLE_OWNERSHIP_REVIEW_2026-10-14.md",
+      "distinctContentVariants": 1,
+      "sha256": [
+        "935bde54c6787103351dd1aa7bdae340578e921d1228ac3cd53023a5a3f75935"
+      ],
+      "conflictingAlternateVariant": false,
+      "assessment": "Inventory contains one content hash across local copies; no alternative claims under this assigned filename. Cross-report temporal contradictions are reconciled separately."
+    }
+  ],
+  "noteReconciliation": [
+    {
+      "note": "REMEDIATION_HORIZONS_TRANSPORT_2026-10-14.md",
+      "assessment": "Its POSIX ownership repair is landed. Its statement superseding starvation acceptance agrees with current code; all 169/111 historical counts remain dated and were not rerun."
+    },
+    {
+      "note": "REMEDIATION_RUNTIME_2026-10-14.md",
+      "assessment": "Fixed-step/recovery/transport ownership code is landed, so its final branch-local-until-merged qualifier is stale for this audit. Cooperative native cancellation limitation remains."
+    },
+    {
+      "note": "REMEDIATION_RUNTIME_CLIENT_2026-10-14.md",
+      "assessment": "Client schema/reconnect, complete asynchronous solar request deadline and idempotent belt disposal are present on main. The note's open hidden-tab/frame-stage handoff is superseded by active main.ts frameLifecycle wiring, bounded delta and generation checks. The old synthetic_magnetogram nonfinite handoff is superseded by explicit rejection at pfss_magnetogram.py:110-115; broader solar policy remains outside these assigned IDs. Optional client tests do not certify default-page N-body behavior.",
+      "contextEvidence": [
+        {
+          "path": "src/frontend/features/solar/solarRealtimeClient.ts",
+          "lines": "827-900",
+          "detail": "Owned generation and race span fetch/body/validation and disposal."
+        },
+        {
+          "path": "src/frontend/features/solar/solarRealtimeClient.lifecycle.test.ts",
+          "lines": "21-67",
+          "detail": "Noncooperative body, dispose, URL exception and retry regressions."
+        },
+        {
+          "path": "src/frontend/features/asteroids/beltRenderer.ts",
+          "lines": "523-529,738-747",
+          "detail": "Idempotent instance mesh and companion disposal."
+        },
+        {
+          "path": "src/main.ts",
+          "lines": "1245-1275",
+          "detail": "Active frame stages use time controller plus independent update/render stages."
+        },
+        {
+          "path": "src/frontend/app/frameLifecycle.ts",
+          "lines": "43-80",
+          "detail": "Generation invalidation, hidden timestamp reset, 0.1-second delta cap and exception containment."
+        }
+      ]
+    },
+    {
+      "note": "REMEDIATION_RUNTIME_REVIEW_2026-10-14.md",
+      "assessment": "Its fixes are landed. Its SCN-063 OPEN/PARTIAL correction described the pre-owned-transport revision and is superseded by the Horizons report/e6a02d9. Its synchronous event-loop initialization residual is superseded by 9e8e02c; absence of a hard initialization deadline remains. Historical tests do not imply a current pass."
+    },
+    {
+      "note": "REMEDIATION_DEPLOYMENT_2026-10-14.md",
+      "assessment": "Retain PARTIAL for real deployed auth/TLS and broader acceptance. The script remains HTTP loopback with an HTTP reverse proxy and remoteProductionVerified=false; an HTTPS Origin does not make it a TLS gate. The one-failure historical integrated run is not relabeled green."
+    },
+    {
+      "note": "REMEDIATION_LIFECYCLE_OWNERSHIP_REVIEW_2026-10-14.md",
+      "assessment": "RAF generation/reentrancy and observer/reconnect containment repairs remain on main. Its no-subscription-generation residual is superseded for negotiated peers by a8187a7 and current subscription IDs. Untagged legacy peers still retain ambiguity. The library remains outside the default UI.",
+      "contextEvidence": [
+        {
+          "path": "src/frontend/app/frameLifecycle.ownershipReview.test.ts",
+          "lines": "10-51",
+          "detail": "Stale callback and reentrant stop/restart ownership regressions."
+        },
+        {
+          "path": "src/frontend/app/simulationClient.ts",
+          "lines": "229-306,339-409,458-476,506-528",
+          "detail": "Socket generation checks, guarded observers/freshness/retry and negotiated subscription identity."
+        },
+        {
+          "path": "src/frontend/app/simulationClient.lifecycleReview.test.ts",
+          "lines": "42-97,122-167",
+          "detail": "Throwing/reentrant observer and revocation regression cases."
+        },
+        {
+          "path": "src/frontend/app/simulationClient.subscription.test.ts",
+          "lines": "48-70,108-135",
+          "detail": "Old activation rejected for negotiated peers; legacy compatibility and fresh reconnect identity tested."
+        },
+        {
+          "path": "docs/frontend-configuration.md",
+          "lines": "18-20",
+          "detail": "API/library-only scope is explicit."
+        }
+      ]
+    }
+  ],
+  "issues": [
+    {
+      "id": "SCN-001",
+      "verdict": "CODE_CONFIRMED",
+      "fix": "Normalized Schmidt/no-Condon-Shortley recurrence and a single normalization in weighted projection are present. The current streaming evaluator is exercised by the retained independent harmonic oracle.",
+      "evidence": [
+        {
+          "path": "backend/sim/spherical_harmonics.py",
+          "lines": "17-68",
+          "detail": "Shared normalized values and analytic theta derivatives, including pole limits."
+        },
+        {
+          "path": "backend/sim/pfss_evaluation.py",
+          "lines": "18-38",
+          "detail": "Current production projection design uses normalized recurrence; degree bound is now 90."
+        },
+        {
+          "path": "backend/sim/pfss_magnetogram.py",
+          "lines": "171-210",
+          "detail": "Area-weighted SVD projection, without an extra Schmidt coefficient multiplier."
+        },
+        {
+          "path": "backend/tests/test_pfss_harmonics.py",
+          "lines": "22-24,37-82,165-180",
+          "detail": "Exact low-degree values, immutable independent oracle through production streaming evaluator, orthogonality, and one-time projection normalization."
+        },
+        {
+          "path": "backend/tests/test_pfss_decomposition.py",
+          "lines": "24-45",
+          "detail": "Independent polynomial derivative basis recovers each isolated real harmonic mode."
+        }
+      ],
+      "remaining": [
+        "Central current-suite results pending. Observed-field calibration and spatial acceptance remain separate SCN-041/048 work; these tests do not certify observations."
+      ],
+      "branchEvidence": {
+        "landedCommits": [
+          {
+            "commit": "1a6fcaa",
+            "ancestorOfOriginMain": true
+          }
+        ],
+        "localOnlyImplementationUsed": false,
+        "detail": "Original scoped repair is landed; no branch-only implementation is credited."
+      }
+    },
+    {
+      "id": "SCN-002",
+      "verdict": "CODE_CONFIRMED",
+      "fix": "The obsolete NumPy dtype/endian FITS path is replaced with bounded Astropy parsing, explicit scaling and finite float64 admission.",
+      "evidence": [
+        {
+          "path": "backend/sim/gong_magnetogram.py",
+          "lines": "721-785",
+          "detail": "Bounded single-primary-HDU parse; memmap disabled; BSCALE/BZERO and BLANK handled by Astropy once; conversion to float64 precedes finite-pixel and unit checks."
+        },
+        {
+          "path": "backend/tests/test_gong_fits.py",
+          "lines": "22-80",
+          "detail": "Calls actual parser on frozen synthetic FITS; checks scaling exactly once, BLANK rejection, nonfinite float pixels and equivalent magnetic units."
+        },
+        {
+          "path": "backend/tests/test_gong_fits.py",
+          "lines": "32-39",
+          "detail": "Fixture and generator hashes are pinned and fixture is explicitly synthetic, not provider pixels."
+        }
+      ],
+      "remaining": [
+        "Central current-suite results pending. Parser-to-solver snapshot authentication is separately SCN-051; real observed calibration is not established by the synthetic FITS fixture."
+      ],
+      "branchEvidence": {
+        "landedCommits": [
+          {
+            "commit": "401c28d",
+            "ancestorOfOriginMain": true
+          }
+        ],
+        "localOnlyImplementationUsed": false,
+        "detail": "Validated FITS parser and tests are on origin/main."
+      }
+    },
+    {
+      "id": "SCN-003",
+      "verdict": "CODE_CONFIRMED",
+      "fix": "Explicit sine-latitude geometry, row orientation, longitude centers, exact cell areas and area-weighted harmonic decomposition are implemented and regression-covered.",
+      "evidence": [
+        {
+          "path": "backend/sim/magnetogram_grid.py",
+          "lines": "24-83",
+          "detail": "Validates declared grid geometry/order and uniformly sampled longitude; exact dmu area weights; immutable coordinate backing."
+        },
+        {
+          "path": "backend/sim/gong_magnetogram.py",
+          "lines": "560-582,650-692",
+          "detail": "Validates native CEA WCS and sentinels; south-to-north centers and LONG0+0.5 longitude centers are preserved without an inferred flip."
+        },
+        {
+          "path": "backend/sim/pfss_magnetogram.py",
+          "lines": "185-210",
+          "detail": "Explicit grid, undersampling and condition checks; sqrt(area) weighted SVD."
+        },
+        {
+          "path": "backend/tests/test_pfss_decomposition.py",
+          "lines": "15-88",
+          "detail": "Axial dipole, all real modes, shifted longitude, reversed row order and non-band-limited area residual tests."
+        },
+        {
+          "path": "backend/tests/test_gong_wcs.py",
+          "lines": "33-76,129-134",
+          "detail": "Literal independent pixel/edge sentinels, seam closure and field orientation assertions."
+        }
+      ],
+      "remaining": [
+        "Central current-suite results pending. Correct geometry does not establish observed-field accuracy or eligibility for spatial assimilation."
+      ],
+      "branchEvidence": {
+        "landedCommits": [
+          {
+            "commit": "70af7c8",
+            "ancestorOfOriginMain": true
+          },
+          {
+            "commit": "401c28d",
+            "ancestorOfOriginMain": true
+          }
+        ],
+        "localOnlyImplementationUsed": false,
+        "detail": "Original grid/WCS repairs are landed; older tracker main/branch distinctions do not describe this baseline."
+      }
+    },
+    {
+      "id": "SCN-004",
+      "verdict": "CODE_CONFIRMED",
+      "fix": "Solar/GONG DNS, TLS, headers and body I/O are owned by a killable subprocess with an absolute acquisition deadline, bounded IPC, kill/reap and descriptor cleanup. The high-file-descriptor poll repair is landed.",
+      "evidence": [
+        {
+          "path": "backend/sim/solar_http_transport.py",
+          "lines": "29-37,47-118,123-154,172-202",
+          "detail": "poll() waits on bounded framed IPC; parent reads consume one absolute deadline; close kills and waits before closing pipes; worker has independent SIGALRM expiry."
+        },
+        {
+          "path": "backend/sim/solar_realtime_data.py",
+          "lines": "1229-1238",
+          "detail": "Active realtime transport constructs DeadlineHttpResponse and maps its typed failures."
+        },
+        {
+          "path": "backend/sim/gong_magnetogram.py",
+          "lines": "1074-1100",
+          "detail": "Public GONG transport uses the same owned response and total acquisition budget."
+        },
+        {
+          "path": "backend/tests/test_solar_http_deadline.py",
+          "lines": "21-63,115-180",
+          "detail": "Real subprocess DNS stalls, header/body drip, body cap, interruption and subsequent recovery; parent SIGKILL proven with child timer disabled."
+        },
+        {
+          "path": "backend/tests/test_solar_http_high_fd.py",
+          "lines": "54-87",
+          "detail": "Raises descriptors above 1024 and verifies successful response plus reaping and pipe closure."
+        }
+      ],
+      "remaining": [
+        "Central current-suite results pending. This is the declared POSIX implementation: select.poll and SIGALRM/setitimer are required; Windows operation is neither implemented by these mechanisms nor certified. Controlled loopback tests do not establish live upstream TLS/certificate acceptance."
+      ],
+      "branchEvidence": {
+        "landedCommits": [
+          {
+            "commit": "870de80",
+            "ancestorOfOriginMain": true
+          },
+          {
+            "commit": "5403b57",
+            "ancestorOfOriginMain": true
+          }
+        ],
+        "localOnlyImplementationUsed": false,
+        "detail": "Both owned transport and poll portability-within-POSIX fix are ancestors of origin/main; stale FIX_AVAILABLE_UNMERGED labels must be retired for this snapshot."
+      }
+    },
+    {
+      "id": "SCN-036",
+      "verdict": "CODE_CONFIRMED",
+      "fix": "Network profile fails closed without configured credentials, authenticates before admission/engine setup, and enforces bounded exact per-subject and global WebSocket leases plus bounded command input.",
+      "evidence": [
+        {
+          "path": "backend/server.py",
+          "lines": "513-564,1588-1639",
+          "detail": "Network startup credential requirement, bounded unique headers and constant-time digest comparison."
+        },
+        {
+          "path": "backend/server.py",
+          "lines": "855-900,1999-2047,2061-2091",
+          "detail": "Hard command shape/size limits; per-subject counts and single-release ownership tokens; URL credentials rejected."
+        },
+        {
+          "path": "backend/server.py",
+          "lines": "5280-5311",
+          "detail": "Network authentication and Origin checks precede capacity/accept/engine setup; exact lease released in finally."
+        },
+        {
+          "path": "backend/tests/test_ws_resource_contract.py",
+          "lines": "248-287,480-578,592-622,680-700,729-747",
+          "detail": "Scoped fairness and reuse; reject unauthenticated/query credentials before work; gateway header admission; exact release; oversized and unsafe command rejection."
+        },
+        {
+          "path": "backend/tests/test_solar_security.py",
+          "lines": "66-89,526-574",
+          "detail": "Missing network credentials fail startup and all protected HTTP route families require authentication."
+        }
+      ],
+      "remaining": [
+        "Central current-suite results pending. Multiple valid subjects can still fill the global cap; semaphores are per process, not a cross-worker global quota. Actual deployment/gateway/TLS verification remains SCN-048."
+      ],
+      "branchEvidence": {
+        "landedCommits": [
+          {
+            "commit": "0789e08",
+            "ancestorOfOriginMain": true
+          },
+          {
+            "commit": "735a2cc",
+            "ancestorOfOriginMain": true
+          }
+        ],
+        "localOnlyImplementationUsed": false,
+        "detail": "Authenticated profile and subject fairness are landed."
+      }
+    },
+    {
+      "id": "SCN-037",
+      "verdict": "CODE_CONFIRMED",
+      "fix": "The permitted fixed-step alternative is explicit in the runner contract and both connected/state telemetry. Slow steps preserve time_scale/target_fps increments and do not accumulate catch-up work.",
+      "evidence": [
+        {
+          "path": "backend/server.py",
+          "lines": "4382-4388,4518-4523,4558-4586,4624-4653,5228-5245",
+          "detail": "Fixed-step implementation, nominal days/second semantics, per-tick pacing and clock_policy on handshake/state."
+        },
+        {
+          "path": "backend/tests/test_runtime_recovery_contract.py",
+          "lines": "74-90",
+          "detail": "Deliberately slow engine must retain identical 4/240-day increments and fixed_step telemetry."
+        },
+        {
+          "path": "agent-notes/CODEBASE_SCAN_AND_ISSUE_TRACKER_2026-10-07.md",
+          "lines": "129",
+          "detail": "Original closure permits declaring fixed-step semantics; a bounded elapsed-time accumulator is conditional on a wall-time promise."
+        }
+      ],
+      "remaining": [
+        "Central current-suite results pending. This confirms the declared fixed-step option; it does not invent owner acceptance of a wall-clock rate guarantee or certify optional N-body UI integration."
+      ],
+      "branchEvidence": {
+        "landedCommits": [
+          {
+            "commit": "a33ad93",
+            "ancestorOfOriginMain": true
+          }
+        ],
+        "localOnlyImplementationUsed": false,
+        "detail": "Fixed-step policy repair is landed. The old tracker DECISION_REQUIRED/FIX_AVAILABLE_UNMERGED wording is historical; current code satisfies the original explicit-policy alternative."
+      }
+    },
+    {
+      "id": "SCN-039",
+      "verdict": "CODE_CONFIRMED",
+      "fix": "Active bootstrap consumes an explicit build-time backend origin or same-origin fallback, independent viewport overrides and render scale. Query-driven backend redirection and HTTPS-to-HTTP backend routing are rejected.",
+      "evidence": [
+        {
+          "path": "src/frontend/app/runtimeConfig.ts",
+          "lines": "6-35",
+          "detail": "Canonical backend origin, mixed-content checks, bounded config values and actual drawing-buffer pixel ratio."
+        },
+        {
+          "path": "src/main.ts",
+          "lines": "234-258,1103-1131",
+          "detail": "Active composition root consumes config; backendBaseUrl returns its origin; resize applies drawing-buffer scale and observes canvas/shell."
+        },
+        {
+          "path": "src/frontend/app/runtimeConfig.test.ts",
+          "lines": "4-26",
+          "detail": "Nondefault origin/port, same-origin fallback, rejection of query redirect/mixed content and actual independent viewport/render overrides."
+        },
+        {
+          "path": "tests/browser/app-smoke.spec.ts",
+          "lines": "5-24",
+          "detail": "Actual app test checks 500x700 CSS size, 250x350 drawing buffer and requests to nondefault 9142 rather than 8042."
+        },
+        {
+          "path": "docs/frontend-configuration.md",
+          "lines": "3-20",
+          "detail": "Standalone dev routing, proxy/CORS requirements, viewport ranges and optional API/library-only N-body scope are documented."
+        }
+      ],
+      "remaining": [
+        "Central current-suite results pending. Current browser acceptance was not rerun here. Owner selection/verification of actual production URL, auth gateway and TLS remains SCN-048. SimulationClient is retained as an optional library and its own port default is outside the consumed default-UI contract."
+      ],
+      "branchEvidence": {
+        "landedCommits": [
+          {
+            "commit": "7fafd83",
+            "ancestorOfOriginMain": true
+          },
+          {
+            "commit": "cae3c0f",
+            "ancestorOfOriginMain": true
+          }
+        ],
+        "localOnlyImplementationUsed": false,
+        "detail": "Consumed configuration repair is on origin/main; no deployment selection or certification is inferred from ancestry."
+      }
+    },
+    {
+      "id": "SCN-048",
+      "verdict": "PARTIAL",
+      "fix": "Request-relative AIA coverage, cache revalidation and fail-closed observation eligibility exist, along with route-wide network authentication and a repeatable local two-worker HTTP/proxy gate. Scalar-JD leap identity and real deployed TLS/auth acceptance remain unclosed.",
+      "evidence": [
+        {
+          "path": "backend/sim/solar_time.py",
+          "lines": "153-159",
+          "detail": "Only scalar float JDTDB is accepted and passed directly to Astropy UTC datetime conversion; no ambiguous-bin policy or precise two-part input exists."
+        },
+        {
+          "path": "backend/tests/test_solar_time_precision_evidence.py",
+          "lines": "18-69,74-83,111-127",
+          "detail": "Diagnostic tests establish four midnight/leap scalar collisions, prove two-part representation retains identity, and show leap-start bins can have ordinary centers. These tests demonstrate the residual, not its remediation."
+        },
+        {
+          "path": "backend/sim/solar_realtime_data.py",
+          "lines": "553-582,2676-2687,2812-2826",
+          "detail": "AIA request-relative validation and acquisition use the scalar adapter. A conversion failure becomes failed source status, so a valid leap-boundary midnight can lose AIA availability before metadata acquisition."
+        },
+        {
+          "path": "backend/tests/test_solar_aia_epoch_coverage.py",
+          "lines": "24-66,96-159",
+          "detail": "Retained-provider replay tests time coverage, invalid refresh/cache isolation and binary rejection. Lines 105-108 intentionally use noon to bypass the unresolved midnight conversion defect."
+        },
+        {
+          "path": "backend/server.py",
+          "lines": "1907-1953,3191-3216",
+          "detail": "HTTP epoch parser reduces text to one finite float; two-part input or explicit ambiguity rejection is absent."
+        },
+        {
+          "path": "scripts/verify_deployment_contract.py",
+          "lines": "53-74,82-86,127-160",
+          "detail": "Gate explicitly declares remoteProductionVerified=false, runs HTTP loopback/proxy, checks network auth/CORS and 64 metadata requests. HTTPS Origin is an origin string, not a TLS transport."
+        },
+        {
+          "path": "agent-notes/REMEDIATION_DEPLOYMENT_2026-10-14.md",
+          "lines": "13-46",
+          "detail": "Historical local two-worker results explicitly exclude remote deployment, TLS, deployed credentials and scientific/provider coverage certification."
+        }
+      ],
+      "remaining": [
+        "Choose and implement strict ambiguous scalar-bin rejection plus precise two-part input, or an explicit documented rounding policy; add acceptance tests for midnight and genuine leap interiors under that chosen contract. Direct scalar conversion currently still fails for valid midnight inputs whose rounded value lies in the leap second.",
+        "Obtain actual deployment URL, authentication/gateway method and TLS/proxy evidence, including a representative protected operation. The no-network audit cannot supply those operational facts.",
+        "Observed provider/frame/spatial calibration and continuous archive coverage remain separate solar acceptance work; raw temporal coverage is not spatial eligibility. Central current-suite results pending."
+      ],
+      "branchEvidence": {
+        "landedCommits": [
+          {
+            "commit": "3ef4310",
+            "ancestorOfOriginMain": true
+          }
+        ],
+        "localOnlyImplementationUsed": false,
+        "detail": "The local deployment gate is landed, but no dated local pass is promoted to deployed production evidence. All residual claims are assessed against current baseline code, not a branch-only fix."
+      }
+    },
+    {
+      "id": "SCN-063",
+      "verdict": "CODE_CONFIRMED",
+      "fix": "Horizons uses the shared deadline-owned subprocess. Cancellation may return before cleanup, but the remaining admitted deadline still forces child termination/reaping before the single remote permit is released. Bounded complete reads preserve short-read data and enforce the body cap.",
+      "evidence": [
+        {
+          "path": "backend/mission/ephemeris_service.py",
+          "lines": "139-142,1208-1274,1293-1337,1339-1375",
+          "detail": "Active owned transport, context-governed queue admission, single upstream deadline, bounded body loop and permit release only after response cleanup."
+        },
+        {
+          "path": "backend/sim/solar_http_transport.py",
+          "lines": "81-118,123-154",
+          "detail": "Deadline covers parent IPC waits; close kills/reaps and closes pipes; child has independent expiry."
+        },
+        {
+          "path": "backend/tests/test_horizons_owned_transport.py",
+          "lines": "165-206,245-283,286-300,340-357",
+          "detail": "Checks waitpid reports already reaped, both descriptors close before permit release, repeated DNS/header/body SIGKILL recovery, cancellation, exact/over-cap and short reads, and spawn failure recovery."
+        },
+        {
+          "path": "agent-notes/REMEDIATION_RUNTIME_REVIEW_2026-10-14.md",
+          "lines": "104",
+          "detail": "Earlier review explicitly corrected invented owner acceptance and requested terminable transport."
+        },
+        {
+          "path": "agent-notes/REMEDIATION_HORIZONS_TRANSPORT_2026-10-14.md",
+          "lines": "16-38,130-143",
+          "detail": "Later report supplies that implementation and supersedes the earlier starvation tradeoff wording."
+        }
+      ],
+      "remaining": [
+        "Central current-suite results pending. Kill/reap evidence is POSIX-scoped. Cancellation does not promise instant remote-capacity reuse before the admitted deadline/cleanup; the key invariant is no permanent live-child permit loss. Loopback child tests replace the HTTPS wire and do not certify live NASA availability or TLS certificates."
+      ],
+      "branchEvidence": {
+        "landedCommits": [
+          {
+            "commit": "e6a02d9",
+            "ancestorOfOriginMain": true
+          },
+          {
+            "commit": "b010658",
+            "ancestorOfOriginMain": true
+          }
+        ],
+        "localOnlyImplementationUsed": false,
+        "detail": "Owned transport and later separation of local queue versus admitted upstream deadlines are landed. Prior OPEN/decision-required starvation claims are superseded by implementation, not by inferred owner acceptance."
+      }
+    },
+    {
+      "id": "SCN-070",
+      "verdict": "CODE_CONFIRMED",
+      "fix": "Recoverable read-only command failures produce command_failed without freezing propagation. A seek that may have mutated native state latches fatal state, blocks engine-reuse commands and cannot resume; telemetry failures clear stale published snapshots.",
+      "evidence": [
+        {
+          "path": "backend/server.py",
+          "lines": "4498-4516,4535-4545,4666-4674,4692-4731",
+          "detail": "Separate recoverable exception boundary and mutating seek fatal latch; failed engine reuse is rejected; outer worker failure clears stale state."
+        },
+        {
+          "path": "backend/tests/test_runtime_recovery_contract.py",
+          "lines": "50-71",
+          "detail": "Live runner continues after command error; fatal resume returns engine_unavailable."
+        },
+        {
+          "path": "backend/tests/test_runtime_review_regressions.py",
+          "lines": "445-522",
+          "detail": "Partial seek mutation cannot step/resume, reuse commands blocked, telemetry failures cannot advertise a stale healthy worker and same-frame Kuiper failure is fatal."
+        },
+        {
+          "path": "backend/tests/test_runtime_review_regressions.py",
+          "lines": "775-873",
+          "detail": "Actual REBOUND through ASGI proves read-only recovery versus partial native seek failure; no integration steps occur after fatal mutation."
+        }
+      ],
+      "remaining": [
+        "Central current-suite results pending. Native tests present in source are not a fresh native test pass. API/backend contract credit is independent of the intentionally unintegrated optional SimulationClient UI."
+      ],
+      "branchEvidence": {
+        "landedCommits": [
+          {
+            "commit": "a33ad93",
+            "ancestorOfOriginMain": true
+          },
+          {
+            "commit": "06a2562",
+            "ancestorOfOriginMain": true
+          }
+        ],
+        "localOnlyImplementationUsed": false,
+        "detail": "Both initial repair and independent runtime review repairs are landed."
+      }
+    },
+    {
+      "id": "SCN-071",
+      "verdict": "CODE_CONFIRMED",
+      "fix": "Cooperative ASGI accept/send/close deadlines, bounded idle/fair response handling and cancellation-safe ownership are implemented. Cleanup shields worker stop/join and socket tasks through repeated cancellation. Startup now occurs off the event loop while retaining the admission lease until initialization exits.",
+      "evidence": [
+        {
+          "path": "backend/server.py",
+          "lines": "4412-4428,4837-4843,4895-4920",
+          "detail": "Stop attempts cancellation, joins; shielded cleanup retains ownership and original cancellation provenance."
+        },
+        {
+          "path": "backend/server.py",
+          "lines": "5049-5101,5173-5202,5221-5277,5307-5311",
+          "detail": "Response drain count/time budget, snapshot-identity liveness, off-loop shielded initialization, FIRST_COMPLETED peer cleanup, and release only after owned serving returns."
+        },
+        {
+          "path": "backend/tests/test_runtime_recovery_contract.py",
+          "lines": "98-167,329-380",
+          "detail": "Startup, send/accept and idle deadlines reclaim cooperative session resources."
+        },
+        {
+          "path": "backend/tests/test_runtime_review_regressions.py",
+          "lines": "553-703,903-966,969-988,991-1099",
+          "detail": "Repeated cancellation during stop/join and delayed transport cleanup cannot release a live lease; stale versus fresh paused snapshots, response flood fairness, AnyIO provenance and peer task completion are covered."
+        },
+        {
+          "path": "backend/tests/test_ws_resource_contract.py",
+          "lines": "153-245",
+          "detail": "Real-engine first construction/initial reads occur on one non-event-loop thread; cancellation during blocked initialization retains admission until actual exit."
+        },
+        {
+          "path": "agent-notes/REMEDIATION_RUNTIME_REVIEW_2026-10-14.md",
+          "lines": "97-101",
+          "detail": "Explicitly excludes arbitrary native hangs and cancellation-suppressing transports from closure."
+        }
+      ],
+      "remaining": [
+        "Central current-suite results pending. There is still no hard initialization/native-operation deadline or forcible termination of SimulationRunner threads. A permanently hung native initialization/step or a transport that indefinitely suppresses cancellation can retain its slot indefinitely; bounded capacity recovery for such work would require process ownership or a different explicit contract.",
+        "The newer off-event-loop setup removes the old synchronous event-loop startup residual, but does not create a hard startup deadline. CODE_CONFIRMED is scoped to the cooperative ownership/deadline contract and targeted regressions, not unconditional termination or deployed saturation acceptance."
+      ],
+      "branchEvidence": {
+        "landedCommits": [
+          {
+            "commit": "a33ad93",
+            "ancestorOfOriginMain": true
+          },
+          {
+            "commit": "06a2562",
+            "ancestorOfOriginMain": true
+          },
+          {
+            "commit": "9e8e02c",
+            "ancestorOfOriginMain": true
+          }
+        ],
+        "localOnlyImplementationUsed": false,
+        "detail": "All runtime ownership repairs and later off-loop initialization repair are on origin/main. No local-only repair credited."
+      }
+    },
+    {
+      "id": "SCN-073",
+      "verdict": "CODE_CONFIRMED",
+      "fix": "Automatic redirects are disabled. Initial and every admitted redirect URL require HTTPS, exact NASA host, default/443 port, no credentials and no nonempty fragment. Redirects have one shared deadline, at most three hops and one reservation per outbound request; missing/duplicate Location is rejected.",
+      "evidence": [
+        {
+          "path": "backend/sim/solar_http_transport.py",
+          "lines": "137-139,172-181",
+          "detail": "Actual worker opener disables urllib automatic redirects and exposes status/headers to the owner."
+        },
+        {
+          "path": "backend/mission/ephemeris_service.py",
+          "lines": "145-154,1225-1258,1263-1285",
+          "detail": "Validates initial/final/redirect URLs, reserves initial request after admission, validates target before the next outbound hop, charges each hop and preserves the absolute deadline."
+        },
+        {
+          "path": "backend/tests/test_horizons_redirect_contract.py",
+          "lines": "17-85",
+          "detail": "Actual urllib boundary with controlled HTTPS handler rejects escapes, follows allowed relative redirect and enforces reservations/hop cap."
+        },
+        {
+          "path": "backend/tests/test_horizons_owned_transport.py",
+          "lines": "220-242,303-337",
+          "detail": "Same policy through real children: forbidden host/scheme/port/credential/fragment, all redirect statuses, missing/duplicate Location, no-request budget, loops and one deadline."
+        }
+      ],
+      "remaining": [
+        "Central current-suite results pending. Controlled HTTPS-handler/loopback tests establish redirect ownership and policy, not live NASA TLS/certificate or production network acceptance."
+      ],
+      "branchEvidence": {
+        "landedCommits": [
+          {
+            "commit": "2613436",
+            "ancestorOfOriginMain": true
+          },
+          {
+            "commit": "e6a02d9",
+            "ancestorOfOriginMain": true
+          }
+        ],
+        "localOnlyImplementationUsed": false,
+        "detail": "Redirect repair and owned-child follow-up preserving the policy are both landed."
+      }
+    }
+  ],
+  "findings": [
+    {
+      "id": "RUNTIME-001",
+      "canonicalIds": [
+        "SCN-048"
+      ],
+      "severity": "P2",
+      "kind": "concrete_unresolved_defect",
+      "title": "Valid leap-boundary midnight remains unavailable after scalar JD conversion",
+      "detail": "At 2012-07-01, 2015-07-01 and 2017-01-01 UTC midnight (also the recorded 1990 boundary), the binary64 TDB JD is identical to a genuine instant inside the preceding leap second. The scalar adapter converts the shared bin center to a leap second and datetime conversion raises ValueError. AIA acquisition catches this as a provider failure, so an intended valid midnight cannot reach acquisition. Conversely, leap-start bins can have ordinary centers. The retained evidence tests establish representational ambiguity rather than implementing strict ambiguous-bin rejection or documenting rounding; two-part input is absent. This is existing documented residual, not a newly executed reproduction.",
+      "evidence": [
+        {
+          "path": "backend/sim/solar_time.py",
+          "lines": "153-159",
+          "detail": "Scalar adapter."
+        },
+        {
+          "path": "backend/tests/test_solar_time_precision_evidence.py",
+          "lines": "28-69,111-127",
+          "detail": "Independent TAI identity and scalar rounding-bin evidence."
+        },
+        {
+          "path": "backend/sim/solar_realtime_data.py",
+          "lines": "2684-2687,2812-2826",
+          "detail": "Failing conversion prevents AIA metadata request and is reported as acquisition failure."
+        }
+      ],
+      "remediation": "Time-policy owner must choose precise two-part input plus strict ambiguity rejection or explicitly documented rounding, then implement/test that contract."
+    },
+    {
+      "id": "RUNTIME-002",
+      "canonicalIds": [
+        "SCN-048"
+      ],
+      "severity": "acceptance_gap",
+      "kind": "operational_evidence_missing",
+      "title": "Local authenticated HTTP proxy evidence does not certify deployed TLS/authentication",
+      "detail": "The repeatable gate starts real two-worker Uvicorn and a local HTTP reverse proxy, with generated run-only credentials. It explicitly sets remoteProductionVerified=false. The assigned note excludes remote TLS terminator, real deployed proxy and credentials; those facts remain unverified under this no-network audit.",
+      "evidence": [
+        {
+          "path": "scripts/verify_deployment_contract.py",
+          "lines": "53-74,82-86,127-160",
+          "detail": "Local HTTP-only scope and metadata load."
+        },
+        {
+          "path": "agent-notes/REMEDIATION_DEPLOYMENT_2026-10-14.md",
+          "lines": "41-46",
+          "detail": "Explicit deployed acceptance exclusions."
+        }
+      ],
+      "remediation": "Collect actual URL/auth/TLS/proxy acceptance separately; do not promote historical localhost request counts to production closure."
+    },
+    {
+      "id": "RUNTIME-003",
+      "canonicalIds": [
+        "SCN-071"
+      ],
+      "severity": "declared_limitation",
+      "kind": "capacity_recovery_boundary",
+      "title": "Native initialization and simulation threads remain cooperatively owned",
+      "detail": "Initialization now runs off the event loop and survives cancellation under shielded ownership. However no hard initialization deadline exists; stop joins for three seconds and then cleanup waits for actual exit. Arbitrary native hangs and indefinitely cancellation-suppressing transports can still retain capacity. This is explicitly preserved rather than hidden by releasing leases early, and is not a regression of the scoped cooperative contract.",
+      "evidence": [
+        {
+          "path": "backend/server.py",
+          "lines": "4412-4428,4895-4920,5173-5197",
+          "detail": "Actual stop/join/shield and initialization lifetime."
+        },
+        {
+          "path": "backend/tests/test_ws_resource_contract.py",
+          "lines": "199-245",
+          "detail": "Regression deliberately releases a blocked initializer before expecting capacity reuse."
+        }
+      ],
+      "remediation": "Only if unconditional capacity recovery is required, introduce killable engine process ownership with hard startup/operation deadlines and dedicated acceptance."
+    },
+    {
+      "id": "RUNTIME-004",
+      "canonicalIds": [
+        "SCN-004",
+        "SCN-037",
+        "SCN-039",
+        "SCN-063",
+        "SCN-070",
+        "SCN-071",
+        "SCN-073"
+      ],
+      "severity": "informational",
+      "kind": "evidence_reconciliation",
+      "title": "Historical unmerged labels are stale at the pinned origin/main",
+      "detail": "Read-only merge-base --is-ancestor checks confirm every inspected repair commit listed in branchEvidence is already an ancestor of origin/main@bb29d4b. All six assigned note filenames have one distinct content hash in the inventory. Differences are temporal claims across reports: runtime-review predates Horizons process ownership; runtime-client predates active frame lifecycle/nonfinite input repairs; lifecycle-review predates negotiated subscription IDs. No branch-only implementation has been counted as landed."
+    }
+  ],
+  "caveats": [
+    "No tests, installs, services, browser sessions, network requests or fetches were run. The user is running current baseline frontend/backend suites centrally. CODE_CONFIRMED means implementation plus targeted regression source are present, with current execution pending.",
+    "All evidence paths are relative to snapshot.root unless absolute. Line numbers refer to this exact snapshot. No repository file, existing report or git state was modified; only the requested /tmp report was written.",
+    "Dated test results in October 14-17 notes remain historical observations at their named revisions. No counts are summed across overlapping suites, and no past pass is claimed as a current one.",
+    "Owned HTTP/Horizons transport proof is POSIX-scoped; select.poll, SIGALRM/setitimer and POSIX fault-injection tests do not establish Windows support.",
+    "Loopback HTTP/HTTPS-handler fault injection demonstrates ownership and redirect policy, not live provider availability, TLS/certificate behavior, scientific provider calibration or deployed auth.",
+    "SimulationClient is intentionally retained as API/library-only. Active default UI uses local propagation plus frameLifecycle, so library/backend tests do not certify default-page N-body playback.",
+    "No source-only audit proves the absence of all regressions. No additional concrete bug was established in the other eleven assigned scoped roots. Native hard termination remains an explicit limit, not an inferred owner acceptance."
+  ],
+  "counts": {
+    "CODE_CONFIRMED": 11,
+    "PARTIAL": 1
+  }
+}

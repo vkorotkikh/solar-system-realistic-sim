@@ -1,0 +1,92 @@
+{
+ "axe": {
+  "axeVersion": "4.10.2",
+  "violations": [],
+  "passes": 40,
+  "incomplete": 2
+ },
+ "keyboard": {
+  "stops": 45,
+  "unique": 11,
+  "first12": [
+   "button#panel-close[Collapse simulation controls]|outline:solid/3px",
+   "summary#|outline:solid/3px",
+   "button#toggle-play[Pause simulation]|outline:solid/3px",
+   "button#now-time|outline:solid/3px",
+   "input#time-scale|outline:solid/3px",
+   "summary#|outline:solid/3px",
+   "summary#|outline:solid/3px",
+   "summary#|outline:solid/3px",
+   "input#body-search|outline:solid/3px",
+   "select#body-list|outline:solid/3px",
+   "button#focus-body|outline:solid/3px",
+   "button#follow-body|outline:solid/3px"
+  ],
+  "noVisibleFocus": 0,
+  "canvasFocusable": false,
+  "zoomChangedByKeys": false
+ },
+ "reducedMotion_no-preference": {
+  "date": "2026-11-07",
+  "play": "Pause",
+  "scale": "+4.0 d/s",
+  "dateAfter3s": "2026-11-20",
+  "canvasChangedIn3s": true
+ },
+ "reducedMotion_reduce": {
+  "date": "2026-11-05",
+  "play": "Pause",
+  "scale": "+4.0 d/s",
+  "dateAfter3s": "2026-11-19",
+  "canvasChangedIn3s": true
+ },
+ "responsive": {
+  "1920x1080": {
+   "hOverflow": false,
+   "canvas": [
+    1568,
+    1080
+   ],
+   "panelVisible": true,
+   "panelToggleVisible": true,
+   "smallTargets": 0
+  },
+  "1280x720": {
+   "hOverflow": false,
+   "canvas": [
+    928,
+    720
+   ],
+   "panelVisible": true,
+   "panelToggleVisible": true,
+   "smallTargets": 0
+  },
+  "390x844": {
+   "hOverflow": false,
+   "canvas": [
+    390,
+    844
+   ],
+   "panelVisible": false,
+   "panelToggleVisible": true,
+   "smallTargets": 0
+  }
+ },
+ "determinism": {
+  "datesWithFrozenClock": [
+   "2026-11-01",
+   "2026-10-31"
+  ],
+  "urlDateParamHonoured": false
+ },
+ "webglUnavailable": {
+  "pageErrors": [
+   "THREE.WebGLRenderer: A WebGL context could not be created. Reason:  disabled by enterprise policy or commandline switch",
+   "THREE.WebGLRenderer: A WebGL context could not be created. Reason:  disabled by enterprise policy or commandline switch",
+   "THREE.WebGLRenderer: Error creating WebGL context.",
+   "Error creating WebGL context."
+  ],
+  "visibleText": "SOLAR OBSERVATORY SUN MODEL LAB Real-time heliocentric model and solar observation workspace. LIVE SIMULATION J2000 FRAME TIME SIMULATION DATE — Pause Jump to now Simulation speed +4.0 d/s −120 reverse 0 +120 forward DISPLAY NAVIGATION EXPLORER Find a major body Major bodies 10 bodies Select a t",
+  "fallbackMessage": false
+ }
+}

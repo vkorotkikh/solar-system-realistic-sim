@@ -1,5 +1,7 @@
 # SCN-041/048: independent solar-wind observation overlap
 
+> **Current status (2026-10-30):** See the [verified remediation status](REMEDIATION_STATUS_2026-10-30.md) for all 83 dispositions, branch-specific fixes, remaining acceptance gates and the 25 completed working-note removals. The dated content below is historical evidence; it does not describe current main.
+
 ## Scope and outcome
 
 The earlier one-minute real-time capture did not overlap the retained NASA

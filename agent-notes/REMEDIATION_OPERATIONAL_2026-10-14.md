@@ -1,5 +1,7 @@
 # Operational remediation checkpoint, 2026-10-14
 
+> **Current status (2026-10-30):** See the [verified remediation status](REMEDIATION_STATUS_2026-10-30.md) for all 83 dispositions, branch-specific fixes, remaining acceptance gates and the 25 completed working-note removals. The dated content below is historical evidence; it does not describe current main.
+
 ## Scope and provenance
 
 - Branch: `remediation/20261014-operational`.

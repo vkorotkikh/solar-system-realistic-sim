@@ -2,7 +2,8 @@
 """Reproduce the Phase-1 asteroid bundle offline from pinned REAL JPL inputs.
 
 Refresh inputs explicitly with capture_catalog_sources.py. All three artifacts
-are staged and published as one directory generation; --check never writes.
+are validated without publication by default. Pass --write to stage and publish
+one directory generation; --check only compares existing artifact bytes.
 """
 from __future__ import annotations
 
@@ -23,8 +24,8 @@ DEFAULT_OUTPUT_DIR = PROJECT_ROOT / "public" / "data" / "asteroid-phase1"
 DEFAULT_BIN_NAME = "asteroid_phase1_main_100000.bin"
 DEFAULT_META_NAME = "asteroid_phase1_main_100000.meta.json"
 ACBF_MAGIC = b"ACBF"
-ACBF_VERSION = 1
-ACBF_STRIDE_BYTES = 36
+ACBF_VERSION = 2
+ACBF_STRIDE_BYTES = 88
 ANGLE_SCALE_U16 = 65535
 MAIN_BELT_CLASS_WHITELIST = {"MBA", "IMB", "OMB"}
 MAIN_BELT_AU_MIN = 2.0
@@ -127,15 +128,11 @@ def _pack_u16(value: float, maximum: float) -> int:
 def _pack_binary(records: list[dict]) -> bytes:
     payload = bytearray(struct.pack("<4sBBBBI", ACBF_MAGIC, ACBF_VERSION, 0, ACBF_STRIDE_BYTES, 0, len(records)))
     for r in records:
-        # Existing ACBF v1 layout is unchanged. 0 albedo means unknown;
-        # positive source albedo is at least code 1. 255 is unknown taxonomy.
-        albedo_code = 0 if r["albedo"] is None else max(1, _pack_u16(r["albedo"], 1))
+        # Float64 preserves the provider values after JSON numeric conversion.
         payload.extend(struct.pack(
-            "<IffHHHHHffHBBH", r["source_id"], r["epoch_jd"], r["a_au"],
-            _pack_u16(r["e"], 1), _pack_u16(r["i_deg"], 180),
-            _pack_u16(r["ascending_node_deg"], 360), _pack_u16(r["arg_periapsis_deg"], 360),
-            _pack_u16(r["mean_anomaly_deg"], 360), r["period_days"], r["diameter_km"],
-            albedo_code, r["taxonomy_index"], 0, 0,
+            "<I10dBBH", r["source_id"], r["epoch_jd"], r["a_au"], r["e"], r["i_deg"],
+            r["ascending_node_deg"], r["arg_periapsis_deg"], r["mean_anomaly_deg"],
+            r["period_days"], r["diameter_km"], r["albedo"] or 0., r["taxonomy_index"], 0, 0,
         ))
     return bytes(payload)
 
@@ -192,8 +189,10 @@ def dataset_artifacts(limit: int, bin_name: str, meta_name: str, source_dir: Pat
         "source": {"url": url, "sha256": entry["sha256"], "signature": source["signature"], "captured_utc": entry["capturedUtc"], "matching_database_rows": int(source["count"])},
         "checksum_sha256": hashlib.sha256(binary).hexdigest(), "checksum_algorithm_sha256": "sha256",
         "population_policy": {"selection": "largest-first-prefix", "order": ["diameter_km descending", "source_id ascending for ties"], "representative": False, "scope": "known SBDB diameters, MBA/IMB/OMB, 2 <= a <= 3.5 AU", "stored": coverage, "display_prefix_50000": {**_population(prefix), "fraction_of_stored": len(prefix) / len(records)}},
-        "fidelity": {"status": "not-independently-validated", "integrity": "SHA-256 binds artifact bytes only, not scientific accuracy", "period": "SBDB full-prec=true per (days), rounded only to ACBF float32", "taxonomy": "coarse visual families from observed spec_T/spec_B; original labels remain in pinned input; no semimajor-axis inference; X/E are not metallic M", "albedo": "SBDB source value or unknown; no assumed albedo", "diameter": "SBDB-supplied diameter in km; no magnitude-derived diameters in this population", "dynamics": "quantized fixed osculating elements with two-body propagation, not a validated multi-epoch ephemeris", "appearance": "colors and irregularity are illustrative"},
-        "record_layout": {"format": "acbf_v1", "stride_bytes": 36, "unknown_taxonomy_u8": 255, "unknown_albedo_u16": 0, "positive_albedo_min_code": 1, "quantization": {"float32": ["epoch_jd", "a_au", "period_days", "diameter_km"], "u16_ranges": {"e": [0, 1], "i_deg": [0, 180], "angles_deg": [0, 360], "albedo": [0, 1]}}},
+        "fidelity": {"status": "not-independently-validated", "integrity": "SHA-256 binds artifact bytes only, not scientific accuracy", "period": "SBDB full-prec=true per (days), preserved as ACBF v2 float64", "taxonomy": "coarse visual families from observed spec_T/spec_B; original labels remain in pinned input; no semimajor-axis inference; X/E are not metallic M", "albedo": "SBDB source value or unknown; no assumed albedo", "diameter": "SBDB-supplied diameter in km; no magnitude-derived diameters in this population", "dynamics": "source-precision fixed osculating elements with two-body propagation, not a validated multi-epoch ephemeris", "appearance": "colors and irregularity are illustrative"},
+        "record_layout": {"format": "acbf_v2", "stride_bytes": 88, "unknown_taxonomy_u8": 255,
+                          "unknown_albedo_float64": 0, "float64": ["epoch_jd", "a_au", "e", "i_deg",
+                          "ascending_node_deg", "arg_periapsis_deg", "mean_anomaly_deg", "period_days", "diameter_km", "albedo"]},
         "taxonomy_map": {"C": 0, "S": 1, "M": 2, "unknown": 255},
         "counts": {"taxonomy": coverage["taxonomy"], "orbit_class": {key: sum(r["orbit_class"] == key for r in records) for key in sorted(MAIN_BELT_CLASS_WHITELIST)}},
         "scientific_references": ["https://ssd-api.jpl.nasa.gov/doc/sbdb_query.html", "https://cneos.jpl.nasa.gov/tools/ast_size_est.html"],
@@ -222,10 +221,13 @@ def main() -> None:
     parser.add_argument("--source-dir", type=Path, default=SOURCE_DIR)
     parser.add_argument("--offline", action="store_true", help="explicit default; generation never accesses the network")
     mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--write", action="store_true", help="publish the validated bundle to the selected output directory")
     mode.add_argument("--check", action="store_true", help="byte-compare without writing")
     mode.add_argument("--dry-run", action="store_true", help="validate all pinned inputs and serialize without writing")
     args = parser.parse_args()
-    build_dataset(args.output_dir, args.limit, args.bin_name, args.meta_name, args.source_dir, check=args.check, dry_run=args.dry_run)
+    build_dataset(args.output_dir, args.limit, args.bin_name, args.meta_name, args.source_dir, check=args.check, dry_run=args.dry_run or not (args.write or args.check))
+    if not args.write and not args.check:
+        print("[phase1] Preview only; pass --write to publish the validated bundle.")
 
 
 if __name__ == "__main__":

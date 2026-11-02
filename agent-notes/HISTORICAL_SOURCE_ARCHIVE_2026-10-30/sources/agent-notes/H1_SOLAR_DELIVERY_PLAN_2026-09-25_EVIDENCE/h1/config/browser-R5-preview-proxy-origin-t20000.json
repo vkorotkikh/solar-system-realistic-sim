@@ -1,0 +1,66 @@
+{
+ "label": "R5-preview-proxy-origin-t20000",
+ "pageUrl": "http://127.0.0.1:4184/",
+ "rewritePort": "none",
+ "seconds": 40,
+ "pageOrigin": "http://127.0.0.1:4184",
+ "backendRequestOrigins": [
+  "http://127.0.0.1:4184"
+ ],
+ "summary": {
+  "/solar/physics :: http 200 acao=null": 2,
+  "/solar/realtime/aia-tile :: http 200 acao=http://127.0.0.1:4184": 1,
+  "/solar/physics :: http 503 acao=null": 1,
+  "/solar/physics :: pending": 1
+ },
+ "requests": [
+  {
+   "t": 1324,
+   "dur": 12319,
+   "url": "http://127.0.0.1:4184/solar/physics?jd=…&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "type": "fetch",
+   "origin": null,
+   "outcome": "http 200",
+   "acao": null
+  },
+  {
+   "t": 13655,
+   "dur": 9,
+   "url": "http://127.0.0.1:4184/solar/realtime/aia-tile?channel=aia_304&image_id=192408248&v=192408248",
+   "type": "image",
+   "origin": "http://127.0.0.1:4184",
+   "outcome": "http 200",
+   "acao": "http://127.0.0.1:4184"
+  },
+  {
+   "t": 14869,
+   "dur": 12053,
+   "url": "http://127.0.0.1:4184/solar/physics?jd=…&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "type": "fetch",
+   "origin": null,
+   "outcome": "http 503",
+   "acao": null
+  },
+  {
+   "t": 27002,
+   "dur": 12370,
+   "url": "http://127.0.0.1:4184/solar/physics?jd=…&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "type": "fetch",
+   "origin": null,
+   "outcome": "http 200",
+   "acao": null
+  },
+  {
+   "t": 41094,
+   "dur": null,
+   "url": "http://127.0.0.1:4184/solar/physics?jd=…&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "type": "fetch",
+   "origin": null,
+   "outcome": "pending",
+   "acao": null
+  }
+ ],
+ "console": [
+  "26871ms [error] Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+ ]
+}

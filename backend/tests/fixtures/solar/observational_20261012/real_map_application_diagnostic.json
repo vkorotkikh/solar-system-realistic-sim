@@ -1,0 +1,309 @@
+{
+  "admitted_applications": [
+    {
+      "checks": {
+        "boundary_correlation": false,
+        "boundary_median_abs": true,
+        "log_expansion_correlation": false,
+        "log_expansion_median_abs": false,
+        "matched_feature_cells": false,
+        "provider_closed_recall": false,
+        "provider_open_recall": false,
+        "topology_accuracy": false
+      },
+      "degree": 64,
+      "feature_budget_passed": false,
+      "metrics": {
+        "application_api": "compute_pfss_from_coefficients",
+        "application_degree": 64,
+        "application_input": "retained_gong_map_degree64_coefficients_in_provider_native_frame",
+        "application_metadata": {
+          "calibration_status": "unvalidated",
+          "coverage_fraction": 0.6662808641975309,
+          "indeterminate_fraction": 0.0,
+          "model": "wsa_inspired_v1",
+          "provider_feature_evidence": {
+            "corpus": "nso-gong-zqs-wsa-v6.2-20261012T1744",
+            "current_input_certified": false,
+            "evidence_scope": "topology_expansion_boundary_features_only",
+            "excluded_claims": [
+              "independent speed calibration",
+              "operational WSA equivalence",
+              "SCS equivalence",
+              "1-AU wind forecast accuracy",
+              "live-provider availability",
+              "solar-cycle generalization",
+              "scene-coordinate rendering"
+            ],
+            "independent_speed_output_available": false,
+            "observation_sha256": "e405550e1f8844bf5556419e7137aa6eb9bce79e0292a628df2c1ece28872ee8",
+            "operational_forecast_validated": false,
+            "provider": "NASA/CCMC WSA_V6.2 FILELIST mrzql matched by epoch, rotation, and left edge to retained NSO/GONG zqs",
+            "provider_wsa_sha256": "5b8f1da9e8bcf057b1c86ecd80207166e3362e1ecb92db7a54499ec7bf192035",
+            "scope": "topology, expansion, and boundary-feature agreement at one retained epoch",
+            "status": "bounded_retained_epoch_feature_match"
+          },
+          "quality_reasons": [
+            "incomplete_source_surface_coverage"
+          ],
+          "valid_fraction": 0.20833333333333334
+        },
+        "boundary_distance_deg": {
+          "actual_median": 4.856032261348747,
+          "bias": 1.732651849618954,
+          "correlation": 0.2280547894827201,
+          "median_abs": 2.963149914241815,
+          "p90_abs": 6.03337867596567,
+          "reference_median": 4.049170970916748,
+          "rmse": 3.9053941254053477
+        },
+        "grid_shape": [
+          36,
+          72
+        ],
+        "log_expansion": {
+          "actual_median": 0.8415415330632187,
+          "bias": -1.5297165739179759,
+          "correlation": -0.06137654750968265,
+          "median_abs": 1.6392973224622147,
+          "p90_abs": 2.48192758795431,
+          "reference_median": 2.6546050446724223,
+          "rmse": 1.7662874332585243
+        },
+        "matched_feature_cells": 49,
+        "provider": "WSA_V6.2",
+        "provider_degree": 90,
+        "source_surface_radii": 2.51,
+        "topology": {
+          "accuracy": 0.7017746913580247,
+          "application_open": 540,
+          "balanced_accuracy": 0.46543785267326837,
+          "false_closed": 282,
+          "false_open": 491,
+          "provider_closed_recall": 0.7828394515701017,
+          "provider_open": 331,
+          "provider_open_recall": 0.14803625377643503
+        }
+      }
+    },
+    {
+      "checks": {
+        "boundary_correlation": true,
+        "boundary_median_abs": true,
+        "log_expansion_correlation": true,
+        "log_expansion_median_abs": true,
+        "matched_feature_cells": false,
+        "provider_closed_recall": false,
+        "provider_open_recall": false,
+        "topology_accuracy": false
+      },
+      "degree": 30,
+      "feature_budget_passed": false,
+      "metrics": {
+        "application_api": "compute_pfss_from_coefficients",
+        "application_degree": 30,
+        "application_input": "retained_gong_map_degree30_coefficients_in_provider_native_frame",
+        "application_metadata": {
+          "calibration_status": "unvalidated",
+          "coverage_fraction": 0.7457561728395061,
+          "indeterminate_fraction": 0.0,
+          "model": "wsa_inspired_v1",
+          "provider_feature_evidence": {
+            "corpus": "nso-gong-zqs-wsa-v6.2-20261012T1744",
+            "current_input_certified": false,
+            "evidence_scope": "topology_expansion_boundary_features_only",
+            "excluded_claims": [
+              "independent speed calibration",
+              "operational WSA equivalence",
+              "SCS equivalence",
+              "1-AU wind forecast accuracy",
+              "live-provider availability",
+              "solar-cycle generalization",
+              "scene-coordinate rendering"
+            ],
+            "independent_speed_output_available": false,
+            "observation_sha256": "e405550e1f8844bf5556419e7137aa6eb9bce79e0292a628df2c1ece28872ee8",
+            "operational_forecast_validated": false,
+            "provider": "NASA/CCMC WSA_V6.2 FILELIST mrzql matched by epoch, rotation, and left edge to retained NSO/GONG zqs",
+            "provider_wsa_sha256": "5b8f1da9e8bcf057b1c86ecd80207166e3362e1ecb92db7a54499ec7bf192035",
+            "scope": "topology, expansion, and boundary-feature agreement at one retained epoch",
+            "status": "bounded_retained_epoch_feature_match"
+          },
+          "quality_reasons": [
+            "incomplete_source_surface_coverage"
+          ],
+          "valid_fraction": 0.08873456790123457
+        },
+        "boundary_distance_deg": {
+          "actual_median": 2.998877975985849,
+          "bias": -3.9930357488948687,
+          "correlation": 0.6579678924775002,
+          "median_abs": 3.271295998483852,
+          "p90_abs": 8.184160576175847,
+          "reference_median": 7.468038320541382,
+          "rmse": 5.060538867194605
+        },
+        "grid_shape": [
+          36,
+          72
+        ],
+        "log_expansion": {
+          "actual_median": 1.5854058900150507,
+          "bias": 0.08579300079629959,
+          "correlation": 0.7224042370444288,
+          "median_abs": 0.39071301814170434,
+          "p90_abs": 1.1438328634977337,
+          "reference_median": 1.443808734621307,
+          "rmse": 0.7328441530213586
+        },
+        "matched_feature_cells": 220,
+        "provider": "WSA_V6.2",
+        "provider_degree": 90,
+        "source_surface_radii": 2.51,
+        "topology": {
+          "accuracy": 0.9533179012345679,
+          "application_open": 230,
+          "balanced_accuracy": 0.8301148731077739,
+          "false_closed": 111,
+          "false_open": 10,
+          "provider_closed_recall": 0.9955771782397169,
+          "provider_open": 331,
+          "provider_open_recall": 0.6646525679758308
+        }
+      }
+    },
+    {
+      "checks": {
+        "boundary_correlation": true,
+        "boundary_median_abs": false,
+        "log_expansion_correlation": false,
+        "log_expansion_median_abs": true,
+        "matched_feature_cells": false,
+        "provider_closed_recall": false,
+        "provider_open_recall": false,
+        "topology_accuracy": false
+      },
+      "degree": 15,
+      "feature_budget_passed": false,
+      "metrics": {
+        "application_api": "compute_pfss_from_coefficients",
+        "application_degree": 15,
+        "application_input": "retained_gong_map_degree15_coefficients_in_provider_native_frame",
+        "application_metadata": {
+          "calibration_status": "unvalidated",
+          "coverage_fraction": 0.7094907407407407,
+          "indeterminate_fraction": 0.0,
+          "model": "wsa_inspired_v1",
+          "provider_feature_evidence": {
+            "corpus": "nso-gong-zqs-wsa-v6.2-20261012T1744",
+            "current_input_certified": false,
+            "evidence_scope": "topology_expansion_boundary_features_only",
+            "excluded_claims": [
+              "independent speed calibration",
+              "operational WSA equivalence",
+              "SCS equivalence",
+              "1-AU wind forecast accuracy",
+              "live-provider availability",
+              "solar-cycle generalization",
+              "scene-coordinate rendering"
+            ],
+            "independent_speed_output_available": false,
+            "observation_sha256": "e405550e1f8844bf5556419e7137aa6eb9bce79e0292a628df2c1ece28872ee8",
+            "operational_forecast_validated": false,
+            "provider": "NASA/CCMC WSA_V6.2 FILELIST mrzql matched by epoch, rotation, and left edge to retained NSO/GONG zqs",
+            "provider_wsa_sha256": "5b8f1da9e8bcf057b1c86ecd80207166e3362e1ecb92db7a54499ec7bf192035",
+            "scope": "topology, expansion, and boundary-feature agreement at one retained epoch",
+            "status": "bounded_retained_epoch_feature_match"
+          },
+          "quality_reasons": [
+            "incomplete_source_surface_coverage"
+          ],
+          "valid_fraction": 0.08371913580246913
+        },
+        "boundary_distance_deg": {
+          "actual_median": 2.998877975985849,
+          "bias": -4.690786477093035,
+          "correlation": 0.6552421948845534,
+          "median_abs": 4.20796880194572,
+          "p90_abs": 8.171597334218092,
+          "reference_median": 8.29956340789795,
+          "rmse": 5.638239821188275
+        },
+        "grid_shape": [
+          36,
+          72
+        ],
+        "log_expansion": {
+          "actual_median": 1.8171756968170436,
+          "bias": 0.08772069365548625,
+          "correlation": 0.6694409988992818,
+          "median_abs": 0.45708448822054093,
+          "p90_abs": 1.265926947884618,
+          "reference_median": 1.4335113835051105,
+          "rmse": 0.7681484745538655
+        },
+        "matched_feature_cells": 191,
+        "provider": "WSA_V6.2",
+        "provider_degree": 90,
+        "source_surface_radii": 2.51,
+        "topology": {
+          "accuracy": 0.9359567901234568,
+          "application_open": 217,
+          "balanced_accuracy": 0.7827699691738677,
+          "false_closed": 140,
+          "false_open": 26,
+          "provider_closed_recall": 0.988500663423264,
+          "provider_open": 331,
+          "provider_open_recall": 0.5770392749244713
+        }
+      }
+    }
+  ],
+  "budget": {
+    "boundary_correlation_min": 0.5,
+    "boundary_median_abs_deg_max": 3.5,
+    "coefficient_correlation_min": 0.9999,
+    "coefficient_max_abs_gauss_max": 0.06,
+    "coefficient_normalized_rmse_max": 0.01,
+    "constant_monopole_normalized_rmse_min": 0.04,
+    "log_expansion_correlation_min": 0.67,
+    "log_expansion_median_abs_max": 0.47,
+    "matched_feature_cells_min": 240,
+    "provider_closed_recall_min": 0.999,
+    "provider_open_recall_min": 0.74,
+    "topology_accuracy_min": 0.96,
+    "wrong_frame_correlation_max": 0.1
+  },
+  "degree_admission": [
+    {
+      "admitted": false,
+      "degree": 90,
+      "error": "latitude design for m=0 has condition 5.3876e+09 above limit 1e+06"
+    },
+    {
+      "admitted": true,
+      "degree": 64
+    },
+    {
+      "admitted": true,
+      "degree": 30
+    },
+    {
+      "admitted": true,
+      "degree": 15
+    }
+  ],
+  "limitations": [
+    "One GONG-Z/WSA V6.2 epoch, not solar-cycle-wide coverage.",
+    "Provider WSA output is an independent model product, not an in-situ observation.",
+    "No independent provider speed output exists in this corpus; application speed is not an observational acceptance measure.",
+    "No Schatten current-sheet stage, 1 AU propagation, arrival-time calibration, live-provider availability, or scene-frame rendering calibration is established.",
+    "The public data_driven route remains fail-closed.",
+    "The retained 180x360 map is rejected by the unchanged degree-90 latitude-design condition limit; the highest admitted diagnostic degree is 64 and is reported separately from native provider degree-90 acceptance."
+  ],
+  "observation_sha256": "e405550e1f8844bf5556419e7137aa6eb9bce79e0292a628df2c1ece28872ee8",
+  "provider_wsa_sha256": "5b8f1da9e8bcf057b1c86ecd80207166e3362e1ecb92db7a54499ec7bf192035",
+  "required_degree90_admitted": false,
+  "schema": "scn041_real_map_application_diagnostic_v1",
+  "scope": "Actual retained map decomposition and spectral API; no PFSS snapshot consumer or scene adapter claim."
+}

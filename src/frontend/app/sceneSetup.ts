@@ -95,29 +95,33 @@ export function createSceneSetup({
     antialias: true,
     alpha: false
   });
-  renderer.setPixelRatio(renderPixelRatio(runtimeUiConfig, window.devicePixelRatio));
+  let controls: OrbitControlsInstance | undefined;
+  try {
+    renderer.setPixelRatio(renderPixelRatio(runtimeUiConfig, window.devicePixelRatio));
 
-  const scene = new Scene();
-  scene.background = new Color(backgroundColor);
+    const scene = new Scene();
+    scene.background = new Color(backgroundColor);
 
-  const camera = new PerspectiveCamera(58, 1, 0.0001, 20_000);
-  camera.up.set(0, 0, 1);
-  camera.position.set(0, -10, 6);
+    const camera = new PerspectiveCamera(58, 1, 0.0001, 20_000);
+    camera.up.set(0, 0, 1);
+    camera.position.set(0, -10, 6);
 
-  const controls = new OrbitControls(camera, canvas);
-  controls.enableDamping = true;
-  controls.dampingFactor = 0.08;
-  controls.maxDistance = solarSystemMaxDistanceAu;
-  controls.minDistance = minDistance;
-  controls.zoomSpeed = initialZoomSensitivity;
-  controls.target.set(0, 0, 0);
+    controls = new OrbitControls(camera, canvas);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.08;
+    controls.maxDistance = solarSystemMaxDistanceAu;
+    controls.minDistance = minDistance;
+    controls.zoomSpeed = initialZoomSensitivity;
+    controls.target.set(0, 0, 0);
 
-  return {
-    renderer,
-    scene,
-    camera,
-    controls
-  };
+    return { renderer, scene, camera, controls };
+  } catch (error) {
+    // Ownership transfers only on return. Retire every acquired resource even
+    // if another disposer fails, while preserving the original setup error.
+    try { controls?.dispose(); } catch { /* continue retiring the renderer */ }
+    try { renderer.dispose(); } catch { /* preserve the setup failure */ }
+    throw error;
+  }
 }
 
 export function addDefaultLighting(scene: Scene): SceneLighting {

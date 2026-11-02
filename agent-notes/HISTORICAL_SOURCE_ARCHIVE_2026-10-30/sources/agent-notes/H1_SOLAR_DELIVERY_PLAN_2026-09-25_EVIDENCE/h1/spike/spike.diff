@@ -1,0 +1,190 @@
+diff --git a/backend/server.py b/backend/server.py
+index 6845189..78c8480 100644
+--- a/backend/server.py
++++ b/backend/server.py
+@@ -988,9 +988,27 @@ async def solar_realtime_aia_tile(
+     return response
+ 
+ 
++# SPIKE STEP3: trivial unbounded in-memory response cache keyed on the full query string (no TTL, no eviction).
++_SPIKE_PHYSICS_CACHE: dict[str, Any] = {}
++_SPIKE_PHYSICS_CACHE_STATS = {"hit": 0, "miss": 0, "compute_s": []}
++
++
++@app.get("/spike/physics-cache-stats")
++def spike_physics_cache_stats():
++    compute = sorted(_SPIKE_PHYSICS_CACHE_STATS["compute_s"])
++    return {
++        "hit": _SPIKE_PHYSICS_CACHE_STATS["hit"],
++        "miss": _SPIKE_PHYSICS_CACHE_STATS["miss"],
++        "entries": len(_SPIKE_PHYSICS_CACHE),
++        "keys": list(_SPIKE_PHYSICS_CACHE.keys())[-20:],
++        "compute_s": compute,
++    }
++
++
+ @app.get("/solar/physics")
+ async def solar_physics_state(
+     request: Request,
++    response: Response,
+     jd: float | None = None,
+     fidelity: str = "operational",
+     max_features: int = 220,
+@@ -1039,6 +1057,13 @@ async def solar_physics_state(
+             ),
+         )
+ 
++    spike_cache_key = str(request.url.query)  # SPIKE STEP3
++    spike_cached = _SPIKE_PHYSICS_CACHE.get(spike_cache_key)
++    if spike_cached is not None:
++        _SPIKE_PHYSICS_CACHE_STATS["hit"] += 1
++        response.headers["X-Spike-Cache"] = "HIT"
++        return spike_cached
++
+     if not _acquire_nonblocking(_solar_physics_concurrent_guard):
+         raise HTTPException(
+             status_code=503,
+@@ -1046,6 +1071,7 @@ async def solar_physics_state(
+             headers={"Retry-After": "2"},
+         )
+ 
++    spike_t0 = time.monotonic()  # SPIKE STEP3
+     try:
+         state = await _run_owned_thread(
+             _build_solar_physics_state,
+@@ -1064,6 +1090,10 @@ async def solar_physics_state(
+             status_code=503,
+             detail="Solar physics generation timed out. Try again later.",
+         ) from exc
++    _SPIKE_PHYSICS_CACHE[spike_cache_key] = state  # SPIKE STEP3
++    _SPIKE_PHYSICS_CACHE_STATS["miss"] += 1
++    _SPIKE_PHYSICS_CACHE_STATS["compute_s"].append(round(time.monotonic() - spike_t0, 2))
++    response.headers["X-Spike-Cache"] = "MISS"
+     return state
+ 
+ 
+diff --git a/src/frontend/features/solar/solarPhysicsClient.ts b/src/frontend/features/solar/solarPhysicsClient.ts
+index a191f68..e6cd9a9 100644
+--- a/src/frontend/features/solar/solarPhysicsClient.ts
++++ b/src/frontend/features/solar/solarPhysicsClient.ts
+@@ -116,7 +116,8 @@ export class SolarPhysicsClient {
+     const currentReqId = this._reqId;
+     this.lastRefreshMs = nowMs;
+     const query = new URLSearchParams({
+-      jd: Number(jd).toFixed(8),
++      // SPIKE STEP3: quantise to 1-day buckets (0h UTC) so identical buckets share a cache key
++      jd: (Math.floor(Number(jd) - 0.5) + 0.5).toFixed(8),
+       fidelity: this.fidelity,
+       max_features: `${Math.round(this.maxFeatures)}`,
+       forcing: this.forcing,
+@@ -142,7 +143,13 @@ export class SolarPhysicsClient {
+       if (!response.ok) {
+         throw new Error(`Solar physics request failed (${response.status})`);
+       }
+-      const payload = (await response.json()) as SolarPhysicsStatePayload;
++      // SPIKE STEP1 instrumentation: split body read vs JSON.parse (main thread)
++      const spikeT0 = performance.now();
++      const spikeText = await response.text();
++      const spikeT1 = performance.now();
++      const payload = JSON.parse(spikeText) as SolarPhysicsStatePayload;
++      const spikeT2 = performance.now();
++      console.log('[spike-timing] ' + JSON.stringify({ phase: 'fetch', headersAfterMs: Date.now() - startMs, bodyReadMs: +(spikeT1 - spikeT0).toFixed(2), jsonParseMs: +(spikeT2 - spikeT1).toFixed(2), chars: spikeText.length, requestJd: jd }));
+       this.latest = payload;
+       this.lastLatencyMs = Date.now() - startMs;
+       this.lastSuccessMs = Date.now();
+diff --git a/src/main.ts b/src/main.ts
+index 38d58af..51fb02c 100644
+--- a/src/main.ts
++++ b/src/main.ts
+@@ -191,7 +191,10 @@ const DEFAULT_BACKEND_PORT = 8042;
+ function backendBaseUrl() {
+   const protocol = window.location.protocol === 'https:' ? 'https' : 'http';
+   const host = window.location.hostname || DEFAULT_BACKEND_HOST;
+-  return `${protocol}://${host}:${DEFAULT_BACKEND_PORT}`;
++  // SPIKE STEP0: HEAD has no supported override (port hard-coded); ?backendPort=NNNN for the spike only.
++  const spikePort = Number(new URLSearchParams(window.location.search).get('backendPort'));
++  const port = Number.isInteger(spikePort) && spikePort > 0 ? spikePort : DEFAULT_BACKEND_PORT;
++  return `${protocol}://${host}:${port}`;
+ }
+ 
+ function bodyBaseRadiusAu(body) {
+diff --git a/src/sunController.ts b/src/sunController.ts
+index d5ea14d..0e85041 100644
+--- a/src/sunController.ts
++++ b/src/sunController.ts
+@@ -149,10 +149,26 @@ export function createSunController({
+   let userAiaChannelOverride: string | null = null;
+   let lastTimeSec: number | null = null;
+ 
++  // SPIKE STEP1 instrumentation hook (read by the Playwright capture)
++  (window as unknown as Record<string, unknown>).__spikeSolar = () => ({
++    status: solarPhysicsClient.status(),
++    hasState: !!solarPhysicsState,
++    epochJd: solarPhysicsState?.['epoch_jd'] ?? null,
++    activity: solarPhysicsState?.activity_index ?? null,
++    obsTexture: !!solarObservationTexture,
++    obsChannel: solarObservationTextureChannel,
++    obsImageId: solarObservationTextureImageId,
++    fieldChildren: sunMagneticFieldGroup?.children?.length ?? null,
++    fieldVisible: sunMagneticFieldGroup?.visible ?? null,
++    fieldSig: sunMagneticFieldSignature
++  });
++  // SPIKE STEP4 knob: change the poll interval at runtime (rate-limit experiment); bypasses the constructor clamp on purpose
++  (window as unknown as Record<string, unknown>).__spikeSolarSetPoll = (ms: number) => { solarPhysicsClient.pollIntervalMs = ms; solarPhysicsClient.nextRefreshMs = 0; solarPhysicsNextRefreshMs = 0; return ms; };
+   const solarPhysicsClient = new SolarPhysicsClient({
+     baseUrl: backendBaseUrl,
+-    pollIntervalMs: 900,
+-    timeoutMs: 2_600,
++    // SPIKE STEP1: minimal unblock (was 900 / 2_600). NB: SolarPhysicsClient clamps timeoutMs to <= 20_000.
++    pollIntervalMs: 30_000,
++    timeoutMs: 30_000,
+     maxFeatures: 180,
+     fidelity: 'high',
+     forcing: 'hybrid',
+@@ -267,9 +283,13 @@ export function createSunController({
+ 
+     solarObservationTextureLoadInFlight = true;
+     solarObservationTextureLastLoadMs = nowMs;
++    const spikeAiaT0 = performance.now(); // SPIKE STEP1 instrumentation
++    console.log('[spike-aia] request ' + proxyUrl);
+     observationTextureLoader.load(
+       proxyUrl,
+       (loaded: Texture) => {
++        const img = loaded.image as { width?: number; height?: number } | undefined;
++        console.log('[spike-aia] loaded ' + JSON.stringify({ ms: +(performance.now() - spikeAiaT0).toFixed(1), w: img?.width, h: img?.height, channel: nextChannel, imageId: nextImageId }));
+         configureLoadedTexture(loaded);
+         loaded.needsUpdate = true;
+         if (solarObservationTexture && solarObservationTexture !== loaded && typeof solarObservationTexture.dispose === 'function') {
+@@ -282,7 +302,7 @@ export function createSunController({
+         solarObservationTextureLoadInFlight = false;
+       },
+       undefined,
+-      () => { solarObservationTextureLoadInFlight = false; }
++      (err: unknown) => { console.log('[spike-aia] error ' + JSON.stringify({ ms: +(performance.now() - spikeAiaT0).toFixed(1), err: String((err as { type?: string })?.type ?? err) })); solarObservationTextureLoadInFlight = false; }
+     );
+   }
+ 
+@@ -505,9 +525,12 @@ export function createSunController({
+       .then((updated) => {
+         const status = solarPhysicsClient.status();
+         if (updated) {
++          const spikeT0 = performance.now(); // SPIKE STEP1 instrumentation
+           solarPhysicsState = solarPhysicsClient.latestState();
+           maybeRefreshObservationTexture(nowMs, force);
++          const spikeT1 = performance.now();
+           const normalized = normalizeSolarFeatureSetFromState(solarPhysicsState, 480);
++          const spikeT2 = performance.now();
+           if (normalized) {
+             if (!solarPhysicsFeatureSetCurrent) {
+               solarPhysicsFeatureSetCurrent = normalized;
+@@ -526,7 +549,10 @@ export function createSunController({
+               solarPhysicsBlendDurationMs = Math.max(520, Math.min(1_350, (Number.isFinite(pollMs) ? pollMs : 900) * 0.9));
+             }
+           }
++          const spikeT3 = performance.now();
+           rebuildMagneticFieldLines(false, solarPhysicsState?.activity_index);
++          const spikeT4 = performance.now();
++          console.log('[spike-timing] ' + JSON.stringify({ phase: 'apply', aiaKickMs: +(spikeT1 - spikeT0).toFixed(2), normalizeMs: +(spikeT2 - spikeT1).toFixed(2), blendMs: +(spikeT3 - spikeT2).toFixed(2), rebuildFieldMs: +(spikeT4 - spikeT3).toFixed(2), totalMs: +(spikeT4 - spikeT0).toFixed(2), features: normalized?.features?.length ?? null, fieldChildren: sunMagneticFieldGroup?.children?.length ?? null, pfssSource: solarPhysicsState?.pfss_field_lines?.source ?? null, activity: solarPhysicsState?.activity_index ?? null, epochJd: solarPhysicsState?.['epoch_jd'] ?? null, simJd: simState.julianDate, assim: (() => { const a = (solarPhysicsState as Record<string, any> | null)?.data_assimilation; const aia = a?.sources?.sdo_aia; return a ? { conf: a.observed_confidence, blendW: a.blend_weight, observed: a.observed_activity_index, synthetic: a.synthetic_activity_index, silsoDate: a.sources?.silso?.date ?? null, aiaRequest: aia?.request_date_utc ?? null, aiaLatest: aia?.latest_image_date_utc ?? null, preferred: aia?.visualization?.preferred_channel ?? null } : null; })() }));
+         }
+         solarPhysicsNextRefreshMs = nowMs + (status.lastError ? 6_000 : Number(status['pollIntervalMs']));
+       })

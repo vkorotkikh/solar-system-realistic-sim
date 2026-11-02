@@ -1,0 +1,681 @@
+{
+ "scen": "S1",
+ "url": "http://127.0.0.1:5191/",
+ "seconds": 60,
+ "phase2": 0,
+ "loadedAt": 4.9,
+ "killedAt": null,
+ "chipLog": [
+  {
+   "t": 0.03,
+   "perf": 26,
+   "why": "initial",
+   "state": "connecting",
+   "text": "Sun: procedural fallback (connecting to solar model server)",
+   "titleMatches": null
+  },
+  {
+   "t": 4.91,
+   "perf": 4910,
+   "why": "mutation",
+   "state": "error",
+   "text": "Sun: procedural fallback (solar server not reachable at http://127.0.0.1:8042)",
+   "titleMatches": true
+  }
+ ],
+ "chipChanges": 2,
+ "textFlips": 1,
+ "rawMutationRecords": 3,
+ "distinctTexts": [
+  "Sun: procedural fallback (connecting to solar model server)",
+  "Sun: procedural fallback (solar server not reachable at http://127.0.0.1:8042)"
+ ],
+ "finalChip": {
+  "t": 66.68,
+  "label": "phase1",
+  "text": "Sun: procedural fallback (solar server not reachable at http://127.0.0.1:8042)",
+  "state": "error",
+  "mut": 3
+ },
+ "samples": [
+  {
+   "t": 9.91,
+   "label": "phase1",
+   "text": "Sun: procedural fallback (solar server not reachable at http://127.0.0.1:8042)",
+   "state": "error",
+   "mut": 3
+  },
+  {
+   "t": 14.91,
+   "label": "phase1",
+   "text": "Sun: procedural fallback (solar server not reachable at http://127.0.0.1:8042)",
+   "state": "error",
+   "mut": 3
+  },
+  {
+   "t": 19.92,
+   "label": "phase1",
+   "text": "Sun: procedural fallback (solar server not reachable at http://127.0.0.1:8042)",
+   "state": "error",
+   "mut": 3
+  },
+  {
+   "t": 24.93,
+   "label": "phase1",
+   "text": "Sun: procedural fallback (solar server not reachable at http://127.0.0.1:8042)",
+   "state": "error",
+   "mut": 3
+  },
+  {
+   "t": 31.56,
+   "label": "phase1",
+   "text": "Sun: procedural fallback (solar server not reachable at http://127.0.0.1:8042)",
+   "state": "error",
+   "mut": 3
+  },
+  {
+   "t": 36.57,
+   "label": "phase1",
+   "text": "Sun: procedural fallback (solar server not reachable at http://127.0.0.1:8042)",
+   "state": "error",
+   "mut": 3
+  },
+  {
+   "t": 41.57,
+   "label": "phase1",
+   "text": "Sun: procedural fallback (solar server not reachable at http://127.0.0.1:8042)",
+   "state": "error",
+   "mut": 3
+  },
+  {
+   "t": 46.57,
+   "label": "phase1",
+   "text": "Sun: procedural fallback (solar server not reachable at http://127.0.0.1:8042)",
+   "state": "error",
+   "mut": 3
+  },
+  {
+   "t": 51.58,
+   "label": "phase1",
+   "text": "Sun: procedural fallback (solar server not reachable at http://127.0.0.1:8042)",
+   "state": "error",
+   "mut": 3
+  },
+  {
+   "t": 56.58,
+   "label": "phase1",
+   "text": "Sun: procedural fallback (solar server not reachable at http://127.0.0.1:8042)",
+   "state": "error",
+   "mut": 3
+  },
+  {
+   "t": 61.59,
+   "label": "phase1",
+   "text": "Sun: procedural fallback (solar server not reachable at http://127.0.0.1:8042)",
+   "state": "error",
+   "mut": 3
+  },
+  {
+   "t": 66.68,
+   "label": "phase1",
+   "text": "Sun: procedural fallback (solar server not reachable at http://127.0.0.1:8042)",
+   "state": "error",
+   "mut": 3
+  }
+ ],
+ "requestTally": {
+  "physics failed:net::ERR_CONNECTION_REFUSED": 14,
+  "health failed:net::ERR_CONNECTION_REFUSED": 14
+ },
+ "requests": [
+  {
+   "t": 1.45,
+   "k": "physics",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461308.78474168&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "failed:net::ERR_CONNECTION_REFUSED",
+   "status": null,
+   "acao": null,
+   "ms": 763,
+   "blocked": null,
+   "origin": null
+  },
+  {
+   "t": 1.5,
+   "k": "health",
+   "type": "Fetch",
+   "url": "/health",
+   "outcome": "failed:net::ERR_CONNECTION_REFUSED",
+   "status": null,
+   "acao": null,
+   "ms": 3412,
+   "blocked": null,
+   "origin": null
+  },
+  {
+   "t": 6.77,
+   "k": "physics",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461330.05070168&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "failed:net::ERR_CONNECTION_REFUSED",
+   "status": null,
+   "acao": null,
+   "ms": 2,
+   "blocked": null,
+   "origin": null
+  },
+  {
+   "t": 6.77,
+   "k": "health",
+   "type": "Fetch",
+   "url": "/health",
+   "outcome": "failed:net::ERR_CONNECTION_REFUSED",
+   "status": null,
+   "acao": null,
+   "ms": 1,
+   "blocked": null,
+   "origin": null
+  },
+  {
+   "t": 13.19,
+   "k": "physics",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461355.71630168&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "failed:net::ERR_CONNECTION_REFUSED",
+   "status": null,
+   "acao": null,
+   "ms": 3,
+   "blocked": null,
+   "origin": null
+  },
+  {
+   "t": 13.19,
+   "k": "health",
+   "type": "Fetch",
+   "url": "/health",
+   "outcome": "failed:net::ERR_CONNECTION_REFUSED",
+   "status": null,
+   "acao": null,
+   "ms": 1,
+   "blocked": null,
+   "origin": null
+  },
+  {
+   "t": 20.5,
+   "k": "physics",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461384.98190168&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "failed:net::ERR_CONNECTION_REFUSED",
+   "status": null,
+   "acao": null,
+   "ms": 2,
+   "blocked": null,
+   "origin": null
+  },
+  {
+   "t": 20.5,
+   "k": "health",
+   "type": "Fetch",
+   "url": "/health",
+   "outcome": "failed:net::ERR_CONNECTION_REFUSED",
+   "status": null,
+   "acao": null,
+   "ms": 2,
+   "blocked": null,
+   "origin": null
+  },
+  {
+   "t": 28.23,
+   "k": "physics",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461415.84750168&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "failed:net::ERR_CONNECTION_REFUSED",
+   "status": null,
+   "acao": null,
+   "ms": 10,
+   "blocked": null,
+   "origin": null
+  },
+  {
+   "t": 28.23,
+   "k": "health",
+   "type": "Fetch",
+   "url": "/health",
+   "outcome": "failed:net::ERR_CONNECTION_REFUSED",
+   "status": null,
+   "acao": null,
+   "ms": 1,
+   "blocked": null,
+   "origin": null
+  },
+  {
+   "t": 34.33,
+   "k": "physics",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461433.77990168&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "failed:net::ERR_CONNECTION_REFUSED",
+   "status": null,
+   "acao": null,
+   "ms": 6,
+   "blocked": null,
+   "origin": null
+  },
+  {
+   "t": 34.33,
+   "k": "health",
+   "type": "Fetch",
+   "url": "/health",
+   "outcome": "failed:net::ERR_CONNECTION_REFUSED",
+   "status": null,
+   "acao": null,
+   "ms": 2,
+   "blocked": null,
+   "origin": null
+  },
+  {
+   "t": 40.91,
+   "k": "physics",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461460.11230168&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "failed:net::ERR_CONNECTION_REFUSED",
+   "status": null,
+   "acao": null,
+   "ms": 3,
+   "blocked": null,
+   "origin": null
+  },
+  {
+   "t": 40.91,
+   "k": "health",
+   "type": "Fetch",
+   "url": "/health",
+   "outcome": "failed:net::ERR_CONNECTION_REFUSED",
+   "status": null,
+   "acao": null,
+   "ms": 2,
+   "blocked": null,
+   "origin": null
+  },
+  {
+   "t": 49.05,
+   "k": "physics",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461492.71110168&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "failed:net::ERR_CONNECTION_REFUSED",
+   "status": null,
+   "acao": null,
+   "ms": 6,
+   "blocked": null,
+   "origin": null
+  },
+  {
+   "t": 49.06,
+   "k": "health",
+   "type": "Fetch",
+   "url": "/health",
+   "outcome": "failed:net::ERR_CONNECTION_REFUSED",
+   "status": null,
+   "acao": null,
+   "ms": 1,
+   "blocked": null,
+   "origin": null
+  },
+  {
+   "t": 55.54,
+   "k": "physics",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461518.57630168&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "failed:net::ERR_CONNECTION_REFUSED",
+   "status": null,
+   "acao": null,
+   "ms": 4,
+   "blocked": null,
+   "origin": null
+  },
+  {
+   "t": 55.54,
+   "k": "health",
+   "type": "Fetch",
+   "url": "/health",
+   "outcome": "failed:net::ERR_CONNECTION_REFUSED",
+   "status": null,
+   "acao": null,
+   "ms": 2,
+   "blocked": null,
+   "origin": null
+  },
+  {
+   "t": 65.31,
+   "k": "physics",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461550.64150168&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "failed:net::ERR_CONNECTION_REFUSED",
+   "status": null,
+   "acao": null,
+   "ms": 2,
+   "blocked": null,
+   "origin": null
+  },
+  {
+   "t": 65.31,
+   "k": "health",
+   "type": "Fetch",
+   "url": "/health",
+   "outcome": "failed:net::ERR_CONNECTION_REFUSED",
+   "status": null,
+   "acao": null,
+   "ms": 4,
+   "blocked": null,
+   "origin": null
+  },
+  {
+   "t": 71.34,
+   "k": "physics",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461574.64110168&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "failed:net::ERR_CONNECTION_REFUSED",
+   "status": null,
+   "acao": null,
+   "ms": 27,
+   "blocked": null,
+   "origin": null
+  },
+  {
+   "t": 71.36,
+   "k": "health",
+   "type": "Fetch",
+   "url": "/health",
+   "outcome": "failed:net::ERR_CONNECTION_REFUSED",
+   "status": null,
+   "acao": null,
+   "ms": 2,
+   "blocked": null,
+   "origin": null
+  },
+  {
+   "t": 78.06,
+   "k": "physics",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461601.63990168&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "failed:net::ERR_CONNECTION_REFUSED",
+   "status": null,
+   "acao": null,
+   "ms": 2,
+   "blocked": null,
+   "origin": null
+  },
+  {
+   "t": 78.06,
+   "k": "health",
+   "type": "Fetch",
+   "url": "/health",
+   "outcome": "failed:net::ERR_CONNECTION_REFUSED",
+   "status": null,
+   "acao": null,
+   "ms": 1,
+   "blocked": null,
+   "origin": null
+  },
+  {
+   "t": 84.75,
+   "k": "physics",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461628.37190168&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "failed:net::ERR_CONNECTION_REFUSED",
+   "status": null,
+   "acao": null,
+   "ms": 6,
+   "blocked": null,
+   "origin": null
+  },
+  {
+   "t": 84.75,
+   "k": "health",
+   "type": "Fetch",
+   "url": "/health",
+   "outcome": "failed:net::ERR_CONNECTION_REFUSED",
+   "status": null,
+   "acao": null,
+   "ms": 2,
+   "blocked": null,
+   "origin": null
+  },
+  {
+   "t": 93.55,
+   "k": "physics",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461663.57070168&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "failed:net::ERR_CONNECTION_REFUSED",
+   "status": null,
+   "acao": null,
+   "ms": 4,
+   "blocked": null,
+   "origin": null
+  },
+  {
+   "t": 93.55,
+   "k": "health",
+   "type": "Fetch",
+   "url": "/health",
+   "outcome": "failed:net::ERR_CONNECTION_REFUSED",
+   "status": null,
+   "acao": null,
+   "ms": 1,
+   "blocked": null,
+   "origin": null
+  }
+ ],
+ "solarConsole": [
+  {
+   "t": 4.91,
+   "type": "warning",
+   "text": "[solar] Sun: procedural fallback (solar server not reachable at http://127.0.0.1:8042)"
+  }
+ ],
+ "consoleWarnErrorOther": [
+  {
+   "t": 1.5,
+   "type": "error",
+   "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+  },
+  {
+   "t": 4.91,
+   "type": "error",
+   "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+  },
+  {
+   "t": 5.05,
+   "type": "warning",
+   "text": "[phase-1] Catalog load exceeded its performance budget: loadMs=4395.8 exceeded budgetMs=2000"
+  },
+  {
+   "t": 6.77,
+   "type": "error",
+   "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+  },
+  {
+   "t": 6.77,
+   "type": "error",
+   "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+  },
+  {
+   "t": 13.19,
+   "type": "error",
+   "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+  },
+  {
+   "t": 13.19,
+   "type": "error",
+   "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+  },
+  {
+   "t": 20.5,
+   "type": "error",
+   "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+  },
+  {
+   "t": 20.5,
+   "type": "error",
+   "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+  },
+  {
+   "t": 28.23,
+   "type": "error",
+   "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+  },
+  {
+   "t": 28.23,
+   "type": "error",
+   "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+  },
+  {
+   "t": 34.33,
+   "type": "error",
+   "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+  },
+  {
+   "t": 34.33,
+   "type": "error",
+   "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+  },
+  {
+   "t": 40.91,
+   "type": "error",
+   "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+  },
+  {
+   "t": 40.91,
+   "type": "error",
+   "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+  },
+  {
+   "t": 49.06,
+   "type": "error",
+   "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+  },
+  {
+   "t": 49.06,
+   "type": "error",
+   "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+  },
+  {
+   "t": 55.54,
+   "type": "error",
+   "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+  },
+  {
+   "t": 55.54,
+   "type": "error",
+   "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+  },
+  {
+   "t": 65.31,
+   "type": "error",
+   "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+  },
+  {
+   "t": 65.31,
+   "type": "error",
+   "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+  },
+  {
+   "t": 71.36,
+   "type": "error",
+   "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+  },
+  {
+   "t": 71.36,
+   "type": "error",
+   "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+  },
+  {
+   "t": 78.06,
+   "type": "error",
+   "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+  },
+  {
+   "t": 78.06,
+   "type": "error",
+   "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+  },
+  {
+   "t": 84.75,
+   "type": "error",
+   "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+  },
+  {
+   "t": 84.76,
+   "type": "error",
+   "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+  },
+  {
+   "t": 93.55,
+   "type": "error",
+   "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+  },
+  {
+   "t": 93.55,
+   "type": "error",
+   "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+  }
+ ],
+ "pageErrors": [],
+ "externalRequests": [
+  {
+   "url": "https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600&family=Oxanium:wght@500;600;700&display=swap",
+   "status": 200
+  },
+  {
+   "url": "https://fonts.gstatic.com/s/chakrapetch/v13/cIflMapbsEk7TDLdtEz1BwkeQI51R5_F.woff2",
+   "status": 200
+  },
+  {
+   "url": "https://fonts.gstatic.com/s/chakrapetch/v13/cIflMapbsEk7TDLdtEz1BwkebIl1R5_F.woff2",
+   "status": 200
+  },
+  {
+   "url": "https://fonts.gstatic.com/s/oxanium/v21/RrQQboN_4yJ0JmiMe2LE0Q.woff2",
+   "status": 200
+  }
+ ],
+ "layout": {
+  "solar": {
+   "x": 1088,
+   "y": 840,
+   "w": 336,
+   "h": 44,
+   "overflowX": false,
+   "border": "rgba(218, 101, 94, 0.72)",
+   "dot": "rgb(218, 101, 94)",
+   "role": "status",
+   "live": "polite",
+   "atomic": "true"
+  },
+  "catalog": {
+   "x": 746,
+   "y": 840,
+   "w": 336,
+   "h": 44,
+   "overflowX": false,
+   "border": "rgba(121, 188, 145, 0.6)",
+   "dot": "rgb(121, 188, 145)",
+   "role": "status",
+   "live": "polite",
+   "atomic": "true"
+  },
+  "bar": {
+   "x": 368,
+   "y": 840,
+   "w": 1056,
+   "h": 44,
+   "overflowX": false,
+   "border": "rgb(221, 229, 227)",
+   "dot": "rgba(0, 0, 0, 0)",
+   "role": null,
+   "live": null,
+   "atomic": null
+  },
+  "docScrollW": 1440,
+  "innerW": 1440
+ }
+}

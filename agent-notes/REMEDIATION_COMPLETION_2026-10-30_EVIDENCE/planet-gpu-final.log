@@ -1,0 +1,17 @@
+
+ RUN  v5.0.4 /home/nomad/ai/projects/worktrees/solar-remediation-completion-20261030
+
+stdout | scripts/planetShaderGeometry.test.mjs > planet vertex shader geometry on EGL > earth projects all face centres, seams, corners and subdivided patches before world transforms
+Planet shader GL renderer: llvmpipe (LLVM 20.1.2, 256 bits)
+
+stdout | scripts/planetShaderGeometry.test.mjs > planet vertex shader geometry on EGL > mars projects all face centres, seams, corners and subdivided patches before world transforms
+Planet shader GL renderer: llvmpipe (LLVM 20.1.2, 256 bits)
+
+ ✓ scripts/planetShaderGeometry.test.mjs (2 tests) 407ms
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  01:22:33
+   Duration  524ms (tests 90%, import 8%, transform 2%, worker 1%)
+
+JSON report written to /tmp/solar-remediation-completion-20261030/planet-gpu-final.json

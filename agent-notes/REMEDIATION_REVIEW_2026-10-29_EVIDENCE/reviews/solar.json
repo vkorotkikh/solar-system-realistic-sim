@@ -1,0 +1,384 @@
+{
+  "domain": "solar",
+  "snapshot": {
+    "path": "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029",
+    "head": "bb29d4be393c9dedca7049fc9b83511ed955be40",
+    "originMain": "bb29d4be393c9dedca7049fc9b83511ed955be40",
+    "date": "2026-10-29"
+  },
+  "notesCovered": [
+    "agent-notes/REMEDIATION_SOLAR_2026-10-14.md",
+    "agent-notes/REMEDIATION_SOLAR_FRAME_REVIEW_2026-10-14.md",
+    "agent-notes/REMEDIATION_SOLAR_SCN041_COMPARISON_2026-10-14.md",
+    "agent-notes/REMEDIATION_SOLAR_SCN041_DEGREE90_2026-10-14.md",
+    "agent-notes/REMEDIATION_SOLAR_SCN042_FRAMES_2026-10-14.md",
+    "agent-notes/REMEDIATION_SOLAR_SCN042_PRODUCTION_2026-10-14.md",
+    "agent-notes/REMEDIATION_SOLAR_WIND_OVERLAP_2026-10-14.md",
+    "agent-notes/REMEDIATION_AIA_EPOCH_COVERAGE_2026-10-14.md",
+    "agent-notes/SCN041_STREAMING_CHECKPOINT_2026-10-14.md",
+    "agent-notes/SCN041_NUMERICAL_REVIEW_REPAIR_2026-10-14.md",
+    "agent-notes/SCN041_HELDOUT_ACCEPTANCE_2026-10-14.md",
+    "agent-notes/SCN041_COLD_RESPONSE_2026-10-14.md",
+    "agent-notes/SCN042_RENDERED_ACCEPTANCE_2026-10-15.md",
+    "agent-notes/SCN042_RENDERING_REPAIR_2026-10-17.md",
+    "agent-notes/REMEDIATION_MISSION_2026-10-14.md",
+    "/home/nomad/ai/projects/worktrees/solar-scn-041-observational-acceptance/agent-notes/SCN041_OBSERVATIONAL_ACCEPTANCE_2026-10-17.md",
+    "/home/nomad/ai/projects/worktrees/solar-remediation-20261014-lifecycle-review/agent-notes/REMEDIATION_SOLAR_FRAME_REVIEW_2026-10-14.md"
+  ],
+  "issues": [
+    {
+      "id": "SCN-006",
+      "verdict": "CODE_CONFIRMED",
+      "fix": "Default local CORS policy includes both localhost and loopback-IP Vite dev/preview origins. Exact-origin policy is retained; no product regression found in the assigned local-preview scope.",
+      "evidence": [
+        "backend/server.py:454-463",
+        "backend/server.py:1397-1400",
+        "backend/tests/test_solar_security.py:176-186",
+        "backend/tests/test_solar_security.py:122-147"
+      ],
+      "remaining": [
+        "Actual deployed-origin, authentication and TLS acceptance belongs to SCN-048/runtime; local preview closure does not certify deployment."
+      ],
+      "branchEvidence": [
+        "5182128 is an ancestor of origin/main; subsequent canonical-origin hardening 81f1fa6 is landed."
+      ]
+    },
+    {
+      "id": "SCN-007",
+      "verdict": "CODE_CONFIRMED",
+      "fix": "Rate identity uses authenticated subjects or the immediate peer unless an explicitly trusted proxy supplies a bounded valid forwarding chain. Three admission stores use capped TTL/LRU queues, preventing untrusted X-Forwarded-For rotation from expanding identity memory.",
+      "evidence": [
+        "backend/server.py:1661-1735",
+        "backend/server.py:1802-1843",
+        "backend/tests/test_solar_security.py:224-235",
+        "backend/tests/test_solar_security.py:236-329",
+        "backend/tests/test_solar_security.py:349-431"
+      ],
+      "remaining": [
+        "No concrete regression found in this bounded identity/cap review; deployment proxy configuration remains an operator/runtime acceptance concern."
+      ],
+      "branchEvidence": [
+        "Trusted identity and bounded-store implementation and tests are present at bb29d4b; no branch-only implementation is credited."
+      ]
+    },
+    {
+      "id": "SCN-008",
+      "verdict": "CODE_CONFIRMED",
+      "fix": "Physics route rejects nonfinite aliases and finite epochs outside its configured J2000 +/- at most 200 Julian years before rate admission or worker execution. Errors are typed and nonretryable.",
+      "evidence": [
+        "backend/server.py:922-928",
+        "backend/server.py:1907-1946",
+        "backend/server.py:3423-3438",
+        "backend/tests/test_solar_physics_api.py:221-234",
+        "backend/tests/test_solar_physics_determinism.py:49-74"
+      ],
+      "remaining": [
+        "Scope is /solar/physics admission. AIA availability, scalar-JD leap-boundary policy and playback are separate contracts, owned by runtime/SCN-048 or SCN-053."
+      ],
+      "branchEvidence": [
+        "9655458 and 0789e08 are ancestors of origin/main. Local-only c90ba4d concerns client retry behavior and is not credited as landed route validation."
+      ]
+    },
+    {
+      "id": "SCN-009",
+      "verdict": "CODE_CONFIRMED",
+      "fix": "Unvalidated assimilation is explicitly disabled: hybrid returns unchanged synthetic activity, zero blend weight and disabled_unvalidated; data_driven raises before provider/compute work. This closes unsafe zero-confidence forcing by fail-closed behavior.",
+      "evidence": [
+        "backend/sim/solar_physics.py:351-387",
+        "backend/server.py:3455-3459",
+        "backend/tests/test_solar_physics_model.py:266-325",
+        "backend/tests/test_solar_physics_api.py:237-350"
+      ],
+      "remaining": [
+        "Validated observed assimilation is not implemented or certified. Future activation requires independent epoch/provenance and physical validation; that missing capability does not reopen this unsafe-assimilation mechanism."
+      ],
+      "branchEvidence": [
+        "9655458 is landed. The later local observational-acceptance branch also deliberately preserves disabled public observed forcing."
+      ]
+    },
+    {
+      "id": "SCN-010",
+      "verdict": "CODE_CONFIRMED",
+      "fix": "Failed/partial refreshes use the 4.5-second backoff rather than a full successful-cache TTL. Exact-epoch bounded last-good SWPC storage preserves source age and detached payloads. Delivery recomputes eligibility/cache state, and refresh health remains separate from usable last-good data.",
+      "evidence": [
+        "backend/sim/solar_realtime_data.py:214",
+        "backend/sim/solar_realtime_data.py:382-433",
+        "backend/sim/solar_realtime_data.py:462-529",
+        "backend/sim/solar_realtime_data.py:597-609",
+        "backend/sim/solar_realtime_data.py:803-870",
+        "backend/tests/test_solar_realtime_recovery.py:34-125",
+        "backend/tests/test_solar_realtime_cache_state.py:8-93"
+      ],
+      "remaining": [
+        "No concrete remaining defect found in the assigned retry/LKG/cache-state contract. Actual upstream availability is not certified by cache regressions."
+      ],
+      "branchEvidence": [
+        "870de80 and cache-state follow-up 683e48e are landed. Older notes marking this FIX_AVAILABLE_UNMERGED are stale relative to bb29d4b."
+      ]
+    },
+    {
+      "id": "SCN-011",
+      "verdict": "CODE_CONFIRMED",
+      "fix": "Backend canonicalizes accepted upstream AIA dates to an explicit UTC Z representation before caching/delivery. Browser freshness parses that unambiguous timestamp; valid historical coverage and wall-clock freshness remain separate.",
+      "evidence": [
+        "backend/sim/solar_realtime_data.py:2514-2548",
+        "backend/sim/solar_realtime_data.py:2607-2629",
+        "src/frontend/features/solar/solarObservationTexture.ts:77-82",
+        "backend/tests/test_solar_realtime_data_cache.py:1201-1243",
+        "backend/tests/test_solar_aia_epoch_coverage.py:52-77"
+      ],
+      "remaining": [
+        "No timezone-dependent ingestion defect found. Targeted tests inspect canonical Z output and an offset-zone request; no fresh multi-browser, multi-TZ sweep was performed by this reviewer."
+      ],
+      "branchEvidence": [
+        "af027c2 and requested-epoch guard 938bca0 are landed. No local-only timestamp repair is credited."
+      ]
+    },
+    {
+      "id": "SCN-012",
+      "verdict": "CODE_CONFIRMED",
+      "fix": "Benchmark now uses independent fixed endpoint-state references for all three legacy windows, verifies provider artifacts and preserves historical tool totals as incomparable legacyCalibration. Undefined aggregate error/pass rate is null, not a false perfect zero. Regression requires 3/3 comparable and independently propagates returned states with DOP853; a wrong-velocity control must fail all three.",
+      "evidence": [
+        "backend/benchmark/accuracy.py:301-339",
+        "backend/benchmark/accuracy.py:485-503",
+        "backend/benchmark/accuracy.py:611-650",
+        "backend/tests/test_mission_window_references.py:10-40",
+        "backend/tests/test_benchmark_accuracy.py:46-76",
+        "agent-notes/REMEDIATION_MISSION_2026-10-14.md:10"
+      ],
+      "remaining": [
+        "This certifies the retained fixed-state Lambert comparisons, not live Kepler/SPICE accuracy or execution of historical GMAT/Orekit/Tudat campaigns. No concrete regression found in this canonical benchmark-truth contract."
+      ],
+      "branchEvidence": [
+        "56ac52a is an ancestor of origin/main, so the assigned register's FIX_AVAILABLE_UNMERGED description no longer applies."
+      ]
+    },
+    {
+      "id": "SCN-041",
+      "verdict": "PARTIAL",
+      "fix": "Landed bounded degree-90 streaming evaluation, common scalar/batch near-pole handling, nonfinite-angle rejection and explicit native-spectral entry point repair the prior degree/performance blocker. Retained three-epoch native-coefficient/provider-line comparisons and complete cold-worker reports meet their original budgets. This does not establish observed GONG ingestion or empirical WSA-speed calibration.",
+      "evidence": [
+        "backend/sim/pfss_evaluation.py:14-15",
+        "backend/sim/pfss_evaluation.py:41-123",
+        "backend/sim/pfss_magnetogram.py:235-275",
+        "backend/sim/pfss_magnetogram.py:927-955",
+        "backend/sim/pfss_magnetogram.py:1147-1197",
+        "backend/sim/pfss_magnetogram.py:67",
+        "backend/sim/gong_magnetogram.py:695-709",
+        "backend/tests/test_pfss_streaming_review.py:96-112",
+        "backend/tests/test_pfss_streaming_review.py:228-258",
+        "backend/tests/test_pfss_azimuth_validation.py:23-68",
+        "backend/tests/test_pfss_spectral.py:20-60",
+        "backend/tests/test_solar_reference_comparison.py:28-53",
+        "agent-notes/solar-reference-2026-10-14/production-degree90-azimuth-final-baseline-202610121744.json:154-155",
+        "agent-notes/solar-reference-2026-10-14/production-degree90-azimuth-final-heldout-202610140814.json:154-155",
+        "agent-notes/solar-reference-2026-10-14/production-degree90-azimuth-final-heldout-202610142114.json:154-155",
+        "agent-notes/solar-reference-2026-10-14/cold-degree90-azimuth-final-high.json:22",
+        "agent-notes/solar-reference-2026-10-14/cold-degree90-azimuth-final-ultra.json:22",
+        "agent-notes/SCN041_HELDOUT_ACCEPTANCE_2026-10-14.md:19-54",
+        "agent-notes/REMEDIATION_SOLAR_WIND_OVERLAP_2026-10-14.md:35-44"
+      ],
+      "remaining": [
+        "Landed GONG parser rejects the retained real zqs input: its ~0.040735 signed/unsigned flux fraction exceeds the roundoff-only bound at gong_magnetogram.py:700-702. Bounded provider-corroborated polarity scaling and its observational regression exist only locally.",
+        "Default sampled-grid route remains degree 15, capped for conditioning. Native degree-90 numerical acceptance must not be represented as enabled or accurate observed HTTP delivery; default degree-15 reference test intentionally preserves the failed broad-domain budget.",
+        "Independent application speed-map/in-situ calibration, propagation to 1 AU and observed provider-to-scene adaptation remain unfulfilled. WSA_CALIBRATION_STATUS stays unvalidated; public observed forcing stays disabled.",
+        "The overlap capture removes the old claim that no ACE overlap exists: 11 external NASA/ACE matches exist, MAE 171.599 km/s. It evaluates the external forecast, not application output."
+      ],
+      "branchEvidence": [
+        "LANDED: b123b7f (streaming), df8adc6 (near-pole/finite-angle repairs), cdea3bc (scientific mutation gate). All are ancestors of origin/main.",
+        "LOCAL ONLY: work/scn-041-observational-acceptance@6f60521 has +052550a, +3942bd0, +1898b68 and +6f60521 under git cherry origin/main. Equivalent observational candidates d37a37a/83c4ef1 on work/scn041-scn049-final-minors are also not origin/main ancestors.",
+        "/home/nomad/ai/projects/worktrees/solar-scn-041-observational-acceptance/backend/sim/gong_magnetogram.py:743-818 implements guarded polarity scaling; /home/nomad/ai/projects/worktrees/solar-scn-041-observational-acceptance/backend/tests/test_solar_observational_acceptance.py:59-83,98-165,168-244 covers trusted-artifact admission, boundaries, forged provenance, nonrenderable provider-native frame, feature-only evidence and disabled forcing.",
+        "/home/nomad/ai/projects/worktrees/solar-scn-041-observational-acceptance/agent-notes/SCN041_OBSERVATIONAL_ACCEPTANCE_2026-10-17.md:5-7,42-51,109-116 explicitly excludes operational WSA, independent speed, 1-AU and scene validation."
+      ]
+    },
+    {
+      "id": "SCN-042",
+      "verdict": "PARTIAL",
+      "fix": "Production uses explicit right-handed solar-frame adapters and per-layer synthetic provenance admission. Controller owns surface orientation, attaches frozen geometry under translation, replaces same-epoch PFSS geometry and uses a decorative blend clock. The loop zero-alpha fix and assembled shader/single-sample diagnostic corrections are landed; historical actual-main hardware acceptance reaches 6/6 cases, 156/156 markers and 235/235 surface probes with all three geometric controls detected.",
+      "evidence": [
+        "src/frontend/features/solar/solarFrame.ts:35-88",
+        "src/frontend/features/solar/solarGeometryContract.ts:13-69",
+        "src/sunController.ts:263-292",
+        "src/sunController.ts:387-411",
+        "src/sunController.ts:756-796",
+        "src/main.ts:1245-1255",
+        "src/frontend/features/solar/sunVisuals.ts:1416-1419",
+        "src/frontend/features/solar/sunVisuals.ts:1653-1677",
+        "src/frontend/features/solar/solarFeatureBlending.ts:251-275",
+        "src/frontend/features/solar/solarFrame.test.ts:11-64",
+        "src/frontend/features/solar/solarGeometryContract.test.ts:81-138",
+        "src/sunController.frameReview.test.ts:27-49,93-150",
+        "src/frontend/features/solar/sunVisuals.blendAlpha.test.ts:21-50",
+        "src/frontend/features/asteroids/beltRenderer.ts:71-72",
+        "tests/browser/asteroid-shader.spec.ts:3-58",
+        "scripts/verify_solar_main_frame.py:53-97,284-303",
+        "agent-notes/SCN042_RENDERING_REPAIR_2026-10-17/after/results.json:2466-2473",
+        "agent-notes/SCN042_RENDERING_REPAIR_2026-10-17/startup-negative-control/results.json:2452-2459"
+      ],
+      "remaining": [
+        "Concrete incomplete repair: eruption-particle renderer still evaluates clampUnit(Number(blendView?.blendAlpha) || 1) at sunVisuals.ts:1655. At a new blend's alpha=0, both weights=1 and differing source/target arcs, this supplies alpha=1 to sampleSolarFeatureEntryPoint and samples the target; the loop renderer correctly samples the source. The live controller calls this eruption path at sunController.ts:708-714. Target particles can flash for the first blend frame. Existing zero-alpha geometry regression only calls the loop renderer.",
+        "Observed geometry remains UNRESOLVED_OBSERVED/nonrenderable and the global calibration flag remains false. Fixed camera/epoch diagnostic pixels do not certify all artistic fragments, layers, epochs, provider inputs or application delivery.",
+        "The central Chromium browser baseline is still pending per controller; no new local browser run was performed."
+      ],
+      "branchEvidence": [
+        "LANDED: a89f9e9 (adapters), 55067da (admission/controller review), 8f45e26 (loop zero-alpha), 8888563 (shader macro), b1f6bd9 (diagnostic sampling).",
+        "Original rendering branch commit IDs 1cbf273 and 047d067 are not ancestors, but git cherry origin/main fix/scn042-rendering-20261017 marks BOTH with minus: equivalent patches landed as 8888563/b1f6bd9. They must not be classified FIX_LOCAL_ONLY.",
+        "No inspected candidate repair is credited for the remaining eruption zero-alpha expression."
+      ]
+    },
+    {
+      "id": "SCN-050",
+      "verdict": "CODE_CONFIRMED",
+      "fix": "Backend and active frontend fallback normalize the Hathaway curve at the parameterized stationary point exp(s)*(3-2s)=3c. Both share an independently generated high-precision fixture and the frontend regression rejects the clipped plateau. Later landed cycle-tail overlap also preserves continuity across cycle minimum.",
+      "evidence": [
+        "backend/sim/solar_physics.py:144-172",
+        "src/sunController.ts:104-143",
+        "backend/tests/test_solar_cycle_reference.py:9-17",
+        "src/frontend/features/solar/solarCycle.test.ts:5-44",
+        "agent-notes/REMEDIATION_SOLAR_2026-10-14.md:43-47"
+      ],
+      "remaining": [
+        "No concrete normalization regression found. This is analytic consistency, not new observed-cycle fitting."
+      ],
+      "branchEvidence": [
+        "870de80 and cycle-tail follow-up ce34d61 are landed; earlier frontend-pending/unmerged claims are superseded."
+      ]
+    },
+    {
+      "id": "SCN-051",
+      "verdict": "CODE_CONFIRMED",
+      "fix": "Admission authenticates bounded retained expanded FITS bytes and native-header hashes, reparses the exact bytes and compares field/grid/provenance. It does not attempt to reconstruct integer/float FITS pixels from scaled science arrays. Twelve BITPIX/unit roundtrips and byte/field/digest tampering regressions are present; native bytes remain private.",
+      "evidence": [
+        "backend/sim/gong_magnetogram.py:245-247",
+        "backend/sim/gong_magnetogram.py:861-869",
+        "backend/sim/pfss_magnetogram.py:1561-1595",
+        "backend/sim/pfss_magnetogram.py:1619-1638",
+        "backend/tests/test_gong_encoding_roundtrip.py:12-54"
+      ],
+      "remaining": [
+        "No concrete remaining native-encoding roundtrip defect found. The real-input flux-balance admission failure is a separate SCN-041 policy/provenance gap, not evidence that the native-byte roundtrip repair failed."
+      ],
+      "branchEvidence": [
+        "870de80 is landed. The local observational scaling policy is not silently credited to this encoding repair."
+      ]
+    },
+    {
+      "id": "SCN-075",
+      "verdict": "FIX_LOCAL_ONLY",
+      "fix": "Landed persistent-region implementation removes 0.01-day redraws and shares seed/rotation/lifetime/birth-cycle polarity across PFSS and coronal features. However its absolute Hale sign is reversed. A specific local correction plus independent literal-sign regressions exists in 3fa05a0; it is not on origin/main.",
+      "evidence": [
+        "backend/sim/solar_active_regions.py:17",
+        "backend/sim/solar_active_regions.py:34-50",
+        "backend/sim/solar_active_regions.py:58-91",
+        "backend/sim/solar_physics.py:232-244",
+        "backend/sim/pfss_magnetogram.py:145-155",
+        "backend/tests/test_solar_region_consistency.py:17-21",
+        "backend/tests/test_solar_region_consistency.py:240-276",
+        "backend/tests/test_solar_region_consistency.py:279-306",
+        "/home/nomad/ai/projects/worktrees/solar-five-audit-bugs-v2/backend/sim/solar_active_regions.py:17",
+        "/home/nomad/ai/projects/worktrees/solar-five-audit-bugs-v2/backend/sim/solar_active_regions.py:47",
+        "/home/nomad/ai/projects/worktrees/solar-five-audit-bugs-v2/backend/tests/test_solar_region_consistency.py:238-273"
+      ],
+      "remaining": [
+        "At solar_active_regions.py:47, Cycle 25 leading polarity is seeded as -hemisphere: northern regions become negative-leading and southern positive-leading, opposite the absolute Cycle 25 convention documented by the local correction's retained reference. Both PFSS and coronal layers consistently inherit the wrong sign.",
+        "Landed test at test_solar_region_consistency.py:243 explicitly injects -hemisphere and line 250 expects the same reversed sign; current generic green gates do not independently catch the defect.",
+        "Review/integrate the local correction and its literal Cycle 24/25/26 hemispheric expectations, region-model identity bump and cache-identity changes. Current central passes apply to bb29d4b, not this local fix.",
+        "FIX_LOCAL_ONLY applies to the remaining absolute-sign repair; the original continuity/spatial-consistency portion is already landed. Synthetic emergence/rotation assumptions are still not measured active-region reconstruction."
+      ],
+      "branchEvidence": [
+        "870de80 (persistent regions) and a2770c8 (single lifetime envelope) are landed.",
+        "3fa05a0ebf8b0521ffe9a4c3ccb6eb6221b8a1aa is NOT an ancestor of origin/main; it IS an ancestor of fix/markdown-audit-20261024 in solar-five-audit-bugs-v2. The patch changes Cycle 25 seed polarity to +hemisphere, bumps persistent-bipoles-v2 to v3 and adds literal independent sign tests. No fresh execution of that local candidate was performed."
+      ]
+    }
+  ],
+  "findings": [
+    {
+      "id": "SOLAR-F01",
+      "issue": "SCN-075",
+      "severity": "P1",
+      "kind": "production_bug_with_local_fix",
+      "title": "Absolute Hale leading polarity is reversed in the landed synthetic model",
+      "evidence": [
+        "backend/sim/solar_active_regions.py:47",
+        "backend/sim/solar_active_regions.py:87-90",
+        "backend/tests/test_solar_region_consistency.py:243-250"
+      ],
+      "consequence": "Continuity and cross-layer agreement pass while both physics layers show the wrong absolute magnetic leading polarity.",
+      "candidate": "3fa05a0, local only on fix/markdown-audit-20261024; reference and literal-sign oracle are in its targeted test."
+    },
+    {
+      "id": "SOLAR-F02",
+      "issue": "SCN-042",
+      "severity": "P2",
+      "kind": "production_bug_static_code_confirmation",
+      "title": "Eruption particles still convert zero blend alpha to the target endpoint",
+      "evidence": [
+        "src/frontend/features/solar/sunVisuals.ts:1655",
+        "src/frontend/features/solar/solarFeatureBlending.ts:262-266",
+        "src/sunController.ts:708-714",
+        "src/frontend/features/solar/sunVisuals.blendAlpha.test.ts:21-50"
+      ],
+      "reproduction": "Use one same-ID feature with source arc [[1,0,0],[0,0,1]], target arc [[0,1,0],[0,0,-1]], fromWeight=toWeight=1, blendAlpha=0, timeSec=0, first burst phase=0. The eruption renderer computes alpha=1 and the sampler returns [0,1,0]; expected source sample is [1,0,0]. This conclusion follows directly from the inspected expression and sampler; no test or visual run was executed.",
+      "remaining": "Preserve finite alpha zero in the eruption path and add a targeted actual-particle geometry regression; the loop-only regression does not cover it."
+    },
+    {
+      "id": "SOLAR-F03",
+      "issue": "SCN-041",
+      "severity": "P1",
+      "kind": "incomplete_scientific_acceptance",
+      "title": "Observed input and empirical wind calibration remain outside landed numerical acceptance",
+      "evidence": [
+        "backend/sim/gong_magnetogram.py:700-702",
+        "backend/sim/pfss_magnetogram.py:67",
+        "backend/sim/solar_frames.py:31-37",
+        "/home/nomad/ai/projects/worktrees/solar-scn-041-observational-acceptance/agent-notes/SCN041_OBSERVATIONAL_ACCEPTANCE_2026-10-17.md:31-51"
+      ],
+      "remaining": "The real retained map is rejected by main; bounded observational acceptance is local and feature-only. Neither old external ACE comparison nor native degree-90 PFSS agreement calibrates application wind speed or the provider-to-scene transform."
+    },
+    {
+      "id": "SOLAR-F04",
+      "severity": "info",
+      "kind": "report_reconciliation",
+      "title": "Historical unmerged/failing labels must be reconciled against landed successors",
+      "evidence": [
+        "agent-notes/REMEDIATION_SOLAR_SCN041_COMPARISON_2026-10-14.md:3",
+        "agent-notes/REMEDIATION_SOLAR_SCN041_DEGREE90_2026-10-14.md:3-6",
+        "agent-notes/SCN041_HELDOUT_ACCEPTANCE_2026-10-14.md:19-54",
+        "agent-notes/SCN042_RENDERED_ACCEPTANCE_2026-10-15.md:3-7",
+        "agent-notes/SCN042_RENDERING_REPAIR_2026-10-17.md:49-65"
+      ],
+      "resolution": "Keep the old degree-15 and October 15 render failures as dated evidence. Landed native spectral streaming/cold-response support and October 17 rendering repairs supersede those specific blockers; broader observed/frame/speed claims remain limited."
+    }
+  ],
+  "centralValidation": {
+    "source": "Controller message during this audit; not executed by solar reviewer",
+    "revision": "bb29d4b",
+    "backend": "4057 passed, 13 skipped; backend/tests + scripts/ci/tests; 184 seconds",
+    "frontend": "881 passed, 413 skipped",
+    "typesAndBuild": "strict TypeScript, UI TypeScript and build passed",
+    "scientific": "6 baselines and 6 mutants passed",
+    "optionalAsteroidGPU": "125-case actual-WebGL command exited 0; this is asteroid evidence, not observed solar calibration",
+    "browser": "Current-baseline Chromium suite still running at last controller update"
+  },
+  "noteVariantReconciliation": [
+    "Inventory /tmp/solar-remediation-inventory-20261029.json has exactly one content hash for each assigned note except REMEDIATION_SOLAR_FRAME_REVIEW_2026-10-14.md. Identical copies were not reread.",
+    "Frame-review audit variant 47142a7d0c4f14fafa9d997def53b2dbbee5fcc23a6d9499843d91c5bcb4162d has 115 lines; lifecycle-review variant 97b2cd6f9a4360c941bde0c4b9612f697802158f964208be4a1a545f688ec1af has 87. The latter ends with the loop zero-alpha failure still open. The audit variant appends lines 88-114 documenting its authorized correction and seven loop geometry cases. Main contains the correction at sunVisuals.ts:1416-1419 and its targeted tests. This is a chronological follow-up, not two simultaneously valid current loop verdicts. The separate eruption path retains the same bug pattern.",
+    "Original solar/comparison notes say captured ACE forecasts do not overlap NOAA RTSW. The wind-overlap note later uses a different NOAA ACE SWEPAM hourly archive, obtaining 11 exact matches; those residuals compare the external NASA forecast only. Both claims are compatible when dataset identity is retained.",
+    "Degree-90 diagnostic note predates the landed streaming implementation. Its 49-second tracing result and degree-64 guard describe the old evaluator; the later three-epoch and cold-response records demonstrate the replacement numerical path within unchanged budgets. Default sampled-grid degree 15 still fails the original broad provider-line comparison and is not silently promoted.",
+    "October 15 actual-main rendering report retains 154/156 and startup GL 1282 failures. October 17 report/evidence shows 156/156 with a matching diagnostic sample target and separately gated production startup; the negative startup control still fails. Original branch hashes are patch-equivalent to landed main commits.",
+    "SCN041 observational acceptance exists only on local branches; its final text explicitly says FIX_AVAILABLE_UNMERGED, feature-only, no independent speed and no scene adapter. A title saying observational acceptance is not broad calibration closure."
+  ],
+  "caveats": [
+    "No tests, installs, network requests, fetch, product edits, existing-report edits or git-state mutations were performed by this reviewer. Only the requested /tmp JSON report was written. Central results are attributed to the controller at the specified baseline.",
+    "Relative evidence paths refer to the snapshot root. Absolute paths in branchEvidence/evidence are explicitly local candidates, not landed source. Git ancestry and git cherry distinguish original hashes from equivalent landed patches.",
+    "Historical test counts and hardware/scientific reports are dated evidence. Fresh central generic passes do not certify independent observed input, speed calibration, all rendered layers/cameras or the local Hale candidate. Skipped tests are not passing coverage.",
+    "SCN-048 time/deployment is owned by the runtime agent. This review inspected AIA requested-epoch coverage only to reconcile the assigned context note: solar_realtime_data.py:2624-2629 and test_solar_aia_epoch_coverage.py:24-77 reject unrelated nearest images, including 1990/2050 and six-hour boundary cases. No SCN-048 verdict or duplicate time/deployment audit is issued.",
+    "The absolute Hale finding uses the retained scientific reference and literal expectations in local commit 3fa05a0. The external paper was not fetched because network is prohibited. The eruption defect is a static, explicit value-path finding rather than a fresh executed reproduction.",
+    "CODE_CONFIRMED denotes landed implementation plus targeted regression inspected. Current baseline suites are now centrally reported passing; this reviewer did not claim that older note runs were fresh."
+  ],
+  "counts": {
+    "CODE_CONFIRMED": 9,
+    "PARTIAL": 2,
+    "FIX_LOCAL_ONLY": 1
+  }
+}

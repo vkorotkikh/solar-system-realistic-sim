@@ -1,0 +1,28 @@
+[
+ {
+  "fidelity": "high",
+  "forcing": "synthetic",
+  "live": true,
+  "maxf": 180,
+  "reps": 3,
+  "net": "replay",
+  "build_med": 6.178,
+  "build_max": 6.192,
+  "total_med": 6.207,
+  "total_max": 6.213,
+  "pfss_med": 6.161,
+  "realtime_med": 0.0,
+  "net_calls": [
+   1,
+   1,
+   1
+  ],
+  "features": [
+   180,
+   180,
+   180
+  ],
+  "bytes_last": 616384,
+  "pfss_lines": 120
+ }
+]

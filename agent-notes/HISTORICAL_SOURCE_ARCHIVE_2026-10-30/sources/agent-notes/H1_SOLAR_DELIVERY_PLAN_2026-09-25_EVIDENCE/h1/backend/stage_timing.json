@@ -1,0 +1,315 @@
+{
+ "mf180_rep0": {
+  "jd": 2461330.22208,
+  "total_s": 4.293,
+  "json_bytes": 658796,
+  "top_level_sizes": {
+   "schema": 45,
+   "model": 21,
+   "epoch_jd": 13,
+   "wall_epoch_jd": 13,
+   "fidelity": 6,
+   "solar_radius_km": 8,
+   "solar_radius_au": 20,
+   "activity_index": 17,
+   "synthetic_activity_index": 17,
+   "cycle_phase_rad": 18,
+   "data_assimilation": 345,
+   "surface": 323,
+   "corona": 491127,
+   "coronal_holes": 925,
+   "heliosphere": 30861,
+   "pfss_field_lines": 134748
+  },
+  "feature_count": 180,
+  "pfss_line_count": 120,
+  "pfss_open": 34,
+  "pfss_source": "synthetic",
+  "stage_s": {
+   "_apply_realtime_forcing": [
+    0.0,
+    1
+   ],
+   "_feature_temporal_state": [
+    0.0008,
+    1080
+   ],
+   "_feature_score": [
+    0.0004,
+    540
+   ],
+   "_build_feature_arc": [
+    0.0077,
+    180
+   ],
+   "_synthetic_coronal_holes": [
+    0.0,
+    1
+   ],
+   "synthetic_magnetogram": [
+    0.0463,
+    1
+   ],
+   "decompose_spherical_harmonics": [
+    0.0027,
+    1
+   ],
+   "trace_field_lines": [
+    2.2203,
+    1
+   ],
+   "compute_wsa_velocity_map": [
+    2.0082,
+    1
+   ],
+   "pfss_cache.get_or_compute": [
+    4.2777,
+    1
+   ],
+   "wsa_velocity_at_source_surface": [
+    0.0061,
+    6
+   ],
+   "_build_parker_spiral": [
+    0.0064,
+    1
+   ]
+  }
+ },
+ "mf180_rep1": {
+  "jd": 2461330.345536,
+  "total_s": 4.725,
+  "json_bytes": 685288,
+  "top_level_sizes": {
+   "schema": 45,
+   "model": 21,
+   "epoch_jd": 14,
+   "wall_epoch_jd": 14,
+   "fidelity": 6,
+   "solar_radius_km": 8,
+   "solar_radius_au": 20,
+   "activity_index": 17,
+   "synthetic_activity_index": 17,
+   "cycle_phase_rad": 18,
+   "data_assimilation": 345,
+   "surface": 323,
+   "corona": 491101,
+   "coronal_holes": 925,
+   "heliosphere": 30879,
+   "pfss_field_lines": 161246
+  },
+  "feature_count": 180,
+  "pfss_line_count": 120,
+  "pfss_open": 41,
+  "pfss_source": "synthetic",
+  "stage_s": {
+   "_apply_realtime_forcing": [
+    0.0,
+    1
+   ],
+   "_feature_temporal_state": [
+    0.0006,
+    1080
+   ],
+   "_feature_score": [
+    0.0004,
+    540
+   ],
+   "_build_feature_arc": [
+    0.0082,
+    180
+   ],
+   "_synthetic_coronal_holes": [
+    0.0,
+    1
+   ],
+   "synthetic_magnetogram": [
+    0.0441,
+    1
+   ],
+   "decompose_spherical_harmonics": [
+    0.0029,
+    1
+   ],
+   "trace_field_lines": [
+    2.8313,
+    1
+   ],
+   "compute_wsa_velocity_map": [
+    1.8289,
+    1
+   ],
+   "pfss_cache.get_or_compute": [
+    4.7075,
+    1
+   ],
+   "wsa_velocity_at_source_surface": [
+    0.0073,
+    6
+   ],
+   "_build_parker_spiral": [
+    0.0081,
+    1
+   ]
+  }
+ },
+ "mf220_rep0": {
+  "jd": 2461335.16032,
+  "total_s": 3.733,
+  "json_bytes": 686335,
+  "top_level_sizes": {
+   "schema": 45,
+   "model": 21,
+   "epoch_jd": 13,
+   "wall_epoch_jd": 13,
+   "fidelity": 6,
+   "solar_radius_km": 8,
+   "solar_radius_au": 20,
+   "activity_index": 18,
+   "synthetic_activity_index": 18,
+   "cycle_phase_rad": 16,
+   "data_assimilation": 347,
+   "surface": 323,
+   "corona": 531879,
+   "coronal_holes": 927,
+   "heliosphere": 30878,
+   "pfss_field_lines": 121514
+  },
+  "feature_count": 195,
+  "pfss_line_count": 120,
+  "pfss_open": 22,
+  "pfss_source": "synthetic",
+  "stage_s": {
+   "_apply_realtime_forcing": [
+    0.0,
+    1
+   ],
+   "_feature_temporal_state": [
+    0.0006,
+    1080
+   ],
+   "_feature_score": [
+    0.0004,
+    540
+   ],
+   "_build_feature_arc": [
+    0.0084,
+    195
+   ],
+   "_synthetic_coronal_holes": [
+    0.0,
+    1
+   ],
+   "synthetic_magnetogram": [
+    0.0478,
+    1
+   ],
+   "decompose_spherical_harmonics": [
+    0.0027,
+    1
+   ],
+   "trace_field_lines": [
+    2.0236,
+    1
+   ],
+   "compute_wsa_velocity_map": [
+    1.6441,
+    1
+   ],
+   "pfss_cache.get_or_compute": [
+    3.7186,
+    1
+   ],
+   "wsa_velocity_at_source_surface": [
+    0.0044,
+    6
+   ],
+   "_build_parker_spiral": [
+    0.0047,
+    1
+   ]
+  }
+ },
+ "mf220_rep1": {
+  "jd": 2461335.283776,
+  "total_s": 4.612,
+  "json_bytes": 780741,
+  "top_level_sizes": {
+   "schema": 45,
+   "model": 21,
+   "epoch_jd": 14,
+   "wall_epoch_jd": 14,
+   "fidelity": 6,
+   "solar_radius_km": 8,
+   "solar_radius_au": 20,
+   "activity_index": 18,
+   "synthetic_activity_index": 18,
+   "cycle_phase_rad": 17,
+   "data_assimilation": 347,
+   "surface": 323,
+   "corona": 599596,
+   "coronal_holes": 926,
+   "heliosphere": 30885,
+   "pfss_field_lines": 148194
+  },
+  "feature_count": 220,
+  "pfss_line_count": 120,
+  "pfss_open": 39,
+  "pfss_source": "synthetic",
+  "stage_s": {
+   "_apply_realtime_forcing": [
+    0.0,
+    1
+   ],
+   "_feature_temporal_state": [
+    0.0006,
+    1080
+   ],
+   "_feature_score": [
+    0.0004,
+    540
+   ],
+   "_build_feature_arc": [
+    0.0098,
+    220
+   ],
+   "_synthetic_coronal_holes": [
+    0.0,
+    1
+   ],
+   "synthetic_magnetogram": [
+    0.0495,
+    1
+   ],
+   "decompose_spherical_harmonics": [
+    0.0031,
+    1
+   ],
+   "trace_field_lines": [
+    2.7187,
+    1
+   ],
+   "compute_wsa_velocity_map": [
+    1.8232,
+    1
+   ],
+   "pfss_cache.get_or_compute": [
+    4.5951,
+    1
+   ],
+   "wsa_velocity_at_source_surface": [
+    0.0053,
+    6
+   ],
+   "_build_parker_spiral": [
+    0.0056,
+    1
+   ]
+  }
+ },
+ "synthetic_same_jd": {
+  "first_s": 3.328616350016091,
+  "second_s": 0.013144025986548513,
+  "identical_json": true
+ }
+}

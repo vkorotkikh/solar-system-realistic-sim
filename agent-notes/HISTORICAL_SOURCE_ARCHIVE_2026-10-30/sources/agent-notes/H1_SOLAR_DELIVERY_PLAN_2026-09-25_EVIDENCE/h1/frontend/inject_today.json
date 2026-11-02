@@ -1,0 +1,1019 @@
+{
+ "scen": "today",
+ "reqs": [
+  {
+   "kind": "physics",
+   "t": 1183,
+   "jd": "2461308.59519048",
+   "q": "?jd=2461308.59519048&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 503
+  },
+  {
+   "kind": "physics",
+   "t": 6976,
+   "jd": "2461335.99439048",
+   "q": "?jd=2461335.99439048&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 503
+  },
+  {
+   "kind": "physics",
+   "t": 13668,
+   "jd": "2461356.19319048",
+   "q": "?jd=2461356.19319048&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 503
+  },
+  {
+   "kind": "physics",
+   "t": 21028,
+   "jd": "2461385.59239048",
+   "q": "?jd=2461385.59239048&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 503
+  },
+  {
+   "kind": "physics",
+   "t": 28139,
+   "jd": "2461414.05759048",
+   "q": "?jd=2461414.05759048&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 503
+  },
+  {
+   "kind": "physics",
+   "t": 34209,
+   "jd": "2461438.32319048",
+   "q": "?jd=2461438.32319048&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 503
+  },
+  {
+   "kind": "physics",
+   "t": 42988,
+   "jd": "2461466.85559048",
+   "q": "?jd=2461466.85559048&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 503
+  },
+  {
+   "kind": "physics",
+   "t": 49696,
+   "jd": "2461493.72119048",
+   "q": "?jd=2461493.72119048&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 503
+  },
+  {
+   "kind": "physics",
+   "t": 57588,
+   "jd": "2461525.25359048",
+   "q": "?jd=2461525.25359048&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 503
+  },
+  {
+   "kind": "physics",
+   "t": 64350,
+   "jd": "2461552.31919048",
+   "q": "?jd=2461552.31919048&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 503
+  },
+  {
+   "kind": "physics",
+   "t": 70921,
+   "jd": "2461578.58439048",
+   "q": "?jd=2461578.58439048&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 503
+  },
+  {
+   "kind": "physics",
+   "t": 77196,
+   "jd": "2461596.78359048",
+   "q": "?jd=2461596.78359048&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 503
+  },
+  {
+   "kind": "physics",
+   "t": 83897,
+   "jd": "2461623.91599048",
+   "q": "?jd=2461623.91599048&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 503
+  },
+  {
+   "kind": "physics",
+   "t": 90002,
+   "jd": "2461648.31519048",
+   "q": "?jd=2461648.31519048&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 503
+  },
+  {
+   "kind": "physics",
+   "t": 96156,
+   "jd": "2461672.98079048",
+   "q": "?jd=2461672.98079048&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 503
+  },
+  {
+   "kind": "physics",
+   "t": 102828,
+   "jd": "2461699.64639048",
+   "q": "?jd=2461699.64639048&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 503
+  },
+  {
+   "kind": "physics",
+   "t": 111668,
+   "jd": "2461728.44519048",
+   "q": "?jd=2461728.44519048&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 503
+  },
+  {
+   "kind": "physics",
+   "t": 117751,
+   "jd": "2461752.77759048",
+   "q": "?jd=2461752.77759048&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 503
+  },
+  {
+   "kind": "physics",
+   "t": 126087,
+   "jd": "2461786.10959048",
+   "q": "?jd=2461786.10959048&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 503
+  },
+  {
+   "kind": "physics",
+   "t": 133012,
+   "jd": "2461813.77519048",
+   "q": "?jd=2461813.77519048&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 503
+  },
+  {
+   "kind": "physics",
+   "t": 139131,
+   "jd": "2461838.30719048",
+   "q": "?jd=2461838.30719048&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 503
+  },
+  {
+   "kind": "physics",
+   "t": 145538,
+   "jd": "2461857.30679048",
+   "q": "?jd=2461857.30679048&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 503
+  },
+  {
+   "kind": "physics",
+   "t": 153571,
+   "jd": "2461889.43879048",
+   "q": "?jd=2461889.43879048&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 503
+  },
+  {
+   "kind": "physics",
+   "t": 161590,
+   "jd": "2461921.57079048",
+   "q": "?jd=2461921.57079048&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 503
+  },
+  {
+   "kind": "physics",
+   "t": 168980,
+   "jd": "2461951.10319048",
+   "q": "?jd=2461951.10319048&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 503
+  },
+  {
+   "kind": "physics",
+   "t": 175856,
+   "jd": "2461978.63519048",
+   "q": "?jd=2461978.63519048&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 503
+  }
+ ],
+ "snaps": {
+  "t14_default": {
+   "t": 15653,
+   "scenes": 1,
+   "coronalLoops": {
+    "visible": true,
+    "children": 0,
+    "visibleChildren": 0,
+    "dataDriven": null,
+    "source": null,
+    "maxRadiusAU_local": 0
+   },
+   "parkerSpiral": {
+    "visible": true,
+    "children": 0,
+    "visibleChildren": 0,
+    "dataDriven": null,
+    "source": null,
+    "maxRadiusAU_local": 0
+   },
+   "magneticField": {
+    "visible": false,
+    "children": 52,
+    "visibleChildren": 52,
+    "dataDriven": null,
+    "source": null,
+    "maxRadiusAU_local": 0.955
+   },
+   "flares": {
+    "visible": true,
+    "children": 0,
+    "visibleChildren": 0,
+    "dataDriven": null,
+    "source": null,
+    "maxRadiusAU_local": 0
+   },
+   "surface": {
+    "observationMapIsBaseMap": true,
+    "observationMapImage": "HTMLCanvasElement",
+    "observationBlend": 0.013,
+    "observationEmission": 0.094,
+    "activity": 0,
+    "sunspotSeeds": [
+     [
+      0.003,
+      0.02,
+      0.025,
+      0.601
+     ],
+     [
+      0,
+      0,
+      0,
+      0
+     ],
+     [
+      0,
+      0,
+      0,
+      0
+     ],
+     [
+      0,
+      0,
+      0,
+      0
+     ],
+     [
+      0,
+      0,
+      0,
+      0
+     ],
+     [
+      0,
+      0,
+      0,
+      0
+     ],
+     [
+      0,
+      0,
+      0,
+      0
+     ],
+     [
+      0,
+      0,
+      0,
+      0
+     ]
+    ],
+    "flarePoints": [
+     0,
+     0,
+     0
+    ]
+   },
+   "corona": {
+    "coronalHoleCount": 0,
+    "channelMode": 0,
+    "coronaColor": [
+     1,
+     0.66,
+     0.34
+    ],
+    "obsBlend": 0.013
+   },
+   "transitionRegion": {
+    "channelMode": 0,
+    "trOpacity": 0.12
+   },
+   "sunMeshScale": 0.3755,
+   "aiaSelect": "auto",
+   "magToggle": false,
+   "date": "2026-11-11",
+   "statusBar": [
+    "Focused · Sun",
+    "Bodies · 55,010",
+    "Range · 2.60 AU",
+    "Asteroids: procedural fallback (catalog rejected: sha256-unavailable)"
+   ],
+   "solarText": [
+    "Live simulation",
+    "Asteroids: procedural fallback (catalog rejected: sha256-unavailable)"
+   ],
+   "longtasks": [
+    {
+     "at": 71,
+     "dur": 1080
+    },
+    {
+     "at": 1221,
+     "dur": 69
+    }
+   ],
+   "json": []
+  },
+  "t18_magnetic_on": {
+   "t": 45766,
+   "scenes": 1,
+   "coronalLoops": {
+    "visible": true,
+    "children": 0,
+    "visibleChildren": 0,
+    "dataDriven": null,
+    "source": null,
+    "maxRadiusAU_local": 0
+   },
+   "parkerSpiral": {
+    "visible": true,
+    "children": 0,
+    "visibleChildren": 0,
+    "dataDriven": null,
+    "source": null,
+    "maxRadiusAU_local": 0
+   },
+   "magneticField": {
+    "visible": false,
+    "children": 52,
+    "visibleChildren": 52,
+    "dataDriven": null,
+    "source": null,
+    "maxRadiusAU_local": 0.955
+   },
+   "flares": {
+    "visible": true,
+    "children": 0,
+    "visibleChildren": 0,
+    "dataDriven": null,
+    "source": null,
+    "maxRadiusAU_local": 0
+   },
+   "surface": {
+    "observationMapIsBaseMap": true,
+    "observationMapImage": "HTMLCanvasElement",
+    "observationBlend": 0.013,
+    "observationEmission": 0.094,
+    "activity": 0,
+    "sunspotSeeds": [
+     [
+      0.011,
+      0.02,
+      0.025,
+      0.601
+     ],
+     [
+      0,
+      0,
+      0,
+      0
+     ],
+     [
+      0,
+      0,
+      0,
+      0
+     ],
+     [
+      0,
+      0,
+      0,
+      0
+     ],
+     [
+      0,
+      0,
+      0,
+      0
+     ],
+     [
+      0,
+      0,
+      0,
+      0
+     ],
+     [
+      0,
+      0,
+      0,
+      0
+     ],
+     [
+      0,
+      0,
+      0,
+      0
+     ]
+    ],
+    "flarePoints": [
+     0,
+     0,
+     0
+    ]
+   },
+   "corona": {
+    "coronalHoleCount": 0,
+    "channelMode": 0,
+    "coronaColor": [
+     1,
+     0.66,
+     0.34
+    ],
+    "obsBlend": 0.013
+   },
+   "transitionRegion": {
+    "channelMode": 0,
+    "trOpacity": 0.12
+   },
+   "sunMeshScale": 0.3755,
+   "aiaSelect": "auto",
+   "magToggle": true,
+   "date": "2027-03-13",
+   "statusBar": [
+    "Focused · Sun",
+    "Bodies · 55,010",
+    "Range · 2.60 AU",
+    "Asteroids: procedural fallback (catalog rejected: sha256-unavailable)"
+   ],
+   "solarText": [
+    "Live simulation",
+    "Asteroids: procedural fallback (catalog rejected: sha256-unavailable)"
+   ],
+   "longtasks": [
+    {
+     "at": 71,
+     "dur": 1080
+    },
+    {
+     "at": 1221,
+     "dur": 69
+    }
+   ],
+   "json": []
+  },
+  "t24_aia304": {
+   "t": 77202,
+   "scenes": 1,
+   "coronalLoops": {
+    "visible": true,
+    "children": 0,
+    "visibleChildren": 0,
+    "dataDriven": null,
+    "source": null,
+    "maxRadiusAU_local": 0
+   },
+   "parkerSpiral": {
+    "visible": true,
+    "children": 0,
+    "visibleChildren": 0,
+    "dataDriven": null,
+    "source": null,
+    "maxRadiusAU_local": 0
+   },
+   "magneticField": {
+    "visible": true,
+    "children": 52,
+    "visibleChildren": 52,
+    "dataDriven": null,
+    "source": null,
+    "maxRadiusAU_local": 0.955
+   },
+   "flares": {
+    "visible": true,
+    "children": 0,
+    "visibleChildren": 0,
+    "dataDriven": null,
+    "source": null,
+    "maxRadiusAU_local": 0
+   },
+   "surface": {
+    "observationMapIsBaseMap": true,
+    "observationMapImage": "HTMLCanvasElement",
+    "observationBlend": 0.013,
+    "observationEmission": 0.094,
+    "activity": 0,
+    "sunspotSeeds": [
+     [
+      0.019,
+      0.02,
+      0.025,
+      0.601
+     ],
+     [
+      0,
+      0,
+      0,
+      0
+     ],
+     [
+      0,
+      0,
+      0,
+      0
+     ],
+     [
+      0,
+      0,
+      0,
+      0
+     ],
+     [
+      0,
+      0,
+      0,
+      0
+     ],
+     [
+      0,
+      0,
+      0,
+      0
+     ],
+     [
+      0,
+      0,
+      0,
+      0
+     ],
+     [
+      0,
+      0,
+      0,
+      0
+     ]
+    ],
+    "flarePoints": [
+     0,
+     0,
+     0
+    ]
+   },
+   "corona": {
+    "coronalHoleCount": 0,
+    "channelMode": 0,
+    "coronaColor": [
+     1,
+     0.66,
+     0.34
+    ],
+    "obsBlend": 0.013
+   },
+   "transitionRegion": {
+    "channelMode": 0,
+    "trOpacity": 0.12
+   },
+   "sunMeshScale": 0.3755,
+   "aiaSelect": "aia_304",
+   "magToggle": true,
+   "date": "2027-07-10",
+   "statusBar": [
+    "Focused · Sun",
+    "Bodies · 55,010",
+    "Range · 2.60 AU",
+    "Asteroids: procedural fallback (catalog rejected: sha256-unavailable)"
+   ],
+   "solarText": [
+    "Live simulation",
+    "Asteroids: procedural fallback (catalog rejected: sha256-unavailable)"
+   ],
+   "longtasks": [
+    {
+     "at": 71,
+     "dur": 1080
+    },
+    {
+     "at": 1221,
+     "dur": 69
+    }
+   ],
+   "json": []
+  },
+  "t32_zoomed_out": {
+   "t": 150979,
+   "scenes": 1,
+   "coronalLoops": {
+    "visible": true,
+    "children": 0,
+    "visibleChildren": 0,
+    "dataDriven": null,
+    "source": null,
+    "maxRadiusAU_local": 0
+   },
+   "parkerSpiral": {
+    "visible": true,
+    "children": 0,
+    "visibleChildren": 0,
+    "dataDriven": null,
+    "source": null,
+    "maxRadiusAU_local": 0
+   },
+   "magneticField": {
+    "visible": true,
+    "children": 52,
+    "visibleChildren": 52,
+    "dataDriven": null,
+    "source": null,
+    "maxRadiusAU_local": 0.955
+   },
+   "flares": {
+    "visible": true,
+    "children": 0,
+    "visibleChildren": 0,
+    "dataDriven": null,
+    "source": null,
+    "maxRadiusAU_local": 0
+   },
+   "surface": {
+    "observationMapIsBaseMap": true,
+    "observationMapImage": "HTMLCanvasElement",
+    "observationBlend": 0.02,
+    "observationEmission": 0.105,
+    "activity": 0,
+    "sunspotSeeds": [
+     [
+      0.037,
+      0.02,
+      0.025,
+      0.601
+     ],
+     [
+      0,
+      0,
+      0,
+      0
+     ],
+     [
+      0,
+      0,
+      0,
+      0
+     ],
+     [
+      0,
+      0,
+      0,
+      0
+     ],
+     [
+      0,
+      0,
+      0,
+      0
+     ],
+     [
+      0,
+      0,
+      0,
+      0
+     ],
+     [
+      0,
+      0,
+      0,
+      0
+     ],
+     [
+      0,
+      0,
+      0,
+      0
+     ]
+    ],
+    "flarePoints": [
+     0,
+     0,
+     0
+    ]
+   },
+   "corona": {
+    "coronalHoleCount": 0,
+    "channelMode": 5,
+    "coronaColor": [
+     1,
+     0.66,
+     0.34
+    ],
+    "obsBlend": 0.02
+   },
+   "transitionRegion": {
+    "channelMode": 5,
+    "trOpacity": 0.55
+   },
+   "sunMeshScale": 0.3755,
+   "aiaSelect": "aia_304",
+   "magToggle": true,
+   "date": "2028-04-17",
+   "statusBar": [
+    "Focused · Sun",
+    "Bodies · 55,010",
+    "Range · 104.44 AU",
+    "Asteroids: procedural fallback (catalog rejected: sha256-unavailable)"
+   ],
+   "solarText": [
+    "Live simulation",
+    "Asteroids: procedural fallback (catalog rejected: sha256-unavailable)"
+   ],
+   "longtasks": [
+    {
+     "at": 71,
+     "dur": 1080
+    },
+    {
+     "at": 1221,
+     "dur": 69
+    }
+   ],
+   "json": []
+  },
+  "end": {
+   "t": 181174,
+   "scenes": 1,
+   "coronalLoops": {
+    "visible": true,
+    "children": 0,
+    "visibleChildren": 0,
+    "dataDriven": null,
+    "source": null,
+    "maxRadiusAU_local": 0
+   },
+   "parkerSpiral": {
+    "visible": true,
+    "children": 0,
+    "visibleChildren": 0,
+    "dataDriven": null,
+    "source": null,
+    "maxRadiusAU_local": 0
+   },
+   "magneticField": {
+    "visible": true,
+    "children": 52,
+    "visibleChildren": 52,
+    "dataDriven": null,
+    "source": null,
+    "maxRadiusAU_local": 0.955
+   },
+   "flares": {
+    "visible": true,
+    "children": 0,
+    "visibleChildren": 0,
+    "dataDriven": null,
+    "source": null,
+    "maxRadiusAU_local": 0
+   },
+   "surface": {
+    "observationMapIsBaseMap": true,
+    "observationMapImage": "HTMLCanvasElement",
+    "observationBlend": 0.02,
+    "observationEmission": 0.105,
+    "activity": 0,
+    "sunspotSeeds": [
+     [
+      0.045,
+      0.02,
+      0.025,
+      0.601
+     ],
+     [
+      0,
+      0,
+      0,
+      0
+     ],
+     [
+      0,
+      0,
+      0,
+      0
+     ],
+     [
+      0,
+      0,
+      0,
+      0
+     ],
+     [
+      0,
+      0,
+      0,
+      0
+     ],
+     [
+      0,
+      0,
+      0,
+      0
+     ],
+     [
+      0,
+      0,
+      0,
+      0
+     ],
+     [
+      0,
+      0,
+      0,
+      0
+     ]
+    ],
+    "flarePoints": [
+     0,
+     0,
+     0
+    ]
+   },
+   "corona": {
+    "coronalHoleCount": 0,
+    "channelMode": 5,
+    "coronaColor": [
+     1,
+     0.66,
+     0.34
+    ],
+    "obsBlend": 0.02
+   },
+   "transitionRegion": {
+    "channelMode": 5,
+    "trOpacity": 0.55
+   },
+   "sunMeshScale": 0.3755,
+   "aiaSelect": "aia_304",
+   "magToggle": true,
+   "date": "2028-08-09",
+   "statusBar": [
+    "Focused · Sun",
+    "Bodies · 55,010",
+    "Range · 104.44 AU",
+    "Asteroids: procedural fallback (catalog rejected: sha256-unavailable)"
+   ],
+   "solarText": [
+    "Live simulation",
+    "Asteroids: procedural fallback (catalog rejected: sha256-unavailable)"
+   ],
+   "longtasks": [
+    {
+     "at": 71,
+     "dur": 1080
+    },
+    {
+     "at": 1221,
+     "dur": 69
+    }
+   ],
+   "json": []
+  }
+ },
+ "logs": [
+  {
+   "t": 90,
+   "type": "error",
+   "text": "Failed to load resource: net::ERR_FAILED"
+  },
+  {
+   "t": 1240,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+  },
+  {
+   "t": 1320,
+   "type": "warning",
+   "text": "[phase-1] Acceptance gates failed: [sha256-unavailable] Unable to compute SHA-256 for the Phase-1 catalog: Cannot read properties of undefined (reading 'digest')"
+  },
+  {
+   "t": 6979,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+  },
+  {
+   "t": 13674,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+  },
+  {
+   "t": 21032,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+  },
+  {
+   "t": 28141,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+  },
+  {
+   "t": 34215,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+  },
+  {
+   "t": 42990,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+  },
+  {
+   "t": 49698,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+  },
+  {
+   "t": 57593,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+  },
+  {
+   "t": 64359,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+  },
+  {
+   "t": 70923,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+  },
+  {
+   "t": 77203,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+  },
+  {
+   "t": 83901,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+  },
+  {
+   "t": 90005,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+  },
+  {
+   "t": 96158,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+  },
+  {
+   "t": 102831,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+  },
+  {
+   "t": 111670,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+  },
+  {
+   "t": 117758,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+  },
+  {
+   "t": 126090,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+  },
+  {
+   "t": 133014,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+  },
+  {
+   "t": 139134,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+  },
+  {
+   "t": 145540,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+  },
+  {
+   "t": 153573,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+  },
+  {
+   "t": 161593,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+  },
+  {
+   "t": 168984,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+  },
+  {
+   "t": 175858,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+  }
+ ],
+ "physicsRequestCount": 26,
+ "aiaRequestCount": 0,
+ "otherBackend": []
+}

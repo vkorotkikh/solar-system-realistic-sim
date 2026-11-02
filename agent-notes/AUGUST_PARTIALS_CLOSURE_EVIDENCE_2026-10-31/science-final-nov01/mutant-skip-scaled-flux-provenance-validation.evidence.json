@@ -1,0 +1,42 @@
+{
+  "hunks": [
+    {
+      "executed_lines": [
+        1803
+      ],
+      "lines": [
+        1803
+      ],
+      "path": "backend/sim/pfss_magnetogram.py"
+    }
+  ],
+  "node": "backend/tests/test_solar_observational_acceptance.py::test_forged_scaled_flux_snapshot_is_rejected[positive_scale_factor-0.001]",
+  "reports": [
+    {
+      "exception_message": null,
+      "exception_type": null,
+      "is_assertion_error": false,
+      "node": "backend/tests/test_solar_observational_acceptance.py::test_forged_scaled_flux_snapshot_is_rejected[positive_scale_factor-0.001]",
+      "outcome": "passed",
+      "phase": "setup"
+    },
+    {
+      "exception_message": "SCN041-SCALED-FLUX-PROVENANCE\nassert False",
+      "exception_type": "builtins.AssertionError",
+      "is_assertion_error": true,
+      "node": "backend/tests/test_solar_observational_acceptance.py::test_forged_scaled_flux_snapshot_is_rejected[positive_scale_factor-0.001]",
+      "outcome": "failed",
+      "phase": "call"
+    },
+    {
+      "exception_message": null,
+      "exception_type": null,
+      "is_assertion_error": false,
+      "node": "backend/tests/test_solar_observational_acceptance.py::test_forged_scaled_flux_snapshot_is_rejected[positive_scale_factor-0.001]",
+      "outcome": "passed",
+      "phase": "teardown"
+    }
+  ],
+  "schema_version": 1,
+  "trace_intact": true
+}

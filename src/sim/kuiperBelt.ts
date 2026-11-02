@@ -3,11 +3,14 @@ import { solveKeplerFast } from './orbitMath';
 import type { KeplerOrbit } from './orbitMath';
 
 // ── Taxonomy ─────────────────────────────────────────────────────────────────
-// Kuiper-belt dynamical classes following Gladman+ 2008 classification.
+// Illustrative orbit bins inspired by dynamical classes. Synthetic orbits do
+// not establish resonance libration or measured population membership.
 
 export enum KBOClass {
   Classical = 0, // "Cubewanos" — low-e, 42–48 AU
-  Resonant = 1, // Plutinos (3:2), twotinos (2:1), etc.
+  /** @deprecated Numeric compatibility alias; use ResonanceCandidate. */
+  Resonant = 1,
+  ResonanceCandidate = 1, // Orbits sampled near 3:2 or 2:1; not resonance-verified.
   Scattered = 2, // High-e, perihelia near Neptune
   Detached = 3, // High-a, perihelia beyond Neptune influence (Sedna-like)
 }
@@ -62,7 +65,7 @@ export const NAMED_KBOS: readonly KBODef[] = [
   { orbit: { epochJd: 2_461_000.5, aAu: 43.00550070466122, e: 0.1957749348643283, iDeg: 28.2084058575333, ascendingNodeDeg: 121.7972912148725, argPeriapsisDeg: 240.8882499146523, meanAnomalyDeg: 222.327773674086, periodDays: 103_011.1983717244 }, dynClass: KBOClass.Classical, surfaceColor: KBOColor.Neutral, diameterKm: 1632, albedo: 0.51, color: 0xd5cdc3, irregularity: 0.08 },
   { orbit: { epochJd: 2_461_000.5, aAu: 549.5557484700445, e: 0.8613012757344123, iDeg: 11.9259170100237, ascendingNodeDeg: 144.4787538737016, argPeriapsisDeg: 311.0097768302501, meanAnomalyDeg: 358.6073191231379, periodDays: 4_705_611.401375764 }, dynClass: KBOClass.Detached, surfaceColor: KBOColor.Red, diameterKm: 996, albedo: 0.32, color: 0xd4735e, irregularity: 0.05 },
   { orbit: { epochJd: 2_461_000.5, aAu: 43.1476797896999, e: 0.03583878345045522, iDeg: 7.991371294756977, ascendingNodeDeg: 188.9632801280419, argPeriapsisDeg: 163.9231380423773, meanAnomalyDeg: 291.4818848560664, periodDays: 103_522.463310922 }, dynClass: KBOClass.Classical, surfaceColor: KBOColor.Red, diameterKm: 1110, albedo: 0.11, color: 0xb8a090, irregularity: 0.04 },
-  { orbit: { epochJd: 2_461_000.5, aAu: 39.33577773786809, e: 0.2217299048615294, iDeg: 20.5555257981466, ascendingNodeDeg: 268.3859440319268, argPeriapsisDeg: 73.72224931783963, meanAnomalyDeg: 188.1114996171732, periodDays: 90_111.46262610896 }, dynClass: KBOClass.Resonant, surfaceColor: KBOColor.Neutral, diameterKm: 916, albedo: 0.23, color: 0xa0a0a0, irregularity: 0.04 },
+  { orbit: { epochJd: 2_461_000.5, aAu: 39.33577773786809, e: 0.2217299048615294, iDeg: 20.5555257981466, ascendingNodeDeg: 268.3859440319268, argPeriapsisDeg: 73.72224931783963, meanAnomalyDeg: 188.1114996171732, periodDays: 90_111.46262610896 }, dynClass: KBOClass.ResonanceCandidate, surfaceColor: KBOColor.Neutral, diameterKm: 916, albedo: 0.23, color: 0xa0a0a0, irregularity: 0.04 },
   { orbit: { epochJd: 2_461_000.5, aAu: 66.8932285981878, e: 0.5031647192772432, iDeg: 30.86624793783273, ascendingNodeDeg: 336.8400983527928, argPeriapsisDeg: 206.6408306823951, meanAnomalyDeg: 111.3923083021873, periodDays: 199_835.0499342 }, dynClass: KBOClass.Scattered, surfaceColor: KBOColor.Red, diameterKm: 1230, albedo: 0.14, color: 0xc47060, irregularity: 0.03 },
   { orbit: { epochJd: 2_461_000.5, aAu: 43.17823437208563, e: 0.05254516459334936, iDeg: 17.13812404484431, ascendingNodeDeg: 97.21030234100793, argPeriapsisDeg: 273.2206220996139, meanAnomalyDeg: 115.0289798413239, periodDays: 103_632.4453155141 }, dynClass: KBOClass.Classical, surfaceColor: KBOColor.Red, diameterKm: 900, albedo: 0.09, color: 0xb9a7a0, irregularity: 0.06 },
 ];
@@ -80,7 +83,7 @@ const TWOTINO_RESONANCE_AU = 47.8;
 
 const BINARY_FRACTION: Record<KBOClass, number> = {
   [KBOClass.Classical]: 0.22, // weighted avg cold (30%) + hot (10%)
-  [KBOClass.Resonant]: 0.05,
+  [KBOClass.ResonanceCandidate]: 0.05,
   [KBOClass.Scattered]: 0.05,
   [KBOClass.Detached]: 0.05,
 };
@@ -177,7 +180,7 @@ function mulberry32(seed: number) {
 function sampleDynClass(rand: () => number): KBOClass {
   const r = rand();
   if (r < 0.35) return KBOClass.Classical;
-  if (r < 0.58) return KBOClass.Resonant;
+  if (r < 0.58) return KBOClass.ResonanceCandidate;
   if (r < 0.82) return KBOClass.Scattered;
   return KBOClass.Detached;
 }
@@ -194,7 +197,7 @@ function sampleOrbitForClass(
       const iDeg = cold ? rand() * 5 : 5 + rand() * 25;
       return { aAu, e, iDeg };
     }
-    case KBOClass.Resonant: {
+    case KBOClass.ResonanceCandidate: {
       const resonance = rand() < 0.7 ? PLUTINO_RESONANCE_AU : TWOTINO_RESONANCE_AU;
       const aAu = resonance + (rand() - 0.5) * 0.5;
       const e = 0.08 + rand() * 0.22;
@@ -282,22 +285,18 @@ function computeBinaryBarycentricOffsets(
   const cosI = Math.cos(iRad);
   const sinI = Math.sin(iRad);
 
-  const px = trueX * cosW - trueY * sinW;
-  const py = trueX * sinW + trueY * cosW;
+  // Fixed perifocal P/Q axes retain the periapsis convention. The mutual
+  // phase belongs only in trueX/trueY, not in these orientation axes too.
   const radial: [number, number, number] = [
-    cosO * px - sinO * cosI * py,
-    sinO * px + cosO * cosI * py,
-    sinI * py,
+    cosO * cosW - sinO * cosI * sinW,
+    sinO * cosW + cosO * cosI * sinW,
+    sinI * sinW,
   ];
 
-  const dxOrb = -sepAu * sinE;
-  const dyOrb = sepAu * sqrtE * cosE;
-  const dpx = dxOrb * cosW - dyOrb * sinW;
-  const dpy = dxOrb * sinW + dyOrb * cosW;
   const tangential: [number, number, number] = [
-    cosO * dpx - sinO * cosI * dpy,
-    sinO * dpx + cosO * cosI * dpy,
-    sinI * dpy,
+    -cosO * sinW - sinO * cosI * cosW,
+    -sinO * sinW + cosO * cosI * cosW,
+    sinI * cosW,
   ];
 
   const radialNorm = Math.hypot(radial[0], radial[1], radial[2]) || 1;
@@ -365,12 +364,17 @@ export interface KuiperBeltPopulation {
   count: number;
   binaryCount: number;
   kbos: KBODef[];
+  seed: number;
+  populationModel: 'synthetic_orbit_candidates_not_resonance_verified';
 }
 
 export function generateKuiperBelt(
   count = 5_000,
   seed = 137
 ): KuiperBeltPopulation {
+  if (!Number.isInteger(seed) || seed < 0 || seed >= 2 ** 32) {
+    throw new Error('population seed must be an unsigned 32-bit integer');
+  }
   const rand = mulberry32(seed);
   const kbos: KBODef[] = [...NAMED_KBOS];
 
@@ -416,7 +420,8 @@ export function generateKuiperBelt(
   }
 
   const binaryCount = kbos.filter(k => k.binary != null).length;
-  return { count: kbos.length, binaryCount, kbos };
+  return { count: kbos.length, binaryCount, kbos, seed,
+    populationModel: 'synthetic_orbit_candidates_not_resonance_verified' };
 }
 
 // ── Fast batch orbit propagation ─────────────────────────────────────────────
@@ -507,9 +512,9 @@ export function propagateBinaryKBOPositions(
     const offsets = computeBinaryBarycentricOffsets(orb, kbos[i].diameterKm, bin, julianDate);
     const pOff = i * 3;
     const cOff = bIdx * 3;
-    companionOut[cOff] = primaryPositions[pOff] + offsets.companionOffset[0];
-    companionOut[cOff + 1] = primaryPositions[pOff + 1] + offsets.companionOffset[1];
-    companionOut[cOff + 2] = primaryPositions[pOff + 2] + offsets.companionOffset[2];
+    companionOut[cOff] = primaryPositions[pOff] + (offsets.companionOffset[0] - offsets.primaryOffset[0]);
+    companionOut[cOff + 1] = primaryPositions[pOff + 1] + (offsets.companionOffset[1] - offsets.primaryOffset[1]);
+    companionOut[cOff + 2] = primaryPositions[pOff + 2] + (offsets.companionOffset[2] - offsets.primaryOffset[2]);
 
     bIdx++;
   }

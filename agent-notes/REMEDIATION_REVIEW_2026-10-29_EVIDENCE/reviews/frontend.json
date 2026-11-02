@@ -1,0 +1,599 @@
+{
+  "domain": "frontend",
+  "notesCovered": [
+    {
+      "name": "REMEDIATION_ACCESSIBILITY_2026-10-14.md",
+      "path": "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/agent-notes/REMEDIATION_ACCESSIBILITY_2026-10-14.md",
+      "scope": "SCN-030/031 and supporting responsive, camera, announcement, recovery and acceptance evidence.",
+      "variants": [
+        {
+          "path": "/home/nomad/ai/projects/worktrees/solar-remediation-20261014-horizons-transport/agent-notes/REMEDIATION_ACCESSIBILITY_2026-10-14.md",
+          "sha256": "3bb0a92a8e17ad739089e26026e7704498af3d753b01fafa484e4ee3aee4d8f5",
+          "difference": "126-line earlier version lacks the 200%/400% native-zoom follow-up and bounded WebKit investigation; its line 117 still says real browser zoom NOT RUN. Audit copy has 187 lines, records dated native Chromium zoom passes at lines 121-161, and still explicitly leaves manual AT, OS text resizing, touch and final integration acceptance outstanding. New October 27 evidence supersedes any inference that the older native-zoom pass certifies the current baseline."
+        }
+      ]
+    },
+    {
+      "name": "REMEDIATION_EVENTS_2026-10-14.md",
+      "path": "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/agent-notes/REMEDIATION_EVENTS_2026-10-14.md",
+      "scope": "SCN-038 and SCN-065 through SCN-069; SCN-042 hardware follow-up is contextual supporting evidence only.",
+      "variants": [
+        {
+          "path": "/home/nomad/.claude/projects/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/435ef455-4edc-4f97-8125-606862df510f/audit-state/wt-gong/agent-notes/REMEDIATION_EVENTS_2026-10-14.md",
+          "sha256": "4e34543a7bcbce9f33a9466b7d263dc2b3826e18a46d437f2abbd22e896d98d1",
+          "difference": "Only line 207 differs: archived copy says every GPU run requires three explicit AGN environment variables and forwards host driver variables unchanged. Current runner requires the three AGN variables (scripts/verify-agn-frame-browser.mjs:15-22) but still adds WSL/NVIDIA environment values (lines 34-35). Neither prose version fully describes the current runner. This is a reproducibility qualification, not a new event-behavior failure."
+        },
+        {
+          "path": "/home/nomad/ai/projects/worktrees/solar-remediation-20261014-horizons-transport/agent-notes/REMEDIATION_EVENTS_2026-10-14.md",
+          "sha256": "0448cd377c3eb07f8abc9103abacaf69a02b771b4609cb48afca26ad2b5fef86",
+          "difference": "138-line version ends after the strict propagation follow-up and lacks the later SCN-042 hardware/frame oracle. Its earlier missing-browser limitation is historically bounded."
+        },
+        {
+          "path": "/home/nomad/ai/projects/worktrees/solar-remediation-20261014-runtime-review/agent-notes/REMEDIATION_EVENTS_2026-10-14.md",
+          "sha256": "b4d883663661d0524caf11614755b382faf9a269c1f3c97a113275397f248100",
+          "difference": "97-line original predates strict propagation and SCN-042 follow-ups, reports only the engine strict cleanup and older focused results. The assigned event fixes have the same core claims; newer sections add dated evidence, not current test passes."
+        }
+      ]
+    },
+    {
+      "name": "REMEDIATION_PLANETS_2026-10-14.md",
+      "path": "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/agent-notes/REMEDIATION_PLANETS_2026-10-14.md",
+      "scope": "SCN-058/059/060/061/083. One inventoried content variant. Its own software-only rendering limitation at lines 97-105 is supplemented by the separate hardware note; neither establishes a fresh run."
+    },
+    {
+      "name": "REMEDIATION_HARDWARE_2026-10-14.md",
+      "path": "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/agent-notes/REMEDIATION_HARDWARE_2026-10-14.md",
+      "scope": "Dated RTX 5090/D3D12 planetary geometry evidence at lines 19-29. One content variant. Explicitly excludes performance, cross-platform, AT and whole-application acceptance."
+    },
+    {
+      "name": "REMEDIATION_75052_REFERENCE_2026-10-14.md",
+      "path": "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/agent-notes/REMEDIATION_75052_REFERENCE_2026-10-14.md",
+      "scope": "Context only: SCN-043 independent source identity supplement, outside assigned canonical IDs. Lines 3 and 37-40 expressly do not close frontend moon accuracy. No moon-accuracy closure is credited to the assigned frontend issues. One content variant."
+    },
+    {
+      "name": "REMEDIATION_SCN049_KUIPER_REACTIVATION_2026-10-15.md",
+      "path": "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/agent-notes/REMEDIATION_SCN049_KUIPER_REACTIVATION_2026-10-15.md",
+      "scope": "SCN-049 negotiated activation IDs and native producer capture. Its historical local-integration wording at lines 3-5 is superseded for implementation by a8187a7 being an ancestor of origin/main. Browser acceptance remains separately unlanded. One content variant."
+    },
+    {
+      "name": "REMEDIATION_SCN049_BROWSER_ACCEPTANCE_2026-10-17.md",
+      "path": "/home/nomad/ai/projects/worktrees/solar-scn-049-browser-acceptance/agent-notes/REMEDIATION_SCN049_BROWSER_ACCEPTANCE_2026-10-17.md",
+      "scope": "Outside origin/main. Scoped browser-client acceptance exists only on work/scn-049-browser-acceptance; the note does not close the complete SCN-049 umbrella.",
+      "variants": [
+        {
+          "path": "/home/nomad/.claude/projects/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/435ef455-4edc-4f97-8125-606862df510f/audit-state/wt-gong/agent-notes/REMEDIATION_SCN049_BROWSER_ACCEPTANCE_2026-10-17.md",
+          "sha256": "54d92334e89a3edaf8f984159966514db599554e244f47bee977f9372a954206",
+          "difference": "Only line 13 differs: page error/HTTP(S) wording. Both versions say 36 stale and 38 replacement positions and both incorrectly describe the retained producer capture as Tudat; the fixture and production capture harness identify REBOUNDEngine/whfast. Branch copy SHA256 d2ddd5f19e07b78c79af0b8f9335cd8a524397a57e4267c96af6e7dbe71ae441."
+        }
+      ]
+    },
+    {
+      "name": "REMEDIATION_SOLAR_SCN049_NUMERICAL_POLICY_2026-10-14.md",
+      "path": "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/agent-notes/REMEDIATION_SOLAR_SCN049_NUMERICAL_POLICY_2026-10-14.md",
+      "scope": "SCN-049 numerical-helper child. Finite guards and dedicated parameterized regressions are present on main. No HTTP exploit or entire umbrella closure follows. One content variant; backend integrated validation remains centrally owned."
+    },
+    {
+      "name": "SCN030_SCN031_BROWSER_GATE_2026-10-27.md",
+      "path": "/home/nomad/ai/projects/worktrees/solar-scn030-scn031-browser-gate-20261027/agent-notes/SCN030_SCN031_BROWSER_GATE_2026-10-27.md",
+      "scope": "Additional explicitly assigned local evidence. Untracked report accompanying UNCOMMITTED code/test/workflow changes, with HEAD and merge-base both at the audit origin/main SHA. Lines 34-48 are historical local results on Node 24.21.0/npm 11.19.0; WebKit was host-blocked. Lines 15-19 distinguish true panel/camera and fixture/gate defects from recovery paths that were not regressed."
+    }
+  ],
+  "issues": [
+    {
+      "id": "SCN-030",
+      "verdict": "PARTIAL",
+      "fix": "R1-R8 production reflow, modal focus, keyboard/tap camera, deduplicated time/search output, native-picker fallback and authoritative experiment presentation are landed. Current-main layout/camera defects and manual acceptance still prevent complete closure.",
+      "evidence": [
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/app/panelController.ts:19-25",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/app/panelController.ts:31-58",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/app/panelController.ts:60-92",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/app/viewportCameraController.ts:56-72",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/main.ts:1256-1281",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/style.css:1355-1463",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/app/timeController.ts:74-85",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/app/timeController.test.ts:10-22",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/app/bodyPickerPresentation.ts:1-25",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/app/explorerController.ts:19-24",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/tests/browser/panel.spec.ts:3-38",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/tests/browser/reflow.spec.ts:3-31",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/tests/browser/camera.spec.ts:3-37",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/tests/browser/tab-zoom.spec.ts:10-50",
+        "/home/nomad/ai/projects/worktrees/solar-scn030-scn031-browser-gate-20261027/src/frontend/app/panelController.ts:58-91",
+        "/home/nomad/ai/projects/worktrees/solar-scn030-scn031-browser-gate-20261027/src/frontend/app/viewportCameraController.ts:56-71",
+        "/home/nomad/ai/projects/worktrees/solar-scn030-scn031-browser-gate-20261027/agent-notes/SCN030_SCN031_BROWSER_GATE_2026-10-27.md:13-28"
+      ],
+      "remaining": "Native zoom can change CSS layout before even a fresh matchMedia result changes; main still derives modality exclusively from matchMedia. Main also queues camera input until a render-frame stage and publishes Range only after rendering, delaying response on slow rendering. Candidate width-driven reconciliation and microtask camera feedback exist only as uncommitted local changes. Manual NVDA/VoiceOver, OS text resize, physical touch/pinch and final WebKit/pinned-environment acceptance remain outstanding; current central suites pending.",
+      "branchEvidence": {
+        "originMain": "bb29d4be393c9dedca7049fc9b83511ed955be40",
+        "landedCommits": [
+          "cae3c0f",
+          "00b5346",
+          "b072d32"
+        ],
+        "verification": "Each listed implementation commit is an ancestor of local origin/main; no network refresh was performed.",
+        "localOnly": {
+          "verdict": "FIX_LOCAL_ONLY",
+          "worktree": "/home/nomad/ai/projects/worktrees/solar-scn030-scn031-browser-gate-20261027",
+          "head": "bb29d4be393c9dedca7049fc9b83511ed955be40",
+          "mergeBase": "bb29d4be393c9dedca7049fc9b83511ed955be40",
+          "state": "UNCOMMITTED tracked source/test/workflow changes; untracked browser-gate report",
+          "candidateEvidence": [
+            "/home/nomad/ai/projects/worktrees/solar-scn030-scn031-browser-gate-20261027/src/main.ts:167",
+            "/home/nomad/ai/projects/worktrees/solar-scn030-scn031-browser-gate-20261027/src/main.ts:260-266",
+            "/home/nomad/ai/projects/worktrees/solar-scn030-scn031-browser-gate-20261027/tests/browser/panel.spec.ts:26-35",
+            "/home/nomad/ai/projects/worktrees/solar-scn030-scn031-browser-gate-20261027/tests/browser/camera.spec.ts:3-25"
+          ]
+        }
+      }
+    },
+    {
+      "id": "SCN-031",
+      "verdict": "CODE_CONFIRMED",
+      "fix": "Renderer construction failure and actual WebGL context loss expose a named recovery surface, keep drawer/reload accessible, disable simulation inputs and stop owned frames, camera input, worker and solar delivery. Restored contexts require explicit reload.",
+      "evidence": [
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/app/rendererRecovery.ts:5-27",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/main.ts:234-259",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/main.ts:1286-1300",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/main.ts:1349-1362",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/tests/browser/app-smoke.spec.ts:26-36",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/app/rendererWarmup.ts:28-65",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/tests/browser/startup-warmup.spec.ts:56-91",
+        "/home/nomad/ai/projects/worktrees/solar-scn030-scn031-browser-gate-20261027/agent-notes/SCN030_SCN031_BROWSER_GATE_2026-10-27.md:13-19"
+      ],
+      "remaining": "Current tests centrally pending. Pending-warmup browser fixtures on main assume a shader extension that SwiftShader may omit; the local candidate makes the extension deterministic in pending-mode tests. This is fixture evidence debt, not a demonstrated regression of the recovery implementation. Real restoration auto-restart is deliberately not offered; no fresh hardware or platform-wide recovery certification.",
+      "branchEvidence": {
+        "originMain": "bb29d4be393c9dedca7049fc9b83511ed955be40",
+        "landedCommits": [
+          "cae3c0f",
+          "6c6f232"
+        ],
+        "verification": "Each listed implementation commit is an ancestor of local origin/main; no network refresh was performed.",
+        "localOnly": {
+          "verdict": "FIX_LOCAL_ONLY",
+          "worktree": "/home/nomad/ai/projects/worktrees/solar-scn030-scn031-browser-gate-20261027",
+          "changes": "Warmup fixture, neighboring panel/camera behavior and blocking CI lanes; no rendererRecovery.ts production change. The local note line 53 says SCN-031 FIX_AVAILABLE_UNMERGED, but the core recovery code already landed; that wording applies to the new browser gate package, not absence of the recovery fix.",
+          "evidence": "/home/nomad/ai/projects/worktrees/solar-scn030-scn031-browser-gate-20261027/tests/browser/startup-warmup.spec.ts:25-27"
+        }
+      }
+    },
+    {
+      "id": "SCN-038",
+      "verdict": "CODE_CONFIRMED",
+      "fix": "A declared clock policy separates simulation-JD physics from decorative solar/AGN elapsed time. The decorative clock starts at zero, advances only on forward playback, caps each step at 0.1 seconds and freezes for pause, reverse and reduced motion without catch-up.",
+      "evidence": [
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/sunController.ts:257-260",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/sunController.ts:617-631",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/sunController.ts:729-736",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/main.ts:302-308",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/main.ts:1252-1255",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/index.html:292-295",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/sunController.events.test.ts:61-85"
+      ],
+      "remaining": "Current central suites pending. The former DECISION_REQUIRED tracker value is stale for this implemented, visible policy. Provider polling remains wall-clock delivery; this code confirmation does not certify all solar scientific or screen-space behavior.",
+      "branchEvidence": {
+        "originMain": "bb29d4be393c9dedca7049fc9b83511ed955be40",
+        "landedCommits": [
+          "32da51b",
+          "cae3c0f"
+        ],
+        "verification": "Each listed implementation commit is an ancestor of local origin/main; no network refresh was performed."
+      }
+    },
+    {
+      "id": "SCN-049",
+      "verdict": "PARTIAL",
+      "fix": "Landed children include frame/socket ownership, hidden-tab timing reset, negotiated Kuiper activation identities with stale rejection, payload/metadata retention and explicit solar nonfinite numerical policy. The broad verification/architecture/lifecycle umbrella is not a single closed bug.",
+      "evidence": [
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/app/frameLifecycle.ts:36-80",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/app/frameLifecycle.test.ts:52-86",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/app/frameLifecycle.ownershipReview.test.ts:34-37",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/app/simulationClient.ts:263-307",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/app/simulationClient.ts:322-328",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/app/simulationClient.ts:426-444",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/app/simulationClient.ts:468-477",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/app/simulationClient.ts:506-531",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/app/simulationClient.subscription.test.ts:47-136",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/app/simulationClient.lifecycleReview.test.ts:41-179",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/backend/server.py:4641-4644",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/backend/server.py:4782-4806",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/backend/server.py:5232-5233",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/backend/tests/test_kuiper_subscription_ordering.py:38-148",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/backend/tests/test_kuiper_subscription_ordering.py:151-185",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/backend/sim/solar_physics.py:42-45",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/backend/sim/solar_physics.py:129-165",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/backend/sim/pfss_magnetogram.py:108-115",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/backend/tests/test_solar_numerical_policy.py:16-88",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/main.ts:1312-1321",
+        "/home/nomad/ai/projects/worktrees/solar-scn-049-browser-acceptance/tests/browser/scn049-kuiper-subscription.spec.ts:108-117",
+        "/home/nomad/ai/projects/worktrees/solar-scn-049-browser-acceptance/tests/browser/scn049-kuiper-subscription.spec.ts:169-196"
+      ],
+      "remaining": "Actual-browser Kuiper regression is absent from main and is FIX_LOCAL_ONLY as a branch-only test/evidence child. It uses retained native frames and an imported client, not a live backend-connected visualization. Legacy peers intentionally retain stale-reactivation ambiguity. Quadtree cleanup is omitted from composition unload cleanup. Other Section 7 visual, capacity, schema and architectural verification children are not closed by these bounded repairs; coordinate/science and overall release owners must keep their own scope. Current central suites pending.",
+      "branchEvidence": {
+        "originMain": "bb29d4be393c9dedca7049fc9b83511ed955be40",
+        "landedCommits": [
+          "a8187a7",
+          "b072d32"
+        ],
+        "verification": "Each listed implementation commit is an ancestor of local origin/main; no network refresh was performed.",
+        "localOnly": {
+          "verdict": "FIX_LOCAL_ONLY",
+          "worktree": "/home/nomad/ai/projects/worktrees/solar-scn-049-browser-acceptance",
+          "branch": "work/scn-049-browser-acceptance",
+          "head": "6ea9d8603cef38ba20047ec3d9fdf3087086de54",
+          "mergeBase": "1c5d88b075cbccb6803540e53cf0229e20c97557",
+          "uniqueCommits": [
+            "bfcf425c515b07ca8977c6609897690ce368f7ac",
+            "eb5332127d4398257a14883374c649ae0a2e8d05",
+            "6ea9d8603cef38ba20047ec3d9fdf3087086de54"
+          ],
+          "gitCherry": "All three commits reported + relative to origin/main; only test/evidence/config changes are on this branch, not a new protocol production fix.",
+          "historicalEvidence": "/home/nomad/ai/projects/worktrees/solar-scn-049-browser-acceptance/agent-notes/REMEDIATION_SCN049_BROWSER_ACCEPTANCE_2026-10-17.md:57-93"
+        }
+      }
+    },
+    {
+      "id": "SCN-058",
+      "verdict": "CODE_CONFIRMED",
+      "fix": "Splits release the parent mesh reference; merges destroy children and restore a leaf. Initial six-face coverage and current planet-frame camera coordinates prevent disappearing Earth/Mars trees and stale-parent LOD decisions.",
+      "evidence": [
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/planetary/quadtreeLOD.ts:60-69",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/planetary/quadtreeLOD.ts:91-130",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/planetary/quadtreeLOD.ts:175-185",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/planetary/quadtreeLOD.ts:252-259",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/planetary/quadtreeLOD.test.ts:10-78",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/main.ts:1258-1268"
+      ],
+      "remaining": "Current central suites pending. Regressions exercise 12 repeated near/far cycles, six complete faces, bounded leaves and transformed parents/cameras. Root unload cleanup does not invoke tree.dispose; this separate composition lifecycle omission is recorded under SCN-049 and finding FE-005, without reopening the repaired split/merge disappearance mechanism.",
+      "branchEvidence": {
+        "originMain": "bb29d4be393c9dedca7049fc9b83511ed955be40",
+        "landedCommits": [
+          "9221a61"
+        ],
+        "verification": "Each listed implementation commit is an ancestor of local origin/main; no network refresh was performed."
+      }
+    },
+    {
+      "id": "SCN-059",
+      "verdict": "CODE_CONFIRMED",
+      "fix": "setRadius updates effective radius and relief proportionally and reevaluates LOD. Scale-mode composition calls it and reframes the selected body. Focus and minimum distances use 20 and 1.1 live radii respectively.",
+      "evidence": [
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/planetary/quadtreeLOD.ts:262-270",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/planetary/quadtreeLOD.ts:152-156",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/planetary/planetView.ts:1-6",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/main.ts:629-647",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/main.ts:750-764",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/main.ts:1088-1100",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/planetary/quadtreeLOD.test.ts:81-104",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/planetary/planetView.test.ts:6-25",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/main.focusBody.test.ts:195-211"
+      ],
+      "remaining": "Current central suites pending. Historical software/RTX screen coverage is dated. The targeted assertions cover Earth/Mars scale changes, geometry/material reuse, framing and clearance; no fresh GPU/performance result is inferred.",
+      "branchEvidence": {
+        "originMain": "bb29d4be393c9dedca7049fc9b83511ed955be40",
+        "landedCommits": [
+          "9221a61"
+        ],
+        "verification": "Each listed implementation commit is an ancestor of local origin/main; no network refresh was performed."
+      }
+    },
+    {
+      "id": "SCN-060",
+      "verdict": "CODE_CONFIRMED",
+      "fix": "Quadtree groups expose mean-radius sphere raycasting with body identity, world transforms, visibility and clipping checks. Main double-click picking uses these group proxies nonrecursively, independent of displaced plane children.",
+      "evidence": [
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/planetary/quadtreeLOD.ts:203-224",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/planetary/quadtreeLOD.ts:147-151",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/main.ts:1195-1207",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/planetary/quadtreeLOD.test.ts:106-135"
+      ],
+      "remaining": "Current central suites pending. These are deliberate mean-sphere hits, not terrain-triangle intersections. Targeted real Three Raycaster coverage exists for both scales, near/far LOD, transformed parents, misses, far limits and hidden ancestors; full DOM double-click acceptance is not supplied by that isolated test.",
+      "branchEvidence": {
+        "originMain": "bb29d4be393c9dedca7049fc9b83511ed955be40",
+        "landedCommits": [
+          "9221a61"
+        ],
+        "verification": "Each listed implementation commit is an ancestor of local origin/main; no network refresh was performed."
+      }
+    },
+    {
+      "id": "SCN-061",
+      "verdict": "CODE_CONFIRMED",
+      "fix": "Per-draw face transforms apply before cube-to-sphere normalization; patch meshes remain in the body frame. Pole-safe finite differences and inward skirts repair NaN centers, doubled patch transforms and fine/coarse seam cracks.",
+      "evidence": [
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/planetary/quadtreeLOD.ts:136-163",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/planetary/planetShaders.ts:164-204",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/scripts/planetShaderGeometry.test.mjs:7-10",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/scripts/planetShaderGeometry.test.mjs:22-48",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/scripts/planetShaderGeometry.test.mjs:57-75",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/agent-notes/REMEDIATION_PLANETS_2026-10-14.md:93-105",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/agent-notes/REMEDIATION_HARDWARE_2026-10-14.md:19-29"
+      ],
+      "remaining": "Current central suites pending. The production GLSL regression exists but is explicitly skipped unless PLANET_SHADER_GPU_TEST=1; an ordinary frontend suite pass is not current shader-execution evidence. Historical software/RTX pixel coverage remains dated, with no fresh hardware, georeferenced terrain or cross-vendor claim.",
+      "branchEvidence": {
+        "originMain": "bb29d4be393c9dedca7049fc9b83511ed955be40",
+        "landedCommits": [
+          "9221a61"
+        ],
+        "verification": "Each listed implementation commit is an ancestor of local origin/main; no network refresh was performed."
+      }
+    },
+    {
+      "id": "SCN-062",
+      "verdict": "CODE_CONFIRMED",
+      "fix": "Flare/CME lifetime derives from positive flash duration rather than a fixed extent inside the enlarged Sun; CME travel uses the display-radius extent. Both enlarged and physical scales retain events beyond their first frame and expire them later.",
+      "evidence": [
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/solar/solarFlares.ts:232-239",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/solar/solarFlares.ts:256-280",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/solar/solarFlares.test.ts:64-88"
+      ],
+      "remaining": "Current central suites pending. This confirms the scoped lifetime bug only. Capacity/sustained event-load behavior and separate solar coordinates are not certified by the lifetime tests.",
+      "branchEvidence": {
+        "originMain": "bb29d4be393c9dedca7049fc9b83511ed955be40",
+        "landedCommits": [
+          "b5387c2"
+        ],
+        "verification": "Each listed implementation commit is an ancestor of local origin/main; no network refresh was performed."
+      }
+    },
+    {
+      "id": "SCN-065",
+      "verdict": "CODE_CONFIRMED",
+      "fix": "SunController updates the AGN engine without requiring a foreground event. Stochastic scheduling keeps each full 120-second window, preserves overshoot, supports deterministic random injection and ignores nonpositive/nonfinite deltas.",
+      "evidence": [
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/sunController.ts:729-736",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts:196-199",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts:357-387",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/superluminal-modeling/smbhPropagation.ts:684-704",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/superluminal-modeling/eventsRemediation.test.ts:53-96",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/sunController.events.test.ts:49-59"
+      ],
+      "remaining": "Current central suites pending. Tests assert the same 102 bursts for a 240-second batch and 2400 smaller updates, empty-window preservation, idempotence, invalid deltas and a controller background flare with no foreground timeline. No observation-calibrated event-rate or capacity/soak claim.",
+      "branchEvidence": {
+        "originMain": "bb29d4be393c9dedca7049fc9b83511ed955be40",
+        "landedCommits": [
+          "32da51b"
+        ],
+        "verification": "Each listed implementation commit is an ancestor of local origin/main; no network refresh was performed."
+      }
+    },
+    {
+      "id": "SCN-066",
+      "verdict": "CODE_CONFIRMED",
+      "fix": "Shared selection resolver gives named presets ownership of source, energy and model; explicit source/model changes clear the preset. A single experiment controller updates labels/help and dispatches the resolved selection. The ineffective observer UI control is removed and zero observer angle survives nullish defaults.",
+      "evidence": [
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts:65-75",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts:309-322",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts:347-352",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/app/experimentController.ts:21-59",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/main.ts:1217",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/superluminal-modeling/eventsRemediation.test.ts:33-47",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/app/experimentController.test.ts:9-20",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/tests/browser/experiment.spec.ts:24-34"
+      ],
+      "remaining": "Current central suites pending. index.html contains older initial energy-only preset help at line 321, but the active authoritative controller immediately replaces it at experimentController.ts:46-53; this is not evidence that runtime dispatch still uses the old contract. Compatibility setObserverFrameMode remains an intentional no-op API without the removed UI.",
+      "branchEvidence": {
+        "originMain": "bb29d4be393c9dedca7049fc9b83511ed955be40",
+        "landedCommits": [
+          "32da51b",
+          "cae3c0f"
+        ],
+        "verification": "Each listed implementation commit is an ancestor of local origin/main; no network refresh was performed."
+      }
+    },
+    {
+      "id": "SCN-067",
+      "verdict": "CODE_CONFIRMED",
+      "fix": "GW and H29 grids start hidden, suppress hidden animation, reset uniforms and visibility, detach on disposal and follow foreground event replacement/completion synchronously. Warp position conversion uses one AU conversion.",
+      "evidence": [
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/solar/gravitationalWaves.ts:187-218",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/solar/gravitationalWaves.ts:251-255",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/superluminal-modeling/warpSlipstreamVisuals.ts:124-146",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/superluminal-modeling/warpSlipstreamVisuals.ts:156-157",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/superluminal-modeling/warpSlipstreamVisuals.ts:182-186",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts:173-194",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts:414-421",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/sunController.ts:604-614",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/sunController.ts:902-911",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/superluminal-modeling/eventsRemediation.test.ts:100-130",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/sunController.events.test.ts:88-100"
+      ],
+      "remaining": "Current central suites pending. Unit lifecycle coverage is present; the later dated hardware result additionally reports zero reset draw calls (events note:152). This does not recertify all SCN-042 graphics or provide a fresh browser/GPU submission trace.",
+      "branchEvidence": {
+        "originMain": "bb29d4be393c9dedca7049fc9b83511ed955be40",
+        "landedCommits": [
+          "32da51b"
+        ],
+        "verification": "Each listed implementation commit is an ancestor of local origin/main; no network refresh was performed."
+      }
+    },
+    {
+      "id": "SCN-068",
+      "verdict": "CODE_CONFIRMED",
+      "fix": "smbhPropagation explicitly imports SGR_A and metricFrameDragPeak defaults its third parameter to SGR_A.massG. A direct two-argument regression compares the explicit-mass call.",
+      "evidence": [
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/superluminal-modeling/smbhPropagation.ts:17-21",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/superluminal-modeling/smbhPropagation.ts:127-132",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/superluminal-modeling/eventsRemediation.test.ts:49-51"
+      ],
+      "remaining": "Current central suites pending; no remaining missing-reference defect found in the assigned default-mass path.",
+      "branchEvidence": {
+        "originMain": "bb29d4be393c9dedca7049fc9b83511ed955be40",
+        "landedCommits": [
+          "32da51b"
+        ],
+        "verification": "Each listed implementation commit is an ancestor of local origin/main; no network refresh was performed."
+      }
+    },
+    {
+      "id": "SCN-069",
+      "verdict": "CODE_CONFIRMED",
+      "fix": "A single cited ICRS/J2000 source catalog rotates directions into fixed ECLIPJ2000 axes. Cen A/M87 intrinsic jet speeds derive consistently from apparent speed and assumed inclination; hypothetical and illustrative inputs are explicitly labeled and surfaced in experiment status.",
+      "evidence": [
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/superluminal-modeling/sourceCoordinates.ts:1-41",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts:79-91",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/superluminal-modeling/smbhPhysicsConstants.ts:87-94",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/superluminal-modeling/smbhPhysicsConstants.ts:108-129",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/superluminal-modeling/smbhPhysicsConstants.ts:148-181",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/app/experimentController.ts:23-28",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/superluminal-modeling/eventsRemediation.test.ts:133-155",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/superluminal-modeling/agnFrameOracle.test.ts:13-35"
+      ],
+      "remaining": "Current central suites pending. Source direction is not a jet-axis measurement; Maffei uses host-galaxy precision. No proper motion, observer parallax, aberration, true-of-date frame or empirical validation of illustrative jet assumptions follows. Retained provenance is inspected offline, not independently reacquired.",
+      "branchEvidence": {
+        "originMain": "bb29d4be393c9dedca7049fc9b83511ed955be40",
+        "landedCommits": [
+          "32da51b"
+        ],
+        "verification": "Each listed implementation commit is an ancestor of local origin/main; no network refresh was performed."
+      }
+    },
+    {
+      "id": "SCN-083",
+      "verdict": "CODE_CONFIRMED",
+      "fix": "Cited IAU fixed-J2000 poles and signed mean prime-meridian rates replace obliquity-derived spin. Equatorial-to-ecliptic adaptation preserves raw orbital obliquity separately, and production applyBodySpin applies direction once around the cited local north.",
+      "evidence": [
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/data/planetaryRotation.ts:28-39",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/data/planetaryRotation.ts:41-77",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/sim/catalog.ts:759-769",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/main.ts:361-373",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/main.ts:769-786",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/planetary/bodySpin.ts:10-19",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/planetary/planetRotation.test.ts:18-74"
+      ],
+      "remaining": "Current central suites pending. Independent CSPICE fixture checks all nine poles and signed angular velocities, and finite production spin sweeps cover Earth/Venus/Uranus/Pluto. Fixed J2000/mean-rate presentation does not establish full PCK evolution, EOP/ITRF Earth orientation or absolute texture meridians.",
+      "branchEvidence": {
+        "originMain": "bb29d4be393c9dedca7049fc9b83511ed955be40",
+        "landedCommits": [
+          "9221a61"
+        ],
+        "verification": "Each listed implementation commit is an ancestor of local origin/main; no network refresh was performed."
+      }
+    }
+  ],
+  "findings": [
+    {
+      "id": "FE-001",
+      "severity": "P1",
+      "issues": [
+        "SCN-030"
+      ],
+      "title": "Native zoom can leave the mobile drawer using desktop modality and focus state on main",
+      "description": "CSS uses a width media query while panelController.isMobile reads matchMedia, including a fresh query. The October 27 evidence records that both query state and change delivery can lag the native zoom layout. Resize invokes the same stale query reader, so it cannot reliably repair the transition; background focus/isolation can disagree with the visible drawer. The existing stale-query test freezes only the first retained query, leaving fresh queries accurate and missing this case.",
+      "evidence": [
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/style.css:1159-1166",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/app/panelController.ts:22-25",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/app/panelController.ts:68-92",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/tests/browser/panel.spec.ts:26-38",
+        "/home/nomad/ai/projects/worktrees/solar-scn030-scn031-browser-gate-20261027/agent-notes/SCN030_SCN031_BROWSER_GATE_2026-10-27.md:15"
+      ],
+      "status": "FIX_LOCAL_ONLY candidate; canonical issue remains PARTIAL",
+      "remediation": "Review and land width-driven reconciliation plus the regression freezing every query, then obtain blocking pinned browser acceptance.",
+      "branchEvidence": [
+        "/home/nomad/ai/projects/worktrees/solar-scn030-scn031-browser-gate-20261027/src/frontend/app/panelController.ts:58-91",
+        "/home/nomad/ai/projects/worktrees/solar-scn030-scn031-browser-gate-20261027/src/main.ts:167",
+        "/home/nomad/ai/projects/worktrees/solar-scn030-scn031-browser-gate-20261027/tests/browser/panel.spec.ts:26-35"
+      ]
+    },
+    {
+      "id": "FE-002",
+      "severity": "P2",
+      "issues": [
+        "SCN-030"
+      ],
+      "title": "Camera input and Range feedback depend on the next rendering frame",
+      "description": "Input handlers only queue actions. Main flushes them in its frame pipeline, and Range text is updated after renderer.render. Slow software rendering or initial preparation therefore delays keyboard/tap camera action and feedback. The local candidate applies queued actions in a microtask with a feedback callback; local browser coverage removes the manual step before checking the response.",
+      "evidence": [
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/app/viewportCameraController.ts:56-72",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/main.ts:1256-1281",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/tests/browser/camera.spec.ts:5-10",
+        "/home/nomad/ai/projects/worktrees/solar-scn030-scn031-browser-gate-20261027/agent-notes/SCN030_SCN031_BROWSER_GATE_2026-10-27.md:17"
+      ],
+      "status": "FIX_LOCAL_ONLY candidate",
+      "remediation": "Review and land the input/feedback change with immediate-response and follow/free-camera regressions.",
+      "branchEvidence": [
+        "/home/nomad/ai/projects/worktrees/solar-scn030-scn031-browser-gate-20261027/src/frontend/app/viewportCameraController.ts:56-71",
+        "/home/nomad/ai/projects/worktrees/solar-scn030-scn031-browser-gate-20261027/src/main.ts:260-266",
+        "/home/nomad/ai/projects/worktrees/solar-scn030-scn031-browser-gate-20261027/tests/browser/camera.spec.ts:5-14"
+      ]
+    },
+    {
+      "id": "FE-003",
+      "severity": "P1",
+      "issues": [
+        "SCN-030",
+        "SCN-031"
+      ],
+      "title": "Current browser CI failures are non-blocking, and pending-warmup fixtures assume optional extension support",
+      "description": "Main frontend-ui.yml explicitly continues on browser failure. Main pending-mode warmup instrumentation does not supply KHR_parallel_shader_compile, while production correctly uses a synchronous fallback when it is absent. The October 27 report identifies the resulting test failures and proposes deterministic pending instrumentation and four blocking browser lanes. These changes remain uncommitted and must not be credited to origin/main. Overall integrated gate ownership remains with the parent audit.",
+      "evidence": [
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/.github/workflows/frontend-ui.yml:25-31",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/app/rendererWarmup.ts:45-59",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/tests/browser/startup-warmup.spec.ts:8-28",
+        "/home/nomad/ai/projects/worktrees/solar-scn030-scn031-browser-gate-20261027/agent-notes/SCN030_SCN031_BROWSER_GATE_2026-10-27.md:16-28"
+      ],
+      "status": "FIX_LOCAL_ONLY gate/fixture remediation; no confirmed recovery-production regression",
+      "remediation": "Land and run blocking browser lanes with the deterministic extension fixture; retain the distinct no-extension fallback test.",
+      "branchEvidence": [
+        "/home/nomad/ai/projects/worktrees/solar-scn030-scn031-browser-gate-20261027/tests/browser/startup-warmup.spec.ts:25-27",
+        "/home/nomad/ai/projects/worktrees/solar-scn030-scn031-browser-gate-20261027/.github/workflows/frontend-ui.yml:25-51"
+      ]
+    },
+    {
+      "id": "FE-004",
+      "severity": "P2",
+      "issues": [
+        "SCN-049"
+      ],
+      "title": "Actual-browser subscription acceptance is branch-only and its prose misidentifies the producer",
+      "description": "The three commits carrying scn049-kuiper-subscription.spec.ts are unique to the browser acceptance branch. Its test accurately proves live-app startup followed by an explicitly imported production client receiving captured frames, with stale rejection, Earth-state preservation and complete replacement equality. The note calls that fixture a native Tudat capture, but the capture harness explicitly constructs REBOUNDEngine(integrator=\"whfast\"). Both note variants contain the same provenance error.",
+      "evidence": [
+        "/home/nomad/ai/projects/worktrees/solar-scn-049-browser-acceptance/agent-notes/REMEDIATION_SCN049_BROWSER_ACCEPTANCE_2026-10-17.md:13-23",
+        "/home/nomad/ai/projects/worktrees/solar-scn-049-browser-acceptance/tests/browser/scn049-kuiper-subscription.spec.ts:108-117",
+        "/home/nomad/ai/projects/worktrees/solar-scn-049-browser-acceptance/tests/browser/scn049-kuiper-subscription.spec.ts:169-196",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/backend/tests/test_kuiper_subscription_ordering.py:38-44",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/backend/tests/test_kuiper_subscription_ordering.py:129-137"
+      ],
+      "status": "FIX_LOCAL_ONLY test/evidence child; protocol implementation is landed",
+      "remediation": "Reconcile the branch test/config onto current main, correct producer labeling to REBOUND/WHFast, and preserve the explicit imported-client versus live-backend-visualization boundary.",
+      "branchEvidence": {
+        "head": "6ea9d8603cef38ba20047ec3d9fdf3087086de54",
+        "mergeBase": "1c5d88b075cbccb6803540e53cf0229e20c97557",
+        "gitCherry": [
+          "+ bfcf425c515b07ca8977c6609897690ce368f7ac",
+          "+ eb5332127d4398257a14883374c649ae0a2e8d05",
+          "+ 6ea9d8603cef38ba20047ec3d9fdf3087086de54"
+        ]
+      }
+    },
+    {
+      "id": "FE-005",
+      "severity": "P3",
+      "issues": [
+        "SCN-049",
+        "SCN-058"
+      ],
+      "title": "Composition cleanup skips PlanetQuadtree.dispose",
+      "description": "Earth, Moon and Mars bodyMeshes entries are quadtree Groups. The unload loop only disposes direct geometry/material properties, which Groups do not have, and never invokes userData.quadtree.dispose(). The class has explicit leaf destruction and material disposal, but this production composition path does not call it. This is a concrete resource-ownership omission; it is not evidence that the repaired near/far LOD merge disappears again.",
+      "evidence": [
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/main.ts:380-385",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/main.ts:1312-1321",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/frontend/features/planetary/quadtreeLOD.ts:277-285"
+      ],
+      "status": "OPEN residual composition lifecycle child within PARTIAL SCN-049",
+      "remediation": "Route quadtree Groups through their owner disposal method and add a focused composition cleanup assertion when implementing a repair.",
+      "limits": "Static path review only. Browser page/context destruction can reclaim resources; no persistent-session leak magnitude or runtime failure was measured."
+    }
+  ],
+  "caveats": [
+    "Audited repository snapshot: /home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029; HEAD and locally stored origin/main both bb29d4be393c9dedca7049fc9b83511ed955be40. Snapshot worktree was clean when inspected. No network/fetch, test runs, installs, product edits, existing report edits or git-state mutations were performed. Only this new /tmp report is written.",
+    "All 15 assigned IDs have exactly one row. Verdict counts: CODE_CONFIRMED=13, PARTIAL=2, OPEN=0, DECISION_REQUIRED=0, FIX_LOCAL_ONLY=0 at the canonical-row level. FIX_LOCAL_ONLY child verdicts are carried in branchEvidence/findings instead of hiding partially landed umbrella work.",
+    "CODE_CONFIRMED means production implementation and targeted regression source exist on origin/main; current frontend/backend execution is centrally pending. It is not a fresh pass, release acceptance, empirical scientific validation or complete browser/AT certification.",
+    "Every numerical test count, native zoom result, GPU renderer claim, browser pass, WebKit host block and Node/toolchain statement quoted from notes is dated historical evidence. No historical result is promoted to a current baseline result.",
+    "The October 27 worktree /home/nomad/ai/projects/worktrees/solar-scn030-scn031-browser-gate-20261027 has the exact main SHA as HEAD and merge-base. Product/test/workflow changes are uncommitted, and its report is untracked. Its historical results used Node 24.21.0/npm 11.19.0 and did not pass WebKit startup. The parent must own pinned CI and integrated acceptance.",
+    "The SCN-049 browser acceptance branch /home/nomad/ai/projects/worktrees/solar-scn-049-browser-acceptance is based on older 1c5d88b and has three patch-unique commits. Its no-main-closure wording is correct for the browser test, but it must not imply the already-landed a8187a7 protocol implementation is still local.",
+    "The accessibility, events, planets and old master tracker frequently use FIX_AVAILABLE_UNMERGED or controller-integration-next wording from their historical worktrees. Ancestor checks confirm the listed implementation commits actually landed on origin/main. Conversely, this does not land newer local tests or uncommitted October 27 work.",
+    "SCN-049 is a broad cross-domain verification queue. This frontend report confirms the inspected frontend lifecycle/subscription and assigned numerical-policy children, and preserves rather than independently closes unrelated dormant-module, artifact/provenance, backend security/mission or remaining scientific/visual children. The 75052 reference note belongs to SCN-043, outside these assigned IDs.",
+    "Optional production-planet shader execution requires PLANET_SHADER_GPU_TEST=1; ordinary test discovery skips that EGL gate. Historical planetary/AGN hardware reports are bounded to their recorded host/driver. No fresh hardware, cross-vendor, sustained-load, physical-touch, NVDA or VoiceOver session was performed.",
+    "The events runner prose variants disagree about required environment variables and host defaults. Actual current script requires AGN_PLAYWRIGHT_MODULE, AGN_CHROMIUM_EXECUTABLE and AGN_EXPECT_GPU while still adding WSL/NVIDIA driver environment values. This qualifies reproducibility of old commands, not the inspected event-behavior verdicts."
+  ]
+}

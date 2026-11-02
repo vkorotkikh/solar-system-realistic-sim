@@ -3,8 +3,9 @@ Kuiper Belt local simulation engine.
 
 Runs as a separate REBOUND simulation that is activated on demand
 when the user's camera enters the Kuiper belt region. Generates
-thousands of test particles (massless) under the gravity of the Sun,
-Jupiter, Saturn, and Neptune, giving realistic close-encounter dynamics.
+thousands of synthetic test particles (massless) under the gravity of the Sun,
+Jupiter, Saturn, and Neptune. Uranus is outside this model. Initial orbit bins
+are candidates, not measured populations or dynamically verified resonances.
 
 Architecture: This module is NOT a standalone server. It lives inside
 the same Python process as the main simulation and shares the WebSocket
@@ -59,7 +60,10 @@ def _scale_velocity(
 class KuiperBeltEngine:
     """On-demand N-body simulation of Kuiper belt test particles."""
 
-    def __init__(self, particle_count: int = 3_000):
+    def __init__(self, particle_count: int = 3_000, *, seed: int = 137):
+        if isinstance(seed, bool) or not isinstance(seed, int) or not 0 <= seed < 2**32:
+            raise ValueError("population seed must be an unsigned 32-bit integer")
+        self.seed = seed
         self.sim: Optional[Any] = None
         self.active: bool = False
         self.particle_count = particle_count
@@ -325,7 +329,7 @@ class KuiperBeltEngine:
         if center_r < 1:
             center_r = 42.0  # fallback to mid-classical belt
 
-        rng = np.random.default_rng()
+        rng = np.random.default_rng(self.seed)
 
         self._binary_pairs = []
         test_particle_start = self.sim.N  # index of first test particle
@@ -333,16 +337,17 @@ class KuiperBeltEngine:
         for particle_idx in range(self.particle_count):
             # ── Population-based Sampling ─────────────────────────────
             # We mix populations based on proximity to the camera (center_r).
-            # 1. Plutinos (3:2 Resonance): ~39.4 AU
+            # 1. Synthetic candidates near the 3:2 resonance: ~39.4 AU.
+            # A semimajor-axis bin does not establish resonant-angle libration.
             # 2. Classical Belt: ~42-48 AU (Cold & Hot populations)
             # 3. Scattered/Detached: > 48 AU
 
-            # Probability of being a Plutino depends on how close we are to 39.4 AU
+            # Probability of choosing this synthetic bin depends on proximity.
             dist_plutino = abs(center_r - 39.4)
             prob_plutino = 0.3 * math.exp(-(dist_plutino**2) / (2 * 2.5**2))
 
             if rng.random() < prob_plutino:
-                # Plutino
+                # Resonance candidate, not a classified Plutino.
                 a = rng.normal(39.4, 0.6)
                 e = rng.uniform(0.1, 0.28)  # Plutinos have moderate eccentricity
                 inc = abs(rng.normal(math.radians(15), math.radians(5)))
@@ -482,5 +487,7 @@ class KuiperBeltEngine:
             "position_units": "AU",
             "velocity_units": NATIVE_VELOCITY_UNITS,
             "binary_model": "osculating_initial_state_only_massless_no_mutual_gravity",
+            "population_seed": self.seed,
+            "population_model": "synthetic_orbit_candidates_not_resonance_verified",
         }
         return self._cached_state

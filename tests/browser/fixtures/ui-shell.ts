@@ -12,7 +12,9 @@ const get = <T extends HTMLElement>(id: string) => document.getElementById(id) a
 const canvas=get<HTMLCanvasElement>('space-canvas');
 const camera=new PerspectiveCamera(58,1,.0001,20_000); camera.position.set(0,-10,6);
 const controls=new OrbitControls(camera,canvas); controls.enableDamping=true; controls.dampingFactor=.08; controls.minDistance=.0002; controls.maxDistance=200; controls.update();
-const cameraController=createViewportCameraController({canvas,actionRoot:get('camera-tools'),camera,controls});
+function updateZoomStatus() { get('status-zoom').textContent = `Range · ${camera.position.distanceTo(controls.target).toFixed(2)} AU`; }
+const cameraController=createViewportCameraController({canvas,actionRoot:get('camera-tools'),camera,controls,onActionApplied:updateZoomStatus});
+updateZoomStatus();
 const bodies=['Sun','Mercury','Venus','Earth','Mars','Jupiter','Saturn','Uranus','Neptune','Pluto'].map((name,index)=>({name,id:name.toLowerCase(),type:index===0?'star':index===9?'dwarf':'planet'}));
 const bodySearch=get<HTMLInputElement>('body-search'); const bodyList=get<HTMLSelectElement>('body-list');
 const explorer=createExplorerController({
@@ -21,7 +23,7 @@ const explorer=createExplorerController({
   onFocus:()=>{following=false;},onFollow:()=>{following=true;},onFree:()=>{following=false;},
 });
 const picker=createBodyPickerPresentation({select:bodyList,narrow:matchMedia('(max-width: 600px)'),coarse:matchMedia('(any-pointer: coarse)')});
-const panel=createPanelController({app:get('app'),panel:get('control-panel'),viewport:get('viewport-shell'),toggle:get('panel-toggle'),close:get('panel-close'),backdrop:get('panel-backdrop'),breakpoint:matchMedia('(max-width: 1100px)'),onLayoutChange:()=>picker.refresh()});
+const panel=createPanelController({app:get('app'),panel:get('control-panel'),viewport:get('viewport-shell'),toggle:get('panel-toggle'),close:get('panel-close'),backdrop:get('panel-backdrop'),breakpoint:matchMedia('(max-width: 1100px)'),isMobileLayout:()=>innerWidth<=1100,onLayoutChange:()=>picker.refresh()});
 const calls: unknown[][]=[];
 const experimentArgs={dom:{agnSource:get<HTMLSelectElement>('agn-source'),agnPreset:get<HTMLSelectElement>('agn-preset'),agnHypothesis:get<HTMLSelectElement>('agn-hypothesis'),agnStochastic:get<HTMLInputElement>('agn-stochastic'),experimentStatus:get('experiment-status'),triggerAgnShockwave:get<HTMLButtonElement>('trigger-agn-shockwave')},sun:{setAgnStochasticFlaring:(value:boolean)=>calls.push(['stochastic',value]),triggerAgnShockwave:(...args: [string,number,number,{preset?:string;hypothesis?:'h29'}])=>calls.push(['trigger',...args])}};
 let experiment=createExperimentController(experimentArgs);
@@ -31,7 +33,7 @@ time.bindUi(); time.updateHud();
 let autoFrame=true; let following=false; const followPosition=new Vector3();
 function step() {
   if(following){const offset=camera.position.clone().sub(controls.target);controls.target.copy(followPosition);camera.position.copy(followPosition).add(offset);}
-  cameraController.applyPendingActions(); controls.update(); time.updateHud();
+  cameraController.applyPendingActions(); controls.update(); time.updateHud(); updateZoomStatus();
 }
 function snapshot() {return {position:camera.position.toArray(),target:controls.target.toArray(),range:camera.position.distanceTo(controls.target),following};}
 function animate(){if(autoFrame)step();requestAnimationFrame(animate);} requestAnimationFrame(animate);

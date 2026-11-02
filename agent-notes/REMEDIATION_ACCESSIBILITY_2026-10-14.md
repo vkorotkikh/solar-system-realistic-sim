@@ -1,5 +1,7 @@
 # Accessibility remediation handoff, 2026-10-14
 
+> **Current status (2026-10-30):** See the [verified remediation status](REMEDIATION_STATUS_2026-10-30.md) for all 83 dispositions, branch-specific fixes, remaining acceptance gates and the 25 completed working-note removals. The dated content below is historical evidence; it does not describe current main.
+
 Assigned worktree: `/home/nomad/ai/projects/worktrees/solar-remediation-20261014-accessibility`.
 Branch: `remediation/20261014-accessibility`.
 Implementation commits: `2e2b31d` (test foundations), `7fafd83` (composition, remediation, configuration and regression coverage). This report is committed separately after those changes. No push, merge, subagent, backend modification or master-tracker edit was performed.

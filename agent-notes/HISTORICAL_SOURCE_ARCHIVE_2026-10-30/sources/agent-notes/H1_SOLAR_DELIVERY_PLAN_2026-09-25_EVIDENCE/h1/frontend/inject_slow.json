@@ -1,0 +1,207 @@
+{
+ "scen": "slow",
+ "reqs": [
+  {
+   "kind": "physics",
+   "t": 1824,
+   "jd": "2461308.60139791",
+   "q": "?jd=2461308.60139791&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 7488,
+   "jd": "2461331.26713391",
+   "q": "?jd=2461331.26713391&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 15711,
+   "jd": "2461357.13273391",
+   "q": "?jd=2461357.13273391&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 22066,
+   "jd": "2461382.53153391",
+   "q": "?jd=2461382.53153391&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  }
+ ],
+ "snaps": {
+  "end": {
+   "t": 27764,
+   "scenes": 1,
+   "coronalLoops": {
+    "visible": true,
+    "children": 0,
+    "visibleChildren": 0,
+    "dataDriven": null,
+    "source": null,
+    "maxRadiusAU_local": 0
+   },
+   "parkerSpiral": {
+    "visible": true,
+    "children": 0,
+    "visibleChildren": 0,
+    "dataDriven": null,
+    "source": null,
+    "maxRadiusAU_local": 0
+   },
+   "magneticField": {
+    "visible": false,
+    "children": 52,
+    "visibleChildren": 52,
+    "dataDriven": null,
+    "source": null,
+    "maxRadiusAU_local": 0.955
+   },
+   "flares": {
+    "visible": true,
+    "children": 0,
+    "visibleChildren": 0,
+    "dataDriven": null,
+    "source": null,
+    "maxRadiusAU_local": 0
+   },
+   "surface": {
+    "observationMapIsBaseMap": true,
+    "observationMapImage": "HTMLCanvasElement",
+    "observationBlend": 0.013,
+    "observationEmission": 0.094,
+    "activity": 0,
+    "sunspotSeeds": [
+     [
+      0.007,
+      0.02,
+      0.025,
+      0.601
+     ],
+     [
+      0,
+      0,
+      0,
+      0
+     ],
+     [
+      0,
+      0,
+      0,
+      0
+     ],
+     [
+      0,
+      0,
+      0,
+      0
+     ],
+     [
+      0,
+      0,
+      0,
+      0
+     ],
+     [
+      0,
+      0,
+      0,
+      0
+     ],
+     [
+      0,
+      0,
+      0,
+      0
+     ],
+     [
+      0,
+      0,
+      0,
+      0
+     ]
+    ],
+    "flarePoints": [
+     0,
+     0,
+     0
+    ]
+   },
+   "corona": {
+    "coronalHoleCount": 0,
+    "channelMode": 0,
+    "coronaColor": [
+     1,
+     0.66,
+     0.34
+    ],
+    "obsBlend": 0.013
+   },
+   "transitionRegion": {
+    "channelMode": 0,
+    "trOpacity": 0.12
+   },
+   "sunMeshScale": 0.3755,
+   "aiaSelect": "auto",
+   "magToggle": false,
+   "date": "2026-12-27",
+   "statusBar": [
+    "Focused · Sun",
+    "Bodies · 55,010",
+    "Range · 2.60 AU",
+    "Asteroids: procedural fallback (catalog rejected: sha256-unavailable)"
+   ],
+   "solarText": [
+    "Live simulation",
+    "Asteroids: procedural fallback (catalog rejected: sha256-unavailable)"
+   ],
+   "longtasks": [
+    {
+     "at": 70,
+     "dur": 1672
+    },
+    {
+     "at": 4068,
+     "dur": 134
+    }
+   ],
+   "json": []
+  }
+ },
+ "logs": [
+  {
+   "t": 121,
+   "type": "error",
+   "text": "Failed to load resource: net::ERR_FAILED"
+  },
+  {
+   "t": 4131,
+   "type": "requestfailed",
+   "text": "http://sim.test:8042/solar/physics?jd=2461308.60139791&fidelity=high&max_features=180&forc net::ERR_ABORTED"
+  },
+  {
+   "t": 4280,
+   "type": "warning",
+   "text": "[phase-1] Acceptance gates failed: [sha256-unavailable] Unable to compute SHA-256 for the Phase-1 catalog: Cannot read properties of undefined (reading 'digest')"
+  },
+  {
+   "t": 10084,
+   "type": "requestfailed",
+   "text": "http://sim.test:8042/solar/physics?jd=2461331.26713391&fidelity=high&max_features=180&forc net::ERR_ABORTED"
+  },
+  {
+   "t": 18307,
+   "type": "requestfailed",
+   "text": "http://sim.test:8042/solar/physics?jd=2461357.13273391&fidelity=high&max_features=180&forc net::ERR_ABORTED"
+  },
+  {
+   "t": 24662,
+   "type": "requestfailed",
+   "text": "http://sim.test:8042/solar/physics?jd=2461382.53153391&fidelity=high&max_features=180&forc net::ERR_ABORTED"
+  }
+ ],
+ "physicsRequestCount": 4,
+ "aiaRequestCount": 0,
+ "otherBackend": []
+}
