@@ -1,6 +1,6 @@
 """Regression: BKP-031 / PEER-b, request coverage must not poison Horizons.
 
-Found by /qa on 2026-10-24; report: /tmp/solar-bkp031-evidence/qa-report-bkp031.md.
+Found by /qa on 2026-10-24.
 Synthetic in-window cutoff follows the captured Horizons coverage-error shape;
 it makes no claim that Earth actually lacks coverage at this epoch.
 """
@@ -75,6 +75,30 @@ def test_coverage_refusal_preserves_unrelated_client_access(monkeypatch, directi
     assert sample.body_id == "mars"
     assert sample.jd == JD + 1
     assert sample.source == "horizons"
+    assert len(calls) == 2
+
+
+@pytest.mark.parametrize("body_id,jd,message", [
+    ("earth", 1e15, 'No ephemeris for target "Earth" after A.D. 9999-DEC-30 12:00:00.0000 TDB'),
+    ("earth", -1e9, 'No ephemeris for target "Earth" prior to B.C. 9999-MAR-21 00:00:00.0000 TDB'),
+    ("pluto", 2_000_000.5, 'No ephemeris for target "Pluto" prior to A.D. 1800-JAN-03 00:00:00.0000 TDB'),
+])
+def test_refusal_wording_captured_from_live_horizons_is_request_scoped(monkeypatch, body_id, jd, message):
+    # Live API, 2026-11-02, this service's query: HTTP 200 with the refusal in both fields.
+    captured = {**refusal(), "error": message, "result": f"\n{message}\n"}
+    calls = []
+
+    def transport(request, *, timeout):
+        calls.append(request.full_url)
+        if len(calls) == 1:
+            return _Response(json.dumps(captured).encode())
+        return _Response(_horizons_payload(target_id="499", jd=JD + 1))
+
+    monkeypatch.setattr(module, "_horizons_urlopen", transport)
+    with pytest.raises(module.EphemerisError) as caught:
+        service().sample_state(body_id, jd)
+    assert caught.value.code == "ephemeris_epoch_unsupported"
+    assert service().sample_state("mars", JD + 1).body_id == "mars"
     assert len(calls) == 2
 
 
