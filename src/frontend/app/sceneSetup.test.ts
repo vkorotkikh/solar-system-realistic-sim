@@ -1,7 +1,7 @@
 import { Vector3 } from 'three';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { applyCameraAction } from './viewportCameraController';
-import { createSceneSetup } from './sceneSetup';
+import { applyViewportSizeOverride, createSceneSetup } from './sceneSetup';
 import type { RuntimeUiConfig } from './runtimeConfig';
 
 const setupFaults = vi.hoisted(() => ({
@@ -169,6 +169,24 @@ afterEach(() => {
   setupFaults.controlsCreated.length = 0;
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
+});
+
+describe('viewport overrides preserve stylesheet reflow by default', () => {
+  it('leaves the shell in page flow without explicit width or height overrides', () => {
+    const style = { height: 'auto', maxHeight: 'none', margin: '0px', alignSelf: 'stretch' };
+    applyViewportSizeOverride({ viewportShell: { style } as unknown as HTMLElement, runtimeUiConfig });
+    expect(style).toEqual({ height: 'auto', maxHeight: 'none', margin: '0px', alignSelf: 'stretch' });
+  });
+
+  it.each([
+    { uiWidth: 500, uiHeight: null, expected: { width: '500px' } },
+    { uiWidth: null, uiHeight: 700, expected: { height: '700px' } },
+    { uiWidth: 500, uiHeight: 700, expected: { width: '500px', height: '700px' } },
+  ])('keeps explicit dimensions bounded to the viewport ($uiWidth x $uiHeight)', ({ uiWidth, uiHeight, expected }) => {
+    const style: Partial<CSSStyleDeclaration> = {};
+    applyViewportSizeOverride({ viewportShell: { style } as HTMLElement, runtimeUiConfig: { ...runtimeUiConfig, uiWidth, uiHeight } });
+    expect(style).toEqual({ ...expected, maxWidth: '100%', maxHeight: '100vh', margin: '0 auto', alignSelf: 'center' });
+  });
 });
 
 describe('failed scene setup retains acquisition ownership', () => {
