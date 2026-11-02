@@ -457,8 +457,10 @@ class SupervisedProcessRunner:
                             "worker result exceeded or broke the wire contract"
                         ) from exc
 
-                    exit_remaining = max(0.0, absolute_deadline - time.monotonic())
-                    process.join(min(_REAP_GRACE_SECONDS, exit_remaining))
+                    # The job's own deadline bounds the exit. A fixed sub-second
+                    # grace discarded finished results whenever a loaded host
+                    # took longer to tear down numpy/scipy/astropy.
+                    process.join(max(0.0, absolute_deadline - time.monotonic()))
                     if process.is_alive():
                         self._reap_or_quarantine(job_id, process)
                         raise ProcessTimedOut(
