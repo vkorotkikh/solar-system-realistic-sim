@@ -56,7 +56,7 @@ The routing-only commit `fd14543` was created above product `519c894`. During di
 | 5. Breakpoint focus | Current width resolver, resize/visualViewport signals and settle recheck retained; compiled remembered-mobile-open round trip and genuine tab zoom pass | Local automated proof PASS; device/AT focus acceptance NOT RUN |
 | 6. Mobile detail | Native picker policy, row fallback, canvas strip and touch hint retained; built controls and final action are reachable, including all ten camera controls at 195px | Local DOM/layout proof PASS; physical native popup geometry, picker and pinch NOT RUN |
 | 7. Event messaging | Built UI uses the real resolver: named preset owns source/energy/hypothesis; explicit source/model clears preset; current copy and trigger behavior pass | Local composition proof PASS; engine units remain the mathematical/payload proof |
-| 8. Regression coverage | Existing unit/type/four-project matrix retained; compiled five-case gate and parsed blocking CI contract added in `19d4621`, `b810476`, `079c2ed` | Local checks PASS with unchanged platform skips; independent whole-branch review pending; hosted CI/upload/branch protection NOT RUN |
+| 8. Regression coverage | Existing unit/type/four-project matrix retained; compiled five-case gate and parsed blocking CI contract added in `19d4621`, `b810476`, `079c2ed` | Local checks PASS with unchanged platform skips; independent whole-branch review approved; hosted CI/upload/branch protection NOT RUN |
 
 Source receipts: historical review line 9 says “eight original issues remain actionable”; current `src/style.css:59` says `min-width: 0`; current experiment controller line 46 sets `Event preset`; engine lines 65 onward resolve the named preset. At `c842196`, `playwright.config.ts` still starts `node node_modules/vite/bin/vite.js`, while `.github/workflows/frontend-ui.yml` now has a blocking browser matrix. These are static receipts, not fresh browser results.
 
@@ -64,8 +64,8 @@ Source receipts: historical review line 9 says “eight original issues remain a
 
 | Gate | Accountable role | Required evidence | Current status / consequence |
 |---|---|---|---|
-| G0 reproducible baseline | Implementer | Exact source/lock/toolchain; clean-install unit/type/build results | Local evidence verified: Task 1 clean install plus final input-equivalent gates below; independent final review pending |
-| G1 code verified | Implementer + independent reviewer | Existing suites, compiled gate, no new errors/skips; inspected authored diff | Local checks verified; Tasks 1–4 independently reviewed clean. Whole-branch final review remains pending with coordinator after Task 5 commit |
+| G0 reproducible baseline | Implementer | Exact source/lock/toolchain; clean-install unit/type/build results | PASS locally: Task 1 clean install plus final input-equivalent gates below; evidence approved in final review |
+| G1 code verified | Implementer + independent reviewer | Existing suites, compiled gate, no new errors/skips; inspected authored diff | PASS locally: automated checks, Tasks 1–4 reviews and independent whole-branch/Task 5 review approved; no open code findings |
 | G2 accessibility accepted | Accessibility reviewer + product owner | NVDA/Chrome, VoiceOver/Safari, physical touch/native picker, OS text scaling, manual contrast review | NOT RUN for human/device acceptance; genuine Chromium 200%/400% browser zoom PASS. No complete accessibility acceptance claim |
 | G3 operational release | Release owner | Named host/config, rights/privacy review, hosted CI/upload/protection, artifact promotion, rollback drill | NOT RUN; no production-ready or commercial-distribution sign-off |
 
@@ -188,12 +188,12 @@ Task order: `1 -> 2 -> 3 -> 4 -> 5`. Shared configuration and test files make se
 **Interfaces:** evidence row = `{source SHA, tree SHA, lock SHA, command, tool/browser/platform version, environment, result, artifact location, limit}`. Status is PASS / FAIL / NOT RUN, never an inferred pass.
 
 - [x] Run the final existing unit/type/build gates, new compiled gate and applicable existing browser projects from this isolated revision. Record every excluded or skipped platform case. Reuse a result only with its exact tested commit, command and artifact. When unrelated CI/documentation commits follow, verify and record that every input to the reused command is unchanged; otherwise rerun the affected checks. Old baseline counts alone are not current evidence.
-- [ ] Request one independent whole-branch review of the authored delta, excluding imported upstream changes; reviewer checks all eight traceability rows, current event/camera semantics, real artifact boundary, type policy and CI failure propagation. Fix confirmed issues in separate commits and rerun affected gates.
+- [x] Request one independent whole-branch review of the authored delta, excluding imported upstream changes; reviewer checks all eight traceability rows, current event/camera semantics, real artifact boundary, type policy and CI failure propagation. Fix confirmed issues in separate commits and rerun affected gates.
 - [x] Fill the manual matrix below with actual outcomes or NOT RUN. Missing AT/device access does not block completion of local code, but blocks a complete accessibility acceptance claim.
 - [x] Record deployment prerequisites and rollback drill status below; no production-ready or commercial-distribution sign-off until the release owner resolves them. Do not push, publish or change repository settings in this task.
 - [x] Verify final tracked diff, no unexpected lock/runtime edits, clean branch and evidence paths. Commit `docs: record frontend production acceptance and release gates`.
 
-Coordinator handoff: the unchecked final-review item is intentionally pending. The coordinator will request and record that review after this documentation commit, then mark it only after confirmed findings and affected checks are resolved. No final-review result is claimed here.
+Final review: an independent GPT-6.1 Sol xhigh reviewer inspected the full 11-file authored delta `c842196..76a8b0f` and approved both the implementation and Task 5 evidence: **0 Critical, 0 Important, 0 Minor findings**. Read-only checks confirmed clean tracked status, whitespace, unchanged lock and input equivalence. No fix wave was required. This closure changes documentation only. The reviewer explicitly left manual accessibility, operational release, unchanged upstream physics and live-provider correctness to their documented acceptance boundaries; none is inferred from local automation.
 
 ## Manual and operational acceptance runbook
 
@@ -304,16 +304,15 @@ Unverified production premises: hosting, deployed configuration, AT/device accep
 | Review | Trigger | Why | Runs | Status | Findings |
 |---|---|---|---|---|---|
 | CEO | Not invoked | No product-direction change | 0 | NOT RUN | Existing eight outcomes retained |
-| Engineering | gstack plan engineering + Superpowers planning | Current-state reconciliation and executable release proof | 1 | LOCAL CHECKS VERIFIED | Artifact gap closed; final independent whole-branch review pending |
+| Engineering | gstack plan engineering + Superpowers planning | Current-state reconciliation and executable release proof | 1 | LOCAL G0/G1 VERIFIED | Artifact gap and reproduced reflow bug closed; final independent review approved |
 | Specialist evidence | Three GPT-6.1 Sol xhigh read-only agents | Independent accessibility, camera/event and release inspection | 1 | SOURCE REVIEW | 519c894 evidence; primary-agent delta review at c842196 |
 | Outside provider | Claude Code availability probe | Optional cross-provider challenge | 0 | UNAVAILABLE | No resolvable Claude CLI; no external review claimed |
 | Task reviews 1–4 | Independent task reviewers | Inspect authored task deltas and evidence | 4 | CLEAN | Coordinator ledger records each completed task review; no whole-branch result inferred |
-| Whole-branch final review | Coordinator after Task 5 commit | Eight findings, semantics, artifact/type/CI boundary | 0 | PENDING | Deliberately unchecked Task 5 item; coordinator owns request and disposition |
+| Whole-branch final review | Independent GPT-6.1 Sol xhigh reviewer after Task 5 commit | Eight findings, semantics, artifact/type/CI boundary and Task 5 evidence | 1 | CLEAN | Approved `c842196..76a8b0f`; 0 Critical, 0 Important, 0 Minor findings |
 | Design / AT | Compiled axe plus retained device/AT runbook | Human acceptance still required | 0 human | NOT RUN | Automated 0 violations leaves 29/21/21/8 contrast nodes incomplete; G2 remains held |
 
-**VERDICT:** Local implementation and automated G0/G1 evidence are verified with exact identities and limits above. Independent whole-branch final review remains pending with the coordinator. G2 human contrast/AT/device acceptance and G3 hosted release prerequisites remain NOT RUN release holds. No WCAG certification, live-provider acceptance, production-ready or commercial-distribution sign-off is claimed.
+**VERDICT:** Local implementation, automated G0/G1 evidence and independent whole-branch review are complete with exact identities and limits above. G2 human contrast/AT/device acceptance and G3 hosted release prerequisites remain NOT RUN release holds. No WCAG certification, live-provider acceptance, production-ready or commercial-distribution sign-off is claimed.
 
 **UNRESOLVED DECISIONS:**
-- Coordinator must complete the independent whole-branch final review and resolve confirmed findings before closing G1.
 - Accessibility/product reviewers must resolve manual contrast, NVDA, VoiceOver, physical input and OS text-scaling acceptance; native visibility and hardware/EGL coverage remain explicitly unrun.
 - Release owner must name the environment and backend routing, verify hosted blocking CI/upload/protection, review rights/privacy, and approve artifact promotion plus a completed rollback drill before production sign-off.
