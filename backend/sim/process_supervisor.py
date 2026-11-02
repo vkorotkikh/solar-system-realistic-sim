@@ -580,13 +580,22 @@ class SupervisedProcessRunner:
                             "worker result exceeded or broke the wire contract"
                         ) from exc
 
-                    exit_remaining = max(0.0, absolute_deadline - time.monotonic())
-                    process.join(min(_REAP_GRACE_SECONDS, exit_remaining))
-                    if process.is_alive():
-                        self._reap_or_quarantine(job_id, process)
-                        raise ProcessTimedOut(
-                            "worker sent a result but did not exit before its deadline"
-                        )
+                    # Interpreter teardown may exceed the reap grace on a
+                    # loaded host. Keep the completed result until the job's
+                    # original deadline, while still observing owner teardown.
+                    while True:
+                        if cancel_event.is_set():
+                            self._reap_or_quarantine(job_id, process)
+                            raise ProcessCancelled("process job cancelled by its owner")
+                        exit_remaining = absolute_deadline - time.monotonic()
+                        if exit_remaining <= 0:
+                            self._reap_or_quarantine(job_id, process)
+                            raise ProcessTimedOut(
+                                "worker sent a result but did not exit before its deadline"
+                            )
+                        process.join(min(_POLL_SECONDS, exit_remaining))
+                        if not process.is_alive():
+                            break
                     if process.exitcode != 0:
                         raise ProcessCrashed(process.exitcode)
                     return self._decode_result(encoded, payload)

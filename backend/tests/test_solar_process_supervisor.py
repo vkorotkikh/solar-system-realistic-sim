@@ -174,6 +174,109 @@ def test_hard_timeout_kills_reaps_and_recovers_capacity(tmp_path: Path) -> None:
         runner.shutdown()
 
 
+def test_finished_result_survives_slow_child_exit_within_deadline() -> None:
+    # A loaded host can take longer than a fixed sub-second grace to tear down
+    # an interpreter holding numpy/scipy/astropy. That turned complete PFSS
+    # results into 503 solar_compute_timeout with most of the deadline unused.
+    from sim.process_supervisor import SupervisedProcessRunner
+
+    runner = SupervisedProcessRunner(TARGET, max_workers=1, max_queue=0)
+    try:
+        future = runner.submit(
+            {
+                "operation": "echo_then_slow_exit",
+                "exit_delay_seconds": 0.6,
+                "result": _result("late exit"),
+            },
+            timeout_seconds=5.0,
+        )
+        assert future.result(timeout=7.0)["value"] == "late exit"
+        assert runner.snapshot()["active_processes"] == 0
+        assert runner.snapshot()["in_flight"] == 0
+    finally:
+        runner.shutdown()
+
+
+def test_child_that_never_exits_after_its_result_still_times_out(tmp_path: Path) -> None:
+    from sim.process_supervisor import ProcessTimedOut, SupervisedProcessRunner
+
+    runner = SupervisedProcessRunner(TARGET, max_workers=1, max_queue=0)
+    started = tmp_path / "lingering.pid"
+    hard_timeout_seconds = 3.0
+    admitted_at = time.monotonic()
+    try:
+        future = runner.submit(
+            {
+                "operation": "echo_then_slow_exit",
+                "exit_delay_seconds": 30.0,
+                "started_path": str(started),
+                "result": _result(),
+            },
+            timeout_seconds=hard_timeout_seconds,
+        )
+        child_pid = _wait_for_pid(started)
+        with pytest.raises(ProcessTimedOut):
+            future.result(timeout=hard_timeout_seconds + 2.0)
+        assert time.monotonic() - admitted_at >= hard_timeout_seconds
+        assert not _pid_exists(child_pid)
+        assert runner.snapshot()["active_processes"] == 0
+        assert runner.snapshot()["in_flight"] == 0
+    finally:
+        runner.shutdown()
+
+
+def test_shutdown_cancels_child_already_finishing_its_result(tmp_path: Path) -> None:
+    from sim.process_supervisor import ProcessCancelled, SupervisedProcessRunner
+
+    runner = SupervisedProcessRunner(TARGET, max_workers=1, max_queue=0)
+    exit_started = tmp_path / "shutdown-exit.pid"
+    try:
+        future = runner.submit(
+            {"operation": "echo_then_slow_exit", "exit_delay_seconds": 30,
+             "exit_started_path": str(exit_started), "result": _result()},
+            timeout_seconds=5.0,
+        )
+        child_pid = _wait_for_pid(exit_started)
+        shutdown_started = time.monotonic()
+        runner.shutdown()
+        assert time.monotonic() - shutdown_started < 2.0
+        with pytest.raises(ProcessCancelled):
+            future.result()
+        assert not _pid_exists(child_pid)
+        assert runner.snapshot()["active_processes"] == 0
+        assert runner.snapshot()["in_flight"] == 0
+    finally:
+        runner.shutdown()
+
+
+def test_async_cancellation_after_result_reaps_without_waiting_for_deadline(tmp_path: Path) -> None:
+    from sim.process_supervisor import SupervisedProcessRunner
+
+    async def scenario() -> None:
+        runner = SupervisedProcessRunner(TARGET, max_workers=1, max_queue=0)
+        exit_started = tmp_path / "cancel-exit.pid"
+        try:
+            task = asyncio.create_task(runner.run(
+                {"operation": "echo_then_slow_exit", "exit_delay_seconds": 30,
+                 "exit_started_path": str(exit_started), "result": _result()},
+                timeout_seconds=5.0,
+            ))
+            child_pid = await asyncio.to_thread(_wait_for_pid, exit_started)
+            task.cancel()
+            with pytest.raises(asyncio.CancelledError):
+                await task
+            reap_deadline = time.monotonic() + 2.0
+            while runner.snapshot()["in_flight"] and time.monotonic() < reap_deadline:
+                await asyncio.sleep(0.01)
+            assert not _pid_exists(child_pid)
+            assert runner.snapshot()["active_processes"] == 0
+            assert runner.snapshot()["in_flight"] == 0
+        finally:
+            runner.shutdown()
+
+    asyncio.run(scenario())
+
+
 def test_child_crash_reaps_and_recovers_without_permit_overcredit() -> None:
     from sim.process_supervisor import ProcessCrashed, SupervisedProcessRunner
 
