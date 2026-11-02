@@ -96,22 +96,25 @@ describe('orbital worker ownership and silence recovery', () => {
     controller.dispose();
   });
 
-  it('shares the restart bound across initialization timeouts and nonfinite replies', () => {
+  it.each([1, 2])('shares the restart bound after %i initialization timeouts and nonfinite replies', initializationTimeouts => {
     const { controller, workers } = setup();
-    vi.advanceTimersByTime(100); // First worker times out before sending any tick.
-    for (const [index, delay] of [[1, 10], [2, 20]] as const) {
-      vi.advanceTimersByTime(delay);
+    for (let index = 0; index < 3; index++) {
       const worker = workers[index];
-      worker.ready();
-      controller.tick(0.016);
-      worker.emit({ ...worker.state(), bodies: new Float64Array(6).fill(NaN) });
+      if (index < initializationTimeouts) {
+        vi.advanceTimersByTime(100);
+      } else {
+        worker.ready();
+        controller.tick(0.016);
+        worker.emit({ ...worker.state(), bodies: new Float64Array(6).fill(NaN) });
+      }
       expect(controller.status).toBe('fallback');
       expect(controller.latestState).toBe(null);
+      if (index < 2) vi.advanceTimersByTime((index + 1) * 10);
     }
     vi.runAllTimers();
     expect(workers).toHaveLength(3);
     expect(workers.every(worker => worker.terminate.mock.calls.length === 1)).toBe(true);
-    expect(workers.flatMap(worker => worker.messages).filter(message => message.type === 'tick')).toHaveLength(2);
+    expect(workers.flatMap(worker => worker.messages).filter(message => message.type === 'tick')).toHaveLength(3 - initializationTimeouts);
     expect(controller.ready).toBe(false);
     expect(vi.getTimerCount()).toBe(0);
     controller.dispose();

@@ -110,7 +110,9 @@ test.describe('active app frame lifecycle', () => {
     // exhaust the permitted restarts correctly, leaving exactly two ticks.
     // Observe real corruption/quarantine below, then require a usable scene.
     await observeApp(page, origin, true); await sceneLoaded(page, origin);
-    await expect.poll(() => page.evaluate(() => window.__frameProbe.corruptions)).toBeGreaterThan(0);
+    // Allow the existing three boot attempts (5s each plus retry delays) to
+    // reach a real delivery; an 8s generic poll can expire after valid retries.
+    await expect.poll(() => page.evaluate(() => window.__frameProbe.corruptions), { timeout: 30_000 }).toBeGreaterThan(0);
     await expect.poll(() => page.evaluate(() => window.__frameProbe.terminated)).toBeGreaterThanOrEqual(1);
     expect(fallbacks).toContain('[modelWorker] local propagation active: nonfinite available state');
     await expect(page.locator('#renderer-unavailable')).toBeHidden();
