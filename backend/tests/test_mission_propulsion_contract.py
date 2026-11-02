@@ -65,6 +65,15 @@ def test_mission_uses_four_burns_and_loads_cargo_after_target_capture():
             propellant_mass_kg=1000000,isp_s=10000)]}))
     candidate = result["recommendation"] or result["alternatives"][0]
     budget = candidate["logistics"]
+    planned_cargo = candidate["payloadClosure"]["returnedPayloadKg"]
+    assert planned_cargo > 0.0
+    assert candidate["risk"]["envelopes"]["returnedPayloadKg"]["p95"] <= planned_cargo
+    # The objective still uses nominal planned cargo, not the corrected envelope.
+    assert candidate["missionScore"] == pytest.approx(
+        planned_cargo - budget["totalPropellantUsedKg"]
+        - candidate["objectiveBreakdown"]["riskPenalty"]
+        - candidate["objectiveBreakdown"]["timePenalty"]
+    )
     events = budget["propulsion"]["events"]
     assert [e["event"] for e in events] == ["departure","capture","departure","capture"]
     assert [e["bodyId"] for e in events] == ["earth","mars","mars","earth"]

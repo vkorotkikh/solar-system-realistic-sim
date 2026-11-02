@@ -1,0 +1,18 @@
+
+==================================== ERRORS ====================================
+__________ ERROR collecting scripts/test_solar_main_frame_verifier.py __________
+ImportError while importing test module '/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/scripts/test_solar_main_frame_verifier.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/home/nomad/.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+scripts/test_solar_main_frame_verifier.py:13: in <module>
+    spec.loader.exec_module(verifier)
+scripts/verify_solar_main_frame.py:20: in <module>
+    from playwright.sync_api import sync_playwright
+E   ModuleNotFoundError: No module named 'playwright'
+=========================== short test summary info ============================
+ERROR scripts/test_solar_main_frame_verifier.py
+!!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
+4 skipped, 1 error in 0.31s

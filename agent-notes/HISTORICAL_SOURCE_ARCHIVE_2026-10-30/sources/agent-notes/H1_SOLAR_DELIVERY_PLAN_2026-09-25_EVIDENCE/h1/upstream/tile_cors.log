@@ -1,0 +1,26 @@
+== 2026-09-25T02:12:02.101Z Origin: http://127.0.0.1:5173
+HTTP/1.1 200 OK
+x-solar-aia-image-id: 192408248
+access-control-allow-credentials: true
+access-control-allow-origin: http://127.0.0.1:5173
+vary: Origin
+status=200 t=3.701342 bytes=210030
+== 2026-09-25T02:12:07.499Z Origin: http://localhost:5173
+HTTP/1.1 200 OK
+x-solar-aia-image-id: 192408248
+access-control-allow-credentials: true
+access-control-allow-origin: http://localhost:5173
+vary: Origin
+status=200 t=0.001502 bytes=210030
+== 2026-09-25T02:12:07.509Z Origin: http://127.0.0.1:4173
+HTTP/1.1 200 OK
+x-solar-aia-image-id: 192408248
+access-control-allow-credentials: true
+vary: Origin
+status=200 t=0.001282 bytes=210030
+== 2026-09-25T02:12:07.518Z Origin: http://localhost:4173
+HTTP/1.1 200 OK
+x-solar-aia-image-id: 192408248
+access-control-allow-credentials: true
+vary: Origin
+status=200 t=0.001153 bytes=210030

@@ -1,36 +1,42 @@
-# Sun Model Lab (Sun-Focus branch)
+# Sun Model Lab
 
-A real-time 3D solar system simulator and mission-design workbench running entirely in the browser, with an optional Python backend for high-fidelity N-body physics, trajectory planning, and data-driven solar observation.
+A Sun-focused browser visualization of the solar system, with local orbital propagation, procedural Sun and planet visuals, asteroid/Kuiper belts, and experimental AGN displays. An optional Python backend provides synthetic solar-state data and separate N-body, trajectory, mission and benchmark APIs. The default page does not expose planner panels or the retained nearby-system, satellite and cloud interfaces.
 
 ## Highlights
 
-- **Sun + 8 planets + Pluto** with axial tilt, spin, and per-planet visual profiles
-- **424-moon source catalog** from the NASA/JPL satellite mean-elements table, retained for provenance and offline tooling; the shipped entry does not load moon ephemerides, render moons, or send moons to the model worker (`showMoons` in `src/main.ts` is fixed to `false`)
-- **Physics-grounded Sun model** — 13-phase overhaul: Neckel & Labs limb darkening, Planck blackbody color, van de Hulst K-corona, prominences, flares, CMEs, PFSS magnetics, Parker spiral heliosphere, and SDO/AIA observation texture blending
-- **SMBH shockwave simulation** — AGN warp-wave engine with Sgr A* transient timeline, Fermi Bubble rendering, and exotic hypothesis modeling
-- **Adjustable simulation clock** with pause, reverse, time-warp, and jump-to-date
-- **Catalog-driven background stars** with proper-motion propagation and synthetic Milky Way band
-- **Nearby star systems** (Alpha Centauri, Barnard's Star, Sirius, etc.) with navigable 3D manifests and seamless zoom transitions
-- **Asteroid belt** with element-driven orbits, adaptive close-up detail refinement, and Phase 1 real-catalog pipeline (1.9M particles)
-- **Kuiper belt** particle field with binary KBO support and approximate **Oort cloud** shell
-- **Earth satellite layer** (ISS + sampled GEO) with TLE propagation and optional J2 perturbations
-- **Real-time Earth clouds** via NASA GIBS WMS tiled pipeline with cache
-- **Interplanetary route planner** supporting direct transfers and multi-gravity-assist trajectories
-- **Multi-agent mission planner** with trajectory, logistics, mining, and risk analysis
+The current [accepted product policies](docs/supported-product-policies.md)
+define platform support, asteroid sampling, timing, decorative motion and
+backend configuration.
+
+- **Sun + 8 planets + Pluto** with axial tilt, spin, and major-body search/focus controls
+- **423 unique moon identities** from the NASA/JPL satellite mean-elements table, retained for provenance and offline tooling; the shipped entry does not load moon ephemerides, render moons, or send moons to the model worker (`showMoons` in `src/main.ts` is fixed to `false`)
+- **Synthetic Sun visualization** with physically inspired surface, corona, flare, magnetic-field and solar-wind layers; these are models, not a calibrated observation reconstruction
+- **SMBH/AGN experiments** with transient timelines and exotic hypothesis-model displays
+- **Adjustable simulation clock** with pause, reverse, time-warp, and a Now control
+- **6,000 procedural background stars**, rather than catalog proper-motion or survey-sky rendering
+- **Asteroid belt** targeting 50,000 displayed objects from an accepted Phase 1 subset of up to 100,000 source rows, with deterministic procedural fallback
+- **5,000-object Kuiper field** including binary companions
+
+Catalog-star proper motion, nearby-system navigation, Earth satellites/clouds, Oort-related UI/update hooks and planner interfaces remain repository modules/assets, not enabled features of this entry. Backend APIs are described separately below.
+
+See [CONTRIBUTING](CONTRIBUTING.md) for pinned toolchains and test commands,
+[ADR 0006](docs/adr/0006-runtime-composition-and-retained-apis.md) for ownership,
+and the [closure ledger](agent-notes/AUGUST_PARTIALS_CLOSURE_2026-10-31.md) for
+current repair/verification status.
 
 ## Current TypeScript Status
 
 - `src` is fully TypeScript-native; legacy `.js` shim/re-export files have been removed from the frontend/runtime tree.
 - All `// @ts-nocheck` directives have been removed across the entire `src` tree. Strict type checking is now active on every source file.
 - Type annotations have been added to simulation, rendering, solar-feature, planetary-feature, and asteroid-pipeline modules. Remaining files still require explicit type definitions for full compile-time safety.
-- The browser runtime is driven from [`src/main.ts`](main.ts) with two workerized paths: satellite propagation and solar-system model propagation ([`src/workers/modelWorker.ts`](modelWorker.ts)).
-- Small-body data tooling includes compact binary pack/read utilities in [`src/data/asteroidCatalogLoader.ts`](asteroidCatalogLoader.ts). The phase-1 runtime loader now supports algorithm-aware checksum verification (SHA-256 via WebCrypto, FNV-1a fallback) and parallelized binary+metadata fetching.
+- The browser runtime is driven from [`src/main.ts`](src/main.ts) with solar-system model propagation in [`src/workers/modelWorker.ts`](src/workers/modelWorker.ts). The retained satellite worker is not connected to this entry.
+- Small-body data tooling includes compact binary pack/read utilities in [`src/data/asteroidCatalogLoader.ts`](src/data/asteroidCatalogLoader.ts). The Phase 1 runtime requires SHA-256 verification through WebCrypto and fetches binary/metadata in parallel. ACBF v2 preserves provider orbital values as Float64, including fractional epochs; legacy formats remain readable. GPU display attributes remain Float32, and source-value integrity does not certify trajectory accuracy.
 - Ongoing hardening: replacing implicit `any` types with concrete interfaces across app, rendering, and feature modules.
 
 ## Quick Start
 
 ```bash
-npm install
+npm ci
 npm run dev
 ```
 
@@ -61,6 +67,11 @@ The launcher supplies `VITE_BACKEND_ORIGIN` from the selected backend host/port
 unless you explicitly set it yourself.
 
 ## Backend (optional)
+
+The backend requires a POSIX process environment. Its supported verification
+platform is Linux, including Linux under WSL2; native Windows is unsupported.
+Other POSIX hosts need the owned-process transport checks before support can be
+claimed. See [backend platform support](docs/backend-platform-support.md).
 
 The shipped frontend always propagates the planets in-browser (**Local
 (Keplerian)** model). The backend adds, over HTTP, the solar physics route
@@ -106,8 +117,9 @@ same-origin reverse-proxy deployment, leave the variable unset and route backend
 API paths on the frontend origin. Vite embeds the variable at build time, so set
 it for `npm run build` too when deploying a separate backend origin. See
 [Frontend configuration](docs/frontend-configuration.md) for the full contract.
-With the backend available, the Sun chip reports its solar model source and the
-planner panels use the trajectory APIs.
+With the backend available, the Sun chip reports its solar model source/status.
+Trajectory and mission services are available through their APIs; starting the
+backend does not add planner panels to the page.
 
 The default `SOLAR_SECURITY_PROFILE=local` keeps solar endpoints available
 without a key and should stay bound to loopback. To expose the backend on a
@@ -149,21 +161,23 @@ curl http://127.0.0.1:8042/solar/realtime
 
 ## Project Structure
 
+Inventory of active and retained modules; this is not a live wiring diagram.
+Not every module or asset below is imported by the shipped entry.
+
 ```
 ├── src/
 │   ├── main.ts                                # Application entry point
 │   ├── constants.ts                           # Shared constants (AU, scale factors, utilities)
-│   ├── textures.ts                            # Texture path definitions
+│   ├── textures.ts                            # Procedural texture generation
 │   ├── sunController.ts                       # Sun lifecycle orchestration
 │   ├── style.css
 │   ├── data/
 │   │   ├── planets.ts                         # Planet orbital elements + metadata
-│   │   ├── moons.json                         # 424-moon catalog (JPL SSD)
+│   │   ├── moons.json                         # 423 unique moons (JPL SSD)
 │   │   ├── moonEphemerisChebyshev.json         # Validated Horizons fits for corrected moons
 │   │   ├── stars_catalog.json                 # Background star catalog
 │   │   ├── asteroidCatalogLoader.ts           # Phase 1 asteroid data loader
 │   │   ├── asteroidCatalogBinaryFormat.md     # Binary catalog format specification
-│   │   └── asteroidTaxonomyResolver.ts        # Asteroid taxonomy + color mapping
 │   ├── sim/
 │   │   ├── orbitMath.ts                       # Kepler solver, coordinate transforms
 │   │   ├── moonEphemeris.ts                    # Fitted moon-state interpolation/validation
@@ -218,7 +232,6 @@ curl http://127.0.0.1:8042/solar/realtime
 │   ├── workers/
 │   │   ├── modelWorker.ts                     # Off-thread body propagation (shipped entry sends planets only)
 │   │   └── modelWorkerContract.ts             # Worker message contract (Float64 transport)
-│   └── assets/textures/                       # Planet day maps, normals, clouds, relief
 ├── backend/
 │   ├── server.py                              # FastAPI entry point
 │   ├── requirements.txt
@@ -228,7 +241,7 @@ curl http://127.0.0.1:8042/solar/realtime
 │   │   ├── contracts.py                       # API data contracts
 │   │   ├── rebound_nbody.py                   # REBOUND IAS15 integrator
 │   │   ├── tudatpy_hooks.py                   # TudatPy integration
-│   │   ├── solar_physics.py                   # Solar corona physics model (v3)
+│   │   ├── solar_physics.py                   # Synthetic solar corona model
 │   │   ├── solar_realtime_data.py             # SDO/AIA, SWPC, SILSO ingestion
 │   │   ├── kuiper.py                          # Kuiper belt physics + binary KBOs
 │   │   ├── radiation_pressure.py              # SRP, Poynting-Robertson, Yarkovsky
@@ -237,7 +250,7 @@ curl http://127.0.0.1:8042/solar/realtime
 │   ├── mission/                               # Multi-agent mission planner + services
 │   ├── benchmark/                             # Accuracy benchmarks + calibration protocol
 │   ├── data/                                  # Body definitions, nearby systems catalog
-│   └── tests/                                 # 54 pytest modules (contracts, regression, benchmarks)
+│   └── tests/                                 # Contract, regression and benchmark tests
 ├── public/
 │   ├── data/asteroid-phase1/                  # Phase 1 asteroid catalog data files
 │   ├── textures/moons/                        # Moon texture assets
@@ -250,9 +263,9 @@ curl http://127.0.0.1:8042/solar/realtime
 │   ├── dev-full.mjs                           # Full-stack dev launcher
 │   ├── build_asteroid_phase1_dataset.py       # Build Phase 1 asteroid real-data catalog
 │   ├── fetch_gaia_catalog.py                  # Gaia DR3 star catalog fetcher
-│   ├── fetch_jpl_sbdb.py                      # JPL Small-Body Database fetcher
+│   ├── fetch_jpl_sbdb.py                      # Legacy SBDB preview (publication retired)
 │   ├── fetch_utils.py                         # Shared HTTP/cache utilities
-│   └── asteroid/                              # Asteroid catalog fetcher utilities
+│   └── asteroid/                              # Retired acquisition entrypoint + migration guide
 ├── index.html                                 # Main HTML shell with UI controls
 ├── package.json                               # Vite + Three.js + TypeScript
 └── tsconfig.json
@@ -266,76 +279,63 @@ Pause/resume, reverse/forward time, adjustable warp speed, and jump to present d
 
 ### Display options
 
-- Orbit lines, labels, asteroid belt, Kuiper belt, Oort cloud
-- Milky Way appearance: standard, enhanced, or 2MASS survey-texture mode
-- Realism locators (gold/orange labels + down-arrow + halo for tiny bodies)
-- Gravity vectors (combined gravitational acceleration per massive body)
-- Earth satellite layer with optional J2 perturbation model
+- Orbit lines and labels
+- Solar magnetic-field visualization
+- Visual versus realistic body scale
+- Camera focus, orbit, zoom and reset controls
 
 ### Explorer
 
-Search all bodies by name and focus or follow any selected object with smooth camera transitions.
+Search and focus the major bodies rendered by the page. A catalog entry or retained manifest does not by itself make an object rendered or navigable.
 
 ### Planet visuals
 
-- **Earth**: 4K day map, 2K normal map, cloud shell, near-real-time cloud mosaic ingest (NASA GIBS), synthetic terrain displacement, distance-based surface LOD, LEO/GEO guide rings
+- **Earth and Mars**: procedural quadtree surfaces with distance-based detail
 - **Moon assets (dormant)**: albedo + relief maps and LOD code are present, but the shipped entry does not load or render them
-- **Mars**: USGS albedo + MOLA relief textures
-- **Mercury, Venus, Jupiter, Saturn, Uranus, Neptune**: 2K day textures
-- **Saturn**: ring system
-- Axial tilt and spin rates applied to all rendered bodies with correct ecliptic-longitude pole directions
-- Oblateness rendering with separate equatorial/polar radii
+- **Other planets and Pluto**: colored sphere materials
+- Axial tilt and spin use the rendered bodies' orientation metadata
+
+Retained day maps and cloud/satellite modules are not assembled by this entry. The page also has no Saturn-ring or oblate-body assembly. Repository assets and alternative renderers are not a claim that the page displays them.
 
 ### Solar model
 
-Physics-grounded G2V stellar model based on peer-reviewed solar literature:
+The Sun combines procedural rendering and synthetic solar-state models inspired by published solar literature. Supported layers include limb darkening, blackbody color, granulation, chromosphere, corona, prominences, flares/CMEs, magnetic-field geometry and a Parker-spiral visualization, subject to their runtime admission gates. These descriptions do not certify calibrated physical accuracy for every layer.
 
-- **Limb darkening** — wavelength-dependent Neckel & Labs 1994 coefficients (R/G/B independent)
-- **Blackbody color** — Planck-derived linear sRGB at 5778 K (near-white, not artistic orange)
-- **Granulation** — Nordlund-Stein contrast (~22% RMS) with clustered sunspot groups (up to 40 at solar max), penumbral Evershed fibrils, Wilson depression, and facular limb brightening
-- **Chromosphere** — Type I + Type II spicule populations with distance-scaled point sizes
-- **K-corona** — Baumbach/van de Hulst radial profile out to 4 R☉, helmet streamers, polar/equatorial coronal holes, Fe XIV temperature-gradient coloring
-- **Prominences** — catenary arch geometry with Hα emission and eruption animation
-- **Flares & CMEs** — GOES Neupert-effect temporal profiles, parameterized CME angular width (20°–120°)
-- **PFSS magnetics** — dipole tilt + octupole harmonic, corrected RK4 integration
-- **Parker spiral** — bimodal solar wind speed model with polarity-aware color encoding and camera-distance fading
-- **Observation textures** — SDO/AIA pipeline with 5 channels (094/171/193/211/304 Å), user-selectable channel or auto mode, backend proxy, confidence-weighted blending
-- **Data assimilation** — `synthetic`, `hybrid`, and `data_driven` forcing modes using NOAA SWPC, SILSO, and SDO/AIA feeds
+Solar forcing is currently synthetic. `hybrid` falls back with `disabled_unvalidated`; `data_driven` is rejected with HTTP 503 (`solar_observed_input_unavailable`). Realtime feeds supply context/source metadata. The AIA proxy supplies raw viewport imagery that is not eligible for Sun-surface rendering. The channel selector does not bypass the validated surface/forcing contracts or enable observation-texture blending.
+
+See [solar eruption modeling and rendering](docs/solar-eruption-modeling.md) for the particle architecture, the repaired square-sprite defect, and the remaining physical-model improvement strategy.
 
 ### SMBH shockwave modeling
 
-Simulation of supermassive black hole transient phenomena:
+Experimental visualization of supermassive black hole transient hypotheses, not a validated prediction of their effects:
 
 - AGN warp-wave engine modeling Sgr A* and nearby AGN (Centaurus A, Maffei 1)
 - SMBH propagation physics with compound transient fronts (EM, GW, UHECR)
 - Metric frame-dragging slipstream visualization
 - Physics constants sourced from published astrophysics literature
 
-### Nearby star systems
+### Retained nearby-system modules (not integrated)
 
-Navigate to Alpha Centauri, Barnard's Star, Sirius, and other nearby systems rendered from JSON manifests with proper-motion-propagated positions. Seamless zoom-in/zoom-out camera transitions between star systems.
+Nearby-system catalogs, JSON manifests, proper-motion utilities and renderer/navigation modules are retained for separate use. They are not connected to the default page, which displays procedural background stars. Names in these catalogs do not imply a complete or scientifically validated multi-star-system representation.
 
 ### Asteroid belt
 
-- Element-driven orbits with adaptive close-up detail refinement
-- Phase 1 real-data pipeline with up to 1.9M cataloged particles
-- Seeded PRNG for deterministic generation across sessions
-- Off-thread processing via Web Worker to prevent main-thread blocking
-- Sun/Jupiter/Saturn perturbation model for detail layer
+- Target of 50,000 displayed asteroids; the Phase 1 loader reads at most 100,000 source rows
+- Phase 1 data is accepted only through the existing integrity/admission gates; deterministic procedural generation remains the fallback
+- Shared instanced irregular geometry and GPU elliptic orbit propagation
+- No shipped adaptive close-up, asteroid-worker or Sun/Jupiter/Saturn detail-force path; those retained interfaces are not evidence of active perturbation physics
 
 ### Kuiper belt
 
-- Full KBO particle field with element-driven orbits
-- Binary KBO support with mutual orbit rendering
-- Backend physics module for Kuiper belt dynamics
+- A 5,000-object field with named entries and a procedural remainder, using element-driven orbits
+- Binary companions propagated with the field when the simulation date changes
+- The separate backend Kuiper engine is not connected to this page
 
-### Trajectory planner
+The generated population and binary assumptions are visualization models, not a complete measured catalog or a validation of every mutual orbit.
 
-- **Direct** mode for baseline transfer orbits
-- **Plan Route** for multi-leg trajectories with up to 2 gravity-assist flybys
-- Objectives: minimize total path or maximize gravity-assist gain
-- Solver path: backend Lambert + MGA with hard flyby feasibility constraints; frontend local patched-conic fallback
-- Additional backend endpoints: `POST /trajectory/lambert`, `POST /trajectory/porkchop`
+### Trajectory APIs and retained frontend library
+
+The backend provides direct-transfer and multi-leg gravity-assist planning, including `POST /trajectory/lambert` and `POST /trajectory/porkchop`. Retained frontend planner and patched-conic fallback modules are not connected to the default page; no planner panels or transfer-arc display are enabled there.
 
 ### Mission planner API
 
@@ -349,9 +349,17 @@ Navigate to Alpha Centauri, Barnard's Star, Sirius, and other nearby systems ren
 
 ### Solar physics API
 
-- `GET /solar/physics` — current solar state with configurable forcing (`synthetic|hybrid|data_driven`)
+- `GET /solar/physics` — synthetic solar state; `hybrid` reports `disabled_unvalidated`, and `data_driven` returns HTTP 503
 - `GET /solar/realtime` — live ingested solar context and source health
-- `GET /solar/realtime/aia-tile` — proxied AIA channel tile for observation textures
+- `GET /solar/realtime/aia-tile` — raw viewport AIA tile, not eligible for Sun-surface texture blending
+
+The AIA tile endpoint accepts a scalar `jd_tdb`, or precise `jd_tdb1` and
+`jd_tdb2` components together, such as Astropy's `instant.tdb.jd1` and
+`instant.tdb.jd2`. Do not combine the two-part input with scalar aliases.
+An ambiguous scalar bin at a UTC leap boundary returns HTTP 400 and requires
+the precise input. Genuine UTC leap seconds return HTTP 422
+(`unsupported_utc_instant`), because the upstream provider's datetime contract
+cannot represent them. Ordinary midnight remains a valid precise input.
 
 ## Data Model
 
@@ -369,11 +377,18 @@ Navigate to Alpha Centauri, Barnard's Star, Sirius, and other nearby systems ren
 - REBOUND Julian dates are TDB, declared as `jd_time_scale: "TDB"`; WebSocket
   `set_julian_date` commands must include the matching scale instead of silently
   treating browser/Unix UTC dates as ephemeris time.
-- The 424-moon inventory and approximate fallback elements come from the JPL SSD satellite
-  mean-element tables. The repository retains native-frame fallback propagation and committed
-  parent-relative JPL Horizons fits for Titan, Iapetus, Phoebe, and Cordelia as offline data and
-  validation machinery. The shipped entry does not load those ephemerides or propagate/render
-  moon states.
+- The 423 unique moon identities and approximate fallback elements come from
+  JPL SSD satellite mean-element tables. The newer Puck solution replaces its
+  duplicate older row. All active bodies have committed fitted parent-relative
+  models: 13 base models plus 410 lazy shards. The historical 424-row oracle
+  remains unchanged and is explicitly projected onto active identities. Explicit library
+  requests fetch only the required shards from `public/moon-ephemerides/`.
+  The default library load remains 13 models; the shipped page does not load
+  moon ephemerides or propagate/render moon states. Captured numerical-source
+  agreement does not establish observational uncertainty or redistribution rights.
+  A pinned JPL physical-parameter table supplies 46 mean radii with references
+  and uncertainties. The other 377 physical radii are null; their finite display
+  estimates never become measured radii. See [moon integrity](docs/moon-catalog-integrity.md).
 - Planet entries include axial-tilt, spin-period, and ecliptic pole-longitude metadata for visual spin/orientation.
 - Star catalog derived from d3-celestial star catalog data, with optional Gaia DR3 enrichment.
 
@@ -391,22 +406,41 @@ npm run generate:moon-ephemeris
 npm run verify:moon-ephemeris
 ```
 
-Ingest moon textures:
+The additional lazy models reproduce offline from committed source pins on the
+pinned Python/NumPy stack:
+
+```bash
+uv run --python 3.12.13 --with-requirements ci/backend-test-requirements.txt \
+  python scripts/generate_moon_lazy_ephemerides.py --offline --check
+```
+
+Ingest the eight reviewed USGS-hosted moon maps (Deimos uses generated appearance):
 
 ```bash
 npm run ingest:moon-textures
 ```
 
-Fetch enriched star catalog (Gaia DR3):
+Preview Gaia DR3 acquisition, conversion and nearby-system enrichment without
+publishing either catalog. This can contact TAP and populate query caches;
+`--save-fallback` separately authorizes saving the fallback dataset:
 
 ```bash
 python scripts/fetch_gaia_catalog.py
 ```
 
-Fetch expanded asteroid catalog (JPL SBDB):
+To intentionally publish the star catalog and enriched nearby-system CSV, add
+`--write`. Selecting data limits alone does not authorize publication:
 
 ```bash
-python scripts/fetch_jpl_sbdb.py
+python scripts/fetch_gaia_catalog.py --write
+```
+
+Legacy SBDB source publication is retired. The optional preview below may
+populate query caches but cannot write catalog sources. Use the maintained
+Phase 1 builder below for validated offline preview or explicit publication:
+
+```bash
+python scripts/fetch_jpl_sbdb.py --dry-run
 ```
 
 Verify the committed REBOUND initial states and off-epoch accuracy fixtures
@@ -418,45 +452,62 @@ python scripts/fetch_jpl_nbody_ephemeris.py --check
 
 Use `--write` only when intentionally reviewing an upstream ephemeris update.
 
-Build Phase 1 asteroid dataset:
+Validate and serialize the Phase 1 asteroid dataset offline without publishing:
 
 ```bash
 npm run phase1:asteroid-dataset
 ```
 
+Publish the validated bundle only when intended:
+
+```bash
+npm run phase1:asteroid-dataset -- --write
+```
+
+`--output-dir` selects a destination, including an external directory, but does
+not authorize writing. `--write`, `--check` and `--dry-run` are mutually exclusive;
+`--check` compares existing bytes and `--dry-run` explicitly selects the default
+non-publishing validation mode.
+
 ## Physics Notes and Limitations
 
 - Frontend orbital propagation uses Keplerian two-body elements (parent-body centered), not a full N-body integrator.
 - Optional backend REBOUND/TudatPy modes provide higher-fidelity integrations for major bodies. REBOUND's `high` designation is scoped to the default, accuracy-gated IAS15 integrator; WHFast and Mercurius are reported as `normal`. REBOUND remains a reduced Newtonian model, not a replacement for DE441: relativity, most asteroids, outer-system satellites, and extended-body terms are outside its present force model.
-- Earth satellite layer uses TLE-derived Kepler propagation with optional J2 secular perturbations (RAAN, argument of periapsis, mean anomaly rates).
-- Real-time Earth cloud mode uses daily products from NASA GIBS; this is near-real-time visualization, not NWP assimilation.
-- Gravity vectors are computed from currently modeled massive bodies; objects without mass data are excluded.
+- Retained satellite propagation uses TLE-derived Kepler elements and optional J2 terms; it is not activated by this entry.
+- The retained NASA GIBS cloud pipeline is not connected to the page and is not numerical weather-prediction assimilation.
+- Retained gravity-vector UI/update hooks do not imply a shipped gravity-vector display.
 - The retained fitted moon ephemerides are validated only inside their declared 2000–2050 JDTDB
   coverage. They and the visualization-grade mean-element fallbacks are not activated by the
   current shipped entry because moon state propagation and rendering are disabled there.
-- Asteroid close-up refinement uses massless test particles under Sun/Jupiter/Saturn perturbations.
-- Backend gravity-assist planning uses Lambert legs with hard-constrained flyby turn feasibility; frontend fallback remains patched-conic.
-- Transfer arcs in the UI are drawn as smooth visual curves, not numerically integrated finite-burn trajectories.
-- Oort cloud is an approximate synthetic shell population for navigation context.
-- Sun model physics are grounded in published research; some modules (radiation pressure, galactic tides) require backend REBOUND integration for simulation effects.
-- Solar observation textures depend on upstream SDO/AIA data availability; synthetic fallback is always present.
-- Kepler solver clamps eccentricity at 0.9999999, preventing near-parabolic and hyperbolic orbit propagation for comets.
+- The shipped asteroid display uses elliptic element propagation, not close-up N-body perturbations.
+- Backend gravity-assist planning uses Lambert legs with hard-constrained flyby turn feasibility; the retained frontend fallback is patched-conic and not integrated into this page.
+- Retained transfer-arc rendering is not a finite-burn trajectory integrator or an active page feature.
+- Retained Oort UI/update hooks are not connected to the page.
+- Literature-inspired solar and AGN models are visualization/hypothesis tools. Separate radiation-pressure and galactic-tide modules are not evidence of those effects in the shipped local propagation.
+- Solar state remains synthetic, and raw AIA viewport imagery is ineligible for surface blending. Upstream availability or a channel selection does not open the validated observed-input gates.
+- The default browser display uses elliptic element propagation; it is not a general hyperbolic-comet propagator. Backend solvers and retained modules have separate contracts.
 
 ## Data Sources
 
-| Asset | Source |
+Repository inputs/assets, not a promise that every asset is currently rendered.
+Provenance does not itself establish redistribution permission; see `NOTICE.md`.
+
+| Material | Source and current scope |
 |---|---|
-| Moon orbital elements | NASA/JPL SSD satellite element table |
-| Planet textures (2K) | Solar System Scope texture pack |
-| Earth / Moon base textures | three.js planetary texture set |
-| Mars relief | USGS / MOLA |
-| Star catalog | d3-celestial star catalog (reduced), optional Gaia DR3 enrichment |
-| Asteroid catalog (Phase 1) | JPL Small-Body Database (SBDB) |
-| Survey Milky Way texture | NASA/JPL 2MASS all-sky (PIA04250), remapped to equirectangular |
-| Earth clouds | NASA GIBS WMS |
-| Satellite TLEs | CelesTrak |
-| Solar observation textures | NASA SDO/AIA via Helioviewer |
-| Solar activity data | NOAA SWPC, SILSO |
+| Moon elements and physical radii | NASA/JPL SSD; source pins and qualified optional fitted models |
+| Eight curated moon maps | USGS-hosted products; public attribution manifest; retained optional texture pipeline |
+| Asteroid catalog | Pinned JPL SBDB source, ACBF v2 bundle and SHA-256 metadata |
+| Planet appearance | Procedural maps and Earth/Mars quadtree terrain; former unused photographic files retired |
+| Catalog stars and Gaia enrichment | Retained offline/dormant modules; no default catalog-star rendering |
+| Earth clouds / satellite elements | Retained GIBS / CelesTrak acquisition; no default page activation |
+| Solar observation context | SDO/AIA via Helioviewer, NOAA SWPC and SILSO; source-specific terms apply |
+
+The [distribution policy](docs/distribution-policy.md) covers noncommercial
+SILSO use, retired assets, binary retention and build-time notice packaging.
+Historical asset inventories are preserved as dated evidence. The current
+[solar delivery contract](docs/solar-render-delivery.md) bounds lossless response
+bodies and conditionally reuses exact geometry without changing its scientific
+qualification.
 
 ## Tech Stack
 
@@ -470,6 +521,22 @@ npm run phase1:asteroid-dataset
 | N-body integrator | [REBOUND](https://rebound.readthedocs.io/) (IAS15) |
 | Optional integrator | [TudatPy](https://docs.tudat.space/) |
 
+## Mission smoke contracts
+
+```bash
+PYTHONPATH=backend uv run --python 3.12.13 --with-requirements ci/backend-test-requirements.txt \
+  python -m mission.epo.smoke_test --compact
+```
+
+The default checks one modeled feasible lossy-return mission and two explicit
+negative contracts. Three passing contracts do not mean three feasible missions.
+The positive case uses ideal impulsive nuclear-thermal-style propulsion, not a
+flight-certified vehicle. The original 30 stress episodes remain available with
+`--family mining_core --family outer_reacher --family return_pressure`; they
+expose chemical-vehicle infeasibility, missing body masses and bounded Pluto/Eris
+searches. Inconclusive results still fail. The public default mission payload
+can safely return 422 when no verified recommendation is available.
+
 ## Build
 
 ```bash
@@ -481,6 +548,8 @@ npm run preview
 
 ```bash
 npm run typecheck
+npm run typecheck:scripts
+npm run test:types:ui
 ```
 
 ## Backend Tests
@@ -493,3 +562,10 @@ not ship. Use the pinned test environment that CI uses (Python 3.12):
 python -m pip install -r ci/backend-test-requirements.txt
 python -m pytest -q backend/tests
 ```
+
+## Copying and distribution
+
+The original code uses a [permission-required notice](LICENSE). Ask the
+copyright holder before copying or redistributing it. Third-party code and
+assets keep their own terms; see [NOTICE](NOTICE.md) and the
+[distribution inventory](agent-notes/DISTRIBUTION_INVENTORY_2026-10-30.md).

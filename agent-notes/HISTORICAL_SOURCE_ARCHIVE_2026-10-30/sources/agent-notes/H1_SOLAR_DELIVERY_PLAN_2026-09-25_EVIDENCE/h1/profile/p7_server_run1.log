@@ -1,0 +1,27 @@
+uvicorn pid 1582061
+== phase S: 5 sequential default requests (fresh jd each, like successive polls)
+t=   9.54 seq1 jd=2461308.60010000 -> 200 10.009840 655754 curl_rc=0 detail=
+t=  17.38 seq2 jd=2461308.60020000 -> 200 8.223912 655695 curl_rc=0 detail=
+t=  27.71 seq3 jd=2461308.60030000 -> 200 9.082613 655686 curl_rc=0 detail=
+t=  37.52 seq4 jd=2461308.60040000 -> 200 10.277442 657894 curl_rc=0 detail=
+t=  46.26 seq5 jd=2461308.60050000 -> 200 9.148412 656767 curl_rc=0 detail=
+== gzip check (Accept-Encoding: gzip)
+status=200 size_download=656612 t=6.985284
+content-length: 656612
+== wait idle
+t=  55.69 probe -> 200 1.828892
+t=  55.75 probe -> 200 0.047675
+== phase C: 4 concurrent default requests + /health pings
+t=  55.77 health 200 0.004930
+t=  55.79 con13 jd=2461308.60130000 -> 503 0.000836 77 curl_rc=0 detail="detail":"Solar physics requests are temporarily saturated. Retry shortly."
+t=  55.79 con12 jd=2461308.60120000 -> 503 0.004784 77 curl_rc=0 detail="detail":"Solar physics requests are temporarily saturated. Retry shortly."
+t=  56.29 health 200 0.002017
+t=  56.81 health 200 0.002567
+t=  58.97 health 200 0.001990
+t=  59.49 health 200 0.045489
+t=  60.05 health 200 0.026903
+t=  60.60 health 200 0.213559
+t=  61.33 health 200 0.120297
+t=  69.42 con11 jd=2461308.60110000 -> 503 12.585573 65 curl_rc=0 detail="detail":"Solar physics generation timed out. Try again later."
+t=  69.44 con14 jd=2461308.60140000 -> 503 12.603057 65 curl_rc=0 detail="detail":"Solar physics generation timed out. Try again later."
+== wait idle

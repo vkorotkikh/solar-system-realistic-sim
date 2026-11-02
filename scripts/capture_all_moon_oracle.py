@@ -1,4 +1,4 @@
-"""Capture independent vectors for all 424 catalog moons; record gaps, never invent truth.
+"""Capture independent vectors for all active catalog moon identities; record gaps, never invent truth.
 
 One serial request per target respects the Horizons service. Existing successful
 captures are resumable. This records oracle availability, not model accuracy.

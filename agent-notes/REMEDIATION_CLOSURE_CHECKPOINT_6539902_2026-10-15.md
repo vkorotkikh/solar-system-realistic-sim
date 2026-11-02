@@ -1,5 +1,7 @@
 # Construction closure checkpoint - 2026-10-15
 
+> **Current status (2026-10-30):** See the [verified remediation status](REMEDIATION_STATUS_2026-10-30.md) for all 83 dispositions, branch-specific fixes, remaining acceptance gates and the 25 completed working-note removals. The dated content below is historical evidence; it does not describe current main.
+
 > Scope clarification (2026-10-17): `SimulationClient` is **API/library-only; not integrated into the default UI.** The [consolidated tracker](CODEBASE_SCAN_AND_ISSUE_TRACKER_2026-10-10.md#simulationclient-scope-decision--2026-10-17) separates backend, client-library and active-browser acceptance. The dated execution results below are preserved.
 
 > Subsequent repair (2026-10-17): the shader and sampling corrections described below are now implemented on `remediation/scn-followup-20261017`, with scoped 6/6 hardware rendering acceptance. Full-catalog startup coordination passes the unchanged catalog timing gate in three DEV measurements, but observed complete-scene readiness remains 6.5–6.9 s and SCN-005 stays partial. See the [rendering repair](SCN042_RENDERING_REPAIR_2026-10-17.md), [startup repair](REMEDIATION_STARTUP_WARMUP_2026-10-17.md) and maintained tracker. The October 15 failures and approval requests below are historical, not the current disposition of those repairs.

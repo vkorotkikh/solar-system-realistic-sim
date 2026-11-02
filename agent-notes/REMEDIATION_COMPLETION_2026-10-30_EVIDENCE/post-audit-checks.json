@@ -1,0 +1,15 @@
+[
+  {
+    "name": "frontend-post-audit",
+    "command": [
+      "node",
+      "/tmp/solar-scn005-npm10-20261028-JG1enL/node_modules/npm/bin/npm-cli.js",
+      "test",
+      "--",
+      "--reporter=default",
+      "--reporter=json",
+      "--outputFile.json=/tmp/solar-remediation-completion-20261030/frontend-post-audit.json"
+    ],
+    "exitCode": 1
+  }
+]

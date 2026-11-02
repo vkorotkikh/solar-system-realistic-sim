@@ -1,5 +1,7 @@
 # SCN-005: complete-catalog shader warmup, 2026-10-17
 
+> **Current status (2026-10-30):** See the [verified remediation status](REMEDIATION_STATUS_2026-10-30.md) for all 83 dispositions, branch-specific fixes, remaining acceptance gates and the 25 completed working-note removals. The dated content below is historical evidence; it does not describe current main.
+
 ## Outcome and scope
 
 The unchanged **2,000 ms catalog fetch-to-parse/hash metric passes 3/3 fresh

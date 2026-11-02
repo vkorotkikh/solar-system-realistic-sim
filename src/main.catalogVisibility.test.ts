@@ -74,7 +74,7 @@ describe('production hidden-moon catalog configuration (B024)', () => {
       0.02074519414225859,
       15,
     );
-    expect(catalog.bodies.filter(body => body.type === 'moon')).toHaveLength(424);
+    expect(catalog.bodies.filter(body => body.type === 'moon')).toHaveLength(423);
     expect(bodyById.get('earth')?.orbit?.barycentreCompanion?.orbit).toBe(moon.orbit);
   });
 
@@ -90,6 +90,6 @@ describe('production hidden-moon catalog configuration (B024)', () => {
       0.02074519414225859,
       15,
     );
-    expect(catalog.bodies.filter(body => body.type === 'moon')).toHaveLength(424);
+    expect(catalog.bodies.filter(body => body.type === 'moon')).toHaveLength(423);
   });
 });

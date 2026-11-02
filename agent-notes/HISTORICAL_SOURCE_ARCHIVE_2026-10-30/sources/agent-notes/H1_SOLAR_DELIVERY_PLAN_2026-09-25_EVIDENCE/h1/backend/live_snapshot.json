@@ -1,0 +1,185 @@
+{
+ "schema": {
+  "name": "solar_realtime_context",
+  "version": 1
+ },
+ "fetched_at_utc": "2026-09-25T02:09:22.048690Z",
+ "source_status": {
+  "swpc": {
+   "ok": false,
+   "error": "HTTP Error 404: Not Found",
+   "endpoint": "https://services.swpc.noaa.gov/products/solar-wind/plasma-1-day.json"
+  },
+  "silso": {
+   "ok": true,
+   "updated": "2026-08-31",
+   "endpoint": "https://www.sidc.be/SILSO/DATA/SN_d_tot_V2.0.csv"
+  },
+  "sdo_aia": {
+   "ok": true,
+   "updated": "2026-09-25T01:47:41Z",
+   "endpoint": "https://api.helioviewer.org/v2/getClosestImage/"
+  },
+  "gong_synoptic": {
+   "ok": true,
+   "updated": "2026-09-25T02:09:25.627938Z",
+   "endpoint": "https://gong.nso.edu/data/magmap/QR/bqs/"
+  }
+ },
+ "swpc": null,
+ "silso": {
+  "date": "2026-08-31",
+  "daily_sunspot_number": 58.0,
+  "stdev": 8.1,
+  "observation_count": 33.0,
+  "provisional_flag": "0",
+  "activity_proxy": 0.2636363636363636
+ },
+ "sdo_aia": {
+  "request_date_utc": "2026-09-25T02:09:22.048665Z",
+  "channels": {
+   "aia_094": {
+    "source_id": 8,
+    "image_id": "192408064",
+    "image_date": "2026-09-25 01:45:35",
+    "name": "AIA 94",
+    "scale": 0.6018311663114373,
+    "width": 4096.0,
+    "height": 4096.0,
+    "solar_radius_px": 1594.5415,
+    "rotation_deg": 0.0,
+    "jp2_url": "https://api.helioviewer.org/v2/getJP2Image/?id=192408064",
+    "tile_url": "https://api.helioviewer.org/v2/getTile/?id=192408064&x=-1&y=-1&imageScale=0.601831",
+    "analysis": {
+     "mean_luma": 0.33898112177848816,
+     "std_luma": 0.06734781712293625,
+     "p90_luma": 0.41960784792900085,
+     "p98_luma": 0.5137255191802979,
+     "hot_pixel_fraction": 0.0,
+     "edge_energy": 0.024938439950346947,
+     "activity_proxy": 0.19957970531657337
+    }
+   },
+   "aia_171": {
+    "source_id": 10,
+    "image_id": "192408218",
+    "image_date": "2026-09-25 01:46:21",
+    "name": "AIA 171",
+    "scale": 0.6018314871716299,
+    "width": 4096.0,
+    "height": 4096.0,
+    "solar_radius_px": 1594.5406,
+    "rotation_deg": 0.0,
+    "jp2_url": "https://api.helioviewer.org/v2/getJP2Image/?id=192408218",
+    "tile_url": "https://api.helioviewer.org/v2/getTile/?id=192408218&x=-1&y=-1&imageScale=0.601831",
+    "analysis": {
+     "mean_luma": 0.2746233642101288,
+     "std_luma": 0.13202273845672607,
+     "p90_luma": 0.42352941632270813,
+     "p98_luma": 0.7098039388656616,
+     "hot_pixel_fraction": 0.00724029541015625,
+     "edge_energy": 0.008082531858235598,
+     "activity_proxy": 0.20828086593654005
+    }
+   },
+   "aia_193": {
+    "source_id": 11,
+    "image_id": "192408172",
+    "image_date": "2026-09-25 01:46:05",
+    "name": "AIA 193",
+    "scale": 0.6018314270321925,
+    "width": 4096.0,
+    "height": 4096.0,
+    "solar_radius_px": 1594.5409,
+    "rotation_deg": 0.0,
+    "jp2_url": "https://api.helioviewer.org/v2/getJP2Image/?id=192408172",
+    "tile_url": "https://api.helioviewer.org/v2/getTile/?id=192408172&x=-1&y=-1&imageScale=0.601831",
+    "analysis": {
+     "mean_luma": 0.47091004252433777,
+     "std_luma": 0.09922812134027481,
+     "p90_luma": 0.5960784554481506,
+     "p98_luma": 0.7098039388656616,
+     "hot_pixel_fraction": 0.000576019287109375,
+     "edge_energy": 0.004487765720114112,
+     "activity_proxy": 0.22056308099301528
+    }
+   },
+   "aia_211": {
+    "source_id": 12,
+    "image_id": "192408145",
+    "image_date": "2026-09-25 01:46:34",
+    "name": "AIA 211",
+    "scale": 0.6018316676773608,
+    "width": 4096.0,
+    "height": 4096.0,
+    "solar_radius_px": 1594.5403,
+    "rotation_deg": 0.0,
+    "jp2_url": "https://api.helioviewer.org/v2/getJP2Image/?id=192408145",
+    "tile_url": "https://api.helioviewer.org/v2/getTile/?id=192408145&x=-1&y=-1&imageScale=0.601832",
+    "analysis": {
+     "mean_luma": 0.4316461682319641,
+     "std_luma": 0.09021639823913574,
+     "p90_luma": 0.5607843399047852,
+     "p98_luma": 0.6549019813537598,
+     "hot_pixel_fraction": 0.0,
+     "edge_energy": 0.004196307389065623,
+     "activity_proxy": 0.20235823471331968
+    }
+   },
+   "aia_304": {
+    "source_id": 13,
+    "image_id": "192408248",
+    "image_date": "2026-09-25 01:47:41",
+    "name": "AIA 304",
+    "scale": 0.6018321288920151,
+    "width": 4096.0,
+    "height": 4096.0,
+    "solar_radius_px": 1594.5391,
+    "rotation_deg": 0.0,
+    "jp2_url": "https://api.helioviewer.org/v2/getJP2Image/?id=192408248",
+    "tile_url": "https://api.helioviewer.org/v2/getTile/?id=192408248&x=-1&y=-1&imageScale=0.601832",
+    "analysis": {
+     "mean_luma": 0.24103227257728577,
+     "std_luma": 0.13246990740299225,
+     "p90_luma": 0.4313725531101227,
+     "p98_luma": 0.5921568870544434,
+     "hot_pixel_fraction": 0.000522613525390625,
+     "edge_energy": 0.025888584554195404,
+     "activity_proxy": 0.22074242509901523
+    }
+   }
+  },
+  "channel_activity_proxy": {
+   "aia_094": 0.19957970531657337,
+   "aia_171": 0.20828086593654005,
+   "aia_193": 0.22056308099301528,
+   "aia_211": 0.20235823471331968,
+   "aia_304": 0.22074242509901523
+  },
+  "latest_image_date_utc": "2026-09-25T01:47:41Z",
+  "freshness_s": 1304.615331,
+  "freshness_proxy": 0.9396011420833333,
+  "activity_proxy": 0.21251089195744136,
+  "coronal_holes": {
+   "source": "aia_193_threshold",
+   "threshold": 0.1186,
+   "median_intensity": 0.4745,
+   "coverage_fraction": 0.0,
+   "polar_open_flux_north": 0.0,
+   "polar_open_flux_south": 0.0,
+   "hole_count": 0,
+   "holes": []
+  },
+  "visualization": {
+   "preferred_channel": "aia_304",
+   "preferred_image_id": "192408248",
+   "preferred_tile_url": "https://api.helioviewer.org/v2/getTile/?id=192408248&x=-1&y=-1&imageScale=0.601832",
+   "preferred_proxy_path": "/solar/realtime/aia-tile?channel=aia_304"
+  }
+ },
+ "gong_synoptic": {
+  "carrington_rotation": 2315,
+  "status": "ready"
+ },
+ "combined_activity_proxy": 0.24504528302584638
+}

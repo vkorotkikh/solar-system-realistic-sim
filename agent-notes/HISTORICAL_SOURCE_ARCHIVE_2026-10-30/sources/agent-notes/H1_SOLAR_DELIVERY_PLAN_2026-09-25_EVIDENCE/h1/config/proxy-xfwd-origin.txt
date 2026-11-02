@@ -1,0 +1,6 @@
+== xfwd=0 (vite pid 1584987)
+[h1-proxy-req] /solar/physics?jd=2461308.5&fidelity=pre origin=https://evil.example host=localhost:5184 xff=-
+[h1-proxy-req] /solar/physics?jd=2461308.5&fidelity=pre origin=- host=localhost:5184 xff=203.0.113.9
+== xfwd=1 (vite pid 1585045)
+[h1-proxy-req] /solar/physics?jd=2461308.5&fidelity=pre origin=https://evil.example host=localhost:5184 xff=127.0.0.1
+[h1-proxy-req] /solar/physics?jd=2461308.5&fidelity=pre origin=- host=localhost:5184 xff=203.0.113.9,127.0.0.1

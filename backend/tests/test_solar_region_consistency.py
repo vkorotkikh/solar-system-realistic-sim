@@ -235,19 +235,53 @@ def test_pfss_snapshot_depends_on_the_coronal_region_seed():
     assert not np.array_equal(a.field_gauss, b.field_gauss)
 
 
-@pytest.mark.parametrize('cycle', [25, 26])
-@pytest.mark.parametrize('hemisphere', [-1, 1])
-def test_map_polarities_and_feature_footpoints_agree(cycle, hemisphere):
+# Absolute Cycle 25 anchor: Moore et al., section 3.1, describes northern
+# AR 12929's negative leading polarity as anti-Hale in January 2022:
+# https://ntrs.nasa.gov/api/citations/20250006012/downloads/pivot_250521_submitted.pdf
+# Hale's law reverses the hemispheres and successive cycles. These literal
+# expectations must not be derived from the seeded polarity under test.
+HALE_LEADING_POLARITIES = [
+    (24, 1, -1),
+    (24, -1, 1),
+    (25, 1, 1),
+    (25, -1, -1),
+    (26, 1, -1),
+    (26, -1, 1),
+]
+
+
+@pytest.mark.parametrize('cycle,hemisphere,expected_sign', HALE_LEADING_POLARITIES)
+def test_generated_regions_obey_absolute_hale_polarity(cycle, hemisphere, expected_sign):
     model = SolarCoronaPhysicsModel(base_tube_count=64)
-    region = replace(model.active_regions[0], center_lat_rad=hemisphere * .3,
-                     hemisphere_sign=hemisphere, hale_cycle25_leading_polarity=-hemisphere,
+    region = next(r for r in model.active_regions if r.hemisphere_sign == hemisphere)
+    cycle_start = CYCLE_25_START_JD + (cycle - 25) * CYCLE_DAYS
+    _, birth, lifetime = region_lifetime(region, cycle_start + 300)
+    assert cycle_start < birth < cycle_start + CYCLE_DAYS
+    center, negative, positive, _, leading_sign = model._region_polarity_dirs(
+        region, birth + lifetime / 2,
+    )
+
+    assert leading_sign == expected_sign
+    # Determine the leading footpoint independently from the direction of
+    # rotation, rather than trusting the returned leading/trailing axis.
+    longitude = math.atan2(center[1], center[0])
+    east = np.array([-math.sin(longitude), math.cos(longitude), 0.0])
+    positive_leads = np.dot(np.subtract(positive, negative), east) > 0
+    assert positive_leads == (expected_sign > 0)
+
+
+@pytest.mark.parametrize('cycle,hemisphere,expected_sign', HALE_LEADING_POLARITIES)
+def test_map_polarities_and_feature_footpoints_agree(cycle, hemisphere, expected_sign):
+    model = SolarCoronaPhysicsModel(base_tube_count=64)
+    generated = next(r for r in model.active_regions if r.hemisphere_sign == hemisphere)
+    region = replace(generated, center_lat_rad=hemisphere * .3,
                      tilt_rad=hemisphere * .15, strength=.9, separation_rad=.15)
     model.active_regions[0] = region
     jd = CYCLE_25_START_JD + (cycle - 25) * CYCLE_DAYS + 300
     _, birth, lifetime = region_lifetime(region, jd)
     jd = birth + lifetime / 2
     center, negative, positive, axis, leading_sign = model._region_polarity_dirs(region, jd)
-    assert leading_sign == hemisphere * (-1 if cycle % 2 else 1)
+    assert leading_sign == expected_sign
     leading, trailing = (positive, negative) if leading_sign > 0 else (negative, positive)
     assert np.dot(np.subtract(leading, center), axis) > 0
     assert abs(trailing[2]) > abs(leading[2])  # Joy: following spot is poleward
@@ -278,8 +312,14 @@ def test_map_polarities_and_feature_footpoints_agree(cycle, hemisphere):
 
 def test_region_rotation_lifetime_and_cycle_transition_are_continuous():
     model = SolarCoronaPhysicsModel(base_tube_count=64)
-    region = model.active_regions[0]
     jd = CYCLE_25_START_JD + CYCLE_DAYS
+    region = next(r for r in model.active_regions if region_lifetime(r, jd)[0] > 0)
+    before_envelope, birth, lifetime = region_lifetime(region, jd - 1e-6)
+    after_envelope, after_birth, _ = region_lifetime(region, jd + 1e-6)
+    assert birth < jd < birth + lifetime
+    assert after_birth == birth
+    assert before_envelope > 0
+    assert after_envelope > 0
     before = model._region_polarity_dirs(region, jd - 1e-6)
     after = model._region_polarity_dirs(region, jd + 1e-6)
     # A living old-cycle region must not reverse instantaneously at the epoch.
@@ -304,3 +344,7 @@ def test_region_rotation_lifetime_and_cycle_transition_are_continuous():
         synthetic_magnetogram(.8, dormant, n_lat=30, n_lon=60, active_regions=(region,)),
         synthetic_magnetogram(.8, dormant, n_lat=30, n_lon=60, active_regions=()),
     )
+    _, next_birth, next_lifetime = region_lifetime(region, jd + 90)
+    assert birth < jd < next_birth
+    new_emergence = model._region_polarity_dirs(region, next_birth + next_lifetime / 2)
+    assert new_emergence[-1] == -before[-1]

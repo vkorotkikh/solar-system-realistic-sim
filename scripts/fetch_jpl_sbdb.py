@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 """
-Fetch top asteroids from JPL Small-Body Database and append to data files.
+Preview legacy JPL Small-Body Database additions without publishing sources.
 
-Directly modifies:
-  - backend/data/bodies.py  (ASTEROID_BELT_OBJECTS list)
-  - src/data/planets.js     (ASTEROID_BELT_OBJECTS array)
+Legacy source publication is retired: planets.js no longer exists, and catalog
+sources must not be partially updated. Shared query helpers remain available to
+capture_catalog_sources.py and build_asteroid_phase1_dataset.py. Use the latter
+for validated offline preview or explicit --write artifact publication.
 
 Usage:
-  python scripts/fetch_jpl_sbdb.py
-  python scripts/fetch_jpl_sbdb.py --limit 80 --neo-limit 20 --trojan-limit 15
+  python scripts/fetch_jpl_sbdb.py --dry-run
+  python scripts/fetch_jpl_sbdb.py --dry-run --limit 80 --neo-limit 20 --trojan-limit 15
 """
 
 from __future__ import annotations
@@ -20,7 +21,6 @@ import re
 import sys
 import textwrap
 from pathlib import Path
-from urllib.error import URLError
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from fetch_utils import (
@@ -353,85 +353,23 @@ def generate_js_entry(body: dict) -> str:
   }}""")
 
 
-def append_to_bodies_py(bodies: list[dict], file_path: Path) -> int:
-    """Append new asteroid entries to ASTEROID_BELT_OBJECTS in bodies.py."""
-    content = file_path.read_text()
-
-    # Find the closing bracket of ASTEROID_BELT_OBJECTS
-    # Pattern: look for the list end before KUIPER_BELT_OBJECTS or ALL_BODIES
-    marker_patterns = [
-        r'(KUIPER_BELT_OBJECTS\s*=)',
-        r'(ALL_BODIES\s*=)',
-    ]
-
-    insert_pos = None
-    for pattern in marker_patterns:
-        match = re.search(pattern, content)
-        if match:
-            # Find the ']' before this marker
-            before = content[:match.start()]
-            last_bracket = before.rfind(']')
-            if last_bracket != -1:
-                insert_pos = last_bracket
-                break
-
-    if insert_pos is None:
-        print(f"  Error: Could not find ASTEROID_BELT_OBJECTS end in {file_path.name}")
-        return 0
-
-    # Generate entries
-    entries_text = "\n    # ── JPL SBDB additions (auto-generated) ──\n"
-    for body in bodies:
-        entries_text += "    " + generate_py_entry(body) + ",\n"
-
-    new_content = content[:insert_pos] + entries_text + content[insert_pos:]
-    file_path.write_text(new_content)
-    return len(bodies)
-
-
-def append_to_planets_js(bodies: list[dict], file_path: Path) -> int:
-    """Append new asteroid entries to ASTEROID_BELT_OBJECTS in planets.js."""
-    content = file_path.read_text()
-
-    # Find the closing bracket of ASTEROID_BELT_OBJECTS
-    # Look for `];` that ends the ASTEROID_BELT_OBJECTS before KUIPER_BELT_OBJECTS
-    marker_patterns = [
-        r'(export\s+const\s+KUIPER_BELT_OBJECTS)',
-        r'(export\s+const\s+ALL_BODIES)',
-    ]
-
-    insert_pos = None
-    for pattern in marker_patterns:
-        match = re.search(pattern, content)
-        if match:
-            before = content[:match.start()]
-            last_bracket = before.rfind('];')
-            if last_bracket != -1:
-                insert_pos = last_bracket
-                break
-
-    if insert_pos is None:
-        print(f"  Error: Could not find ASTEROID_BELT_OBJECTS end in {file_path.name}")
-        return 0
-
-    entries_text = "\n  // ── JPL SBDB additions (auto-generated) ──\n"
-    for body in bodies:
-        entries_text += generate_js_entry(body) + ",\n"
-
-    new_content = content[:insert_pos] + entries_text + content[insert_pos:]
-    file_path.write_text(new_content)
-    return len(bodies)
-
-
 # ── Main ──
 
 def main():
-    parser = argparse.ArgumentParser(description="Fetch JPL SBDB asteroid data")
+    parser = argparse.ArgumentParser(description="Preview legacy JPL SBDB additions; source publication is retired.",
+        epilog="Use scripts/build_asteroid_phase1_dataset.py for validated offline preview, "
+               "or add --write there to publish the maintained Phase-1 artifact bundle.")
     parser.add_argument("--limit", type=int, default=100, help="Top N asteroids by H magnitude")
     parser.add_argument("--neo-limit", type=int, default=30, help="Notable NEO count")
     parser.add_argument("--trojan-limit", type=int, default=20, help="Jupiter Trojan count")
-    parser.add_argument("--dry-run", action="store_true", help="Print output without modifying files")
+    parser.add_argument("--dry-run", action="store_true", help="Required for legacy preview; may populate query caches, never source files")
+    parser.add_argument("--write", action="store_true", help="Retired; use the maintained Phase-1 builder to publish")
     args = parser.parse_args()
+
+    if args.write or not args.dry_run:
+        parser.error("Legacy source publication is retired. Use --dry-run to preview additions, "
+                     "or scripts/build_asteroid_phase1_dataset.py for validated offline preview "
+                     "and explicit --write artifact publication.")
 
     ensure_cache_dir()
 
@@ -472,36 +410,11 @@ def main():
     print(f"    Trojans: {len(trojan_bodies)}")
     print(f"    Other: {len(other)}")
 
-    if args.dry_run:
-        print("\n=== Dry Run - Sample entries ===")
-        for body in all_bodies[:5]:
-            print(f"\n  Python:\n{generate_py_entry(body)}")
-            print(f"\n  JavaScript:\n{generate_js_entry(body)}")
-        print(f"\n  (Showing 5 of {len(all_bodies)} entries)")
-        return
-
-    # Step 4: Save cache
-    cache_path = CACHE_DIR / "sbdb_catalog.json"
-    with open(cache_path, "w") as f:
-        json.dump(all_bodies, f, indent=2, default=str)
-    print(f"\n  Cached full catalog to {cache_path.name}")
-
-    # Step 5: Modify data files
-    if not all_bodies:
-        print("\n  No new bodies to add. Done.")
-        return
-
-    print(f"\nStep 5: Appending {len(all_bodies)} entries to data files...")
-
-    py_count = append_to_bodies_py(all_bodies, BODIES_PY_PATH)
-    print(f"  Updated {BODIES_PY_PATH.relative_to(PROJECT_ROOT)}: +{py_count} entries")
-
-    js_count = append_to_planets_js(all_bodies, PLANETS_JS_PATH)
-    print(f"  Updated {PLANETS_JS_PATH.relative_to(PROJECT_ROOT)}: +{js_count} entries")
-
-    print(f"\n=== Done ===")
-    print(f"  Total new asteroids: {len(all_bodies)}")
-    print(f"  Files modified: bodies.py, planets.js")
+    print("\n=== Legacy preview - sample entries (source publication retired) ===")
+    for body in all_bodies[:5]:
+        print(f"\n  Python:\n{generate_py_entry(body)}")
+        print(f"\n  JavaScript:\n{generate_js_entry(body)}")
+    print(f"\n  (Showing 5 of {len(all_bodies)} entries)")
 
 
 if __name__ == "__main__":

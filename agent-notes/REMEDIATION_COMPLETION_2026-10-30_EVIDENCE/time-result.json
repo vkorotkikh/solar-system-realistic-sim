@@ -1,0 +1,178 @@
+{
+  "domain": "time",
+  "status": "scoped_implementation_and_regressions_complete",
+  "worktree": "/home/nomad/ai/projects/worktrees/solar-remediation-completion-20261030",
+  "revisionAtVerification": "ed70aea3ea46e4045adcee201492cdd9c12d14f9",
+  "sourceFreeze": false,
+  "changedFiles": [
+    "backend/sim/solar_time.py",
+    "backend/server.py",
+    "backend/sim/solar_realtime_data.py",
+    "backend/tests/test_solar_time_contract.py",
+    "backend/tests/test_solar_time_ingress.py"
+  ],
+  "changeOwnership": {
+    "workerEdited": [
+      "backend/sim/solar_time.py",
+      "backend/server.py",
+      "backend/tests/test_solar_time_contract.py",
+      "backend/tests/test_solar_time_ingress.py"
+    ],
+    "parentAppliedHandoff": [
+      "backend/sim/solar_realtime_data.py"
+    ],
+    "serverScope": "Only solar time query parsing, AIA precise ingress, OpenAPI contract, and time-error translation.",
+    "noWorkerCommitsOrNoteDeletions": true
+  },
+  "python": {
+    "version": "3.12.13 (main, Aug  7 2026, 02:25:39) [Clang 22.1.3 ]",
+    "persistentInterpreter": "/home/nomad/.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/bin/python3.12",
+    "resolvedInterpreter": "/home/nomad/.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/bin/python3.12",
+    "uvProbeExecutable": "/home/nomad/.cache/uv/builds-v0/.tmp3uEU6h/bin/python",
+    "uvProbeExecutableNote": "uv creates a temporary environment path for each invocation; use the reproducibleLaunch command, not this temporary path, for reruns.",
+    "reproducibleLaunch": "/home/nomad/.local/bin/uv run --python /home/nomad/.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/bin/python3.12 --with-requirements ci/backend-test-requirements.txt python",
+    "packages": {
+      "astropy": "8.0.1",
+      "astropy-iers-data": "0.2026.9.21.0.56.25",
+      "numpy": "2.5.2",
+      "pyerfa": "2.0.1.5",
+      "fastapi": "0.141.1",
+      "httpx": "0.28.1",
+      "pytest": "9.1.1",
+      "starlette": "1.6.0"
+    },
+    "nativeTudatEvidence": {
+      "performedBy": "parent",
+      "reportedResult": "17/17 passed",
+      "python": "3.12.15",
+      "tudat": "1.0.0",
+      "environment": "separate conda environment; not this Python 3.12.13 pinned test environment",
+      "countedInTimeWorkerTests": false
+    }
+  },
+  "commands/results": [
+    {
+      "command": "uv run --python 3.12.13 --with-requirements ci/backend-test-requirements.txt python -m pytest -q backend/tests/test_solar_time_contract.py backend/tests/test_solar_time_ingress.py",
+      "result": "RED: 81 failed, 5 passed. Exact failures inspected: scalar leap-start bins did not raise, leap-end/interior failures were untyped, precise type was absent, HTTP ignored precise parameters.",
+      "exitCode": 1,
+      "log": "/tmp/solar-remediation-completion-20261030/time/red.log"
+    },
+    {
+      "command": "uv run --python 3.12.13 --with-requirements ci/backend-test-requirements.txt python -m pytest -q backend/tests/test_solar_time_contract.py backend/tests/test_solar_time_precision_evidence.py backend/tests/test_solar_time_ingress.py",
+      "result": "Intermediate: 112 passed, 4 failed at provider float coercion, before parent applied provider.patch.",
+      "exitCode": 1,
+      "log": "/tmp/solar-remediation-completion-20261030/time/green-initial.log"
+    },
+    {
+      "command": "uv run --python 3.12.13 --with-requirements ci/backend-test-requirements.txt python -m pytest -q backend/tests/test_solar_time_contract.py backend/tests/test_solar_time_ingress.py",
+      "result": "Expanded test RED: independent TAI-origin 1990 midnight exposed a 4.8 ps scale-conversion comparison artifact. Fixed by comparing native two-part UTC values, without a tolerance or snap. A cache fixture initially used two different scalar bins; corrected to independently verified 1 us and 2 us instants in the same bin. Positive HTTP cases were still blocked on the provider handoff at this stage.",
+      "exitCode": 1,
+      "log": "/tmp/solar-remediation-completion-20261030/time/precision-bounds.log"
+    },
+    {
+      "command": "uv run --python 3.12.13 --with-requirements ci/backend-test-requirements.txt python -m pytest -q backend/tests/test_solar_time_contract.py backend/tests/test_solar_time_precision_evidence.py",
+      "result": "GREEN: 84 passed.",
+      "exitCode": 0,
+      "log": "/tmp/solar-remediation-completion-20261030/time/green-core.log"
+    },
+    {
+      "command": "uv run --python 3.12.13 --with-requirements ci/backend-test-requirements.txt python /tmp/solar-remediation-completion-20261030/time/validate_provider_candidate.py -q [time/provider tests]",
+      "result": "Abandoned temporary in-memory candidate validation: collection failed because this /tmp script lacked the repository root on sys.path (ModuleNotFoundError: backend). No product source changes resulted. Superseded by successful direct validation after parent applied the provider patch.",
+      "exitCode": 2,
+      "log": "/tmp/solar-remediation-completion-20261030/time/provider-candidate-green.log"
+    },
+    {
+      "command": "uv run --python 3.12.13 --with-requirements ci/backend-test-requirements.txt python -m pytest -q backend/tests/test_solar_time_contract.py backend/tests/test_solar_time_precision_evidence.py backend/tests/test_solar_time_ingress.py backend/tests/test_carrington_semantics.py backend/tests/test_solar_aia_epoch_coverage.py backend/tests/test_solar_aia_live_cache.py backend/tests/test_solar_physics_api.py backend/tests/test_solar_realtime_data_cache.py backend/tests/test_solar_realtime_cache_state.py backend/tests/test_solar_realtime_lkg_blend.py backend/tests/test_solar_realtime_recovery.py backend/tests/test_solar_realtime_data_transport.py --junitxml=/tmp/solar-remediation-completion-20261030/time/time-provider-junit.xml",
+      "result": "Integrated provider source: 395 passed, 0 failed, 0 skipped, 2 dependency deprecation warnings.",
+      "exitCode": 0,
+      "log": "/tmp/solar-remediation-completion-20261030/time/time-provider-integrated.log"
+    },
+    {
+      "command": "uv run --python 3.12.13 --with-requirements ci/backend-test-requirements.txt python -m pytest -q backend/tests/test_solar_time_contract.py backend/tests/test_solar_time_precision_evidence.py backend/tests/test_solar_time_ingress.py backend/tests/test_carrington_semantics.py backend/tests/test_solar_aia_epoch_coverage.py backend/tests/test_solar_aia_live_cache.py backend/tests/test_solar_physics_api.py backend/tests/test_solar_realtime_data_cache.py backend/tests/test_solar_realtime_cache_state.py backend/tests/test_solar_realtime_lkg_blend.py backend/tests/test_solar_realtime_recovery.py backend/tests/test_solar_realtime_data_transport.py backend/tests/test_gong_archive.py backend/tests/test_solar_security.py backend/tests/test_server_validation.py --junitxml=/tmp/solar-remediation-completion-20261030/time/time-provider-final-junit.xml",
+      "result": "Final: 608 passed, 0 failed, 0 skipped, 2 dependency deprecation warnings, 14.47 s.",
+      "exitCode": 0,
+      "log": "/tmp/solar-remediation-completion-20261030/time/time-provider-final.log",
+      "junit": "/tmp/solar-remediation-completion-20261030/time/time-provider-final-junit.xml"
+    },
+    {
+      "command": "git diff --check -- backend/sim/solar_time.py backend/server.py backend/sim/solar_realtime_data.py",
+      "result": "Passed with no whitespace errors.",
+      "exitCode": 0
+    }
+  ],
+  "finalTestCountsByModule": {
+    "backend.tests.test_solar_time_contract": 54,
+    "backend.tests.test_solar_time_precision_evidence": 30,
+    "backend.tests.test_solar_time_ingress": 53,
+    "backend.tests.test_carrington_semantics": 22,
+    "backend.tests.test_solar_aia_epoch_coverage": 33,
+    "backend.tests.test_solar_aia_live_cache": 15,
+    "backend.tests.test_solar_physics_api": 49,
+    "backend.tests.test_solar_realtime_data_cache": 70,
+    "backend.tests.test_solar_realtime_cache_state": 14,
+    "backend.tests.test_solar_realtime_lkg_blend": 2,
+    "backend.tests.test_solar_realtime_recovery": 7,
+    "backend.tests.test_solar_realtime_data_transport": 58,
+    "backend.tests.test_gong_archive": 120,
+    "backend.tests.test_solar_security": 60,
+    "backend.tests.test_server_validation": 21
+  },
+  "original defects closed": [
+    {
+      "id": "SCN-048/RUNTIME-001",
+      "defect": "Scalar binary64 bins can include both ordinary UTC and genuine leap time, at leap start as well as midnight.",
+      "closure": "Reject closed rounding bins contacting either known positive leap boundary with AmbiguousScalarJD/code ambiguous_scalar_jd. Endpoints use adjacent binary64 half-gaps as separate Time components; no scalar addition, epsilon, rounding, clamp or whole-second snap."
+    },
+    {
+      "id": "SCN-048 precise-input child",
+      "defect": "Neither the time adapter nor HTTP/provider resolver could preserve two-part input.",
+      "closure": "Frozen hashable TwoPartJD retains Astropy TDB jd1/jd2 through /solar/realtime/aia-tile, provider resolver, cache, acquisition and delivery. Both HTTP parts are required, finite, independently bounded, and checked against the epoch bounds using the precise representation. All scalar aliases are rejected alongside the pair."
+    },
+    {
+      "id": "SCN-048 unsupported-instant child",
+      "defect": "Python datetime cannot represent UTC leap seconds; the final fraction of a leap can silently round to normal midnight even with Astropy strict conversion.",
+      "closure": "Check native two-part UTC leap intervals before datetime conversion. Return UnsupportedUTCInstant/code unsupported_utc_instant and HTTP 422/retryable=false. Scalar ambiguity returns HTTP 400/retryable=false. OpenAPI documents both and gives the Astropy component input path."
+    },
+    {
+      "id": "SCN-048 independent acceptance child",
+      "defect": "Existing tests only demonstrated discarded identity and bypassed leap-midnight acquisition.",
+      "closure": "Independent literal UTC/TAI offsets at 1990, 2012, 2015 and 2017 boundaries test both boundaries, actual normal midnights, independently TAI-origin midnights, preceding ordinary instants, genuine leap interiors and a final 0.1 us leap fraction. Live ASGI tests run real provider/cache code with deterministic upstream fixtures; ordinary and leap instants sharing one scalar cannot reuse each other, and two ordinary precise instants sharing a scalar keep separate cache keys. Ordinary scalar conversion retains its existing half-ULP plus datetime quantization bounds."
+    }
+  ],
+  "exact remaining boundaries": [
+    "This closes the assigned time-policy/precision child, not all of SCN-048. No production TLS transport, deployed proxy/authentication/gateway operation or owner URL evidence was supplied by this task.",
+    "Provider/frame/spatial calibration and continuous archive availability remain separate solar acceptance work. Deterministic upstream ASGI fixtures do not certify those properties.",
+    "Genuine UTC leap instants are intentionally unsupported at the Python datetime/AIA provider boundary and are explicitly rejected; no full leap-second provider support is claimed.",
+    "Precise HTTP input is supported at /solar/realtime/aia-tile. Synthetic solar physics/engine APIs retain their existing labelled scalar-TDB contract; they are not passed through the UTC provider adapter.",
+    "The concurrently updated GONG acquire path remains a scalar-only API. Its ordinary requests pass regressions and its leap-boundary/interior calls now receive the same typed time errors. No precise GONG provenance/API support is claimed; see solar-handoff.json if that capability is later required.",
+    "Classification uses the active ERFA positive-leap schedule and Astropy two-part precision. No hypothetical future leap schedule or new negative-leap certification is claimed. Ordinary datetime output remains limited to its documented one-microsecond resolution.",
+    "Other workers remain active; final parent source freeze, full application testing, final commit and note retirement are not performed by this worker."
+  ],
+  "notes fully eligible for retirement": [],
+  "noteRetirementReason": "No note is solely certified for deletion by this domain result. SCN-048 notes include deployment/calibration children; preserve them until parent reconciles all children and retains final evidence.",
+  "handoffs": [
+    {
+      "owner": "parent",
+      "file": "backend/sim/solar_realtime_data.py",
+      "patch": "/tmp/solar-remediation-completion-20261030/time/provider.patch",
+      "status": "Applied by parent and verified in final 608-test direct run; no remaining provider integration action."
+    },
+    {
+      "owner": "parent/solar",
+      "file": "backend/sim/gong_magnetogram.py",
+      "details": "/tmp/solar-remediation-completion-20261030/time/solar-handoff.json",
+      "status": "No edits by time worker. Scalar caller regression validated; any future precise GONG request/provenance API must preserve TwoPartJD instead of float coercion."
+    },
+    {
+      "owner": "parent",
+      "action": "Retain source hashes/logs and distinguish the completed SCN-048 time child from remaining deployed TLS/auth and scientific calibration evidence; refresh hashes after final source freeze if files change."
+    }
+  ],
+  "sourceManifest": "/tmp/solar-remediation-completion-20261030/time/verified-source-manifest.json",
+  "documentation": "backend/server.py OpenAPI query/response descriptions and AIA route docstring; backend/sim/solar_time.py adapter and input-type docstrings.",
+  "referencesConsulted": [
+    "https://docs.astropy.org/en/stable/time/index.html#internal-representation",
+    "https://docs.astropy.org/en/stable/api/astropy.time.Time.html#astropy.time.Time.to_datetime"
+  ],
+  "review": "Focused author self-review of assigned diff and exact failures. Parent owns independent overall review."
+}

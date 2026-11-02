@@ -1,0 +1,21 @@
+2026-09-25T02:21:34.390Z SILSO conditional (If-None-Match) + gzip:
+HTTP/1.1 304 Not Modified
+ETag: "2c3104-65a6793d2eb69"
+status=304 t=0.282615 bytes=0
+2026-09-25T02:21:34.670Z SILSO gzip full:
+HTTP/1.1 200 OK
+status=200 t=0.932939 bytes=2896132
+2026-09-25T02:21:35.571Z RTSW wind gzip:
+HTTP/2 200 
+last-modified: Fri, 25 Sep 2026 02:18:40 GMT
+content-encoding: gzip
+cache-control: max-age=60
+etag: W/"270a7a-65c4555afbb58"
+status=200 t=0.058151 bytes=94246
+2026-09-25T02:21:35.640Z RTSW wind If-Modified-Since: Fri, 25 Sep 2026 02:05:24 GMT (from 02:07 fetch)
+HTTP/2 200 
+last-modified: Fri, 25 Sep 2026 02:18:40 GMT
+status=200 t=0.103938 bytes=2558586
+2026-09-25T02:21:35.748Z summary mag:
+[{"bt": 7, "bz_gsm": -5, "time_tag": "2026-09-25T02:12:00Z"}]
+status=200 t=0.044058 bytes=61

@@ -1,0 +1,34 @@
+{
+ "per_call_hang_s": 0.8,
+ "status": 200,
+ "elapsed_s": 3.26,
+ "upstream_calls": 4,
+ "declared_timeouts": [
+  3.5,
+  3.8
+ ],
+ "calls": [
+  [
+   0.009,
+   "https://services.swpc.noaa.gov/products/solar-wind/plasma-1-day.json",
+   3.8
+  ],
+  [
+   0.812,
+   "https://www.sidc.be/SILSO/DATA/SN_d_tot_V2.0.csv",
+   3.8
+  ],
+  [
+   1.612,
+   "https://api.helioviewer.org/v2/getClosestImage/",
+   3.8
+  ],
+  [
+   2.432,
+   "https://gong.nso.edu/data/magmap/QR/bqs/202608/",
+   3.5
+  ]
+ ],
+ "detail": null,
+ "live_data_available": false
+}

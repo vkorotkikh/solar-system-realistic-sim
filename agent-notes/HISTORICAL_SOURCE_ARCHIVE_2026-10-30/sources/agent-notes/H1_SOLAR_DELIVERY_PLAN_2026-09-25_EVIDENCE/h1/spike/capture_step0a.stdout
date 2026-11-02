@@ -1,0 +1,120 @@
+{
+ "tag": "step0a",
+ "tLoad": 2805,
+ "physics": {
+  "n": 32,
+  "by": {
+   "aborted": 17,
+   "cors:MissingAllowOriginHeader": 15
+  },
+  "okDurMs": {
+   "n": 0,
+   "min": null,
+   "p50": null,
+   "p95": null,
+   "max": null
+  },
+  "inFlightAtEnd": 0
+ },
+ "aia": {
+  "n": 0,
+  "by": {},
+  "okDurMs": {
+   "n": 0,
+   "min": null,
+   "p50": null,
+   "p95": null,
+   "max": null
+  },
+  "inFlightAtEnd": 0
+ },
+ "nTimings": 0,
+ "timings": [],
+ "firstSamples": [
+  {
+   "t": 31994,
+   "date": "2027-01-24",
+   "scale": "+4.0 d/s",
+   "spike": null
+  },
+  {
+   "t": 57015,
+   "date": "2027-04-30",
+   "scale": "+4.0 d/s",
+   "spike": null
+  }
+ ],
+ "lastSample": {
+  "t": 178955,
+  "date": "2028-08-02",
+  "scale": "+4.0 d/s",
+  "spike": null
+ },
+ "shots": [
+  "t20",
+  "end"
+ ],
+ "errorLogCount": 31,
+ "errorLogsHead": [
+  {
+   "t": 2924,
+   "type": "warning",
+   "text": "[phase-1] Catalog load exceeded its performance budget: loadMs=2499.0 exceeded budgetMs=2000"
+  },
+  {
+   "t": 15387,
+   "type": "error",
+   "text": "Access to fetch at 'http://127.0.0.1:8073/solar/physics?jd=2461356.72591014&fidelity=high&max_features=180&forcing=hybrid&live_data=true' from origin 'http://127.0.0.1:5183' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource."
+  },
+  {
+   "t": 15387,
+   "type": "error",
+   "text": "Failed to load resource: net::ERR_FAILED"
+  },
+  {
+   "t": 41192,
+   "type": "error",
+   "text": "Access to fetch at 'http://127.0.0.1:8073/solar/physics?jd=2461462.65551014&fidelity=high&max_features=180&forcing=hybrid&live_data=true' from origin 'http://127.0.0.1:5183' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource."
+  },
+  {
+   "t": 41192,
+   "type": "error",
+   "text": "Failed to load resource: net::ERR_FAILED"
+  },
+  {
+   "t": 60652,
+   "type": "error",
+   "text": "Access to fetch at 'http://127.0.0.1:8073/solar/physics?jd=2461540.58511014&fidelity=high&max_features=180&forcing=hybrid&live_data=true' from origin 'http://127.0.0.1:5183' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource."
+  },
+  {
+   "t": 60653,
+   "type": "error",
+   "text": "Failed to load resource: net::ERR_FAILED"
+  },
+  {
+   "t": 67732,
+   "type": "error",
+   "text": "Access to fetch at 'http://127.0.0.1:8073/solar/physics?jd=2461562.31791014&fidelity=high&max_features=180&forcing=hybrid&live_data=true' from origin 'http://127.0.0.1:5183' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource."
+  },
+  {
+   "t": 67732,
+   "type": "error",
+   "text": "Failed to load resource: net::ERR_FAILED"
+  },
+  {
+   "t": 88114,
+   "type": "error",
+   "text": "Access to fetch at 'http://127.0.0.1:8073/solar/physics?jd=2461643.84791014&fidelity=high&max_features=180&forcing=hybrid&live_data=true' from origin 'http://127.0.0.1:5183' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource."
+  },
+  {
+   "t": 88114,
+   "type": "error",
+   "text": "Failed to load resource: net::ERR_FAILED"
+  },
+  {
+   "t": 94791,
+   "type": "error",
+   "text": "Access to fetch at 'http://127.0.0.1:8073/solar/physics?jd=2461670.51351014&fidelity=high&max_features=180&forcing=hybrid&live_data=true' from origin 'http://127.0.0.1:5183' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource."
+  }
+ ]
+}

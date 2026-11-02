@@ -1,0 +1,39 @@
+
+> solar-system-realistic-sim@0.0.0 test
+> vitest run --maxWorkers=2 --reporter=dot
+
+
+ RUN  v5.0.4 /home/nomad/ai/projects/worktrees/solar-close-partials-20261031
+
+·······························································································································································································································································································································································································································································································································································································································································································································································stderr | src/frontend/app/localSystemRenderer.disposal.test.ts > local-system resource disposal > releases per-scene body, label, and glow resources while preserving shared caches
+THREE.Material: parameter 'map' has value of undefined.
+THREE.Material: parameter 'map' has value of undefined.
+
+stderr | src/frontend/app/localSystemRenderer.disposal.test.ts > local-system resource disposal > releases a quadtree material without disposing its shared patch geometry
+THREE.Material: parameter 'map' has value of undefined.
+
+··································································································································································································································································································································································--··················································································································································································································································································································································································································································································································································stdout | scripts/kepler-direct-stagnation.test.mjs > ordinary unattainable precision rejects repeated-state stagnation even with a huge valid budget
+{"args":[0.1,0.99,1e-20,9007199254740991],"pid":54555,"exitCode":0,"signal":null,"error":null,"observations":[{"stage":"entered"},{"stage":"settled","isError":true,"name":"RangeError"}],"reaped":true,"pins":{"src/data/moons.json":"37215c9cf16f3a8a596a8541bc0f1ab55622baca6d3243ecd453abb2856f75cd","src/sim/moonEphemeris.ts":"3f44f60b79f8e8b038762ef4e03e7f10bf9e36777d26cb8613a83773d3b11ab1","src/sim/sourceFrameOrbit.ts":"e69f02a8f572323f6df8b50e2f48f25d25c7d11f28ed8e8dc25656e81a2a460a","src/sim/orbitMath.ts":"7103b9fca9f1d2b3a8deaa76b222177d8b1ef1942561562277c338637d0cce88"}}
+
+stdout | scripts/kepler-direct-stagnation.test.mjs > near-unity unattainable precision rejects repeated-state stagnation even with a huge valid budget
+{"args":[1e-20,0.9999999999999999,1e-30,9007199254740991],"pid":54562,"exitCode":0,"signal":null,"error":null,"observations":[{"stage":"entered"},{"stage":"settled","isError":true,"name":"RangeError"}],"reaped":true,"pins":{"src/data/moons.json":"37215c9cf16f3a8a596a8541bc0f1ab55622baca6d3243ecd453abb2856f75cd","src/sim/moonEphemeris.ts":"3f44f60b79f8e8b038762ef4e03e7f10bf9e36777d26cb8613a83773d3b11ab1","src/sim/sourceFrameOrbit.ts":"e69f02a8f572323f6df8b50e2f48f25d25c7d11f28ed8e8dc25656e81a2a460a","src/sim/orbitMath.ts":"7103b9fca9f1d2b3a8deaa76b222177d8b1ef1942561562277c338637d0cce88"}}
+
+···stdout | scripts/kepler-direct-stagnation.test.mjs > control: large unrepresentable whole result rejects repeated-state stagnation even with a huge valid budget
+{"args":[1000000000,0.99,1e-9,9007199254740991],"pid":54569,"exitCode":0,"signal":null,"error":null,"observations":[{"stage":"entered"},{"stage":"settled","isError":true,"name":"RangeError"}],"reaped":true,"pins":{"src/data/moons.json":"37215c9cf16f3a8a596a8541bc0f1ab55622baca6d3243ecd453abb2856f75cd","src/sim/moonEphemeris.ts":"3f44f60b79f8e8b038762ef4e03e7f10bf9e36777d26cb8613a83773d3b11ab1","src/sim/sourceFrameOrbit.ts":"e69f02a8f572323f6df8b50e2f48f25d25c7d11f28ed8e8dc25656e81a2a460a","src/sim/orbitMath.ts":"7103b9fca9f1d2b3a8deaa76b222177d8b1ef1942561562277c338637d0cce88"}}
+
+·stdout | scripts/kepler-direct-stagnation.test.mjs > control: a huge valid budget still returns an accurate ordinary solution
+{"args":[0.1,0.99,1e-9,9007199254740991],"pid":54577,"exitCode":0,"signal":null,"error":null,"observations":[{"stage":"entered"},{"stage":"settled","returned":0.8316604237910568,"finite":true}],"reaped":true,"pins":{"src/data/moons.json":"37215c9cf16f3a8a596a8541bc0f1ab55622baca6d3243ecd453abb2856f75cd","src/sim/moonEphemeris.ts":"3f44f60b79f8e8b038762ef4e03e7f10bf9e36777d26cb8613a83773d3b11ab1","src/sim/sourceFrameOrbit.ts":"e69f02a8f572323f6df8b50e2f48f25d25c7d11f28ed8e8dc25656e81a2a460a","src/sim/orbitMath.ts":"7103b9fca9f1d2b3a8deaa76b222177d8b1ef1942561562277c338637d0cce88"}}
+
+··stdout | scripts/kepler-direct-stagnation.test.mjs > control: a huge valid budget preserves the exact finite-boundary analytic return
+{"args":[1.7976931348623157e+308,0.99,1,9007199254740991],"pid":54591,"exitCode":0,"signal":null,"error":null,"observations":[{"stage":"entered"},{"stage":"settled","returned":1.7976931348623157e+308,"finite":true}],"reaped":true,"pins":{"src/data/moons.json":"37215c9cf16f3a8a596a8541bc0f1ab55622baca6d3243ecd453abb2856f75cd","src/sim/moonEphemeris.ts":"3f44f60b79f8e8b038762ef4e03e7f10bf9e36777d26cb8613a83773d3b11ab1","src/sim/sourceFrameOrbit.ts":"e69f02a8f572323f6df8b50e2f48f25d25c7d11f28ed8e8dc25656e81a2a460a","src/sim/orbitMath.ts":"7103b9fca9f1d2b3a8deaa76b222177d8b1ef1942561562277c338637d0cce88"}}
+
+·······························································································································
+
+ Test Files  114 passed | 1 skipped (115)
+      Tests  1752 passed | 2 skipped (1754)
+   Start at  01:46:01
+   Duration  18.85s (tests 62%, import 28%, transform 8%, worker 2%)
+
+    Isolate  115 workers spawned · ~92ms startup each (spawn + environment, per file)
+             at least ~5.18s faster with isolate: false — reuses workers across files instead of one per file
+

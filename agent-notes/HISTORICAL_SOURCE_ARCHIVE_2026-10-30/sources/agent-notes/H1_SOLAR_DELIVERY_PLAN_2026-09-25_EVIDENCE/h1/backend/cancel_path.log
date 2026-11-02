@@ -1,0 +1,8 @@
+t=0.002 sem=1 worker start
+t=0.302 sem=1 request task cancelled (client abort / disconnect-cancel model)
+t=0.502 sem=1 0.5 s: slot still held?
+t=0.503 sem=0 worker start
+t=2.003 sem=0 worker end
+t=2.503 sem=1 worker end
+t=2.504 sem=2 second request while orphan runs -> 200
+t=4.506 sem=2 after worker end: slot released?

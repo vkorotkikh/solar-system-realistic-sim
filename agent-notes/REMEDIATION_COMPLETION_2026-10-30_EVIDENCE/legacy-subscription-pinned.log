@@ -1,0 +1,14 @@
+
+ RUN  v5.0.4 /home/nomad/ai/projects/worktrees/solar-remediation-completion-20261030
+
+ ✓ src/frontend/app/simulationClient.test.ts (18 tests) 27ms
+ ✓ src/frontend/app/simulationClient.lifecycleReview.test.ts (13 tests) 27ms
+ ✓ src/frontend/app/simulationClient.kuiper.test.ts (13 tests) 28ms
+ ✓ src/frontend/app/simulationClient.subscription.test.ts (15 tests) 34ms
+
+ Test Files  4 passed (4)
+      Tests  59 passed (59)
+   Start at  01:15:25
+   Duration  119ms (tests 67%, import 16%, transform 12%, worker 5%)
+
+JSON report written to /tmp/solar-remediation-completion-20261030/legacy-subscription-pinned.json

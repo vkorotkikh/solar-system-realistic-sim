@@ -1,0 +1,32 @@
+
+ RUN  v5.0.4 /home/nomad/ai/projects/worktrees/solar-remediation-completion-20261030
+
+ ❯ src/frontend/app/simulationClient.subscription.test.ts (15 tests | 2 failed) 68ms
+   ❯ negotiated subscription contract boundaries (12)
+     × fences legacy replacement on a new socket (deactivate=true) 7ms
+     × fences legacy replacement on a new socket (deactivate=false) 2ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/frontend/app/simulationClient.subscription.test.ts > negotiated subscription contract boundaries > fences legacy replacement on a new socket (deactivate=true)
+ FAIL  src/frontend/app/simulationClient.subscription.test.ts > negotiated subscription contract boundaries > fences legacy replacement on a new socket (deactivate=false)
+AssertionError: expected Socket{ readyState: 1, …(5) } not to be Socket{ readyState: 1, …(5) } // Object.is equality
+
+Compared values have no visual difference.
+
+ ❯ src/frontend/app/simulationClient.subscription.test.ts:92:32
+     90|     if (deactivate) client.deactivateKuiper();
+     91|     activate(2);
+     92|     expect(Socket.current).not.toBe(retired);
+       |                                ^
+     93|     expect(retired.readyState).toBe(3);
+     94|     delayedDelivery?.({ data: JSON.stringify(captured.late_old) });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 13 passed (15)
+   Start at  01:14:05
+   Duration  276ms (tests 46%, transform 43%, import 9%, worker 3%)
+

@@ -1,0 +1,2266 @@
+{
+ "tag": "hyblive",
+ "netmode": "mixed",
+ "live": true,
+ "base_jd": 2461308.5512,
+ "offsets": {
+  "J_again": {
+   "days": 0.0,
+   "build_s": 6.039,
+   "net_calls": 1,
+   "aia_latest_image_date": "2026-09-25T01:13:57Z",
+   "aia_193_image_id": "192407515",
+   "feature_count": 180,
+   "activity_index": 0.5547886495022621,
+   "diff": {
+    "activity_index": {
+     "changed": true,
+     "n_leaf_diff": 1,
+     "max_rel": 3.3e-05,
+     "max_rel_scaled": 3.3e-05,
+     "p50_scaled": 3.3e-05,
+     "p95_scaled": 3.3e-05,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 1,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "assim.indices": {
+     "changed": true,
+     "n_leaf_diff": 3,
+     "max_rel": 0.000246,
+     "max_rel_scaled": 0.000183,
+     "p50_scaled": 6.4e-05,
+     "p95_scaled": 0.000183,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 4,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "assim.source_status": {
+     "changed": false,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 0,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "assim.sources": {
+     "changed": false,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 83,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "corona.feature_count": {
+     "changed": false,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 1,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "corona.features": {
+     "changed": true,
+     "n_leaf_diff": 17460,
+     "max_rel": 0.056594,
+     "max_rel_scaled": 1.6e-05,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 20340,
+     "struct": [],
+     "id_jaccard": {
+      "corona.features": 1.0
+     }
+    },
+    "corona.max_extent_solar_radii": {
+     "changed": true,
+     "n_leaf_diff": 1,
+     "max_rel": 1.5e-05,
+     "max_rel_scaled": 1.5e-05,
+     "p50_scaled": 1.5e-05,
+     "p95_scaled": 1.5e-05,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 1,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "coronal_holes": {
+     "changed": true,
+     "n_leaf_diff": 1,
+     "max_rel": 0.000512,
+     "max_rel_scaled": 2.5e-05,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 24,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "cycle_phase_rad": {
+     "changed": false,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 1,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "epoch_jd": {
+     "changed": false,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 1,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "fidelity": {
+     "changed": false,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 0,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "forcing": {
+     "changed": false,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 0,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "heliosphere": {
+     "changed": true,
+     "n_leaf_diff": 1440,
+     "max_rel": 0.011675,
+     "max_rel_scaled": 3e-05,
+     "p50_scaled": 2e-06,
+     "p95_scaled": 1.6e-05,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 1465,
+     "struct": [],
+     "id_jaccard": {
+      "heliosphere.parker_spiral.lines": 1.0
+     }
+    },
+    "live_data_enabled": {
+     "changed": false,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 0,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "model": {
+     "changed": false,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 0,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "pfss.lines": {
+     "changed": true,
+     "n_leaf_diff": 4496,
+     "max_rel": 1.28,
+     "max_rel_scaled": 0.002779,
+     "p50_scaled": 0.0,
+     "p95_scaled": 4.4e-05,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 15426,
+     "struct": [
+      "pfss.lines[pfss-031].arc: len 12->11",
+      "pfss.lines[pfss-108].arc: len 79->78",
+      "pfss.lines[pfss-023].arc: len 10->9",
+      "pfss.lines[pfss-035].arc: len 23->22",
+      "pfss.lines[pfss-044].arc: len 76->77",
+      "pfss.lines[pfss-067].arc: len 38->37"
+     ],
+     "id_jaccard": {
+      "pfss.lines": 1.0
+     }
+    },
+    "pfss.meta": {
+     "changed": false,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 7,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "schema": {
+     "changed": false,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 1,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "solar_radius_au": {
+     "changed": false,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 1,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "solar_radius_km": {
+     "changed": false,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 1,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "source": {
+     "changed": false,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 0,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "surface": {
+     "changed": false,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 6,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "synthetic_activity_index": {
+     "changed": false,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 1,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "wall_epoch_jd": {
+     "changed": false,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 1,
+     "struct": [],
+     "id_jaccard": {}
+    }
+   }
+  },
+  "+1s": {
+   "days": 1.1574074074074073e-05,
+   "build_s": 6.972,
+   "net_calls": 8,
+   "aia_latest_image_date": "2026-09-25T01:13:57Z",
+   "aia_193_image_id": "192407515",
+   "feature_count": 180,
+   "activity_index": 0.5548055276270788,
+   "diff": {
+    "activity_index": {
+     "changed": true,
+     "n_leaf_diff": 1,
+     "max_rel": 6.3e-05,
+     "max_rel_scaled": 6.3e-05,
+     "p50_scaled": 6.3e-05,
+     "p95_scaled": 6.3e-05,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 1,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "assim.indices": {
+     "changed": true,
+     "n_leaf_diff": 3,
+     "max_rel": 0.000471,
+     "max_rel_scaled": 0.000352,
+     "p50_scaled": 0.000123,
+     "p95_scaled": 0.000352,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 4,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "assim.source_status": {
+     "changed": true,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 0,
+     "struct": [
+      "assim.source_status.gong_synoptic.updated: '2026-09-25T02:36:58.348310Z'->'2026-09-25T02:37:12.970022Z'"
+     ],
+     "id_jaccard": {}
+    },
+    "assim.sources": {
+     "changed": true,
+     "n_leaf_diff": 2,
+     "max_rel": 0.002926,
+     "max_rel_scaled": 0.002935,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 83,
+     "struct": [
+      "assim.sources.sdo_aia.request_date_utc: '2026-09-25T01:13:43.680009Z'->'2026-09-25T01:13:44.680004Z'"
+     ],
+     "id_jaccard": {}
+    },
+    "corona.feature_count": {
+     "changed": false,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 1,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "corona.features": {
+     "changed": true,
+     "n_leaf_diff": 19333,
+     "max_rel": 0.107924,
+     "max_rel_scaled": 0.00153,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 20340,
+     "struct": [
+      "corona.features: order changed"
+     ],
+     "id_jaccard": {
+      "corona.features": 1.0
+     }
+    },
+    "corona.max_extent_solar_radii": {
+     "changed": true,
+     "n_leaf_diff": 1,
+     "max_rel": 9.2e-05,
+     "max_rel_scaled": 9.2e-05,
+     "p50_scaled": 9.2e-05,
+     "p95_scaled": 9.2e-05,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 1,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "coronal_holes": {
+     "changed": true,
+     "n_leaf_diff": 1,
+     "max_rel": 0.000512,
+     "max_rel_scaled": 2.5e-05,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 24,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "cycle_phase_rad": {
+     "changed": true,
+     "n_leaf_diff": 1,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 1,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "epoch_jd": {
+     "changed": true,
+     "n_leaf_diff": 1,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 1,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "fidelity": {
+     "changed": false,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 0,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "forcing": {
+     "changed": false,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 0,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "heliosphere": {
+     "changed": true,
+     "n_leaf_diff": 1440,
+     "max_rel": 0.024669,
+     "max_rel_scaled": 6.1e-05,
+     "p50_scaled": 4e-06,
+     "p95_scaled": 3.1e-05,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 1465,
+     "struct": [],
+     "id_jaccard": {
+      "heliosphere.parker_spiral.lines": 1.0
+     }
+    },
+    "live_data_enabled": {
+     "changed": false,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 0,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "model": {
+     "changed": false,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 0,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "pfss.lines": {
+     "changed": true,
+     "n_leaf_diff": 6455,
+     "max_rel": 1.956522,
+     "max_rel_scaled": 0.005557,
+     "p50_scaled": 0.0,
+     "p95_scaled": 6.6e-05,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 15411,
+     "struct": [
+      "pfss.lines[pfss-107].arc: len 169->179",
+      "pfss.lines[pfss-031].arc: len 12->11",
+      "pfss.lines[pfss-108].arc: len 79->78",
+      "pfss.lines[pfss-023].arc: len 10->9",
+      "pfss.lines[pfss-055].arc: len 8->9",
+      "pfss.lines[pfss-091].arc: len 21->20",
+      "... +7 more"
+     ],
+     "id_jaccard": {
+      "pfss.lines": 1.0
+     }
+    },
+    "pfss.meta": {
+     "changed": false,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 7,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "schema": {
+     "changed": false,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 1,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "solar_radius_au": {
+     "changed": false,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 1,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "solar_radius_km": {
+     "changed": false,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 1,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "source": {
+     "changed": false,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 0,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "surface": {
+     "changed": false,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 6,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "synthetic_activity_index": {
+     "changed": true,
+     "n_leaf_diff": 1,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 1,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "wall_epoch_jd": {
+     "changed": true,
+     "n_leaf_diff": 1,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 1,
+     "struct": [],
+     "id_jaccard": {}
+    }
+   }
+  },
+  "+1min": {
+   "days": 0.0006944444444444445,
+   "build_s": 8.621,
+   "net_calls": 13,
+   "aia_latest_image_date": "2026-09-25T01:14:53Z",
+   "aia_193_image_id": "192407812",
+   "feature_count": 180,
+   "activity_index": 0.5547707460123804,
+   "diff": {
+    "activity_index": {
+     "changed": true,
+     "n_leaf_diff": 1,
+     "max_rel": 1e-06,
+     "max_rel_scaled": 1e-06,
+     "p50_scaled": 1e-06,
+     "p95_scaled": 1e-06,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 1,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "assim.indices": {
+     "changed": true,
+     "n_leaf_diff": 4,
+     "max_rel": 0.001045,
+     "max_rel_scaled": 0.000781,
+     "p50_scaled": 0.000336,
+     "p95_scaled": 0.000781,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 4,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "assim.source_status": {
+     "changed": true,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 0,
+     "struct": [
+      "assim.source_status.gong_synoptic.updated: '2026-09-25T02:36:58.348310Z'->'2026-09-25T02:37:21.897541Z'",
+      "assim.source_status.sdo_aia.updated: '2026-09-25T01:13:57Z'->'2026-09-25T01:14:53Z'"
+     ],
+     "id_jaccard": {}
+    },
+    "assim.sources": {
+     "changed": true,
+     "n_leaf_diff": 44,
+     "max_rel": 0.171598,
+     "max_rel_scaled": 0.006515,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 83,
+     "struct": [
+      "assim.sources.sdo_aia.request_date_utc: '2026-09-25T01:13:43.680009Z'->'2026-09-25T01:14:43.680005Z'",
+      "assim.sources.sdo_aia.channels.aia_094.tile_url: 'https://api.helioviewer.org/v2/getTile/?'->'https://api.helioviewer.org/v2/getTile/?'",
+      "assim.sources.sdo_aia.channels.aia_094.image_date: '2026-09-25 01:13:35'->'2026-09-25 01:14:47'",
+      "assim.sources.sdo_aia.channels.aia_094.image_id: '192407419'->'192407702'",
+      "assim.sources.sdo_aia.channels.aia_094.jp2_url: 'https://api.helioviewer.org/v2/getJP2Ima'->'https://api.helioviewer.org/v2/getJP2Ima'",
+      "assim.sources.sdo_aia.channels.aia_193.tile_url: 'https://api.helioviewer.org/v2/getTile/?'->'https://api.helioviewer.org/v2/getTile/?'",
+      "... +18 more"
+     ],
+     "id_jaccard": {}
+    },
+    "corona.feature_count": {
+     "changed": false,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 1,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "corona.features": {
+     "changed": true,
+     "n_leaf_diff": 19208,
+     "max_rel": 1.968916,
+     "max_rel_scaled": 0.093197,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0007,
+     "n_leaves": 20227,
+     "struct": [
+      "corona.features: ids 180->180 common=179",
+      "corona.features: order changed"
+     ],
+     "id_jaccard": {
+      "corona.features": 0.989
+     }
+    },
+    "corona.max_extent_solar_radii": {
+     "changed": true,
+     "n_leaf_diff": 1,
+     "max_rel": 0.01061,
+     "max_rel_scaled": 0.01061,
+     "p50_scaled": 0.01061,
+     "p95_scaled": 0.01061,
+     "frac_leaves_gt1pct": 1.0,
+     "n_leaves": 1,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "coronal_holes": {
+     "changed": false,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 24,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "cycle_phase_rad": {
+     "changed": true,
+     "n_leaf_diff": 1,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 1,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "epoch_jd": {
+     "changed": true,
+     "n_leaf_diff": 1,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 1,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "fidelity": {
+     "changed": false,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 0,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "forcing": {
+     "changed": false,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 0,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "heliosphere": {
+     "changed": true,
+     "n_leaf_diff": 1440,
+     "max_rel": 0.133601,
+     "max_rel_scaled": 0.000166,
+     "p50_scaled": 2.3e-05,
+     "p95_scaled": 0.00012,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 1465,
+     "struct": [],
+     "id_jaccard": {
+      "heliosphere.parker_spiral.lines": 1.0
+     }
+    },
+    "live_data_enabled": {
+     "changed": false,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 0,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "model": {
+     "changed": false,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 0,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "pfss.lines": {
+     "changed": true,
+     "n_leaf_diff": 60,
+     "max_rel": 0.00271,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 15441,
+     "struct": [],
+     "id_jaccard": {
+      "pfss.lines": 1.0
+     }
+    },
+    "pfss.meta": {
+     "changed": false,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 7,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "schema": {
+     "changed": false,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 1,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "solar_radius_au": {
+     "changed": false,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 1,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "solar_radius_km": {
+     "changed": false,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 1,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "source": {
+     "changed": false,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 0,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "surface": {
+     "changed": false,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 6,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "synthetic_activity_index": {
+     "changed": true,
+     "n_leaf_diff": 1,
+     "max_rel": 1e-05,
+     "max_rel_scaled": 1e-05,
+     "p50_scaled": 1e-05,
+     "p95_scaled": 1e-05,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 1,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "wall_epoch_jd": {
+     "changed": true,
+     "n_leaf_diff": 1,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 1,
+     "struct": [],
+     "id_jaccard": {}
+    }
+   }
+  },
+  "+10min": {
+   "days": 0.006944444444444444,
+   "build_s": 8.277,
+   "net_calls": 13,
+   "aia_latest_image_date": "2026-09-25T01:23:53Z",
+   "aia_193_image_id": "192407797",
+   "feature_count": 180,
+   "activity_index": 0.5536452637520007,
+   "diff": {
+    "activity_index": {
+     "changed": true,
+     "n_leaf_diff": 1,
+     "max_rel": 0.002028,
+     "max_rel_scaled": 0.002028,
+     "p50_scaled": 0.002028,
+     "p95_scaled": 0.002028,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 1,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "assim.indices": {
+     "changed": true,
+     "n_leaf_diff": 4,
+     "max_rel": 0.017852,
+     "max_rel_scaled": 0.013572,
+     "p50_scaled": 0.00475,
+     "p95_scaled": 0.013572,
+     "frac_leaves_gt1pct": 0.25,
+     "n_leaves": 4,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "assim.source_status": {
+     "changed": true,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 0,
+     "struct": [
+      "assim.source_status.gong_synoptic.updated: '2026-09-25T02:36:58.348310Z'->'2026-09-25T02:37:30.551190Z'",
+      "assim.source_status.sdo_aia.updated: '2026-09-25T01:13:57Z'->'2026-09-25T01:23:53Z'"
+     ],
+     "id_jaccard": {}
+    },
+    "assim.sources": {
+     "changed": true,
+     "n_leaf_diff": 51,
+     "max_rel": 0.127536,
+     "max_rel_scaled": 0.113181,
+     "p50_scaled": 0.0,
+     "p95_scaled": 3e-06,
+     "frac_leaves_gt1pct": 0.012,
+     "n_leaves": 83,
+     "struct": [
+      "assim.sources.sdo_aia.request_date_utc: '2026-09-25T01:13:43.680009Z'->'2026-09-25T01:23:43.680013Z'",
+      "assim.sources.sdo_aia.channels.aia_094.tile_url: 'https://api.helioviewer.org/v2/getTile/?'->'https://api.helioviewer.org/v2/getTile/?'",
+      "assim.sources.sdo_aia.channels.aia_094.image_date: '2026-09-25 01:13:35'->'2026-09-25 01:23:47'",
+      "assim.sources.sdo_aia.channels.aia_094.image_id: '192407419'->'192407687'",
+      "assim.sources.sdo_aia.channels.aia_094.jp2_url: 'https://api.helioviewer.org/v2/getJP2Ima'->'https://api.helioviewer.org/v2/getJP2Ima'",
+      "assim.sources.sdo_aia.channels.aia_193.tile_url: 'https://api.helioviewer.org/v2/getTile/?'->'https://api.helioviewer.org/v2/getTile/?'",
+      "... +18 more"
+     ],
+     "id_jaccard": {}
+    },
+    "corona.feature_count": {
+     "changed": false,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 1,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "corona.features": {
+     "changed": true,
+     "n_leaf_diff": 18459,
+     "max_rel": 1.921822,
+     "max_rel_scaled": 0.646246,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0018,
+     "n_leaves": 19436,
+     "struct": [
+      "corona.features: ids 180->180 common=172",
+      "corona.features: order changed"
+     ],
+     "id_jaccard": {
+      "corona.features": 0.9149
+     }
+    },
+    "corona.max_extent_solar_radii": {
+     "changed": true,
+     "n_leaf_diff": 1,
+     "max_rel": 0.015131,
+     "max_rel_scaled": 0.015131,
+     "p50_scaled": 0.015131,
+     "p95_scaled": 0.015131,
+     "frac_leaves_gt1pct": 1.0,
+     "n_leaves": 1,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "coronal_holes": {
+     "changed": true,
+     "n_leaf_diff": 13,
+     "max_rel": 0.002255,
+     "max_rel_scaled": 0.00015,
+     "p50_scaled": 1e-05,
+     "p95_scaled": 0.000125,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 24,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "cycle_phase_rad": {
+     "changed": true,
+     "n_leaf_diff": 1,
+     "max_rel": 3e-06,
+     "max_rel_scaled": 3e-06,
+     "p50_scaled": 3e-06,
+     "p95_scaled": 3e-06,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 1,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "epoch_jd": {
+     "changed": true,
+     "n_leaf_diff": 1,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 1,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "fidelity": {
+     "changed": false,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 0,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "forcing": {
+     "changed": false,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 0,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "heliosphere": {
+     "changed": true,
+     "n_leaf_diff": 1450,
+     "max_rel": 0.44737,
+     "max_rel_scaled": 0.007319,
+     "p50_scaled": 0.000256,
+     "p95_scaled": 0.001637,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 1465,
+     "struct": [],
+     "id_jaccard": {
+      "heliosphere.parker_spiral.lines": 1.0
+     }
+    },
+    "live_data_enabled": {
+     "changed": false,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 0,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "model": {
+     "changed": false,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 0,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "pfss.lines": {
+     "changed": true,
+     "n_leaf_diff": 13026,
+     "max_rel": 2.0,
+     "max_rel_scaled": 0.983607,
+     "p50_scaled": 6.1e-05,
+     "p95_scaled": 0.001273,
+     "frac_leaves_gt1pct": 0.0054,
+     "n_leaves": 13572,
+     "struct": [
+      "pfss.lines[pfss-049].arc: len 15->9",
+      "pfss.lines[pfss-097].arc: len 19->14",
+      "pfss.lines[pfss-076].arc: len 89->86",
+      "pfss.lines[pfss-107].arc: len 169->24",
+      "pfss.lines[pfss-075].is_open: 'False'->'True'",
+      "pfss.lines[pfss-075].arc: len 164->81",
+      "... +60 more"
+     ],
+     "id_jaccard": {
+      "pfss.lines": 1.0
+     }
+    },
+    "pfss.meta": {
+     "changed": false,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 7,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "schema": {
+     "changed": false,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 1,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "solar_radius_au": {
+     "changed": false,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 1,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "solar_radius_km": {
+     "changed": false,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 1,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "source": {
+     "changed": false,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 0,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "surface": {
+     "changed": false,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 6,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "synthetic_activity_index": {
+     "changed": true,
+     "n_leaf_diff": 1,
+     "max_rel": 0.000101,
+     "max_rel_scaled": 0.000101,
+     "p50_scaled": 0.000101,
+     "p95_scaled": 0.000101,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 1,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "wall_epoch_jd": {
+     "changed": true,
+     "n_leaf_diff": 1,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 1,
+     "struct": [],
+     "id_jaccard": {}
+    }
+   }
+  },
+  "+1h": {
+   "days": 0.041666666666666664,
+   "build_s": 8.036,
+   "net_calls": 13,
+   "aia_latest_image_date": "2026-09-25T02:13:47Z",
+   "aia_193_image_id": "192408456",
+   "feature_count": 180,
+   "activity_index": 0.5471106521520295,
+   "diff": {
+    "activity_index": {
+     "changed": true,
+     "n_leaf_diff": 1,
+     "max_rel": 0.013807,
+     "max_rel_scaled": 0.013807,
+     "p50_scaled": 0.013807,
+     "p95_scaled": 0.013807,
+     "frac_leaves_gt1pct": 1.0,
+     "n_leaves": 1,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "assim.indices": {
+     "changed": true,
+     "n_leaf_diff": 4,
+     "max_rel": 0.102654,
+     "max_rel_scaled": 0.08542,
+     "p50_scaled": 0.029897,
+     "p95_scaled": 0.08542,
+     "frac_leaves_gt1pct": 0.75,
+     "n_leaves": 4,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "assim.source_status": {
+     "changed": true,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 0,
+     "struct": [
+      "assim.source_status.gong_synoptic.updated: '2026-09-25T02:36:58.348310Z'->'2026-09-25T02:37:39.893135Z'",
+      "assim.source_status.sdo_aia.updated: '2026-09-25T01:13:57Z'->'2026-09-25T02:13:47Z'"
+     ],
+     "id_jaccard": {}
+    },
+    "assim.sources": {
+     "changed": true,
+     "n_leaf_diff": 53,
+     "max_rel": 0.71235,
+     "max_rel_scaled": 0.71235,
+     "p50_scaled": 0.0,
+     "p95_scaled": 1.2e-05,
+     "frac_leaves_gt1pct": 0.012,
+     "n_leaves": 83,
+     "struct": [
+      "assim.sources.sdo_aia.request_date_utc: '2026-09-25T01:13:43.680009Z'->'2026-09-25T02:13:43.679996Z'",
+      "assim.sources.sdo_aia.channels.aia_094.tile_url: 'https://api.helioviewer.org/v2/getTile/?'->'https://api.helioviewer.org/v2/getTile/?'",
+      "assim.sources.sdo_aia.channels.aia_094.image_date: '2026-09-25 01:13:35'->'2026-09-25 02:13:47'",
+      "assim.sources.sdo_aia.channels.aia_094.image_id: '192407419'->'192408591'",
+      "assim.sources.sdo_aia.channels.aia_094.jp2_url: 'https://api.helioviewer.org/v2/getJP2Ima'->'https://api.helioviewer.org/v2/getJP2Ima'",
+      "assim.sources.sdo_aia.channels.aia_193.tile_url: 'https://api.helioviewer.org/v2/getTile/?'->'https://api.helioviewer.org/v2/getTile/?'",
+      "... +18 more"
+     ],
+     "id_jaccard": {}
+    },
+    "corona.feature_count": {
+     "changed": false,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 1,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "corona.features": {
+     "changed": true,
+     "n_leaf_diff": 16773,
+     "max_rel": 1.999462,
+     "max_rel_scaled": 0.670612,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0057,
+     "n_leaves": 17628,
+     "struct": [
+      "corona.features: ids 180->180 common=156",
+      "corona.features: order changed"
+     ],
+     "id_jaccard": {
+      "corona.features": 0.7647
+     }
+    },
+    "corona.max_extent_solar_radii": {
+     "changed": true,
+     "n_leaf_diff": 1,
+     "max_rel": 0.038631,
+     "max_rel_scaled": 0.038631,
+     "p50_scaled": 0.038631,
+     "p95_scaled": 0.038631,
+     "frac_leaves_gt1pct": 1.0,
+     "n_leaves": 1,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "coronal_holes": {
+     "changed": true,
+     "n_leaf_diff": 17,
+     "max_rel": 1.97214,
+     "max_rel_scaled": 0.348625,
+     "p50_scaled": 0.000778,
+     "p95_scaled": 0.19515,
+     "frac_leaves_gt1pct": 0.2083,
+     "n_leaves": 24,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "cycle_phase_rad": {
+     "changed": true,
+     "n_leaf_diff": 1,
+     "max_rel": 1.7e-05,
+     "max_rel_scaled": 1.7e-05,
+     "p50_scaled": 1.7e-05,
+     "p95_scaled": 1.7e-05,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 1,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "epoch_jd": {
+     "changed": true,
+     "n_leaf_diff": 1,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 1,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "fidelity": {
+     "changed": false,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 0,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "forcing": {
+     "changed": false,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 0,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "heliosphere": {
+     "changed": true,
+     "n_leaf_diff": 1453,
+     "max_rel": 1.997264,
+     "max_rel_scaled": 0.847953,
+     "p50_scaled": 0.00834,
+     "p95_scaled": 0.260038,
+     "frac_leaves_gt1pct": 0.4744,
+     "n_leaves": 1465,
+     "struct": [],
+     "id_jaccard": {
+      "heliosphere.parker_spiral.lines": 1.0
+     }
+    },
+    "live_data_enabled": {
+     "changed": false,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 0,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "model": {
+     "changed": false,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 0,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "pfss.lines": {
+     "changed": true,
+     "n_leaf_diff": 11530,
+     "max_rel": 2.0,
+     "max_rel_scaled": 0.936371,
+     "p50_scaled": 0.000771,
+     "p95_scaled": 0.006459,
+     "frac_leaves_gt1pct": 0.0174,
+     "n_leaves": 11622,
+     "struct": [
+      "pfss.lines[pfss-049].arc: len 15->8",
+      "pfss.lines[pfss-097].arc: len 19->8",
+      "pfss.lines[pfss-076].arc: len 89->77",
+      "pfss.lines[pfss-107].arc: len 169->142",
+      "pfss.lines[pfss-075].arc: len 164->46",
+      "pfss.lines[pfss-119].arc: len 33->14",
+      "... +120 more"
+     ],
+     "id_jaccard": {
+      "pfss.lines": 1.0
+     }
+    },
+    "pfss.meta": {
+     "changed": true,
+     "n_leaf_diff": 3,
+     "max_rel": 0.047619,
+     "max_rel_scaled": 0.004968,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.004968,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 7,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "schema": {
+     "changed": false,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 1,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "solar_radius_au": {
+     "changed": false,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 1,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "solar_radius_km": {
+     "changed": false,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 1,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "source": {
+     "changed": false,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 0,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "surface": {
+     "changed": false,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 6,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "synthetic_activity_index": {
+     "changed": true,
+     "n_leaf_diff": 1,
+     "max_rel": 0.000605,
+     "max_rel_scaled": 0.000606,
+     "p50_scaled": 0.000606,
+     "p95_scaled": 0.000606,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 1,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "wall_epoch_jd": {
+     "changed": true,
+     "n_leaf_diff": 1,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 1,
+     "struct": [],
+     "id_jaccard": {}
+    }
+   }
+  },
+  "+6h": {
+   "days": 0.25,
+   "build_s": 7.671,
+   "net_calls": 9,
+   "aia_latest_image_date": "2026-09-25T02:16:11Z",
+   "aia_193_image_id": "192408456",
+   "feature_count": 180,
+   "activity_index": 0.5481325116803828,
+   "diff": {
+    "activity_index": {
+     "changed": true,
+     "n_leaf_diff": 1,
+     "max_rel": 0.011965,
+     "max_rel_scaled": 0.011965,
+     "p50_scaled": 0.011965,
+     "p95_scaled": 0.011965,
+     "frac_leaves_gt1pct": 1.0,
+     "n_leaves": 1,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "assim.indices": {
+     "changed": true,
+     "n_leaf_diff": 4,
+     "max_rel": 0.10619,
+     "max_rel_scaled": 0.088712,
+     "p50_scaled": 0.031049,
+     "p95_scaled": 0.088712,
+     "frac_leaves_gt1pct": 0.75,
+     "n_leaves": 4,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "assim.source_status": {
+     "changed": true,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 0,
+     "struct": [
+      "assim.source_status.gong_synoptic.updated: '2026-09-25T02:36:58.348310Z'->'2026-09-25T02:37:47.163914Z'",
+      "assim.source_status.sdo_aia.updated: '2026-09-25T01:13:57Z'->'2026-09-25T02:16:11Z'"
+     ],
+     "id_jaccard": {}
+    },
+    "assim.sources": {
+     "changed": true,
+     "n_leaf_diff": 53,
+     "max_rel": 0.739798,
+     "max_rel_scaled": 0.739798,
+     "p50_scaled": 0.0,
+     "p95_scaled": 1.2e-05,
+     "frac_leaves_gt1pct": 0.012,
+     "n_leaves": 83,
+     "struct": [
+      "assim.sources.sdo_aia.request_date_utc: '2026-09-25T01:13:43.680009Z'->'2026-09-25T07:13:43.680009Z'",
+      "assim.sources.sdo_aia.channels.aia_094.tile_url: 'https://api.helioviewer.org/v2/getTile/?'->'https://api.helioviewer.org/v2/getTile/?'",
+      "assim.sources.sdo_aia.channels.aia_094.image_date: '2026-09-25 01:13:35'->'2026-09-25 02:16:11'",
+      "assim.sources.sdo_aia.channels.aia_094.image_id: '192407419'->'192408587'",
+      "assim.sources.sdo_aia.channels.aia_094.jp2_url: 'https://api.helioviewer.org/v2/getJP2Ima'->'https://api.helioviewer.org/v2/getJP2Ima'",
+      "assim.sources.sdo_aia.channels.aia_193.tile_url: 'https://api.helioviewer.org/v2/getTile/?'->'https://api.helioviewer.org/v2/getTile/?'",
+      "... +18 more"
+     ],
+     "id_jaccard": {}
+    },
+    "corona.feature_count": {
+     "changed": false,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 1,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "corona.features": {
+     "changed": true,
+     "n_leaf_diff": 16650,
+     "max_rel": 1.997147,
+     "max_rel_scaled": 0.658417,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0066,
+     "n_leaves": 17515,
+     "struct": [
+      "corona.features: ids 180->180 common=155",
+      "corona.features: order changed"
+     ],
+     "id_jaccard": {
+      "corona.features": 0.7561
+     }
+    },
+    "corona.max_extent_solar_radii": {
+     "changed": true,
+     "n_leaf_diff": 1,
+     "max_rel": 0.058251,
+     "max_rel_scaled": 0.058251,
+     "p50_scaled": 0.058251,
+     "p95_scaled": 0.058251,
+     "frac_leaves_gt1pct": 1.0,
+     "n_leaves": 1,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "coronal_holes": {
+     "changed": true,
+     "n_leaf_diff": 17,
+     "max_rel": 1.889811,
+     "max_rel_scaled": 0.706175,
+     "p50_scaled": 0.000725,
+     "p95_scaled": 0.209475,
+     "frac_leaves_gt1pct": 0.2083,
+     "n_leaves": 24,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "cycle_phase_rad": {
+     "changed": true,
+     "n_leaf_diff": 1,
+     "max_rel": 0.000102,
+     "max_rel_scaled": 0.000102,
+     "p50_scaled": 0.000102,
+     "p95_scaled": 0.000102,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 1,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "epoch_jd": {
+     "changed": true,
+     "n_leaf_diff": 1,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 1,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "fidelity": {
+     "changed": false,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 0,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "forcing": {
+     "changed": false,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 0,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "heliosphere": {
+     "changed": true,
+     "n_leaf_diff": 1453,
+     "max_rel": 1.894885,
+     "max_rel_scaled": 0.161364,
+     "p50_scaled": 0.005657,
+     "p95_scaled": 0.080451,
+     "frac_leaves_gt1pct": 0.3768,
+     "n_leaves": 1465,
+     "struct": [],
+     "id_jaccard": {
+      "heliosphere.parker_spiral.lines": 1.0
+     }
+    },
+    "live_data_enabled": {
+     "changed": false,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 0,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "model": {
+     "changed": false,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 0,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "pfss.lines": {
+     "changed": true,
+     "n_leaf_diff": 11647,
+     "max_rel": 2.0,
+     "max_rel_scaled": 0.928036,
+     "p50_scaled": 0.000753,
+     "p95_scaled": 0.004622,
+     "frac_leaves_gt1pct": 0.0102,
+     "n_leaves": 11817,
+     "struct": [
+      "pfss.lines[pfss-049].is_open: 'False'->'True'",
+      "pfss.lines[pfss-049].arc: len 15->79",
+      "pfss.lines[pfss-097].arc: len 19->36",
+      "pfss.lines[pfss-076].is_open: 'True'->'False'",
+      "pfss.lines[pfss-076].arc: len 89->173",
+      "pfss.lines[pfss-107].arc: len 169->42",
+      "... +120 more"
+     ],
+     "id_jaccard": {
+      "pfss.lines": 1.0
+     }
+    },
+    "pfss.meta": {
+     "changed": true,
+     "n_leaf_diff": 3,
+     "max_rel": 0.215686,
+     "max_rel_scaled": 0.006436,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.006436,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 7,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "schema": {
+     "changed": false,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 1,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "solar_radius_au": {
+     "changed": false,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 1,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "solar_radius_km": {
+     "changed": false,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 1,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "source": {
+     "changed": false,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 0,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "surface": {
+     "changed": false,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 6,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "synthetic_activity_index": {
+     "changed": true,
+     "n_leaf_diff": 1,
+     "max_rel": 0.003625,
+     "max_rel_scaled": 0.003638,
+     "p50_scaled": 0.003638,
+     "p95_scaled": 0.003638,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 1,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "wall_epoch_jd": {
+     "changed": true,
+     "n_leaf_diff": 1,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 1,
+     "struct": [],
+     "id_jaccard": {}
+    }
+   }
+  },
+  "+27.27d": {
+   "days": 27.2753,
+   "build_s": 7.302,
+   "net_calls": 10,
+   "aia_latest_image_date": "2026-09-25T02:18:22Z",
+   "aia_193_image_id": "192408731",
+   "feature_count": 180,
+   "activity_index": 0.538516112538937,
+   "diff": {
+    "activity_index": {
+     "changed": true,
+     "n_leaf_diff": 1,
+     "max_rel": 0.029299,
+     "max_rel_scaled": 0.029299,
+     "p50_scaled": 0.029299,
+     "p95_scaled": 0.029299,
+     "frac_leaves_gt1pct": 1.0,
+     "n_leaves": 1,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "assim.indices": {
+     "changed": true,
+     "n_leaf_diff": 4,
+     "max_rel": 0.109346,
+     "max_rel_scaled": 0.091672,
+     "p50_scaled": 0.032085,
+     "p95_scaled": 0.091672,
+     "frac_leaves_gt1pct": 0.75,
+     "n_leaves": 4,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "assim.source_status": {
+     "changed": true,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 0,
+     "struct": [
+      "assim.source_status.gong_synoptic.updated: '2026-09-25T02:36:58.348310Z'->'2026-09-25T02:37:55.164012Z'",
+      "assim.source_status.sdo_aia.updated: '2026-09-25T01:13:57Z'->'2026-09-25T02:18:22Z'"
+     ],
+     "id_jaccard": {}
+    },
+    "assim.sources": {
+     "changed": true,
+     "n_leaf_diff": 54,
+     "max_rel": 1.0,
+     "max_rel_scaled": 0.76449,
+     "p50_scaled": 0.0,
+     "p95_scaled": 1.5e-05,
+     "frac_leaves_gt1pct": 0.012,
+     "n_leaves": 83,
+     "struct": [
+      "assim.sources.sdo_aia.request_date_utc: '2026-09-25T01:13:43.680009Z'->'2026-10-22T07:50:09.599997Z'",
+      "assim.sources.sdo_aia.channels.aia_094.tile_url: 'https://api.helioviewer.org/v2/getTile/?'->'https://api.helioviewer.org/v2/getTile/?'",
+      "assim.sources.sdo_aia.channels.aia_094.image_date: '2026-09-25 01:13:35'->'2026-09-25 02:16:11'",
+      "assim.sources.sdo_aia.channels.aia_094.image_id: '192407419'->'192408587'",
+      "assim.sources.sdo_aia.channels.aia_094.jp2_url: 'https://api.helioviewer.org/v2/getJP2Ima'->'https://api.helioviewer.org/v2/getJP2Ima'",
+      "assim.sources.sdo_aia.channels.aia_193.tile_url: 'https://api.helioviewer.org/v2/getTile/?'->'https://api.helioviewer.org/v2/getTile/?'",
+      "... +18 more"
+     ],
+     "id_jaccard": {}
+    },
+    "corona.feature_count": {
+     "changed": false,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 1,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "corona.features": {
+     "changed": true,
+     "n_leaf_diff": 15682,
+     "max_rel": 1.999546,
+     "max_rel_scaled": 0.834528,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0068,
+     "n_leaves": 16498,
+     "struct": [
+      "corona.features: ids 180->180 common=146",
+      "corona.features: order changed"
+     ],
+     "id_jaccard": {
+      "corona.features": 0.6822
+     }
+    },
+    "corona.max_extent_solar_radii": {
+     "changed": true,
+     "n_leaf_diff": 1,
+     "max_rel": 0.006015,
+     "max_rel_scaled": 0.006015,
+     "p50_scaled": 0.006015,
+     "p95_scaled": 0.006015,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 1,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "coronal_holes": {
+     "changed": true,
+     "n_leaf_diff": 17,
+     "max_rel": 1.662327,
+     "max_rel_scaled": 0.447875,
+     "p50_scaled": 0.00175,
+     "p95_scaled": 0.443675,
+     "frac_leaves_gt1pct": 0.2917,
+     "n_leaves": 24,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "cycle_phase_rad": {
+     "changed": true,
+     "n_leaf_diff": 1,
+     "max_rel": 0.01097,
+     "max_rel_scaled": 0.011092,
+     "p50_scaled": 0.011092,
+     "p95_scaled": 0.011092,
+     "frac_leaves_gt1pct": 1.0,
+     "n_leaves": 1,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "epoch_jd": {
+     "changed": true,
+     "n_leaf_diff": 1,
+     "max_rel": 1.1e-05,
+     "max_rel_scaled": 1.1e-05,
+     "p50_scaled": 1.1e-05,
+     "p95_scaled": 1.1e-05,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 1,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "fidelity": {
+     "changed": false,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 0,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "forcing": {
+     "changed": false,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 0,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "heliosphere": {
+     "changed": true,
+     "n_leaf_diff": 1453,
+     "max_rel": 1.990219,
+     "max_rel_scaled": 1.01449,
+     "p50_scaled": 0.04939,
+     "p95_scaled": 0.486818,
+     "frac_leaves_gt1pct": 0.7727,
+     "n_leaves": 1465,
+     "struct": [],
+     "id_jaccard": {
+      "heliosphere.parker_spiral.lines": 1.0
+     }
+    },
+    "live_data_enabled": {
+     "changed": false,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 0,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "model": {
+     "changed": false,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 0,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "pfss.lines": {
+     "changed": true,
+     "n_leaf_diff": 9894,
+     "max_rel": 2.0,
+     "max_rel_scaled": 0.966935,
+     "p50_scaled": 0.000854,
+     "p95_scaled": 0.005381,
+     "frac_leaves_gt1pct": 0.0171,
+     "n_leaves": 9975,
+     "struct": [
+      "pfss.lines[pfss-049].arc: len 15->8",
+      "pfss.lines[pfss-097].arc: len 19->8",
+      "pfss.lines[pfss-076].is_open: 'True'->'False'",
+      "pfss.lines[pfss-076].arc: len 89->8",
+      "pfss.lines[pfss-107].arc: len 169->8",
+      "pfss.lines[pfss-075].arc: len 164->13",
+      "... +128 more"
+     ],
+     "id_jaccard": {
+      "pfss.lines": 1.0
+     }
+    },
+    "pfss.meta": {
+     "changed": true,
+     "n_leaf_diff": 4,
+     "max_rel": 0.047619,
+     "max_rel_scaled": 0.00851,
+     "p50_scaled": 0.000432,
+     "p95_scaled": 0.00851,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 7,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "schema": {
+     "changed": false,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 1,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "solar_radius_au": {
+     "changed": false,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 1,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "solar_radius_km": {
+     "changed": false,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 1,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "source": {
+     "changed": false,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 0,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "surface": {
+     "changed": false,
+     "n_leaf_diff": 0,
+     "max_rel": 0.0,
+     "max_rel_scaled": 0.0,
+     "p50_scaled": 0.0,
+     "p95_scaled": 0.0,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 6,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "synthetic_activity_index": {
+     "changed": true,
+     "n_leaf_diff": 1,
+     "max_rel": 0.01769,
+     "max_rel_scaled": 0.01769,
+     "p50_scaled": 0.01769,
+     "p95_scaled": 0.01769,
+     "frac_leaves_gt1pct": 1.0,
+     "n_leaves": 1,
+     "struct": [],
+     "id_jaccard": {}
+    },
+    "wall_epoch_jd": {
+     "changed": true,
+     "n_leaf_diff": 1,
+     "max_rel": 1.1e-05,
+     "max_rel_scaled": 1.1e-05,
+     "p50_scaled": 1.1e-05,
+     "p95_scaled": 1.1e-05,
+     "frac_leaves_gt1pct": 0.0,
+     "n_leaves": 1,
+     "struct": [],
+     "id_jaccard": {}
+    }
+   }
+  }
+ }
+}

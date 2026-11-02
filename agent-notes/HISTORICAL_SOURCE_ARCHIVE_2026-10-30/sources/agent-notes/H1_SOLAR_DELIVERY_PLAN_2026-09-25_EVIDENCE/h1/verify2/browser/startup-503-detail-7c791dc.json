@@ -1,0 +1,62 @@
+[
+ {
+  "run": 1,
+  "events": [
+   "17ms #0 chip connecting | Sun: procedural fallback (connecting to solar model server)",
+   "472ms #1 physics call",
+   "1006ms #1 physics resolved 503 cors",
+   "1006ms #1 physics json() called",
+   "4225ms #1 physics json() resolved",
+   "4225ms #0 announcer Sun data unavailable: solar server too slow or busy. Showing the procedural Sun.",
+   "4225ms #0 chip error | Sun: procedural fallback (solar server ran out of compute time, HTTP 503)",
+   "6608ms #2 physics call",
+   "6611ms #2 physics resolved 503 cors",
+   "6611ms #2 physics json() called",
+   "6611ms #2 physics json() resolved"
+  ],
+  "mainThreadStallsOver250ms": [
+   "65ms +942ms",
+   "1007ms +3219ms"
+  ]
+ },
+ {
+  "run": 2,
+  "events": [
+   "14ms #0 chip connecting | Sun: procedural fallback (connecting to solar model server)",
+   "467ms #1 physics call",
+   "986ms #1 physics resolved 503 cors",
+   "986ms #1 physics json() called",
+   "993ms #1 physics json() resolved",
+   "993ms #0 announcer Sun data unavailable: solar server too slow or busy. Showing the procedural Sun.",
+   "993ms #0 chip error | Sun: procedural fallback (solar server ran out of compute time, HTTP 503)",
+   "6513ms #2 physics call",
+   "6516ms #2 physics resolved 503 cors",
+   "6516ms #2 physics json() called",
+   "6516ms #2 physics json() resolved"
+  ],
+  "mainThreadStallsOver250ms": [
+   "62ms +924ms",
+   "986ms +3292ms"
+  ]
+ },
+ {
+  "run": 3,
+  "events": [
+   "15ms #0 chip connecting | Sun: procedural fallback (connecting to solar model server)",
+   "470ms #1 physics call",
+   "959ms #1 physics resolved 503 cors",
+   "959ms #1 physics json() called",
+   "967ms #1 physics json() resolved",
+   "967ms #0 announcer Sun data unavailable: solar server too slow or busy. Showing the procedural Sun.",
+   "967ms #0 chip error | Sun: procedural fallback (solar server ran out of compute time, HTTP 503)",
+   "7263ms #2 physics call",
+   "7266ms #2 physics resolved 503 cors",
+   "7266ms #2 physics json() called",
+   "7266ms #2 physics json() resolved"
+  ],
+  "mainThreadStallsOver250ms": [
+   "63ms +897ms",
+   "967ms +6299ms"
+  ]
+ }
+]

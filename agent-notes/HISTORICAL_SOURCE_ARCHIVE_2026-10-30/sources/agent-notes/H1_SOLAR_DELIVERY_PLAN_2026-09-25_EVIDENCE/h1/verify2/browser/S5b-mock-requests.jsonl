@@ -1,0 +1,11 @@
+{"t": 1790350054.077, "path": "/health", "origin": null, "status": 200, "acao": false, "mode": "503timeout"}
+{"t": 1790350055.017, "path": "/solar/physics?jd=2461309.14495068&fidelity=high&max_features=180&forcing=hybrid", "origin": "http://127.0.0.1:5191", "status": 503, "acao": true, "mode": "503timeout"}
+{"t": 1790350061.61, "path": "/solar/physics?jd=2461325.41141468&fidelity=high&max_features=180&forcing=hybrid", "origin": "http://127.0.0.1:5191", "status": 503, "acao": true, "mode": "503timeout"}
+{"t": 1790350070.144, "path": "/solar/physics?jd=2461359.47661468&fidelity=high&max_features=180&forcing=hybrid", "origin": "http://127.0.0.1:5191", "status": 503, "acao": true, "mode": "503timeout"}
+{"t": 1790350076.269, "path": "/solar/physics?jd=2461384.00861468&fidelity=high&max_features=180&forcing=hybrid", "origin": "http://127.0.0.1:5191", "status": 503, "acao": true, "mode": "503timeout"}
+{"t": 1790350082.355, "path": "/solar/physics?jd=2461408.34101467&fidelity=high&max_features=180&forcing=hybrid", "origin": "http://127.0.0.1:5191", "status": 503, "acao": true, "mode": "503timeout"}
+{"t": 1790350089.962, "path": "/solar/physics?jd=2461438.80661468&fidelity=high&max_features=180&forcing=hybrid", "origin": "http://127.0.0.1:5191", "status": 503, "acao": true, "mode": "503timeout"}
+{"t": 1790350096.423, "path": "/solar/physics?jd=2461457.00581467&fidelity=high&max_features=180&forcing=hybrid", "origin": "http://127.0.0.1:5191", "status": 503, "acao": true, "mode": "503timeout"}
+{"t": 1790350104.826, "path": "/solar/physics?jd=2461490.67141468&fidelity=high&max_features=180&forcing=hybrid", "origin": "http://127.0.0.1:5191", "status": 503, "acao": true, "mode": "503timeout"}
+{"t": 1790350111.507, "path": "/solar/physics?jd=2461517.40341468&fidelity=high&max_features=180&forcing=hybrid", "origin": "http://127.0.0.1:5191", "status": 503, "acao": true, "mode": "503timeout"}
+{"t": 1790350119.809, "path": "/solar/physics?jd=2461550.60221467&fidelity=high&max_features=180&forcing=hybrid", "origin": "http://127.0.0.1:5191", "status": 503, "acao": true, "mode": "503timeout"}

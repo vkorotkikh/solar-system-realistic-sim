@@ -1,0 +1,1856 @@
+[WebServer] (node:2786590) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+
+Running 43 tests using 1 worker
+
+(node:2786649) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1/43] [chromium] › tests/browser/accessibility.spec.ts:3:1 › mobile drawer isolates the viewport and restores focus
+[2/43] [chromium] › tests/browser/accessibility.spec.ts:11:1 › 195px viewport reflows the production page
+[3/43] [chromium] › tests/browser/app-smoke.spec.ts:5:1 › actual app composes camera, drawer, search and experiment with a nondefault backend origin
+[chromium] › tests/browser/app-smoke.spec.ts:5:1 › actual app composes camera, drawer, search and experiment with a nondefault backend origin
+Actual application WebGL: {"renderer":"ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)","userAgent":"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.8078.4 Safari/537.36"}
+
+[4/43] [chromium] › tests/browser/app-smoke.spec.ts:26:1 › no-WebGL constructor failure exposes an accessible reload path and working drawer
+[5/43] [chromium] › tests/browser/app-smoke.spec.ts:31:1 › actual WebGL context loss stops rendering and leaves keyboard recovery available
+[6/43] [chromium] › tests/browser/asteroid-shader.spec.ts:3:1 › actual main links the assembled asteroid material with production antialiasing
+[chromium] › tests/browser/asteroid-shader.spec.ts:3:1 › actual main links the assembled asteroid material with production antialiasing
+Production asteroid shader: {"antialias":true,"samples":4,"renderer":"ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)","material":"MeshStandardMaterial","linked":true,"linkLog":"","stages":[{"compiled":true,"log":""},{"compiled":true,"log":""}],"activeAttributes":["instanceMatrix","instanceColor","position","normal","aOrbitParams1","aOrbitParams2","aSpinParams","aSpinPhase"],"webglError":0}
+
+[7/43] [chromium] › tests/browser/camera.spec.ts:3:1 › real OrbitControls accept keyboard and tap parity, modifiers, bounds, flags and disposal
+[8/43] [chromium] › tests/browser/camera.spec.ts:25:1 › follow centers each frame, orbit/zoom persist and Free cam retains pan
+[9/43] [chromium] › tests/browser/camera.spec.ts:33:1 › pointer drag damping and wheel still work alongside keyboard navigation
+[10/43] [chromium] › tests/browser/camera.spec.ts:40:1 › single touch activates native camera buttons and retains mobile context
+[11/43] [chromium] › tests/browser/experiment.spec.ts:3:1 › exact presentation and dispatch preserve source, energy and model
+[12/43] [chromium] › tests/browser/experiment.spec.ts:24:1 › events resolver owns preset selection, source notes and restored hypothesis copy
+[13/43] [chromium] › tests/browser/explorer.spec.ts:3:1 › preferred selection survives filtering, no matches and native presentation switches
+[14/43] [chromium] › tests/browser/explorer.spec.ts:15:1 › search announces only changed counts, card updates without a live region and solar output remains separate
+[15/43] [chromium] › tests/browser/explorer.spec.ts:25:1 › unchanged time values produce no real DOM mutations; rollover, reverse and Jump to now remain usable
+[16/43] [chromium] › tests/browser/frame-lifecycle.spec.ts:74:3 › active app frame lifecycle › a foreground timestamp stall cannot create an unbounded local simulation jump
+[17/43] [chromium] › tests/browser/frame-lifecycle.spec.ts:90:3 › active app frame lifecycle › a nonfinite available worker state is quarantined without stopping the actual scene
+[18/43] [chromium] › tests/browser/frame-lifecycle.spec.ts:107:3 › active app frame lifecycle › a persistently failing stage cannot starve camera, render, HUD, or later frames
+[19/43] [chromium] › tests/browser/frame-lifecycle.spec.ts:142:3 › active app frame lifecycle › native hidden-tab resume discards hidden elapsed time
+[20/43] [chromium] › tests/browser/panel.spec.ts:4:3 › remembers desktop=false, mobile=false across both breakpoint directions
+[21/43] [chromium] › tests/browser/panel.spec.ts:4:3 › remembers desktop=false, mobile=true across both breakpoint directions
+[22/43] [chromium] › tests/browser/panel.spec.ts:4:3 › remembers desktop=true, mobile=false across both breakpoint directions
+[23/43] [chromium] › tests/browser/panel.spec.ts:4:3 › remembers desktop=true, mobile=true across both breakpoint directions
+[24/43] [chromium] › tests/browser/panel.spec.ts:26:1 › stale media queries cannot overwrite width-based state or lose modal focus
+[25/43] [chromium] › tests/browser/panel.spec.ts:58:1 › a delayed media-query change cannot undo current width modality
+[26/43] [chromium] › tests/browser/panel.spec.ts:82:1 › disposed panels do not restore modality or move focus on later resizes
+[27/43] [chromium] › tests/browser/panel.spec.ts:102:1 › modal Tab trap, search Escape precedence, backdrop and close use real focus
+[28/43] [chromium] › tests/browser/panel.spec.ts:118:1 › focus guarding and empty trap recover to the panel when close is unavailable
+[29/43] [chromium] › tests/browser/panel.spec.ts:127:1 › synchronous panel writes never hide the active focus owner
+[30/43] [chromium] › tests/browser/reflow.spec.ts:4:3 › reflow and reachable controls at 195x422
+[31/43] [chromium] › tests/browser/reflow.spec.ts:4:3 › reflow and reachable controls at 320x568
+[32/43] [chromium] › tests/browser/reflow.spec.ts:4:3 › reflow and reachable controls at 390x844
+[33/43] [chromium] › tests/browser/reflow.spec.ts:4:3 › reflow and reachable controls at 844x390
+[34/43] [chromium] › tests/browser/reflow.spec.ts:4:3 › reflow and reachable controls at 1100x800
+[35/43] [chromium] › tests/browser/reflow.spec.ts:4:3 › reflow and reachable controls at 1101x800
+[36/43] [chromium] › tests/browser/reflow.spec.ts:4:3 › reflow and reachable controls at 1440x900
+[37/43] [chromium] › tests/browser/reflow.spec.ts:29:1 › 200 percent text sizing preserves access to the final action
+[38/43] [chromium] › tests/browser/scn049-kuiper-subscription.spec.ts:56:1 › SCN-049 captured REBOUND/WHFast client rejects stale Kuiper (versioned) while retaining body updates
+[39/43] [chromium] › tests/browser/shell.spec.ts:3:1 › production HTML exposes the named controls and native inputs
+[40/43] [chromium] › tests/browser/startup-warmup.spec.ts:45:1 › a startup shader failure exposes accessible recovery before any scene draw
+[41/43] [chromium] › tests/browser/startup-warmup.spec.ts:58:1 › context loss cancels pending warmup and restoration cannot restart it
+[42/43] [chromium] › tests/browser/startup-warmup.spec.ts:82:1 › unload disposes materials only after cancelling pending warmup
+[43/43] [chromium] › tests/browser/startup-warmup.spec.ts:93:1 › the complete catalog scene still draws without parallel compilation support
+  1 skipped
+  42 passed (4.4m)
+{
+  "config": {
+    "argv": [
+      "/home/nomad/.npm/_npx/f4985f1adc097c41/node_modules/node/bin/node",
+      "/home/nomad/ai/projects/worktrees/solar-remediation-completion-20261030/node_modules/@playwright/test/cli.js",
+      "test",
+      "--project=chromium",
+      "--reporter=line,json"
+    ],
+    "configFile": "/home/nomad/ai/projects/worktrees/solar-remediation-completion-20261030/playwright.config.ts",
+    "rootDir": "/home/nomad/ai/projects/worktrees/solar-remediation-completion-20261030/tests/browser",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "/home/nomad/ai/projects/worktrees/solar-remediation-completion-20261030/test-results/4197",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "chromium",
+        "name": "chromium",
+        "testDir": "/home/nomad/ai/projects/worktrees/solar-remediation-completion-20261030/tests/browser",
+        "testIgnore": [
+          "**/tab-zoom.spec.ts"
+        ],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/nomad/ai/projects/worktrees/solar-remediation-completion-20261030/test-results/4197",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "chromium-tab-zoom",
+        "name": "chromium-tab-zoom",
+        "testDir": "/home/nomad/ai/projects/worktrees/solar-remediation-completion-20261030/tests/browser",
+        "testIgnore": [],
+        "testMatch": [
+          "**/tab-zoom.spec.ts"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/nomad/ai/projects/worktrees/solar-remediation-completion-20261030/test-results/4197",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "firefox",
+        "name": "firefox",
+        "testDir": "/home/nomad/ai/projects/worktrees/solar-remediation-completion-20261030/tests/browser",
+        "testIgnore": [
+          "**/app-smoke.spec.ts"
+        ],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/nomad/ai/projects/worktrees/solar-remediation-completion-20261030/test-results/4197",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "webkit",
+        "name": "webkit",
+        "testDir": "/home/nomad/ai/projects/worktrees/solar-remediation-completion-20261030/tests/browser",
+        "testIgnore": [
+          "**/app-smoke.spec.ts"
+        ],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      }
+    ],
+    "filteredProjects": [
+      {
+        "grep": {},
+        "grepInvert": null,
+        "outputDir": "/home/nomad/ai/projects/worktrees/solar-remediation-completion-20261030/test-results/4197",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "name": "chromium",
+        "testDir": "/home/nomad/ai/projects/worktrees/solar-remediation-completion-20261030/tests/browser",
+        "snapshotDir": "/home/nomad/ai/projects/worktrees/solar-remediation-completion-20261030/tests/browser",
+        "testIgnore": "**/tab-zoom.spec.ts",
+        "testMatch": "**/*.@(spec|test).?(c|m)[jt]s?(x)",
+        "timeout": 30000,
+        "use": {
+          "baseURL": "http://127.0.0.1:4197",
+          "viewport": {
+            "width": 1440,
+            "height": 900
+          },
+          "reducedMotion": "reduce",
+          "trace": "retain-on-failure",
+          "screenshot": "only-on-failure",
+          "browserName": "chromium",
+          "headless": true,
+          "launchOptions": {
+            "args": [
+              "--use-angle=swiftshader",
+              "--enable-unsafe-swiftshader",
+              "--no-sandbox"
+            ]
+          }
+        },
+        "dependencies": [],
+        "ignoreSnapshots": false,
+        "__projectId": "chromium"
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "line"
+      ],
+      [
+        "json"
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "default",
+    "updateSourceMethod": "patch",
+    "version": "1.64.0",
+    "workers": 1,
+    "webServer": {
+      "command": "node node_modules/vite/bin/vite.js --host 127.0.0.1 --port 4197 --strictPort",
+      "url": "http://127.0.0.1:4197",
+      "reuseExistingServer": false,
+      "env": {
+        "VITE_BACKEND_ORIGIN": "http://127.0.0.1:9142"
+      }
+    }
+  },
+  "suites": [
+    {
+      "title": "accessibility.spec.ts",
+      "file": "accessibility.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "mobile drawer isolates the viewport and restores focus",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 901,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-30T05:10:41.058Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "ddd864604af8a6a0198f-cc1bf2e398d5dbef14de",
+          "file": "accessibility.spec.ts",
+          "line": 3,
+          "column": 1
+        },
+        {
+          "title": "195px viewport reflows the production page",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 400,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-30T05:10:42.665Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "ddd864604af8a6a0198f-b45ced86a0c5181ce747",
+          "file": "accessibility.spec.ts",
+          "line": 11,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "app-smoke.spec.ts",
+      "file": "app-smoke.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "actual app composes camera, drawer, search and experiment with a nondefault backend origin",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 17571,
+                  "errors": [],
+                  "stdout": [
+                    {
+                      "text": "Actual application WebGL: {\"renderer\":\"ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)\",\"userAgent\":\"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.8078.4 Safari/537.36\"}\n"
+                    }
+                  ],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-30T05:10:43.084Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "webgl-renderer",
+                      "contentType": "application/json",
+                      "body": "ewogICJyZW5kZXJlciI6ICJBTkdMRSAoR29vZ2xlLCBWdWxrYW4gMS4zLjAgKFN3aWZ0U2hhZGVyIERldmljZSAoU3ViemVybykgKDB4MDAwMEMwREUpKSwgU3dpZnRTaGFkZXIgZHJpdmVyKSIsCiAgInVzZXJBZ2VudCI6ICJNb3ppbGxhLzUuMCAoWDExOyBMaW51eCB4ODZfNjQpIEFwcGxlV2ViS2l0LzUzNy4zNiAoS0hUTUwsIGxpa2UgR2Vja28pIEhlYWRsZXNzQ2hyb21lLzE1Ni4wLjgwNzguNCBTYWZhcmkvNTM3LjM2Igp9"
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "cff01a981c5535b36d03-157f94937522e5db34b8",
+          "file": "app-smoke.spec.ts",
+          "line": 5,
+          "column": 1
+        },
+        {
+          "title": "no-WebGL constructor failure exposes an accessible reload path and working drawer",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 17701,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-30T05:11:00.667Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "cff01a981c5535b36d03-7159ebca928ad5a471e3",
+          "file": "app-smoke.spec.ts",
+          "line": 26,
+          "column": 1
+        },
+        {
+          "title": "actual WebGL context loss stops rendering and leaves keyboard recovery available",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 17535,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-30T05:11:19.019Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "cff01a981c5535b36d03-6e4df0af2d0684c2a285",
+          "file": "app-smoke.spec.ts",
+          "line": 31,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "asteroid-shader.spec.ts",
+      "file": "asteroid-shader.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "actual main links the assembled asteroid material with production antialiasing",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 10051,
+                  "errors": [],
+                  "stdout": [
+                    {
+                      "text": "Production asteroid shader: {\"antialias\":true,\"samples\":4,\"renderer\":\"ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)\",\"material\":\"MeshStandardMaterial\",\"linked\":true,\"linkLog\":\"\",\"stages\":[{\"compiled\":true,\"log\":\"\"},{\"compiled\":true,\"log\":\"\"}],\"activeAttributes\":[\"instanceMatrix\",\"instanceColor\",\"position\",\"normal\",\"aOrbitParams1\",\"aOrbitParams2\",\"aSpinParams\",\"aSpinPhase\"],\"webglError\":0}\n"
+                    }
+                  ],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-30T05:11:36.568Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "production-asteroid-program",
+                      "contentType": "application/json",
+                      "body": "ewogICJhbnRpYWxpYXMiOiB0cnVlLAogICJzYW1wbGVzIjogNCwKICAicmVuZGVyZXIiOiAiQU5HTEUgKEdvb2dsZSwgVnVsa2FuIDEuMy4wIChTd2lmdFNoYWRlciBEZXZpY2UgKFN1Ynplcm8pICgweDAwMDBDMERFKSksIFN3aWZ0U2hhZGVyIGRyaXZlcikiLAogICJtYXRlcmlhbCI6ICJNZXNoU3RhbmRhcmRNYXRlcmlhbCIsCiAgImxpbmtlZCI6IHRydWUsCiAgImxpbmtMb2ciOiAiIiwKICAic3RhZ2VzIjogWwogICAgewogICAgICAiY29tcGlsZWQiOiB0cnVlLAogICAgICAibG9nIjogIiIKICAgIH0sCiAgICB7CiAgICAgICJjb21waWxlZCI6IHRydWUsCiAgICAgICJsb2ciOiAiIgogICAgfQogIF0sCiAgImFjdGl2ZUF0dHJpYnV0ZXMiOiBbCiAgICAiaW5zdGFuY2VNYXRyaXgiLAogICAgImluc3RhbmNlQ29sb3IiLAogICAgInBvc2l0aW9uIiwKICAgICJub3JtYWwiLAogICAgImFPcmJpdFBhcmFtczEiLAogICAgImFPcmJpdFBhcmFtczIiLAogICAgImFTcGluUGFyYW1zIiwKICAgICJhU3BpblBoYXNlIgogIF0sCiAgIndlYmdsRXJyb3IiOiAwCn0="
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "1168b0a5f847251852ef-eb37c5358fb55f7e74f6",
+          "file": "asteroid-shader.spec.ts",
+          "line": 3,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "camera.spec.ts",
+      "file": "camera.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "real OrbitControls accept keyboard and tap parity, modifiers, bounds, flags and disposal",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 21442,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-30T05:11:46.634Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "46b3768d175a3aa7b8eb-c28b0d258e51eea1032a",
+          "file": "camera.spec.ts",
+          "line": 3,
+          "column": 1
+        },
+        {
+          "title": "follow centers each frame, orbit/zoom persist and Free cam retains pan",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 526,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-30T05:12:08.696Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "46b3768d175a3aa7b8eb-cdfff447c01498feab64",
+          "file": "camera.spec.ts",
+          "line": 25,
+          "column": 1
+        },
+        {
+          "title": "pointer drag damping and wheel still work alongside keyboard navigation",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 621,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-30T05:12:09.232Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "46b3768d175a3aa7b8eb-c33e9d34818500a26b50",
+          "file": "camera.spec.ts",
+          "line": 33,
+          "column": 1
+        },
+        {
+          "title": "single touch activates native camera buttons and retains mobile context",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 540,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-30T05:12:09.862Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "46b3768d175a3aa7b8eb-df534b6ad1cb9b04c142",
+          "file": "camera.spec.ts",
+          "line": 40,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "experiment.spec.ts",
+      "file": "experiment.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "exact presentation and dispatch preserve source, energy and model",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3586,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-30T05:12:10.423Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "46dcba3ff919c7312c3d-f0db16a646b3f0636d7e",
+          "file": "experiment.spec.ts",
+          "line": 3,
+          "column": 1
+        },
+        {
+          "title": "events resolver owns preset selection, source notes and restored hypothesis copy",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 619,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-30T05:12:14.018Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "46dcba3ff919c7312c3d-12fe7383a85a62d00905",
+          "file": "experiment.spec.ts",
+          "line": 24,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "explorer.spec.ts",
+      "file": "explorer.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "preferred selection survives filtering, no matches and native presentation switches",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 685,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-30T05:12:14.654Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "3409f8ab2ee04d46f500-924130cbe09485e297c6",
+          "file": "explorer.spec.ts",
+          "line": 3,
+          "column": 1
+        },
+        {
+          "title": "search announces only changed counts, card updates without a live region and solar output remains separate",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 448,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-30T05:12:15.348Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "3409f8ab2ee04d46f500-ae9135c11b5eee458a18",
+          "file": "explorer.spec.ts",
+          "line": 15,
+          "column": 1
+        },
+        {
+          "title": "unchanged time values produce no real DOM mutations; rollover, reverse and Jump to now remain usable",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 415,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-30T05:12:15.807Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "3409f8ab2ee04d46f500-4c846307767003989532",
+          "file": "explorer.spec.ts",
+          "line": 25,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "frame-lifecycle.spec.ts",
+      "file": "frame-lifecycle.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "active app frame lifecycle",
+          "file": "frame-lifecycle.spec.ts",
+          "line": 70,
+          "column": 6,
+          "specs": [
+            {
+              "title": "a foreground timestamp stall cannot create an unbounded local simulation jump",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 13956,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-30T05:12:16.238Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "foreground-frame-gap",
+                          "contentType": "application/json",
+                          "body": "W3siaW5kZXgiOjgsImpkIjoyNDYxMzQ1LjUxNzY5MDAyNywic3RlcE1zIjoxMDB9LHsiaW5kZXgiOjksImpkIjoyNDYxMzQ1LjU4NDQ5MDAyNzMsInN0ZXBNcyI6MTYuNjk5OTk5OTk5OTk3MDl9LHsiaW5kZXgiOjEwLCJqZCI6MjQ2MTM0NS45ODQ0OTAwMjcsInN0ZXBNcyI6MTAwfV0="
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "9ace432a8f968007e760-207bddcfe56544f941e3",
+              "file": "frame-lifecycle.spec.ts",
+              "line": 74,
+              "column": 3
+            },
+            {
+              "title": "a nonfinite available worker state is quarantined without stopping the actual scene",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 37799,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-30T05:12:30.869Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "9ace432a8f968007e760-fb1164bd6e7fd21fb06c",
+              "file": "frame-lifecycle.spec.ts",
+              "line": 90,
+              "column": 3
+            },
+            {
+              "title": "a persistently failing stage cannot starve camera, render, HUD, or later frames",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 30805,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-30T05:13:09.336Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "9ace432a8f968007e760-66b0ec39df9a26458458",
+              "file": "frame-lifecycle.spec.ts",
+              "line": 107,
+              "column": 3
+            },
+            {
+              "title": "native hidden-tab resume discards hidden elapsed time",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [
+                    {
+                      "type": "skip",
+                      "description": "Requires an owned native display session, not synthetic visibility",
+                      "location": {
+                        "file": "/home/nomad/ai/projects/worktrees/solar-remediation-completion-20261030/tests/browser/frame-lifecycle.spec.ts",
+                        "line": 143,
+                        "column": 10
+                      }
+                    }
+                  ],
+                  "expectedStatus": "skipped",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "skipped",
+                      "duration": 1,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-30T05:13:40.814Z",
+                      "annotations": [
+                        {
+                          "type": "skip",
+                          "description": "Requires an owned native display session, not synthetic visibility",
+                          "location": {
+                            "file": "/home/nomad/ai/projects/worktrees/solar-remediation-completion-20261030/tests/browser/frame-lifecycle.spec.ts",
+                            "line": 143,
+                            "column": 10
+                          }
+                        }
+                      ],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "skipped"
+                }
+              ],
+              "id": "9ace432a8f968007e760-6024012d36e7da65ed7b",
+              "file": "frame-lifecycle.spec.ts",
+              "line": 142,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "panel.spec.ts",
+      "file": "panel.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "remembers desktop=false, mobile=false across both breakpoint directions",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 21821,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-30T05:13:40.836Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "c365b39ce12eb9f42248-0a637ea4bfdfc788c5f9",
+          "file": "panel.spec.ts",
+          "line": 4,
+          "column": 3
+        },
+        {
+          "title": "remembers desktop=false, mobile=true across both breakpoint directions",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 617,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-30T05:14:03.330Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "c365b39ce12eb9f42248-9e8e5fc8b9d7bd48af36",
+          "file": "panel.spec.ts",
+          "line": 4,
+          "column": 3
+        },
+        {
+          "title": "remembers desktop=true, mobile=false across both breakpoint directions",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 577,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-30T05:14:03.957Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "c365b39ce12eb9f42248-806c36d3c5649043df48",
+          "file": "panel.spec.ts",
+          "line": 4,
+          "column": 3
+        },
+        {
+          "title": "remembers desktop=true, mobile=true across both breakpoint directions",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 588,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-30T05:14:04.559Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "c365b39ce12eb9f42248-b61597c03591c6ba7e94",
+          "file": "panel.spec.ts",
+          "line": 4,
+          "column": 3
+        },
+        {
+          "title": "stale media queries cannot overwrite width-based state or lose modal focus",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 491,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-30T05:14:05.158Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "c365b39ce12eb9f42248-e474ffbbadf8ab80f3db",
+          "file": "panel.spec.ts",
+          "line": 26,
+          "column": 1
+        },
+        {
+          "title": "a delayed media-query change cannot undo current width modality",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 444,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-30T05:14:05.657Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "c365b39ce12eb9f42248-1c3eee32738e35c43c35",
+          "file": "panel.spec.ts",
+          "line": 58,
+          "column": 1
+        },
+        {
+          "title": "disposed panels do not restore modality or move focus on later resizes",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 411,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-30T05:14:06.111Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "c365b39ce12eb9f42248-ac1573a4937d500f3ee9",
+          "file": "panel.spec.ts",
+          "line": 82,
+          "column": 1
+        },
+        {
+          "title": "modal Tab trap, search Escape precedence, backdrop and close use real focus",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 514,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-30T05:14:06.529Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "c365b39ce12eb9f42248-614778c564201871f279",
+          "file": "panel.spec.ts",
+          "line": 102,
+          "column": 1
+        },
+        {
+          "title": "focus guarding and empty trap recover to the panel when close is unavailable",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 277,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-30T05:14:07.050Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "c365b39ce12eb9f42248-19c2f4ff08c3e3e33a86",
+          "file": "panel.spec.ts",
+          "line": 118,
+          "column": 1
+        },
+        {
+          "title": "synchronous panel writes never hide the active focus owner",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 311,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-30T05:14:07.334Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "c365b39ce12eb9f42248-fb482d158aecb793f21b",
+          "file": "panel.spec.ts",
+          "line": 127,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "reflow.spec.ts",
+      "file": "reflow.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "reflow and reachable controls at 195x422",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2344,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-30T05:14:07.655Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "4543a68c4d6be6beda01-6732f81a74f2dc6001cc",
+          "file": "reflow.spec.ts",
+          "line": 4,
+          "column": 3
+        },
+        {
+          "title": "reflow and reachable controls at 320x568",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2364,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-30T05:14:10.007Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "4543a68c4d6be6beda01-ed644f9e1510d786fcb5",
+          "file": "reflow.spec.ts",
+          "line": 4,
+          "column": 3
+        },
+        {
+          "title": "reflow and reachable controls at 390x844",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2379,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-30T05:14:12.377Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "4543a68c4d6be6beda01-66dfebe85a263731aa48",
+          "file": "reflow.spec.ts",
+          "line": 4,
+          "column": 3
+        },
+        {
+          "title": "reflow and reachable controls at 844x390",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2546,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-30T05:14:14.762Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "4543a68c4d6be6beda01-aa511fd3a98fb19d7b94",
+          "file": "reflow.spec.ts",
+          "line": 4,
+          "column": 3
+        },
+        {
+          "title": "reflow and reachable controls at 1100x800",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2603,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-30T05:14:17.314Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "4543a68c4d6be6beda01-f8ab467e10117a789675",
+          "file": "reflow.spec.ts",
+          "line": 4,
+          "column": 3
+        },
+        {
+          "title": "reflow and reachable controls at 1101x800",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2375,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-30T05:14:19.923Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "4543a68c4d6be6beda01-52ffd7a412566d3e2125",
+          "file": "reflow.spec.ts",
+          "line": 4,
+          "column": 3
+        },
+        {
+          "title": "reflow and reachable controls at 1440x900",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2413,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-30T05:14:22.306Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "4543a68c4d6be6beda01-0985e17a393e3b447094",
+          "file": "reflow.spec.ts",
+          "line": 4,
+          "column": 3
+        },
+        {
+          "title": "200 percent text sizing preserves access to the final action",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 425,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-30T05:14:24.724Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "4543a68c4d6be6beda01-bbf39e76f9ebbb1ee5d5",
+          "file": "reflow.spec.ts",
+          "line": 29,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "scn049-kuiper-subscription.spec.ts",
+      "file": "scn049-kuiper-subscription.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "SCN-049 captured REBOUND/WHFast client rejects stale Kuiper (versioned) while retaining body updates",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 469,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-30T05:14:25.161Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "scn049-native-browser-trace.json",
+                      "contentType": "application/json",
+                      "body": "ewogICJzY29wZSI6ICJTaW11bGF0aW9uQ2xpZW50IEFQSS9saWJyYXJ5IG9ubHk7IHJlcGxheWVkIG5hdGl2ZSBwcm9kdWNlciBmcmFtZXMsIG5vIGxpdmUgYmFja2VuZCBvciBkZWZhdWx0IFVJIE4tYm9keSBhY3RpdmF0aW9uIiwKICAiY2FwdHVyZSI6IHsKICAgICJwcm9kdWNlciI6ICJTaW11bGF0aW9uUnVubmVyLl9ydW5fZnJhbWVzIC0+IEt1aXBlckJlbHRFbmdpbmUuZ2V0X3N0YXRlIiwKICAgICJjb21tYW5kX3BhdGgiOiAiX3dzX3JlY2VpdmVfbG9vcCAtPiBzZW5kX2NvbW1hbmQgLT4gX2hhbmRsZV9jb21tYW5kIiwKICAgICJkZWxpdmVyeV9wYXRoIjogIl93c19zZW5kX2xvb3AgLT4gX3dzX3NlbmRfdGV4dCAtPiBwZW5kaW5nIEFTR0kgc2VuZCIsCiAgICAibWFpbl9lbmdpbmUiOiAiUkVCT1VOREVuZ2luZS93aGZhc3QiLAogICAgInJuZ19zZWVkIjogMjAyNjEwMTQsCiAgICAicGFydGljbGVfY291bnQiOiAzMiwKICAgICJwYXVzZWQiOiB0cnVlLAogICAgInJlcGxhY2VtZW50X3Byb2R1Y2VkX2JlZm9yZV9vbGRfZGVsaXZlcnkiOiB0cnVlCiAgfSwKICAiYmxvY2tlZEh0dHBSZXF1ZXN0cyI6IFtdLAogICJicm93c2VyIjogImNocm9taXVtIiwKICAiY29tbWFuZHMiOiBbCiAgICB7CiAgICAgICJ0eXBlIjogImFjdGl2YXRlX2t1aXBlciIsCiAgICAgICJjZW50ZXIiOiBbCiAgICAgICAgNDMsCiAgICAgICAgMCwKICAgICAgICAwCiAgICAgIF0sCiAgICAgICJzcHJlYWQiOiA1LAogICAgICAic3Vic2NyaXB0aW9uX2lkIjogIjEiCiAgICB9LAogICAgewogICAgICAidHlwZSI6ICJkZWFjdGl2YXRlX2t1aXBlciIKICAgIH0sCiAgICB7CiAgICAgICJ0eXBlIjogImFjdGl2YXRlX2t1aXBlciIsCiAgICAgICJjZW50ZXIiOiBbCiAgICAgICAgNTAsCiAgICAgICAgMCwKICAgICAgICAwCiAgICAgIF0sCiAgICAgICJzcHJlYWQiOiA1LAogICAgICAic3Vic2NyaXB0aW9uX2lkIjogIjIiCiAgICB9CiAgXSwKICAiZXNjYXBlZEh0dHBSZXNwb25zZXMiOiBbXSwKICAibGVnYWN5TmVnb3RpYXRpb24iOiBmYWxzZSwKICAicGFnZUVycm9ycyI6IFtdLAogICJzdGFsZVNuYXBzaG90IjogewogICAgImVhcnRoUG9zaXRpb24iOiBbCiAgICAgIC0wLjE4NDI3MTU1NywKICAgICAgMC45NjQ0NDU5NjMyLAogICAgICAwLjAwMDIwMjA1MTUKICAgIF0sCiAgICAiaGFzS3VpcGVyIjogZmFsc2UsCiAgICAiamQiOiAyNDUxNTQ1LAogICAgImt1aXBlckNvdW50IjogMCwKICAgICJrdWlwZXJQb3NpdGlvbnMiOiBudWxsLAogICAgInN0YXR1cyI6ICJjb25uZWN0ZWQiCiAgfSwKICAiYWNjZXB0ZWRTbmFwc2hvdCI6IHsKICAgICJlYXJ0aFBvc2l0aW9uIjogWwogICAgICAtMC4xODQyNzE1NTcsCiAgICAgIDAuOTY0NDQ1OTYzMiwKICAgICAgMC4wMDAyMDIwNTE1CiAgICBdLAogICAgImhhc0t1aXBlciI6IHRydWUsCiAgICAiamQiOiAyNDUxNTQ1LAogICAgImt1aXBlckNvdW50IjogMzgsCiAgICAia3VpcGVyUG9zaXRpb25zIjogWwogICAgICBbCiAgICAgICAgNS42NTQwNzI5MDExLAogICAgICAgIC00OC40NTQ2MjMxNDE0LAogICAgICAgIC0wLjc3ODM0NTE1MDkKICAgICAgXSwKICAgICAgWwogICAgICAgIDE1LjAyNTA2MTAyNjYsCiAgICAgICAgLTMxLjgzNDQ5NzIwNDYsCiAgICAgICAgMS4zMjk4NjQzNjIKICAgICAgXSwKICAgICAgWwogICAgICAgIC01LjYxNTU5NzA3MjEsCiAgICAgICAgNDcuNTEyMjM3ODkxNCwKICAgICAgICAwLjM1ODg1NjI5MDYKICAgICAgXSwKICAgICAgWwogICAgICAgIDIuNTg4MDgwMjc1NiwKICAgICAgICA0OC42OTk0MTQyMTUsCiAgICAgICAgMTQuNTI4NDA2NjUyOAogICAgICBdLAogICAgICBbCiAgICAgICAgMy40NTM3ODkwMDQ0LAogICAgICAgIDU0LjIyODU5NDU3MTcsCiAgICAgICAgLTkuNDk0Mzc2Mzg4NAogICAgICBdLAogICAgICBbCiAgICAgICAgNDIuNTA4OTAwMjc5NCwKICAgICAgICAtNS4wNDAxNjgxNzc1LAogICAgICAgIDE4LjUyNTY5MTQ4NwogICAgICBdLAogICAgICBbCiAgICAgICAgMjEuODc2ODU0Mzk2NywKICAgICAgICAtNDAuMzU0OTAzNjcwMywKICAgICAgICAtMS4wMjYzMDY4MTM1CiAgICAgIF0sCiAgICAgIFsKICAgICAgICA3LjYxODQzNzE4ODYsCiAgICAgICAgLTQ4LjQ2NjE4ODA2NjksCiAgICAgICAgLTAuOTY2ODc2MjQ4NAogICAgICBdLAogICAgICBbCiAgICAgICAgMjcuMDU1ODY5MTM3MiwKICAgICAgICAtMzguMzM1ODY2OTA5OSwKICAgICAgICAtMjAuNjMzNzkwMTYwOAogICAgICBdLAogICAgICBbCiAgICAgICAgOC4wNzg0NDY3MzE2LAogICAgICAgIC0yNi41NDE2MjQzMTEyLAogICAgICAgIC0xOC4xMTUwNTM3NTMxCiAgICAgIF0sCiAgICAgIFsKICAgICAgICAtNTMuODk4NjgxMjk0MSwKICAgICAgICAxNi4zMjcxNzM5MTMyLAogICAgICAgIC03Ljg4MDEwNjgxMDEKICAgICAgXSwKICAgICAgWwogICAgICAgIC0yNy43MjQwNDkxNzI2LAogICAgICAgIDI0LjY4MTA0MzkzMDMsCiAgICAgICAgMTIuODkxMzI0MTE2MwogICAgICBdLAogICAgICBbCiAgICAgICAgLTIuNDQyNjAwNDgyMSwKICAgICAgICAtNDUuOTQyMDYzOTM1MSwKICAgICAgICA3LjY5NTU3MTY4NDIKICAgICAgXSwKICAgICAgWwogICAgICAgIDI5LjY4MzI4Nzg3ODQsCiAgICAgICAgMzIuNzExNDQ4OTIzNSwKICAgICAgICAtMi4wMTc5MTgxMDE4CiAgICAgIF0sCiAgICAgIFsKICAgICAgICAyOS42ODMzMTEyMTM4LAogICAgICAgIDMyLjcxMTM2OTEyMDYsCiAgICAgICAgLTIuMDE3OTIxMjA2MgogICAgICBdLAogICAgICBbCiAgICAgICAgMC45OTM5MDQwNDM4LAogICAgICAgIC00MS4yMTY4NzI2NjA2LAogICAgICAgIDE4LjA4MTM1ODAxMwogICAgICBdLAogICAgICBbCiAgICAgICAgMC45OTM0MjQwOTY3LAogICAgICAgIC00MS4yMTcyODE0NzY0LAogICAgICAgIDE4LjA4MTUyMTQyMDkKICAgICAgXSwKICAgICAgWwogICAgICAgIC00NS45NzUzMjEwMTgsCiAgICAgICAgMTkuMTk5NzIyNTYyNywKICAgICAgICAtMjguMjEwODMwODI4NQogICAgICBdLAogICAgICBbCiAgICAgICAgMjcuNjIzNDIxMjQ0LAogICAgICAgIC00OC4xNzk4MTAyODg4LAogICAgICAgIC0yNi41OTI3MzQzNDAyCiAgICAgIF0sCiAgICAgIFsKICAgICAgICA2Mi4yNzE2MDk3MjY3LAogICAgICAgIDIwLjc0Mjg4NjMzNzYsCiAgICAgICAgLTAuMDg5NjA3Mjg3NAogICAgICBdLAogICAgICBbCiAgICAgICAgLTU1LjY0MjY4ODA3MzEsCiAgICAgICAgMTYuMDU5NDU1Mzk5OSwKICAgICAgICA4LjY1NDcxMzM5NjMKICAgICAgXSwKICAgICAgWwogICAgICAgIC0zMS45NzYxNjQwMTc2LAogICAgICAgIC0zOC4zMTkxNDcxNDY4LAogICAgICAgIDAuMTE5Njg1Njg4MQogICAgICBdLAogICAgICBbCiAgICAgICAgLTMxLjk3NjA4NDg4MTksCiAgICAgICAgLTM4LjMxOTU3NDY2NzksCiAgICAgICAgMC4xMTk2ODgyMzgKICAgICAgXSwKICAgICAgWwogICAgICAgIDQ5LjQ0NDc4OTA5OSwKICAgICAgICAtMjEuMjA1MzIzNzY1NCwKICAgICAgICAtMjIuMTIzODg4Mjc1NgogICAgICBdLAogICAgICBbCiAgICAgICAgNTQuOTUzNzY2NjA3OCwKICAgICAgICAxMS41ODQzODI3Mzg1LAogICAgICAgIC02LjEwNDgxODgxMjQKICAgICAgXSwKICAgICAgWwogICAgICAgIDM0LjI2MDIxNjU1ODIsCiAgICAgICAgLTM2LjQxNjA1MTA4MjQsCiAgICAgICAgMS40OTQ5OTU0NTI3CiAgICAgIF0sCiAgICAgIFsKICAgICAgICAtMTIuMjY0NTE5OTkyNSwKICAgICAgICA0MC4xODI1NTA5NDYyLAogICAgICAgIDkuOTUyMDEwMzA2NgogICAgICBdLAogICAgICBbCiAgICAgICAgMTMuMTc4NTc0MjQxMiwKICAgICAgICAtNDIuNjA5ODEwMzgzNCwKICAgICAgICAtMC41ODI4ODcwNzgyCiAgICAgIF0sCiAgICAgIFsKICAgICAgICAzNy40ODk4MTIxMzU5LAogICAgICAgIC01MS4zNzQ1ODEyNjkyLAogICAgICAgIDEuMTM1MDg0MTE2NwogICAgICBdLAogICAgICBbCiAgICAgICAgMzcuNDkwMzk3MTg0NSwKICAgICAgICAtNTEuMzczNTg5MTM2OCwKICAgICAgICAxLjEzNTA5OTk2NzMKICAgICAgXSwKICAgICAgWwogICAgICAgIDM1LjU5NDEzMzc1OSwKICAgICAgICAtOC43NDE2NTk0ODc4LAogICAgICAgIC0wLjIzNTYyODc3NjMKICAgICAgXSwKICAgICAgWwogICAgICAgIC0yLjY0NTY3MDkyODQsCiAgICAgICAgLTUzLjEyMjY2MDc1MjcsCiAgICAgICAgLTMuOTM0NDU0OTc0NwogICAgICBdLAogICAgICBbCiAgICAgICAgMzMuNDQ2NTE3NzI3LAogICAgICAgIDI2LjcwNTAwODkxNjgsCiAgICAgICAgLTIwLjgwOTI4OTg3MwogICAgICBdLAogICAgICBbCiAgICAgICAgNDMuODczMjQ2NjM2OSwKICAgICAgICAwLjQ0NjU3MDg1OTMsCiAgICAgICAgLTEuNDIzNzAyMDMxNQogICAgICBdLAogICAgICBbCiAgICAgICAgLTM1LjM5NzY0OTkwNywKICAgICAgICAyMS41NzYwODAyODY4LAogICAgICAgIC0xMC41MjczMzg1MTY5CiAgICAgIF0sCiAgICAgIFsKICAgICAgICAtMzUuMzk3NjkwNDcwOCwKICAgICAgICAyMS41NzYwNTA5NzQ2LAogICAgICAgIC0xMC41MjczMjYyOTU1CiAgICAgIF0sCiAgICAgIFsKICAgICAgICAtNDcuMTQ2Mzc3NjQ2MiwKICAgICAgICAtNDAuNTE1NjQ5NjU3LAogICAgICAgIDE1Ljc2MDQwMTU2MTQKICAgICAgXSwKICAgICAgWwogICAgICAgIC00Ny4xNDYzNzE2MjY2LAogICAgICAgIC00MC41MTU2Mzk1MTM0LAogICAgICAgIDE1Ljc2MDM5ODU4OAogICAgICBdCiAgICBdLAogICAgInN0YXR1cyI6ICJjb25uZWN0ZWQiCiAgfQp9"
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "569b53beca5e8cdd1a6e-5d821eee0f820231af0a",
+          "file": "scn049-kuiper-subscription.spec.ts",
+          "line": 56,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "shell.spec.ts",
+      "file": "shell.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "production HTML exposes the named controls and native inputs",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 288,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-30T05:14:25.639Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "3420664513cb0bae123e-fe683f48d746afe89def",
+          "file": "shell.spec.ts",
+          "line": 3,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "startup-warmup.spec.ts",
+      "file": "startup-warmup.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "a startup shader failure exposes accessible recovery before any scene draw",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 734,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-30T05:14:25.935Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "efd240f1531ef803e09f-633a0e1d079ab7c56b41",
+          "file": "startup-warmup.spec.ts",
+          "line": 45,
+          "column": 1
+        },
+        {
+          "title": "context loss cancels pending warmup and restoration cannot restart it",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 841,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-30T05:14:26.679Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "efd240f1531ef803e09f-d6642b60f4520eba89c4",
+          "file": "startup-warmup.spec.ts",
+          "line": 58,
+          "column": 1
+        },
+        {
+          "title": "unload disposes materials only after cancelling pending warmup",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 749,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-30T05:14:27.528Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "efd240f1531ef803e09f-8f0c55cf7115b350fa57",
+          "file": "startup-warmup.spec.ts",
+          "line": 82,
+          "column": 1
+        },
+        {
+          "title": "the complete catalog scene still draws without parallel compilation support",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 18899,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-30T05:14:28.283Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "efd240f1531ef803e09f-9eaca1fa950c0510516c",
+          "file": "startup-warmup.spec.ts",
+          "line": 93,
+          "column": 1
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-10-30T05:10:40.110Z",
+    "duration": 263733.653,
+    "expected": 42,
+    "skipped": 1,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}

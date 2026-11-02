@@ -1,0 +1,63 @@
+WARN `--no-project` was provided, but no project was found
+FFF                                                                      [100%]
+=================================== FAILURES ===================================
+_______ test_http_full_update_reuse_and_reconnect_preserve_latest_state ________
+
+endpoint = <starlette.testclient.TestClient object at 0x72052c26e390>
+model_state = {'schema': {'name': 'solar_physics_state', 'version': 2}, 'model': 'quasi_mhd_corona_v5', 'epoch_jd_tdb': 2460000.5, 'wall_epoch_jd_tdb': 2460000.5, ...}
+
+    def test_http_full_update_reuse_and_reconnect_preserve_latest_state(endpoint, model_state):
+        query = dict(jd_tdb=2460000.5, fidelity='high', max_features=180,
+                     forcing='hybrid', delivery='render-v1')
+        first = endpoint.get('/solar/physics', params=query)
+        assert first.status_code == 200
+>       assert first.headers.get('content-encoding') == 'gzip'
+E       AssertionError: assert None == 'gzip'
+E        +  where None = get('content-encoding')
+E        +    where get = Headers({'content-length': '671282', 'content-type': 'application/json'}).get
+E        +      where Headers({'content-length': '671282', 'content-type': 'application/json'}) = <Response [200 OK]>.headers
+
+backend/tests/test_solar_render_delivery.py:40: AssertionError
+_________ test_delivery_rejects_unsupported_versions_before_computing __________
+
+endpoint = <starlette.testclient.TestClient object at 0x72052bf43920>
+
+    def test_delivery_rejects_unsupported_versions_before_computing(endpoint):
+>       assert endpoint.get('/solar/physics', params={'delivery': 'render-v9'}).status_code == 400
+E       AssertionError: assert 200 == 400
+E        +  where 200 = <Response [200 OK]>.status_code
+E        +    where <Response [200 OK]> = get('/solar/physics', params={'delivery': 'render-v9'})
+E        +      where get = <starlette.testclient.TestClient object at 0x72052bf43920>.get
+
+backend/tests/test_solar_render_delivery.py:74: AssertionError
+___ test_delivery_rejects_oversize_bodies_without_silently_dropping_geometry ___
+
+endpoint = <starlette.testclient.TestClient object at 0x72053350a3f0>
+model_state = {'schema': {'name': 'solar_physics_state', 'version': 2}, 'model': 'quasi_mhd_corona_v5', 'epoch_jd_tdb': 2460000.5, 'wall_epoch_jd_tdb': 2460000.5, ...}
+
+    def test_delivery_rejects_oversize_bodies_without_silently_dropping_geometry(endpoint, model_state):
+        # Deliberately uncompressible metadata must trip the encoded budget too.
+        model_state['oversize'] = ''.join(hashlib.sha256(str(i).encode()).hexdigest() for i in range(16000))
+        response = endpoint.get('/solar/physics', params={
+            'jd_tdb': 2460000.5, 'forcing': 'hybrid', 'delivery': 'render-v1',
+        })
+>       assert response.status_code == 413
+E       assert 200 == 413
+E        +  where 200 = <Response [200 OK]>.status_code
+
+backend/tests/test_solar_render_delivery.py:83: AssertionError
+=============================== warnings summary ===============================
+../../../../.cache/uv/archive-v0/tAoGccxDdi5wQX0W/lib/python3.12/site-packages/fastapi/testclient.py:1
+  /home/nomad/.cache/uv/archive-v0/tAoGccxDdi5wQX0W/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+../../../../.cache/uv/archive-v0/tAoGccxDdi5wQX0W/lib/python3.12/site-packages/starlette/testclient.py:53
+  /home/nomad/.cache/uv/archive-v0/tAoGccxDdi5wQX0W/lib/python3.12/site-packages/starlette/testclient.py:53: DeprecationWarning: The anyio.abc.BlockingPortal alias is deprecated, use anyio.from_thread.BlockingPortal instead.
+    _PortalFactoryType = Callable[[], AbstractContextManager[anyio.abc.BlockingPortal]]
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED backend/tests/test_solar_render_delivery.py::test_http_full_update_reuse_and_reconnect_preserve_latest_state
+FAILED backend/tests/test_solar_render_delivery.py::test_delivery_rejects_unsupported_versions_before_computing
+FAILED backend/tests/test_solar_render_delivery.py::test_delivery_rejects_oversize_bodies_without_silently_dropping_geometry
+3 failed, 2 warnings in 2.29s

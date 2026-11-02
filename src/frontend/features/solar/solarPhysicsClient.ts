@@ -286,6 +286,93 @@ interface SolarPhysicsClientOptions {
   liveData?: boolean;
 }
 
+// Bounds apply to the render-v1 HTTP body, independently of optional HTTP gzip.
+const MAX_SOLAR_ENCODED_BYTES = 512 * 1024;
+const MAX_SOLAR_DECODED_BYTES = 2 * 1024 * 1024;
+
+async function readSolarJson(response: Response): Promise<unknown> {
+  const length = Number(response.headers?.get?.('Content-Length'));
+  if (Number.isFinite(length) && length > MAX_SOLAR_DECODED_BYTES) {
+    throw new Error('Solar physics response exceeds byte budget');
+  }
+  // Synthetic Response doubles used by embedding callers may only expose json().
+  if (!response.body) return response.json();
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let bytes = 0;
+  let text = '';
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      bytes += value.byteLength;
+      if (bytes > MAX_SOLAR_DECODED_BYTES) {
+        await reader.cancel();
+        throw new Error('Solar physics response exceeds decoded byte budget');
+      }
+      text += decoder.decode(value, { stream: true });
+    }
+    const payload: unknown = JSON.parse(text + decoder.decode());
+    if (payload && typeof payload === 'object' && 'delivery' in payload
+      && Number.isFinite(length) && length > MAX_SOLAR_ENCODED_BYTES) {
+      throw new Error('Solar physics response exceeds encoded byte budget');
+    }
+    return payload;
+  } finally {
+    reader.releaseLock();
+  }
+}
+
+function record(value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new Error('Solar rendering delivery requires geometry containers');
+  }
+  return value as Record<string, unknown>;
+}
+
+function geometryContainers(payload: Record<string, unknown>): Array<[Record<string, unknown>, string]> {
+  return [
+    [record(payload.corona), 'features'],
+    [record(payload.pfss_field_lines), 'lines'],
+    [record(record(payload.heliosphere).parker_spiral), 'lines']
+  ];
+}
+
+function materializeSolarDelivery(
+  raw: unknown, previous: SolarPhysicsStatePayload | null, previousVersion: string | null
+): { payload: unknown; version: string | null } {
+  const payload = record(raw);
+  // Older servers still return the complete version-2 state. No geometry reuse.
+  if (!hasOwn(payload, 'delivery')) return { payload, version: null };
+  const delivery = record(payload.delivery);
+  const schema = record(delivery.schema);
+  const version = delivery.geometry_version;
+  if (schema.name !== 'solar_render_delivery' || schema.version !== 1
+    || typeof version !== 'string' || !/^[0-9a-f]{64}$/.test(version)
+    || typeof delivery.geometry_included !== 'boolean') {
+    throw new Error('Solar rendering delivery version is invalid');
+  }
+  const containers = geometryContainers(payload);
+  if (delivery.geometry_included) {
+    if (containers.some(([container, key]) => !Array.isArray(container[key]))) {
+      throw new Error('Solar rendering delivery omitted required geometry');
+    }
+  } else {
+    if (!previous || previousVersion !== version
+      || containers.some(([container, key]) => hasOwn(container, key))) {
+      throw new Error('Solar rendering delivery cannot reuse unknown geometry');
+    }
+    const previousContainers = geometryContainers(previous);
+    for (let index = 0; index < containers.length; index++) {
+      const [container, key] = containers[index];
+      const [oldContainer, oldKey] = previousContainers[index];
+      if (!Array.isArray(oldContainer[oldKey])) throw new Error('Solar rendering geometry cache is empty');
+      container[key] = oldContainer[oldKey];
+    }
+  }
+  return { payload, version };
+}
+
 export class SolarPhysicsClient {
   baseUrl: () => string;
   pollIntervalMs: number;
@@ -307,6 +394,7 @@ export class SolarPhysicsClient {
   lastProbe: { verdict: HealthProbeVerdict; trigger: HealthProbeTrigger; atMs: number } | null;
   _reqId: number;
   disposed: boolean;
+  private geometryVersion: string | null = null;
 
   constructor({
     baseUrl,
@@ -404,8 +492,10 @@ export class SolarPhysicsClient {
       fidelity: this.fidelity,
       max_features: `${Math.round(this.maxFeatures)}`,
       forcing: this.forcing,
-      live_data: this.liveData ? 'true' : 'false'
+      live_data: this.liveData ? 'true' : 'false',
+      delivery: 'render-v1'
     });
+    if (this.geometryVersion) query.set('geometry_version', this.geometryVersion);
     const url = `${this.baseUrl()}/solar/physics?${query.toString()}`;
 
     let timeoutHandle: ReturnType<typeof setTimeout> | null = null;
@@ -453,10 +543,14 @@ export class SolarPhysicsClient {
       }
       let payload: SolarPhysicsStatePayload;
       try {
-        const rawPayload = await response.json();
+        const rawPayload = await readSolarJson(response);
         if (!ownsRequest()) return false;
-        payload = validateSolarPhysicsPayload(rawPayload, jd, this.forcing);
+        const delivery = materializeSolarDelivery(rawPayload, this.latest, this.geometryVersion);
+        payload = validateSolarPhysicsPayload(delivery.payload, jd, this.forcing);
+        this.geometryVersion = delivery.version;
       } catch (error: unknown) {
+        if (!ownsRequest()) return false;
+        this.geometryVersion = null;
         if (timedOut) throw this.timeoutError();
         throw new SolarPhysicsRequestError('invalid-response', error instanceof Error ? error.message : String(error));
       }

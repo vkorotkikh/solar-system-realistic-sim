@@ -1,0 +1,86 @@
+{
+  "scope": "Selected raw trace records for the failed pre-correction worker fixture; full trace remains in ignored test-results, not a passing run.",
+  "implementation_commit": "8b4d3207a33a8e5cdcb0276183ec93e7e66ddaf8",
+  "source_trace": "test-results/4187/app-smoke-actual-app-recov-31a58-y-terminated-orbital-worker-chromium/trace.zip",
+  "source_trace_sha256": "ae5f3dade677146f2763d60572416abc3d2f4897d0d2e0f0d0c84060ad771963",
+  "records": [
+    {
+      "entry": "test.trace",
+      "record": {
+        "type": "error",
+        "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m1\u001b[39m\nReceived: \u001b[31m0\u001b[39m",
+        "stack": [
+          {
+            "file": "/home/nomad/ai/projects/worktrees/solar-close-partials-20261031/tests/browser/app-smoke.spec.ts",
+            "line": 76,
+            "column": 24
+          }
+        ]
+      }
+    },
+    {
+      "entry": "1-trace.trace",
+      "record": {
+        "type": "console",
+        "messageType": "warning",
+        "text": "[modelWorker] local propagation active: worker initialization timed out",
+        "args": [
+          {
+            "preview": "[modelWorker] local propagation active:",
+            "value": "[modelWorker] local propagation active:"
+          },
+          {
+            "preview": "worker initialization timed out",
+            "value": "worker initialization timed out"
+          }
+        ],
+        "location": {
+          "url": "http://127.0.0.1:4187/src/main.ts",
+          "lineNumber": 233,
+          "columnNumber": 26
+        },
+        "time": 14248.008,
+        "pageId": "page@32a7efe56397bad15e0f681b05a3a2af"
+      }
+    },
+    {
+      "entry": "1-trace.trace",
+      "record": {
+        "type": "after",
+        "callId": "twmn@1386",
+        "endTime": 16056.144,
+        "result": {
+          "value": {
+            "o": [
+              {
+                "k": "created",
+                "v": {
+                  "n": 2
+                }
+              },
+              {
+                "k": "killed",
+                "v": {
+                  "n": 0
+                }
+              },
+              {
+                "k": "retired",
+                "v": {
+                  "n": 1
+                }
+              },
+              {
+                "k": "replacementTicks",
+                "v": {
+                  "n": 2
+                }
+              }
+            ],
+            "id": 1
+          }
+        }
+      }
+    }
+  ]
+}

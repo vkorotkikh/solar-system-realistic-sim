@@ -1,0 +1,15 @@
+diff --git a/src/sunController.ts b/src/sunController.ts
+index 841f7c1..a6dfcb9 100644
+--- a/src/sunController.ts
++++ b/src/sunController.ts
+@@ -159,8 +159,8 @@ export function createSunController({
+ 
+   const solarPhysicsClient = new SolarPhysicsClient({
+     baseUrl: backendBaseUrl,
+-    pollIntervalMs: 900,
+-    timeoutMs: 2_600,
++    pollIntervalMs: 30_000,
++    timeoutMs: 20_000,
+     maxFeatures: 180,
+     fidelity: 'high',
+     forcing: 'hybrid',

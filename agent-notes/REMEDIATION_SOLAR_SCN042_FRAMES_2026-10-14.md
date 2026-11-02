@@ -1,5 +1,7 @@
 # Solar remediation: SCN-042 independent frame and screen oracles
 
+> **Current status (2026-10-30):** See the [verified remediation status](REMEDIATION_STATUS_2026-10-30.md) for all 83 dispositions, branch-specific fixes, remaining acceptance gates and the 25 completed working-note removals. The dated content below is historical evidence; it does not describe current main.
+
 Date: 2026-10-14. Worktree: `solar-remediation-20261014-solar`.
 
 ## Status and integration boundary

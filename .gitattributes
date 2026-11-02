@@ -1,0 +1,7 @@
+# Exact archival bytes intentionally retain original end-of-line spaces.
+docs/history/development-improvements-through-2026-03.md whitespace=-blank-at-eol
+# Captured test output and archived reports retain their original bytes/hashes.
+agent-notes/AUGUST_PARTIALS_CLOSURE_EVIDENCE_2026-10-31/*.txt whitespace=-blank-at-eol,-blank-at-eof
+agent-notes/AUGUST_PARTIALS_CLOSURE_EVIDENCE_2026-10-31/task-4-evidence/*.txt whitespace=-blank-at-eol,-blank-at-eof
+agent-notes/AUGUST_PARTIALS_CLOSURE_EVIDENCE_2026-10-31/science-final-nov01/*.xml whitespace=-blank-at-eol
+agent-notes/AUGUST_PARTIALS_CLOSURE_EVIDENCE_2026-10-31/task-4-report.md whitespace=-blank-at-eol

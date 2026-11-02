@@ -1,14 +1,17 @@
 import { test, expect } from '@playwright/test';
-import { assertNativeTabZoom, captureNativeZoomScreenshot, createTabZoomSession, zoomMetrics } from './tab-zoom';
+import { assertNativeTabZoom, captureNativeZoomScreenshot, createTabZoomSession, waitForNativeZoomFrame, zoomMetrics } from './tab-zoom';
 
 test.describe('native Chromium tab zoom', () => {
   test.skip(({ browserName }) => browserName !== 'chromium', 'Chrome tabs API is Chromium-specific, not Safari/Firefox zoom evidence');
-  test.setTimeout(90_000);
 
   // Catches fixed min-width regressions, lost responsive modality/focus, unreachable
   // clipped controls, and substituting viewport/CSS/pinch emulation for tab zoom.
   for (const factor of [2, 4]) {
     test(`${factor * 100}% genuine tab zoom preserves reflow and keyboard focus`, async ({ baseURL }, info) => {
+      // CI's software renderer spends ~45–47s capturing the two full-scene
+      // screenshots, in addition to startup and both native zoom transitions.
+      // Keep each readiness/assertion deadline; budget the complete scenario.
+      test.setTimeout(150_000);
       if (!baseURL) throw new Error('The browser gate requires a configured local baseURL');
       const session = await createTabZoomSession(info, new URL(baseURL).origin);
       const { page, context } = session;
@@ -150,6 +153,39 @@ test.describe('native Chromium tab zoom', () => {
       }
     });
   }
+
+  test('zoom readiness retries an early frame with the previous pixel density', async ({ page }) => {
+    // This is a controlled scheduling regression, separate from native zoom evidence.
+    await page.evaluate(() => {
+      const frames: FrameRequestCallback[] = [];
+      window.requestAnimationFrame = callback => { frames.push(callback); return frames.length; };
+      Object.assign(window, {
+        zoomFrameControl: {
+          pending: () => frames.length,
+          deliver: (dpr: number) => {
+            Object.defineProperty(window, 'devicePixelRatio', { configurable: true, value: dpr });
+            for (const callback of frames.splice(0)) callback(performance.now());
+          },
+        },
+      });
+    });
+    const control = await page.evaluateHandle(() => (window as unknown as {
+      zoomFrameControl: { pending(): number; deliver(dpr: number): void };
+    }).zoomFrameControl);
+    const ready = waitForNativeZoomFrame(page, 2);
+    try {
+      await expect.poll(() => control.evaluate(control => control.pending())).toBe(1);
+      await control.evaluate(control => control.deliver(1));
+      await expect.poll(() => control.evaluate(control => control.pending())).toBe(1);
+      await control.evaluate(control => control.deliver(2));
+      await ready;
+      expect(await control.evaluate(control => control.pending())).toBe(0);
+    } finally {
+      await control.evaluate(control => control.deliver(2));
+      await ready;
+      await control.dispose();
+    }
+  });
 
   test('zoom evidence rejects viewport-only, CSS and pinch substitutes', () => {
     const baseline = { width: 1280, height: 800, outerWidth: 1280, outerHeight: 900,

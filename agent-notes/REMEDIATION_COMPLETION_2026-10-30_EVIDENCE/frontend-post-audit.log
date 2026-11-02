@@ -1,0 +1,193 @@
+
+> solar-system-realistic-sim@0.0.0 test
+> vitest run --reporter=default --reporter=json --outputFile.json=/tmp/solar-remediation-completion-20261030/frontend-post-audit.json
+
+
+ RUN  v5.0.4 /home/nomad/ai/projects/worktrees/solar-remediation-completion-20261030
+
+ ✓ src/frontend/app/plannerController.test.ts (12 tests) 13ms
+ ✓ src/frontend/app/rendererRecovery.test.ts (12 tests) 12ms
+ ✓ src/frontend/app/runtimeLifetime.test.ts (13 tests) 14ms
+ ✓ src/frontend/app/simulationClient.test.ts (18 tests) 50ms
+ ✓ src/frontend/app/simulationClient.lifecycleReview.test.ts (13 tests) 54ms
+ ✓ src/frontend/app/simulationClient.subscription.test.ts (15 tests) 59ms
+ ✓ src/frontend/features/solar/solarDataStatus.test.ts (24 tests) 13ms
+ ✓ src/frontend/features/solar/solarPhysicsClient.test.ts (39 tests) 107ms
+ ✓ src/frontend/features/trajectory/localPlanner.test.ts (12 tests) 13ms
+ ✓ src/frontend/features/solar/solarRealtimeClient.test.ts (60 tests) 40ms
+ ✓ src/frontend/app/sceneSetup.test.ts (6 tests) 12ms
+ ✓ src/frontend/features/trajectory/index.test.ts (14 tests) 41ms
+ ✓ src/sim/sourceFrameOrbit.test.ts (4 tests) 8ms
+ ✓ scripts/kuiper-binary-origin.test.mjs (24 tests) 13ms
+ ✓ scripts/kepler-direct-contract.test.mjs (28 tests) 11ms
+ ✓ scripts/kuiper-binary-phase.test.mjs (26 tests) 19ms
+ ✓ src/sim/moonEphemeris.test.ts (10 tests) 12ms
+ ✓ src/sim/phase1AsteroidCatalog.startup.test.ts (10 tests) 53ms
+ ✓ src/sim/phase1AsteroidCatalog.lifecycle.test.ts (8 tests) 62ms
+ ❯ src/frontend/features/solar/sunVisuals.blendAlpha.test.ts (18 tests | 1 failed) 52ms
+   ✓ actual coronal-loop geometry blend endpoints (8)
+     ✓ zero from the real blender 5ms
+     ✓ completed blend 1ms
+     ✓ finite negative alpha clamps to source 1ms
+     ✓ finite alpha above one clamps to target 1ms
+     ✓ NaN falls back to target 1ms
+     ✓ positive infinity falls back to target 0ms
+     ✓ negative infinity falls back to target 1ms
+     ✓ keeps a mid-blend loop on or above the photosphere 1ms
+   ❯ actual eruption-particle geometry blend endpoints (10)
+     × keeps cached culling bounds around the moved particles: scale 22ms
+     ✓ keeps cached culling bounds around the moved particles: blend 6ms
+     ✓ zero from the real blender 1ms
+     ✓ completed blend 1ms
+     ✓ finite negative alpha clamps to source 3ms
+     ✓ finite alpha above one clamps to target 1ms
+     ✓ NaN falls back to target 3ms
+     ✓ positive infinity falls back to target 1ms
+     ✓ negative infinity falls back to target 1ms
+     ✓ mid-blend follows the spherical arc 1ms
+ ✓ src/sim/orbitMath.accuracy.test.ts (37 tests) 14ms
+ ✓ src/sim/phase1AsteroidCatalog.test.ts (14 tests) 57ms
+ ✓ src/sim/moonSourceExceptionIndependentReview.test.ts (11 tests) 164ms
+ ✓ src/frontend/features/solar/solarMagnetics.test.ts (8 tests) 59ms
+ ✓ src/frontend/features/solar/solarFlares.test.ts (11 tests) 52ms
+ ✓ src/frontend/features/asteroids/startupBelt.test.ts (10 tests) 21ms
+ ✓ src/frontend/app/viewportCameraController.test.ts (14 tests) 20ms
+ ✓ src/sim/kuiperBelt.horizons.test.ts (4 tests) 6ms
+ ✓ src/sim/catalog.test.ts (8 tests) 91ms
+ ✓ src/frontend/features/solar/solarFeatureBlending.test.ts (8 tests) 7ms
+ ✓ src/frontend/features/solar/sunVisuals.corona.test.ts (5 tests) 7ms
+ ✓ src/frontend/features/solar/sunVisuals.frames.test.ts (2 tests) 8ms
+ ✓ src/sim/catalogDisplay.test.ts (3 tests) 33ms
+ ✓ src/frontend/app/frameLifecycle.test.ts (15 tests) 10ms
+ ✓ src/sim/moonFrames.horizons.test.ts (28 tests) 35ms
+ ✓ src/frontend/app/simulationClient.kuiper.test.ts (13 tests) 60ms
+stderr | src/frontend/app/localSystemRenderer.disposal.test.ts > local-system resource disposal > releases per-scene body, label, and glow resources while preserving shared caches
+THREE.Material: parameter 'map' has value of undefined.
+THREE.Material: parameter 'map' has value of undefined.
+
+ ✓ src/frontend/features/solar/sunVisuals.pointSize.test.ts (3 tests) 7ms
+stderr | src/frontend/app/localSystemRenderer.disposal.test.ts > local-system resource disposal > releases a quadtree material without disposing its shared patch geometry
+THREE.Material: parameter 'map' has value of undefined.
+
+ ✓ src/frontend/app/localSystemRenderer.disposal.test.ts (2 tests) 12ms
+ ✓ src/main.bodyInfo.test.ts (3 tests) 268ms
+ ✓ src/frontend/app/rendererWarmup.test.ts (11 tests) 17ms
+ ✓ scripts/solar-delivery-metrics.test.mjs (8 tests) 7ms
+ ✓ src/main.focusBody.test.ts (4 tests) 285ms
+ ✓ scripts/update-moons-data.test.mjs (9 tests) 100ms
+ ✓ src/sim/planetPositions.horizons.test.ts (75 tests) 13ms
+ ↓ scripts/planetShaderGeometry.test.mjs (2 tests | 2 skipped)
+ ✓ src/sim/phase1AsteroidCatalog.assetBase.test.ts (20 tests) 156ms
+ ✓ src/frontend/features/solar/sunVisuals.sunspots.test.ts (5 tests) 8ms
+ ✓ src/data/asteroidCatalogLoader.test.ts (18 tests) 383ms
+   ✓ SCN-014 ACBF v1 quantization contract (15)
+     ✓ round trips 100000 rows within the declared encoding budgets 374ms
+ ✓ src/frontend/features/solar/sunVisuals.granulation.test.ts (3 tests) 46ms
+ ✓ src/sim/moonCartesianEphemeris.test.ts (5 tests) 7ms
+ ✓ src/frontend/features/solar/solarRealtimeClient.lifecycle.test.ts (8 tests) 22ms
+ ✓ src/sim/secularRemediation.test.ts (17 tests) 74ms
+ ✓ src/frontend/features/planetary/quadtreeLOD.test.ts (10 tests) 492ms
+stdout | scripts/kepler-direct-stagnation.test.mjs > ordinary unattainable precision rejects repeated-state stagnation even with a huge valid budget
+{"args":[0.1,0.99,1e-20,9007199254740991],"pid":2879660,"exitCode":0,"signal":null,"error":null,"observations":[{"stage":"entered"},{"stage":"settled","isError":true,"name":"RangeError"}],"reaped":true,"pins":{"src/data/moons.json":"3fab19c00fd86b35bb262135eb048b4f0bd376d9dd8104da9416bb09bc96143a","src/sim/moonEphemeris.ts":"3f44f60b79f8e8b038762ef4e03e7f10bf9e36777d26cb8613a83773d3b11ab1","src/sim/sourceFrameOrbit.ts":"e69f02a8f572323f6df8b50e2f48f25d25c7d11f28ed8e8dc25656e81a2a460a","src/sim/orbitMath.ts":"7103b9fca9f1d2b3a8deaa76b222177d8b1ef1942561562277c338637d0cce88"}}
+
+ ✓ src/frontend/features/solar/solarDisplayScale.test.ts (5 tests) 10ms
+ ✓ src/main.resizeRenderer.test.ts (15 tests) 458ms
+ ✓ src/frontend/features/planetary/planetRotation.test.ts (13 tests) 19ms
+ ✓ src/frontend/features/superluminal-modeling/metricDisplay.test.ts (7 tests) 54ms
+ ✓ src/frontend/features/solar/solarFrame.test.ts (10 tests) 36ms
+stdout | scripts/kepler-direct-stagnation.test.mjs > near-unity unattainable precision rejects repeated-state stagnation even with a huge valid budget
+{"args":[1e-20,0.9999999999999999,1e-30,9007199254740991],"pid":2879675,"exitCode":0,"signal":null,"error":null,"observations":[{"stage":"entered"},{"stage":"settled","isError":true,"name":"RangeError"}],"reaped":true,"pins":{"src/data/moons.json":"3fab19c00fd86b35bb262135eb048b4f0bd376d9dd8104da9416bb09bc96143a","src/sim/moonEphemeris.ts":"3f44f60b79f8e8b038762ef4e03e7f10bf9e36777d26cb8613a83773d3b11ab1","src/sim/sourceFrameOrbit.ts":"e69f02a8f572323f6df8b50e2f48f25d25c7d11f28ed8e8dc25656e81a2a460a","src/sim/orbitMath.ts":"7103b9fca9f1d2b3a8deaa76b222177d8b1ef1942561562277c338637d0cce88"}}
+
+ ✓ src/workers/modelWorkerContract.test.ts (6 tests) 85ms
+ ✓ src/frontend/features/superluminal-modeling/eventsRemediation.test.ts (15 tests) 261ms
+ ✓ src/sim/solarSystemModel.test.ts (4 tests) 73ms
+stdout | scripts/kepler-direct-stagnation.test.mjs > control: large unrepresentable whole result rejects repeated-state stagnation even with a huge valid budget
+{"args":[1000000000,0.99,1e-9,9007199254740991],"pid":2879740,"exitCode":0,"signal":null,"error":null,"observations":[{"stage":"entered"},{"stage":"settled","isError":true,"name":"RangeError"}],"reaped":true,"pins":{"src/data/moons.json":"3fab19c00fd86b35bb262135eb048b4f0bd376d9dd8104da9416bb09bc96143a","src/sim/moonEphemeris.ts":"3f44f60b79f8e8b038762ef4e03e7f10bf9e36777d26cb8613a83773d3b11ab1","src/sim/sourceFrameOrbit.ts":"e69f02a8f572323f6df8b50e2f48f25d25c7d11f28ed8e8dc25656e81a2a460a","src/sim/orbitMath.ts":"7103b9fca9f1d2b3a8deaa76b222177d8b1ef1942561562277c338637d0cce88"}}
+
+ ✓ src/sunController.events.test.ts (3 tests) 366ms
+ ✓ src/sim/alphaCentauriOrbit.test.ts (3 tests) 7ms
+ ✓ scripts/dev-launchers.test.mjs (5 tests) 1995ms
+   ✓ development launcher child ownership (5)
+     ✓ dev:full invokes the local Vite CLI without npx 882ms
+     ✓ dev:full handles a missing backend executable and tears down its frontend sibling 917ms
+ ✓ src/frontend/features/asteroids/kuiperPaused.test.ts (3 tests) 126ms
+ ✓ src/sim/moonCatalogIdentity.horizons.test.ts (3 tests) 12ms
+stdout | scripts/kepler-direct-stagnation.test.mjs > control: a huge valid budget still returns an accurate ordinary solution
+{"args":[0.1,0.99,1e-9,9007199254740991],"pid":2879794,"exitCode":0,"signal":null,"error":null,"observations":[{"stage":"entered"},{"stage":"settled","returned":0.8316604237910568,"finite":true}],"reaped":true,"pins":{"src/data/moons.json":"3fab19c00fd86b35bb262135eb048b4f0bd376d9dd8104da9416bb09bc96143a","src/sim/moonEphemeris.ts":"3f44f60b79f8e8b038762ef4e03e7f10bf9e36777d26cb8613a83773d3b11ab1","src/sim/sourceFrameOrbit.ts":"e69f02a8f572323f6df8b50e2f48f25d25c7d11f28ed8e8dc25656e81a2a460a","src/sim/orbitMath.ts":"7103b9fca9f1d2b3a8deaa76b222177d8b1ef1942561562277c338637d0cce88"}}
+
+ ✓ src/frontend/app/frameLifecycle.ownershipReview.test.ts (3 tests) 11ms
+ ✓ src/frontend/features/superluminal-modeling/smbhPhysics.test.ts (5 tests) 18ms
+ ✓ src/sim/orbitMath.test.ts (4 tests) 20ms
+ ✓ src/sunController.scaleActivity.test.ts (16 tests) 453ms
+stdout | scripts/kepler-direct-stagnation.test.mjs > control: a huge valid budget preserves the exact finite-boundary analytic return
+{"args":[1.7976931348623157e+308,0.99,1,9007199254740991],"pid":2879829,"exitCode":0,"signal":null,"error":null,"observations":[{"stage":"entered"},{"stage":"settled","returned":1.7976931348623157e+308,"finite":true}],"reaped":true,"pins":{"src/data/moons.json":"3fab19c00fd86b35bb262135eb048b4f0bd376d9dd8104da9416bb09bc96143a","src/sim/moonEphemeris.ts":"3f44f60b79f8e8b038762ef4e03e7f10bf9e36777d26cb8613a83773d3b11ab1","src/sim/sourceFrameOrbit.ts":"e69f02a8f572323f6df8b50e2f48f25d25c7d11f28ed8e8dc25656e81a2a460a","src/sim/orbitMath.ts":"7103b9fca9f1d2b3a8deaa76b222177d8b1ef1942561562277c338637d0cce88"}}
+
+ ✓ scripts/kepler-direct-stagnation.test.mjs (5 tests) 467ms
+ ✓ src/frontend/app/timeController.test.ts (3 tests) 7ms
+ ✓ src/frontend/features/asteroids/beltPrecision.test.ts (4 tests) 22ms
+ ✓ src/sim/moonEphemeris.validation.test.ts (131 tests) 1032ms
+ ✓ src/frontend/features/superluminal-modeling/smbhPropagation.types.test.ts (4 tests) 11ms
+ ✓ scripts/dev-full-config.test.mjs (15 tests) 28ms
+ ✓ src/frontend/app/runtimeConfig.test.ts (14 tests) 8ms
+ ✓ src/frontend/features/asteroids/beltRenderer.residuals.test.ts (5 tests) 19ms
+ ✓ src/frontend/features/asteroids/beltRenderer.disposal.test.ts (3 tests) 19ms
+ ✓ src/sim/moonSourceExceptions.test.ts (4 tests) 74ms
+ ✓ src/sunController.test.ts (11 tests) 754ms
+ ✓ src/main.catalogVisibility.test.ts (2 tests) 211ms
+ ✓ src/constants.test.ts (3 tests) 5ms
+ ✓ scripts/ci/typescript-error-ratchet.test.mjs (3 tests) 8ms
+ ✓ src/frontend/features/solar/solarGeometryContract.test.ts (36 tests) 762ms
+ ✓ src/frontend/app/labelSystem.test.ts (1 test) 6ms
+ ✓ scripts/frontend-origin.test.mjs (2 tests) 4ms
+ ✓ scripts/check-ui-types.test.mjs (2 tests) 6ms
+ ✓ src/frontend/app/stateStore.test.ts (2 tests) 5ms
+ ✓ src/frontend/features/planetary/planetView.test.ts (2 tests) 27ms
+ ✓ src/frontend/app/panelController.test.ts (1 test) 3ms
+ ✓ src/frontend/features/solar/solarCycle.test.ts (7 tests) 14ms
+ ✓ src/sim/asteroids/asteroidDistributions.test.ts (2 tests) 16ms
+ ✓ src/frontend/app/experimentController.test.ts (2 tests) 6ms
+ ✓ src/frontend/features/asteroids/beltRenderer.color.test.ts (1 test) 6ms
+ ✓ src/workers/modelWorker.events.test.ts (1 test) 99ms
+ ✓ src/sim/loadMoonEphemerides.test.ts (1 test) 26ms
+ ✓ scripts/phase1-catalog-artifacts.test.mjs (1 test) 192ms
+ ✓ src/main.asteroidRefresh.test.ts (2 tests) 150ms
+ ✓ src/sunController.visualLifecycle.test.ts (15 tests) 1240ms
+ ✓ src/sim/moonCatalogRepair.horizons.test.ts (425 tests) 129ms
+ ✓ src/sunController.frameReview.test.ts (17 tests) 1487ms
+ ✓ src/sim/lazyMoonEphemerides.test.ts (61 tests) 2322ms
+   ✓ loads verified decoded shards from native br HTTP responses 1125ms
+ ✓ src/frontend/features/superluminal-modeling/agnFrameOracle.test.ts (6 tests) 1040ms
+   ✓ SCN-042 independent fixed-J2000 sky -> scene -> screen oracle (6)
+     ✓ GW: unperturbed event grid lies in the canonical XY ecliptic with +Z normal 942ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/frontend/features/solar/sunVisuals.blendAlpha.test.ts > actual eruption-particle geometry blend endpoints > keeps cached culling bounds around the moved particles: scale
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/frontend/features/solar/sunVisuals.blendAlpha.test.ts:113:12
+    111|         expect(particles.geometry.boundingSphere!.containsPoint(
+    112|           new Vector3().fromBufferAttribute(position, index)
+    113|         )).toBe(true);
+       |            ^
+    114|       }
+    115|     } finally {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 102 passed | 1 skipped (104)
+      Tests  1 failed | 1671 passed | 2 skipped (1674)
+   Start at  01:46:05
+   Duration  3.58s (transform 58%, tests 26%, import 15%, worker 1%)
+
+    Isolate  104 workers spawned · ~122ms startup each (spawn + environment, per file)
+             at least ~288ms faster with isolate: false — reuses workers across files instead of one per file
+
+JSON report written to /tmp/solar-remediation-completion-20261030/frontend-post-audit.json

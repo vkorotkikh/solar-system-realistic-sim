@@ -1,0 +1,68 @@
+[
+ {
+  "run": 1,
+  "states": [
+   "connecting",
+   "backend"
+  ],
+  "falseError": false,
+  "final": "Sun: backend solar model (hybrid forcing, observations blended 41%; AIA 304 image) · updated 16:09 UTC",
+  "finalAnn": "Sun data: backend solar model connected.",
+  "warns": []
+ },
+ {
+  "run": 2,
+  "states": [
+   "connecting",
+   "backend"
+  ],
+  "falseError": false,
+  "final": "Sun: backend solar model (hybrid forcing, observations blended 41%; AIA 304 image) · updated 16:10 UTC",
+  "finalAnn": "Sun data: backend solar model connected.",
+  "warns": []
+ },
+ {
+  "run": 3,
+  "states": [
+   "connecting",
+   "backend"
+  ],
+  "falseError": false,
+  "final": "Sun: backend solar model (hybrid forcing, observations blended 41%; AIA 304 image) · updated 16:10 UTC",
+  "finalAnn": "Sun data: backend solar model connected.",
+  "warns": []
+ },
+ {
+  "run": 4,
+  "states": [
+   "connecting",
+   "backend"
+  ],
+  "falseError": false,
+  "final": "Sun: backend solar model (hybrid forcing, observations blended 41%; AIA 304 image) · updated 16:11 UTC",
+  "finalAnn": "Sun data: backend solar model connected.",
+  "warns": []
+ },
+ {
+  "run": 5,
+  "states": [
+   "connecting",
+   "backend"
+  ],
+  "falseError": false,
+  "final": "Sun: backend solar model (hybrid forcing, observations blended 41%; AIA 304 image) · updated 16:12 UTC",
+  "finalAnn": "Sun data: backend solar model connected.",
+  "warns": []
+ },
+ {
+  "run": 6,
+  "states": [
+   "connecting",
+   "backend"
+  ],
+  "falseError": false,
+  "final": "Sun: backend solar model (hybrid forcing, observations blended 41%; AIA 304 image) · updated 16:12 UTC",
+  "finalAnn": "Sun data: backend solar model connected.",
+  "warns": []
+ }
+]

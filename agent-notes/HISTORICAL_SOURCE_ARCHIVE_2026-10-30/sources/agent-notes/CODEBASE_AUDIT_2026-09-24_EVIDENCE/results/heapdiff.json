@@ -1,0 +1,302 @@
+[
+ {
+  "k": "code:code",
+  "dn": 128,
+  "db": 56508
+ },
+ {
+  "k": "native:native",
+  "dn": 184,
+  "db": 36632
+ },
+ {
+  "k": "object:Object",
+  "dn": 135,
+  "db": 3752
+ },
+ {
+  "k": "array:(object elements)",
+  "dn": 30,
+  "db": 2380
+ },
+ {
+  "k": "object shape:object shape",
+  "dn": 32,
+  "db": 2324
+ },
+ {
+  "k": "array:(object properties)",
+  "dn": -3,
+  "db": 1344
+ },
+ {
+  "k": "object:Array",
+  "dn": 30,
+  "db": 480
+ },
+ {
+  "k": "array:",
+  "dn": 5,
+  "db": 456
+ },
+ {
+  "k": "object:_Matrix3",
+  "dn": 25,
+  "db": 400
+ },
+ {
+  "k": "number:number",
+  "dn": 24,
+  "db": 300
+ },
+ {
+  "k": "object:Color",
+  "dn": 8,
+  "db": 224
+ },
+ {
+  "k": "closure:",
+  "dn": 7,
+  "db": 196
+ },
+ {
+  "k": "string:string",
+  "dn": 29,
+  "db": 192
+ },
+ {
+  "k": "concatenated string:concatenated string",
+  "dn": 5,
+  "db": 100
+ },
+ {
+  "k": "object:_Vector2",
+  "dn": 5,
+  "db": 100
+ },
+ {
+  "k": "object:Promise",
+  "dn": 4,
+  "db": 80
+ },
+ {
+  "k": "object:Generator",
+  "dn": 1,
+  "db": 56
+ },
+ {
+  "k": "object:Map",
+  "dn": 2,
+  "db": 32
+ },
+ {
+  "k": "object:system / Context / scope @111",
+  "dn": 1,
+  "db": 24
+ },
+ {
+  "k": "object:TypeError",
+  "dn": 1,
+  "db": 24
+ },
+ {
+  "k": "object:system / Context / scope @1779711",
+  "dn": 1,
+  "db": 24
+ },
+ {
+  "k": "object:system / Context / scope @1945119",
+  "dn": 1,
+  "db": 20
+ },
+ {
+  "k": "object:system / Context / scope @459",
+  "dn": 1,
+  "db": 20
+ },
+ {
+  "k": "synthetic:synthetic",
+  "dn": 0,
+  "db": 0
+ },
+ {
+  "k": "symbol:symbol",
+  "dn": 0,
+  "db": 0
+ },
+ {
+  "k": "object:Boolean",
+  "dn": 0,
+  "db": 0
+ },
+ {
+  "k": "object:Number",
+  "dn": 0,
+  "db": 0
+ },
+ {
+  "k": "closure:toJSON",
+  "dn": 0,
+  "db": 0
+ },
+ {
+  "k": "closure:unshift",
+  "dn": 0,
+  "db": 0
+ },
+ {
+  "k": "object:system / CppHeapExternal",
+  "dn": 0,
+  "db": 0
+ },
+ {
+  "k": "closure:indexOf",
+  "dn": 0,
+  "db": 0
+ },
+ {
+  "k": "closure:Array",
+  "dn": 0,
+  "db": 0
+ },
+ {
+  "k": "closure:shift",
+  "dn": 0,
+  "db": 0
+ },
+ {
+  "k": "closure:call",
+  "dn": 0,
+  "db": 0
+ },
+ {
+  "k": "closure:forEach",
+  "dn": 0,
+  "db": 0
+ },
+ {
+  "k": "closure:Object",
+  "dn": 0,
+  "db": 0
+ },
+ {
+  "k": "closure:push",
+  "dn": 0,
+  "db": 0
+ },
+ {
+  "k": "closure:from",
+  "dn": 0,
+  "db": 0
+ },
+ {
+  "k": "closure:includes",
+  "dn": 0,
+  "db": 0
+ },
+ {
+  "k": "closure:bind",
+  "dn": 0,
+  "db": 0
+ },
+ {
+  "k": "closure:Function",
+  "dn": 0,
+  "db": 0
+ },
+ {
+  "k": "closure:isArray",
+  "dn": 0,
+  "db": 0
+ },
+ {
+  "k": "closure:find",
+  "dn": 0,
+  "db": 0
+ },
+ {
+  "k": "closure:reverse",
+  "dn": 0,
+  "db": 0
+ },
+ {
+  "k": "closure:slice",
+  "dn": 0,
+  "db": 0
+ },
+ {
+  "k": "closure:join",
+  "dn": 0,
+  "db": 0
+ },
+ {
+  "k": "closure:apply",
+  "dn": 0,
+  "db": 0
+ },
+ {
+  "k": "closure:filter",
+  "dn": 0,
+  "db": 0
+ },
+ {
+  "k": "closure:map",
+  "dn": 0,
+  "db": 0
+ },
+ {
+  "k": "closure:splice",
+  "dn": 0,
+  "db": 0
+ },
+ {
+  "k": "closure:pop",
+  "dn": 0,
+  "db": 0
+ },
+ {
+  "k": "closure:concat",
+  "dn": 0,
+  "db": 0
+ },
+ {
+  "k": "closure:hasOwnProperty",
+  "dn": 0,
+  "db": 0
+ },
+ {
+  "k": "closure:getOwnPropertyDescriptor",
+  "dn": 0,
+  "db": 0
+ },
+ {
+  "k": "closure:getPrototypeOf",
+  "dn": 0,
+  "db": 0
+ },
+ {
+  "k": "closure:keys",
+  "dn": 0,
+  "db": 0
+ },
+ {
+  "k": "closure:setPrototypeOf",
+  "dn": 0,
+  "db": 0
+ },
+ {
+  "k": "closure:String",
+  "dn": 0,
+  "db": 0
+ },
+ {
+  "k": "closure:split",
+  "dn": 0,
+  "db": 0
+ },
+ {
+  "k": "closure:substr",
+  "dn": 0,
+  "db": 0
+ }
+]

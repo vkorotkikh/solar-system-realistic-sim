@@ -1,0 +1,16 @@
+
+> solar-system-realistic-sim@0.0.0 test
+> vitest run
+
+
+ RUN  v5.0.4 /home/nomad/ai/projects/worktrees/solar-partials-solar-20261031
+
+
+ Test Files  106 passed | 1 skipped (107)
+      Tests  1687 passed | 2 skipped (1689)
+   Start at  05:08:04
+   Duration  2.51s (tests 51%, import 24%, transform 24%, worker 1%)
+
+    Isolate  107 workers spawned · ~115ms startup each (spawn + environment, per file)
+             at least ~282ms faster with isolate: false — reuses workers across files instead of one per file
+

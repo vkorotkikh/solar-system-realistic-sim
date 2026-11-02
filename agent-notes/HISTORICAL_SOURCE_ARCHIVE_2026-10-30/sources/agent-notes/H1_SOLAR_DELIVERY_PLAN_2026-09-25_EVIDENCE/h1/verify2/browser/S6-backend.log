@@ -1,0 +1,17 @@
+INFO:     Started server process [2322555]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8042 (Press CTRL+C to quit)
+INFO:     127.0.0.1:36044 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44010 - "GET /solar/physics?jd=2461309.15042372&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:48650 - "GET /solar/physics?jd=2461437.81218372&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48650 - "GET /solar/realtime/aia-tile?channel=aia_304&image_id=192425468&v=192425468 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59278 - "GET /solar/physics?jd=2461550.07418372&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53086 - "GET /solar/physics?jd=2461662.73618372&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47894 - "GET /solar/physics?jd=2461776.59858372&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42904 - "GET /solar/physics?jd=2461889.86058372&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60736 - "GET /solar/physics?jd=2462004.05618372&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [2322555]

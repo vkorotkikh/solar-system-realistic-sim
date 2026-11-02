@@ -1,0 +1,35 @@
+INFO:     Started server process [2261481]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8042 (Press CTRL+C to quit)
+INFO:     127.0.0.1:33782 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33792 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33796 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38010 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38010 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51376 - "GET /solar/physics?jd=2461349.60379676&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:41322 - "GET /solar/physics?jd=2461377.53619677&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:60020 - "GET /solar/physics?jd=2461408.80139676&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:36462 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36462 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38714 - "GET /solar/physics?jd=2461496.99779677&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:38722 - "GET /solar/physics?jd=2461521.86379677&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:51254 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51254 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51256 - "GET /solar/physics?jd=2461599.59379676&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:51256 - "GET /solar/physics?jd=2461618.32659676&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:45750 - "GET /solar/physics?jd=2461698.25659676&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:45750 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45750 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45758 - "GET /solar/physics?jd=2461727.58859676&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:46466 - "GET /solar/physics?jd=2461810.98539676&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:46466 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46466 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46478 - "GET /solar/physics?jd=2461836.85099676&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:56892 - "GET /solar/physics?jd=2461929.91419676&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:56892 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56892 - "GET /health HTTP/1.1" 200 OK
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [2261481]

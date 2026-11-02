@@ -1,0 +1,79 @@
+[
+  {
+    "name": "frontend-final",
+    "command": [
+      "node",
+      "/tmp/solar-scn005-npm10-20261028-JG1enL/node_modules/npm/bin/npm-cli.js",
+      "test",
+      "--",
+      "--reporter=default",
+      "--reporter=json",
+      "--outputFile.json=/tmp/solar-remediation-completion-20261030/frontend-final.json"
+    ],
+    "exitCode": 0
+  },
+  {
+    "name": "types-final",
+    "command": [
+      "node",
+      "/tmp/solar-scn005-npm10-20261028-JG1enL/node_modules/npm/bin/npm-cli.js",
+      "run",
+      "typecheck"
+    ],
+    "exitCode": 0
+  },
+  {
+    "name": "types-ui-final",
+    "command": [
+      "node",
+      "/tmp/solar-scn005-npm10-20261028-JG1enL/node_modules/npm/bin/npm-cli.js",
+      "run",
+      "test:types:ui"
+    ],
+    "exitCode": 0
+  },
+  {
+    "name": "ratchet-final",
+    "command": [
+      "node",
+      "/tmp/solar-scn005-npm10-20261028-JG1enL/node_modules/npm/bin/npm-cli.js",
+      "run",
+      "typecheck:ratchet"
+    ],
+    "exitCode": 0
+  },
+  {
+    "name": "ui-delta-final",
+    "command": [
+      "node",
+      "/tmp/solar-scn005-npm10-20261028-JG1enL/node_modules/npm/bin/npm-cli.js",
+      "run",
+      "typecheck:ui-delta"
+    ],
+    "exitCode": 0
+  },
+  {
+    "name": "build-final",
+    "command": [
+      "node",
+      "/tmp/solar-scn005-npm10-20261028-JG1enL/node_modules/npm/bin/npm-cli.js",
+      "run",
+      "build",
+      "--",
+      "--outDir",
+      "/tmp/solar-remediation-completion-20261030/dist",
+      "--emptyOutDir"
+    ],
+    "exitCode": 0
+  },
+  {
+    "name": "npm-audit-final",
+    "command": [
+      "node",
+      "/tmp/solar-scn005-npm10-20261028-JG1enL/node_modules/npm/bin/npm-cli.js",
+      "audit",
+      "--json"
+    ],
+    "exitCode": 0
+  }
+]

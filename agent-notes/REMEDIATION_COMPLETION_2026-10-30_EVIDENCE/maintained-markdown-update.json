@@ -1,0 +1,29 @@
+{
+  "scope": "Update maintained Markdown links to immutable original notes; prepend current-status pointers. Source archives/evidence/artifacts unchanged.",
+  "retiredLinkCount": 42,
+  "changedPaths": [
+    "agent-notes/CODEBASE_SCAN_AND_ISSUE_TRACKER_2026-10-10.md",
+    "agent-notes/MASTER_ISSUE_TRACKER_2026-10-11.md",
+    "agent-notes/REMEDIATION_ACCESSIBILITY_2026-10-14.md",
+    "agent-notes/REMEDIATION_CATALOG_STARTUP_2026-10-14.md",
+    "agent-notes/REMEDIATION_CLOSURE_CHECKPOINT_6539902_2026-10-15.md",
+    "agent-notes/REMEDIATION_CLOSURE_PLAN_2026-10-15.md",
+    "agent-notes/REMEDIATION_CONSOLIDATED_REVIEW_2026-10-29.md",
+    "agent-notes/REMEDIATION_DEPLOYMENT_2026-10-14.md",
+    "agent-notes/REMEDIATION_EFFORT_2026-10-14.md",
+    "agent-notes/REMEDIATION_INTEGRATION_CHECKPOINT_2026-10-14.md",
+    "agent-notes/REMEDIATION_INTEGRATION_CHECKPOINT_A51BEBC_2026-10-14.md",
+    "agent-notes/REMEDIATION_OPERATIONAL_2026-10-14.md",
+    "agent-notes/REMEDIATION_PROVENANCE_2026-10-14.md",
+    "agent-notes/REMEDIATION_SOLAR_2026-10-14.md",
+    "agent-notes/REMEDIATION_SOLAR_SCN041_COMPARISON_2026-10-14.md",
+    "agent-notes/REMEDIATION_SOLAR_SCN042_FRAMES_2026-10-14.md",
+    "agent-notes/REMEDIATION_SOLAR_SCN042_PRODUCTION_2026-10-14.md",
+    "agent-notes/REMEDIATION_SOLAR_WIND_OVERLAP_2026-10-14.md",
+    "agent-notes/REMEDIATION_STARTUP_WARMUP_2026-10-17.md",
+    "agent-notes/REMEDIATION_VERIFICATION_CHECKPOINT_4728428_2026-10-14.md",
+    "agent-notes/REMEDIATION_VERIFICATION_CHECKPOINT_4B55DFF_2026-10-14.md",
+    "agent-notes/REMEDIATION_VERIFICATION_CHECKPOINT_4F2E250_2026-10-14.md",
+    "agent-notes/REMEDIATION_WAVE3_2026-10-14.md"
+  ]
+}

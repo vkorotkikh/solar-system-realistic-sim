@@ -1,6 +1,6 @@
 {
   "checksum_algorithm_sha256": "sha256",
-  "checksum_sha256": "f4debc48eea13a3be43eb69d7d70e8920ece7aa5e7e6dd0490c870bc83cb222a",
+  "checksum_sha256": "679312f651b65e8bacdeb4afd9da7dd0eead389545b8752aef1ca4b24e620200",
   "counts": {
     "orbit_class": {
       "IMB": 0,
@@ -19,9 +19,9 @@
     "albedo": "SBDB source value or unknown; no assumed albedo",
     "appearance": "colors and irregularity are illustrative",
     "diameter": "SBDB-supplied diameter in km; no magnitude-derived diameters in this population",
-    "dynamics": "quantized fixed osculating elements with two-body propagation, not a validated multi-epoch ephemeris",
+    "dynamics": "source-precision fixed osculating elements with two-body propagation, not a validated multi-epoch ephemeris",
     "integrity": "SHA-256 binds artifact bytes only, not scientific accuracy",
-    "period": "SBDB full-prec=true per (days), rounded only to ACBF float32",
+    "period": "SBDB full-prec=true per (days), preserved as ACBF v2 float64",
     "status": "not-independently-validated",
     "taxonomy": "coarse visual families from observed spec_T/spec_B; original labels remain in pinned input; no semimajor-axis inference; X/E are not metallic M"
   },
@@ -119,36 +119,21 @@
     "sort": "-diameter,spkid"
   },
   "record_layout": {
-    "format": "acbf_v1",
-    "positive_albedo_min_code": 1,
-    "quantization": {
-      "float32": [
-        "epoch_jd",
-        "a_au",
-        "period_days",
-        "diameter_km"
-      ],
-      "u16_ranges": {
-        "albedo": [
-          0,
-          1
-        ],
-        "angles_deg": [
-          0,
-          360
-        ],
-        "e": [
-          0,
-          1
-        ],
-        "i_deg": [
-          0,
-          180
-        ]
-      }
-    },
-    "stride_bytes": 36,
-    "unknown_albedo_u16": 0,
+    "float64": [
+      "epoch_jd",
+      "a_au",
+      "e",
+      "i_deg",
+      "ascending_node_deg",
+      "arg_periapsis_deg",
+      "mean_anomaly_deg",
+      "period_days",
+      "diameter_km",
+      "albedo"
+    ],
+    "format": "acbf_v2",
+    "stride_bytes": 88,
+    "unknown_albedo_float64": 0,
     "unknown_taxonomy_u8": 255
   },
   "scientific_references": [

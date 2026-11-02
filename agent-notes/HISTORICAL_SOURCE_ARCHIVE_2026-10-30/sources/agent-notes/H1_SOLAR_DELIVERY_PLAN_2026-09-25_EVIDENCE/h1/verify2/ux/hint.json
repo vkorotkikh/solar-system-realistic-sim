@@ -1,0 +1,191 @@
+{
+ "fixCss": "@media (max-width: 1100px) { .interaction-hint { top: calc(68px + env(safe-area-inset-top, 0px)); bottom: auto; } }",
+ "result": [
+  {
+   "build": "branch",
+   "vp": "1440x900",
+   "panel": "open",
+   "natural": {
+    "hintBox": {
+     "y": 801,
+     "bottom": 832,
+     "x": 747,
+     "right": 1045
+    },
+    "hintTextCoveredPct": 0,
+    "hintHitsToolbarItem": false,
+    "toolbarBottom": 60,
+    "solarPointerEvents": "none",
+    "elementAtSolarCentre": "space-canvas",
+    "barTop": 840
+   },
+   "withTopHintFix": null
+  },
+  {
+   "build": "branch",
+   "vp": "1440x900",
+   "panel": "closed",
+   "natural": {
+    "hintBox": {
+     "y": 801,
+     "bottom": 832,
+     "x": 571,
+     "right": 869
+    },
+    "hintTextCoveredPct": 0,
+    "hintHitsToolbarItem": false,
+    "toolbarBottom": 60,
+    "solarPointerEvents": "none",
+    "elementAtSolarCentre": "space-canvas",
+    "barTop": 854
+   },
+   "withTopHintFix": null
+  },
+  {
+   "build": "main",
+   "vp": "1440x900",
+   "panel": "open",
+   "natural": {
+    "hintBox": {
+     "y": 801,
+     "bottom": 832,
+     "x": 747,
+     "right": 1045
+    },
+    "hintTextCoveredPct": 0,
+    "hintHitsToolbarItem": false,
+    "toolbarBottom": 60,
+    "solarPointerEvents": null,
+    "elementAtSolarCentre": null,
+    "barTop": 854
+   },
+   "withTopHintFix": null
+  },
+  {
+   "build": "main",
+   "vp": "1440x900",
+   "panel": "closed",
+   "natural": {
+    "hintBox": {
+     "y": 801,
+     "bottom": 832,
+     "x": 571,
+     "right": 869
+    },
+    "hintTextCoveredPct": 0,
+    "hintHitsToolbarItem": false,
+    "toolbarBottom": 60,
+    "solarPointerEvents": null,
+    "elementAtSolarCentre": null,
+    "barTop": 854
+   },
+   "withTopHintFix": null
+  },
+  {
+   "build": "branch",
+   "vp": "1024x768",
+   "panel": "closed",
+   "natural": {
+    "hintBox": {
+     "y": 669,
+     "bottom": 700,
+     "x": 363,
+     "right": 661
+    },
+    "hintTextCoveredPct": 41.7,
+    "hintHitsToolbarItem": false,
+    "toolbarBottom": 60,
+    "solarPointerEvents": "none",
+    "elementAtSolarCentre": "space-canvas",
+    "barTop": 685
+   },
+   "withTopHintFix": {
+    "hintBox": {
+     "y": 68,
+     "bottom": 99,
+     "x": 363,
+     "right": 661
+    },
+    "hintTextCoveredPct": 0,
+    "hintHitsToolbarItem": false,
+    "toolbarBottom": 60,
+    "solarPointerEvents": "none",
+    "elementAtSolarCentre": "space-canvas",
+    "barTop": 685
+   }
+  },
+  {
+   "build": "main",
+   "vp": "1024x768",
+   "panel": "closed",
+   "natural": {
+    "hintBox": {
+     "y": 669,
+     "bottom": 700,
+     "x": 363,
+     "right": 661
+    },
+    "hintTextCoveredPct": 0,
+    "hintHitsToolbarItem": false,
+    "toolbarBottom": 60,
+    "solarPointerEvents": null,
+    "elementAtSolarCentre": null,
+    "barTop": 722
+   },
+   "withTopHintFix": null
+  },
+  {
+   "build": "branch",
+   "vp": "768x1024",
+   "panel": "closed",
+   "natural": {
+    "hintBox": {
+     "y": 925,
+     "bottom": 956,
+     "x": 235,
+     "right": 533
+    },
+    "hintTextCoveredPct": 100,
+    "hintHitsToolbarItem": false,
+    "toolbarBottom": 60,
+    "solarPointerEvents": "none",
+    "elementAtSolarCentre": "space-canvas",
+    "barTop": 927
+   },
+   "withTopHintFix": {
+    "hintBox": {
+     "y": 68,
+     "bottom": 99,
+     "x": 235,
+     "right": 533
+    },
+    "hintTextCoveredPct": 0,
+    "hintHitsToolbarItem": false,
+    "toolbarBottom": 60,
+    "solarPointerEvents": "none",
+    "elementAtSolarCentre": "space-canvas",
+    "barTop": 927
+   }
+  },
+  {
+   "build": "main",
+   "vp": "768x1024",
+   "panel": "closed",
+   "natural": {
+    "hintBox": {
+     "y": 925,
+     "bottom": 956,
+     "x": 235,
+     "right": 533
+    },
+    "hintTextCoveredPct": 0,
+    "hintHitsToolbarItem": false,
+    "toolbarBottom": 60,
+    "solarPointerEvents": null,
+    "elementAtSolarCentre": null,
+    "barTop": 964
+   },
+   "withTopHintFix": null
+  }
+ ]
+}

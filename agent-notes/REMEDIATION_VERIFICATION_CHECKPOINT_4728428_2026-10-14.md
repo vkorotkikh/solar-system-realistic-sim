@@ -1,5 +1,7 @@
 # Remediation verification checkpoint: 4728428
 
+> **Current status (2026-10-30):** See the [verified remediation status](REMEDIATION_STATUS_2026-10-30.md) for all 83 dispositions, branch-specific fixes, remaining acceptance gates and the 25 completed working-note removals. The dated content below is historical evidence; it does not describe current main.
+
 All work remains on remediation/canonical-register-20261014 and isolated
 agent worktrees. No remote push, PR or main merge occurred. Canonical landing
 states are intentionally unchanged; construction passes are not main closure.

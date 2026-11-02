@@ -1,4 +1,103 @@
 import { test, expect, type Page } from '@playwright/test';
+import { retireWebGlPage } from './webgl-cleanup';
+// Apply the existing real-WebGL budget before browser/context fixtures start.
+// test.setTimeout inside a body cannot cover software-GPU context setup.
+test.describe.configure({ timeout: 90_000 });
+test.afterEach(async ({ page }) => { await retireWebGlPage(page); });
+test('decorative stars remain visible with close-focus clip planes and behind bodies', async ({ page }) => {
+  await controlExternalRequests(page);
+  await page.route(/\/src\/main\.ts(?:\?.*)?$/, route => route.fulfill({ contentType: 'application/javascript', body: '' }));
+  await page.goto('/');
+  const result = await page.evaluate(async () => {
+    const threeUrl = '/node_modules/three/build/three.module.js';
+    const annotationUrl = '/src/frontend/app/sceneAnnotations.ts';
+    const { WebGLRenderer, Scene, PerspectiveCamera, Mesh, PlaneGeometry, MeshBasicMaterial } = await import(threeUrl);
+    const { createBackgroundStars } = await import(annotationUrl);
+    const renderer = new WebGLRenderer({ preserveDrawingBuffer: true });
+    renderer.setSize(256, 256); renderer.setPixelRatio(1);
+    const scene = new Scene(); const camera = new PerspectiveCamera(58, 1, .000001, 20000);
+    let seed = 42;
+    const stars = createBackgroundStars(6000, () => ((seed = (1664525 * seed + 1013904223) >>> 0) / 4294967296));
+    scene.add(stars);
+    const gl = renderer.getContext();
+    const capture = () => {
+      renderer.render(scene, camera);
+      const pixels = new Uint8Array(256 * 256 * 4);
+      gl.readPixels(0, 0, 256, 256, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+      let lit = 0; for (let i = 0; i < pixels.length; i += 4) if (pixels[i] > 10) lit++;
+      return lit;
+    };
+    const wide = capture(); camera.far = .45; camera.updateProjectionMatrix(); const close = capture();
+    const blocker = new Mesh(new PlaneGeometry(1, 1), new MeshBasicMaterial({ color: 0 }));
+    blocker.position.z = -.05; scene.add(blocker); const occluded = capture();
+    stars.geometry.dispose(); stars.material.dispose(); blocker.geometry.dispose(); blocker.material.dispose(); renderer.dispose();
+    return { wide, close, occluded };
+  });
+  expect(result.wide).toBeGreaterThan(100);
+  expect(result.close).toBe(result.wide);
+  expect(result.occluded).toBe(0);
+  await test.info().attach('star-clip-pixel-counts', { body: JSON.stringify(result), contentType: 'application/json' });
+});
+test('actual app recovers a silently terminated orbital worker', async ({ page }) => {
+  test.setTimeout(90_000);
+  await controlExternalRequests(page);
+  type WorkerProbe = {
+    created: number; killed: number; retired: number; replacementTicks: number; replacementStates: number;
+    atKill: { attempt: number; created: number; retired: number } | null;
+  };
+  await page.addInitScript(() => {
+    const probe: WorkerProbe = {
+      created: 0, killed: 0, retired: 0, replacementTicks: 0, replacementStates: 0, atKill: null,
+    };
+    Object.assign(window, { orbitalWorkerProbe: probe });
+    const NativeWorker = window.Worker;
+    window.Worker = class extends NativeWorker {
+      readonly attempt: number;
+      constructor(url: string | URL, options?: WorkerOptions) {
+        super(url, options);
+        this.attempt = ++probe.created;
+        this.addEventListener('message', event => {
+          if (probe.atKill && this.attempt === probe.atKill.attempt + 1 && event.data?.type === 'state') {
+            probe.replacementStates += 1;
+          }
+        });
+      }
+      postMessage(message: unknown, options?: StructuredSerializeOptions | Transferable[]) {
+        if ((message as { type?: string }).type === 'tick') {
+          // A cold worker may exhaust its initialization deadline before any
+          // tick. Inject once into the first ready worker, then measure only
+          // the recovery caused by this silent termination.
+          if (!probe.atKill) {
+            probe.atKill = { attempt: this.attempt, created: probe.created, retired: probe.retired };
+            probe.killed += 1; super.terminate(); return;
+          }
+          if (this.attempt === probe.atKill.attempt + 1) probe.replacementTicks += 1;
+        }
+        Reflect.apply(NativeWorker.prototype.postMessage, this, [message, options]);
+      }
+      terminate() { probe.retired += 1; super.terminate(); }
+    };
+  });
+  const readProbe = () => page.evaluate(() => (window as unknown as {
+    orbitalWorkerProbe: WorkerProbe;
+  }).orbitalWorkerProbe);
+  await page.goto('/?uiWidth=500&uiHeight=700&renderScale=0.5&maxPixelRatio=1');
+  await expect(page.locator('#status-zoom')).not.toHaveText('Range · —', { timeout: 60_000 });
+  await expect.poll(async () => (await readProbe()).killed, { timeout: 30_000 }).toBe(1);
+  const atKill = (await readProbe()).atKill!;
+  await expect.poll(async () => (await readProbe()).created - atKill.created, { timeout: 15_000 }).toBe(1);
+  await expect(page.locator('#space-canvas')).toHaveAttribute('data-orbital-worker', 'ready');
+  await expect.poll(async () => (await readProbe()).replacementStates, { timeout: 30_000 }).toBeGreaterThan(1);
+  const probe = await readProbe();
+  expect(probe.killed).toBe(1);
+  expect(probe.replacementTicks).toBeGreaterThan(1);
+  expect(probe.created - atKill.created).toBe(1);
+  expect(probe.retired - atKill.retired).toBe(1);
+  expect(probe.created).toBeLessThanOrEqual(3); // Initial worker plus two lifetime restarts.
+  await expect(page.locator('#space-canvas')).toHaveAttribute('data-orbital-worker', 'ready');
+  await expect(page.locator('#renderer-unavailable')).toBeHidden();
+  await test.info().attach('silent-worker-recovery', { body: JSON.stringify(probe), contentType: 'application/json' });
+});
 async function controlExternalRequests(page:Page){
   await page.route('**/*',route=>{const url=new URL(route.request().url());return url.origin==='http://127.0.0.1:'+(process.env.UI_TEST_PORT||'4175')?route.continue():route.fulfill({status:503,contentType:'application/json',body:'{"detail":"deterministic unavailable service"}',headers:{'Access-Control-Allow-Origin':'*'}});});
 }

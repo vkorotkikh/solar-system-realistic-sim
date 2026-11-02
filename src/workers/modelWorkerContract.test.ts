@@ -76,7 +76,7 @@ describe('model worker state-vector boundary', () => {
       MODEL_WORKER_RECORD_SIZE * Float64Array.BYTES_PER_ELEMENT + Uint8Array.BYTES_PER_ELEMENT
     );
 
-    expect(sourceCatalog.bodies.length).toBe(434);
+    expect(sourceCatalog.bodies.length).toBe(433);
     expect(workerCatalog.bodies.length).toBe(10);
     expect(payloadBytes).toBe(490);
   });

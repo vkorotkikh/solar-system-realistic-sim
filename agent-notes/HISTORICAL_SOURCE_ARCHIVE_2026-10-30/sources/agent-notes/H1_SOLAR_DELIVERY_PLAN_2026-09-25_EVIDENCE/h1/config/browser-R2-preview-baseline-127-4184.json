@@ -1,0 +1,65 @@
+{
+ "label": "R2-preview-baseline-127-4184",
+ "pageUrl": "http://127.0.0.1:4184/",
+ "rewritePort": "8074",
+ "seconds": 30,
+ "pageOrigin": "http://127.0.0.1:4184",
+ "backendRequestOrigins": [
+  "http://127.0.0.1:8042"
+ ],
+ "summary": {
+  "/solar/physics :: failed net::ERR_ABORTED": 4,
+  "/solar/physics :: failed net::ERR_FAILED": 1
+ },
+ "requests": [
+  {
+   "t": 1778,
+   "dur": 2377,
+   "url": "http://127.0.0.1:8042/solar/physics?jd=…&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "type": "fetch",
+   "origin": "http://127.0.0.1:4184",
+   "outcome": "failed net::ERR_ABORTED",
+   "acao": null
+  },
+  {
+   "t": 9119,
+   "dur": 2596,
+   "url": "http://127.0.0.1:8042/solar/physics?jd=…&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "type": "fetch",
+   "origin": "http://127.0.0.1:4184",
+   "outcome": "failed net::ERR_ABORTED",
+   "acao": null
+  },
+  {
+   "t": 16467,
+   "dur": 11,
+   "url": "http://127.0.0.1:8042/solar/physics?jd=…&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "type": "fetch",
+   "origin": "http://127.0.0.1:4184",
+   "outcome": "failed net::ERR_FAILED",
+   "acao": null
+  },
+  {
+   "t": 23257,
+   "dur": 2598,
+   "url": "http://127.0.0.1:8042/solar/physics?jd=…&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "type": "fetch",
+   "origin": "http://127.0.0.1:4184",
+   "outcome": "failed net::ERR_ABORTED",
+   "acao": null
+  },
+  {
+   "t": 29953,
+   "dur": 4248,
+   "url": "http://127.0.0.1:8042/solar/physics?jd=…&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "type": "fetch",
+   "origin": "http://127.0.0.1:4184",
+   "outcome": "failed net::ERR_ABORTED",
+   "acao": null
+  }
+ ],
+ "console": [
+  "16477ms [error] Access to fetch at 'http://127.0.0.1:8042/solar/physics?jd=2461373.99250858&fidelity=high&max_features=180&forcing=hybrid&live_data=true' from origin 'http://127.0.0.1:4184' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.",
+  "16479ms [error] Failed to load resource: net::ERR_FAILED"
+ ]
+}

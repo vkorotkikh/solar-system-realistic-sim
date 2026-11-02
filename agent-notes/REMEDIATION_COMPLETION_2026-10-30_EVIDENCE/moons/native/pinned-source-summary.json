@@ -1,0 +1,15 @@
+{
+  "manifestSha256": "9f0fa00e6db56e2bcc8863b8cf70bdb98065f4c47a4a3be8d111501f1240d3f1",
+  "requestsChecked": 115,
+  "setRows": {
+    "audit": 6891,
+    "dense_held": 18432,
+    "dense_source": 18432,
+    "endpoints": 2,
+    "held": 36525,
+    "hyperbolic": 1,
+    "source": 36527
+  },
+  "originalHttpEnvelopesAvailableInAssignedCache": 0,
+  "scope": "Normalized pinned provider vectors and retained headers; not a rehash of unavailable HTTP/cache envelopes"
+}

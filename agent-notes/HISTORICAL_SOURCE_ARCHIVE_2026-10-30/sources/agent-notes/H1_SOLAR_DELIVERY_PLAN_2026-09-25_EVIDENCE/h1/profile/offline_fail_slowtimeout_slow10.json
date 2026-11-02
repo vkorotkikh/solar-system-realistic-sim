@@ -1,0 +1,998 @@
+[
+ {
+  "mode": "fail",
+  "attempt": "first",
+  "jd": 2461308.5500999996,
+  "latency_s": 5.214,
+  "exception": null,
+  "net_attempts": [
+   [
+    "services.swpc.noaa.gov",
+    "/products/solar-wind/plasma-1-day.json",
+    0.0,
+    "injected-fail"
+   ],
+   [
+    "www.sidc.be",
+    "/SILSO/DATA/SN_d_tot_V2.0.csv",
+    0.0,
+    "injected-fail"
+   ],
+   [
+    "api.helioviewer.org",
+    "/v2/getClosestImage/",
+    0.0,
+    "injected-fail"
+   ],
+   [
+    "gong.nso.edu",
+    "/data/magmap/QR/bqs/202608/",
+    0.0,
+    "injected-fail"
+   ]
+  ],
+  "stages_top": {
+   "model.sample_state": {
+    "s": 5.2136,
+    "calls": 1
+   },
+   "pfss.get_or_compute": {
+    "s": 5.1884,
+    "calls": 1
+   },
+   "pfss._compute": {
+    "s": 5.1883,
+    "calls": 1
+   },
+   "pfss.trace_field_lines": {
+    "s": 2.7708,
+    "calls": 1
+   },
+   "pfss.compute_wsa_velocity_map": {
+    "s": 2.3426,
+    "calls": 1
+   },
+   "pfss.synthetic_magnetogram": {
+    "s": 0.0709,
+    "calls": 1
+   },
+   "model._build_feature_arc": {
+    "s": 0.0154,
+    "calls": 220
+   },
+   "model._build_parker_spiral": {
+    "s": 0.0082,
+    "calls": 1
+   }
+  },
+  "live_data_enabled": true,
+  "forcing": "hybrid",
+  "assim_applied": false,
+  "live_data_available": false,
+  "observed_activity_index": null,
+  "activity_index": 0.757416239346938,
+  "synthetic_activity_index": 0.757416239346938,
+  "source_status": {
+   "swpc": {
+    "ok": false,
+    "error": "<urlopen error injected: upstream unreachable>",
+    "endpoint": "https://services.swpc.noaa.gov/products/solar-wind/plasma-1-day.json"
+   },
+   "silso": {
+    "ok": false,
+    "error": "<urlopen error injected: upstream unreachable>",
+    "endpoint": "https://www.sidc.be/SILSO/DATA/SN_d_tot_V2.0.csv"
+   },
+   "sdo_aia": {
+    "ok": false,
+    "error": "<urlopen error injected: upstream unreachable>",
+    "endpoint": "https://api.helioviewer.org/v2/getClosestImage/"
+   },
+   "gong_synoptic": {
+    "ok": true,
+    "updated": "2026-09-25T02:12:30.200650Z",
+    "endpoint": "https://gong.nso.edu/data/magmap/QR/bqs/"
+   }
+  },
+  "pfss_source": "synthetic",
+  "coronal_holes_source": "synthetic",
+  "top_level_keys": [
+   "activity_index",
+   "corona",
+   "coronal_holes",
+   "cycle_phase_rad",
+   "data_assimilation",
+   "epoch_jd",
+   "fidelity",
+   "forcing",
+   "heliosphere",
+   "live_data_enabled",
+   "model",
+   "pfss_field_lines",
+   "schema",
+   "solar_radius_au",
+   "solar_radius_km",
+   "source",
+   "surface",
+   "synthetic_activity_index",
+   "wall_epoch_jd"
+  ]
+ },
+ {
+  "mode": "fail",
+  "attempt": "repeat_same_jd",
+  "jd": 2461308.5500999996,
+  "latency_s": 0.029,
+  "exception": null,
+  "net_attempts": [],
+  "stages_top": {
+   "model.sample_state": {
+    "s": 0.0281,
+    "calls": 1
+   },
+   "model._build_feature_arc": {
+    "s": 0.0175,
+    "calls": 220
+   },
+   "model._build_parker_spiral": {
+    "s": 0.0087,
+    "calls": 1
+   },
+   "pfss.wsa_velocity_at_source_surface": {
+    "s": 0.0083,
+    "calls": 6
+   },
+   "model._feature_temporal_state": {
+    "s": 0.0008,
+    "calls": 1080
+   },
+   "model._feature_score": {
+    "s": 0.0006,
+    "calls": 540
+   },
+   "model._synthetic_coronal_holes": {
+    "s": 0.0,
+    "calls": 1
+   },
+   "pfss.get_or_compute": {
+    "s": 0.0,
+    "calls": 1
+   }
+  },
+  "live_data_enabled": true,
+  "forcing": "hybrid",
+  "assim_applied": false,
+  "live_data_available": false,
+  "observed_activity_index": null,
+  "activity_index": 0.757416239346938,
+  "synthetic_activity_index": 0.757416239346938,
+  "source_status": {
+   "swpc": {
+    "ok": false,
+    "error": "<urlopen error injected: upstream unreachable>",
+    "endpoint": "https://services.swpc.noaa.gov/products/solar-wind/plasma-1-day.json"
+   },
+   "silso": {
+    "ok": false,
+    "error": "<urlopen error injected: upstream unreachable>",
+    "endpoint": "https://www.sidc.be/SILSO/DATA/SN_d_tot_V2.0.csv"
+   },
+   "sdo_aia": {
+    "ok": false,
+    "error": "<urlopen error injected: upstream unreachable>",
+    "endpoint": "https://api.helioviewer.org/v2/getClosestImage/"
+   },
+   "gong_synoptic": {
+    "ok": true,
+    "updated": "2026-09-25T02:12:30.200650Z",
+    "endpoint": "https://gong.nso.edu/data/magmap/QR/bqs/"
+   }
+  },
+  "pfss_source": "synthetic",
+  "coronal_holes_source": "synthetic",
+  "top_level_keys": [
+   "activity_index",
+   "corona",
+   "coronal_holes",
+   "cycle_phase_rad",
+   "data_assimilation",
+   "epoch_jd",
+   "fidelity",
+   "forcing",
+   "heliosphere",
+   "live_data_enabled",
+   "model",
+   "pfss_field_lines",
+   "schema",
+   "solar_radius_au",
+   "solar_radius_km",
+   "source",
+   "surface",
+   "synthetic_activity_index",
+   "wall_epoch_jd"
+  ]
+ },
+ {
+  "mode": "fail",
+  "attempt": "next_jd",
+  "jd": 2461308.5502,
+  "latency_s": 5.456,
+  "exception": null,
+  "net_attempts": [
+   [
+    "services.swpc.noaa.gov",
+    "/products/solar-wind/plasma-1-day.json",
+    0.0,
+    "injected-fail"
+   ],
+   [
+    "www.sidc.be",
+    "/SILSO/DATA/SN_d_tot_V2.0.csv",
+    0.0,
+    "injected-fail"
+   ],
+   [
+    "api.helioviewer.org",
+    "/v2/getClosestImage/",
+    0.0,
+    "injected-fail"
+   ],
+   [
+    "gong.nso.edu",
+    "/data/magmap/QR/bqs/202608/",
+    0.0,
+    "injected-fail"
+   ]
+  ],
+  "stages_top": {
+   "model.sample_state": {
+    "s": 5.4552,
+    "calls": 1
+   },
+   "pfss.get_or_compute": {
+    "s": 5.4303,
+    "calls": 1
+   },
+   "pfss._compute": {
+    "s": 5.4303,
+    "calls": 1
+   },
+   "pfss.trace_field_lines": {
+    "s": 2.8432,
+    "calls": 1
+   },
+   "pfss.compute_wsa_velocity_map": {
+    "s": 2.5219,
+    "calls": 1
+   },
+   "pfss.synthetic_magnetogram": {
+    "s": 0.0618,
+    "calls": 1
+   },
+   "model._build_feature_arc": {
+    "s": 0.0173,
+    "calls": 220
+   },
+   "model._build_parker_spiral": {
+    "s": 0.005,
+    "calls": 1
+   }
+  },
+  "live_data_enabled": true,
+  "forcing": "hybrid",
+  "assim_applied": false,
+  "live_data_available": false,
+  "observed_activity_index": null,
+  "activity_index": 0.7574173401952558,
+  "synthetic_activity_index": 0.7574173401952558,
+  "source_status": {
+   "swpc": {
+    "ok": false,
+    "error": "<urlopen error injected: upstream unreachable>",
+    "endpoint": "https://services.swpc.noaa.gov/products/solar-wind/plasma-1-day.json"
+   },
+   "silso": {
+    "ok": false,
+    "error": "<urlopen error injected: upstream unreachable>",
+    "endpoint": "https://www.sidc.be/SILSO/DATA/SN_d_tot_V2.0.csv"
+   },
+   "sdo_aia": {
+    "ok": false,
+    "error": "<urlopen error injected: upstream unreachable>",
+    "endpoint": "https://api.helioviewer.org/v2/getClosestImage/"
+   },
+   "gong_synoptic": {
+    "ok": true,
+    "updated": "2026-09-25T02:12:35.443806Z",
+    "endpoint": "https://gong.nso.edu/data/magmap/QR/bqs/"
+   }
+  },
+  "pfss_source": "synthetic",
+  "coronal_holes_source": "synthetic",
+  "top_level_keys": [
+   "activity_index",
+   "corona",
+   "coronal_holes",
+   "cycle_phase_rad",
+   "data_assimilation",
+   "epoch_jd",
+   "fidelity",
+   "forcing",
+   "heliosphere",
+   "live_data_enabled",
+   "model",
+   "pfss_field_lines",
+   "schema",
+   "solar_radius_au",
+   "solar_radius_km",
+   "source",
+   "surface",
+   "synthetic_activity_index",
+   "wall_epoch_jd"
+  ]
+ },
+ {
+  "mode": "slowtimeout",
+  "attempt": "first",
+  "jd": 2461308.5503,
+  "latency_s": 21.282,
+  "exception": null,
+  "net_attempts": [
+   [
+    "services.swpc.noaa.gov",
+    "/products/solar-wind/plasma-1-day.json",
+    3.8,
+    "injected-slowtimeout"
+   ],
+   [
+    "www.sidc.be",
+    "/SILSO/DATA/SN_d_tot_V2.0.csv",
+    3.8,
+    "injected-slowtimeout"
+   ],
+   [
+    "api.helioviewer.org",
+    "/v2/getClosestImage/",
+    3.8,
+    "injected-slowtimeout"
+   ],
+   [
+    "gong.nso.edu",
+    "/data/magmap/QR/bqs/202608/",
+    3.5,
+    "injected-slowtimeout"
+   ]
+  ],
+  "stages_top": {
+   "rt.latest": {
+    "s": 11.4035,
+    "calls": 1
+   },
+   "rt._fetch_snapshot": {
+    "s": 11.4034,
+    "calls": 1
+   },
+   "model.sample_state": {
+    "s": 9.8769,
+    "calls": 1
+   },
+   "pfss.get_or_compute": {
+    "s": 9.8342,
+    "calls": 1
+   },
+   "pfss._compute": {
+    "s": 9.8342,
+    "calls": 1
+   },
+   "rt._fetch_json": {
+    "s": 7.603,
+    "calls": 2
+   },
+   "rt._fetch_sdo_aia": {
+    "s": 3.8029,
+    "calls": 1
+   },
+   "rt._fetch_helioviewer_closest": {
+    "s": 3.8029,
+    "calls": 1
+   }
+  },
+  "live_data_enabled": true,
+  "forcing": "hybrid",
+  "assim_applied": false,
+  "live_data_available": false,
+  "observed_activity_index": null,
+  "activity_index": 0.7574184410400866,
+  "synthetic_activity_index": 0.7574184410400866,
+  "source_status": {
+   "swpc": {
+    "ok": false,
+    "error": "<urlopen error injected: upstream hung 3.8s>",
+    "endpoint": "https://services.swpc.noaa.gov/products/solar-wind/plasma-1-day.json"
+   },
+   "silso": {
+    "ok": false,
+    "error": "<urlopen error injected: upstream hung 3.8s>",
+    "endpoint": "https://www.sidc.be/SILSO/DATA/SN_d_tot_V2.0.csv"
+   },
+   "sdo_aia": {
+    "ok": false,
+    "error": "<urlopen error injected: upstream hung 3.8s>",
+    "endpoint": "https://api.helioviewer.org/v2/getClosestImage/"
+   },
+   "gong_synoptic": {
+    "ok": true,
+    "updated": "2026-09-25T02:12:53.761723Z",
+    "endpoint": "https://gong.nso.edu/data/magmap/QR/bqs/"
+   }
+  },
+  "pfss_source": "synthetic",
+  "coronal_holes_source": "synthetic",
+  "top_level_keys": [
+   "activity_index",
+   "corona",
+   "coronal_holes",
+   "cycle_phase_rad",
+   "data_assimilation",
+   "epoch_jd",
+   "fidelity",
+   "forcing",
+   "heliosphere",
+   "live_data_enabled",
+   "model",
+   "pfss_field_lines",
+   "schema",
+   "solar_radius_au",
+   "solar_radius_km",
+   "source",
+   "surface",
+   "synthetic_activity_index",
+   "wall_epoch_jd"
+  ]
+ },
+ {
+  "mode": "slowtimeout",
+  "attempt": "repeat_same_jd",
+  "jd": 2461308.5503,
+  "latency_s": 0.032,
+  "exception": null,
+  "net_attempts": [],
+  "stages_top": {
+   "model.sample_state": {
+    "s": 0.0312,
+    "calls": 1
+   },
+   "model._build_feature_arc": {
+    "s": 0.0188,
+    "calls": 220
+   },
+   "model._build_parker_spiral": {
+    "s": 0.0099,
+    "calls": 1
+   },
+   "pfss.wsa_velocity_at_source_surface": {
+    "s": 0.0095,
+    "calls": 6
+   },
+   "model._feature_temporal_state": {
+    "s": 0.001,
+    "calls": 1080
+   },
+   "model._feature_score": {
+    "s": 0.0008,
+    "calls": 540
+   },
+   "model._synthetic_coronal_holes": {
+    "s": 0.0,
+    "calls": 1
+   },
+   "pfss.get_or_compute": {
+    "s": 0.0,
+    "calls": 1
+   }
+  },
+  "live_data_enabled": true,
+  "forcing": "hybrid",
+  "assim_applied": false,
+  "live_data_available": false,
+  "observed_activity_index": null,
+  "activity_index": 0.7574184410400866,
+  "synthetic_activity_index": 0.7574184410400866,
+  "source_status": {
+   "swpc": {
+    "ok": false,
+    "error": "<urlopen error injected: upstream hung 3.8s>",
+    "endpoint": "https://services.swpc.noaa.gov/products/solar-wind/plasma-1-day.json"
+   },
+   "silso": {
+    "ok": false,
+    "error": "<urlopen error injected: upstream hung 3.8s>",
+    "endpoint": "https://www.sidc.be/SILSO/DATA/SN_d_tot_V2.0.csv"
+   },
+   "sdo_aia": {
+    "ok": false,
+    "error": "<urlopen error injected: upstream hung 3.8s>",
+    "endpoint": "https://api.helioviewer.org/v2/getClosestImage/"
+   },
+   "gong_synoptic": {
+    "ok": true,
+    "updated": "2026-09-25T02:12:53.761723Z",
+    "endpoint": "https://gong.nso.edu/data/magmap/QR/bqs/"
+   }
+  },
+  "pfss_source": "synthetic",
+  "coronal_holes_source": "synthetic",
+  "top_level_keys": [
+   "activity_index",
+   "corona",
+   "coronal_holes",
+   "cycle_phase_rad",
+   "data_assimilation",
+   "epoch_jd",
+   "fidelity",
+   "forcing",
+   "heliosphere",
+   "live_data_enabled",
+   "model",
+   "pfss_field_lines",
+   "schema",
+   "solar_radius_au",
+   "solar_radius_km",
+   "source",
+   "surface",
+   "synthetic_activity_index",
+   "wall_epoch_jd"
+  ]
+ },
+ {
+  "mode": "slowtimeout",
+  "attempt": "next_jd",
+  "jd": 2461308.5503999996,
+  "latency_s": 21.21,
+  "exception": null,
+  "net_attempts": [
+   [
+    "services.swpc.noaa.gov",
+    "/products/solar-wind/plasma-1-day.json",
+    3.8,
+    "injected-slowtimeout"
+   ],
+   [
+    "www.sidc.be",
+    "/SILSO/DATA/SN_d_tot_V2.0.csv",
+    3.8,
+    "injected-slowtimeout"
+   ],
+   [
+    "api.helioviewer.org",
+    "/v2/getClosestImage/",
+    3.8,
+    "injected-slowtimeout"
+   ],
+   [
+    "gong.nso.edu",
+    "/data/magmap/QR/bqs/202608/",
+    3.5,
+    "injected-slowtimeout"
+   ]
+  ],
+  "stages_top": {
+   "rt.latest": {
+    "s": 11.4015,
+    "calls": 1
+   },
+   "rt._fetch_snapshot": {
+    "s": 11.4015,
+    "calls": 1
+   },
+   "model.sample_state": {
+    "s": 9.8075,
+    "calls": 1
+   },
+   "pfss.get_or_compute": {
+    "s": 9.7643,
+    "calls": 1
+   },
+   "pfss._compute": {
+    "s": 9.7643,
+    "calls": 1
+   },
+   "rt._fetch_json": {
+    "s": 7.601,
+    "calls": 2
+   },
+   "rt._fetch_swpc": {
+    "s": 3.8007,
+    "calls": 1
+   },
+   "rt._fetch_sdo_aia": {
+    "s": 3.8004,
+    "calls": 1
+   }
+  },
+  "live_data_enabled": true,
+  "forcing": "hybrid",
+  "assim_applied": false,
+  "live_data_available": false,
+  "observed_activity_index": null,
+  "activity_index": 0.7574195418865809,
+  "synthetic_activity_index": 0.7574195418865809,
+  "source_status": {
+   "swpc": {
+    "ok": false,
+    "error": "<urlopen error injected: upstream hung 3.8s>",
+    "endpoint": "https://services.swpc.noaa.gov/products/solar-wind/plasma-1-day.json"
+   },
+   "silso": {
+    "ok": false,
+    "error": "<urlopen error injected: upstream hung 3.8s>",
+    "endpoint": "https://www.sidc.be/SILSO/DATA/SN_d_tot_V2.0.csv"
+   },
+   "sdo_aia": {
+    "ok": false,
+    "error": "<urlopen error injected: upstream hung 3.8s>",
+    "endpoint": "https://api.helioviewer.org/v2/getClosestImage/"
+   },
+   "gong_synoptic": {
+    "ok": true,
+    "updated": "2026-09-25T02:13:16.760635Z",
+    "endpoint": "https://gong.nso.edu/data/magmap/QR/bqs/"
+   }
+  },
+  "pfss_source": "synthetic",
+  "coronal_holes_source": "synthetic",
+  "top_level_keys": [
+   "activity_index",
+   "corona",
+   "coronal_holes",
+   "cycle_phase_rad",
+   "data_assimilation",
+   "epoch_jd",
+   "fidelity",
+   "forcing",
+   "heliosphere",
+   "live_data_enabled",
+   "model",
+   "pfss_field_lines",
+   "schema",
+   "solar_radius_au",
+   "solar_radius_km",
+   "source",
+   "surface",
+   "synthetic_activity_index",
+   "wall_epoch_jd"
+  ]
+ },
+ {
+  "mode": "slow10",
+  "attempt": "first",
+  "jd": 2461308.5505,
+  "latency_s": 46.129,
+  "exception": null,
+  "net_attempts": [
+   [
+    "services.swpc.noaa.gov",
+    "/products/solar-wind/plasma-1-day.json",
+    10.0,
+    "injected-slow10"
+   ],
+   [
+    "www.sidc.be",
+    "/SILSO/DATA/SN_d_tot_V2.0.csv",
+    10.0,
+    "injected-slow10"
+   ],
+   [
+    "api.helioviewer.org",
+    "/v2/getClosestImage/",
+    10.0,
+    "injected-slow10"
+   ],
+   [
+    "gong.nso.edu",
+    "/data/magmap/QR/bqs/202608/",
+    10.0,
+    "injected-slow10"
+   ]
+  ],
+  "stages_top": {
+   "rt.latest": {
+    "s": 30.0012,
+    "calls": 1
+   },
+   "rt._fetch_snapshot": {
+    "s": 30.0012,
+    "calls": 1
+   },
+   "rt._fetch_json": {
+    "s": 20.0008,
+    "calls": 2
+   },
+   "model.sample_state": {
+    "s": 16.1267,
+    "calls": 1
+   },
+   "pfss.get_or_compute": {
+    "s": 16.1053,
+    "calls": 1
+   },
+   "pfss._compute": {
+    "s": 16.1052,
+    "calls": 1
+   },
+   "rt._fetch_swpc": {
+    "s": 10.0006,
+    "calls": 1
+   },
+   "rt._fetch_sdo_aia": {
+    "s": 10.0002,
+    "calls": 1
+   }
+  },
+  "live_data_enabled": true,
+  "forcing": "hybrid",
+  "assim_applied": false,
+  "live_data_available": false,
+  "observed_activity_index": null,
+  "activity_index": 0.7574206427397991,
+  "synthetic_activity_index": 0.7574206427397991,
+  "source_status": {
+   "swpc": {
+    "ok": false,
+    "error": "<urlopen error injected: upstream hung 10.0s>",
+    "endpoint": "https://services.swpc.noaa.gov/products/solar-wind/plasma-1-day.json"
+   },
+   "silso": {
+    "ok": false,
+    "error": "<urlopen error injected: upstream hung 10.0s>",
+    "endpoint": "https://www.sidc.be/SILSO/DATA/SN_d_tot_V2.0.csv"
+   },
+   "sdo_aia": {
+    "ok": false,
+    "error": "<urlopen error injected: upstream hung 10.0s>",
+    "endpoint": "https://api.helioviewer.org/v2/getClosestImage/"
+   },
+   "gong_synoptic": {
+    "ok": true,
+    "updated": "2026-09-25T02:13:57.961403Z",
+    "endpoint": "https://gong.nso.edu/data/magmap/QR/bqs/"
+   }
+  },
+  "pfss_source": "synthetic",
+  "coronal_holes_source": "synthetic",
+  "top_level_keys": [
+   "activity_index",
+   "corona",
+   "coronal_holes",
+   "cycle_phase_rad",
+   "data_assimilation",
+   "epoch_jd",
+   "fidelity",
+   "forcing",
+   "heliosphere",
+   "live_data_enabled",
+   "model",
+   "pfss_field_lines",
+   "schema",
+   "solar_radius_au",
+   "solar_radius_km",
+   "source",
+   "surface",
+   "synthetic_activity_index",
+   "wall_epoch_jd"
+  ]
+ },
+ {
+  "mode": "slow10",
+  "attempt": "repeat_same_jd",
+  "jd": 2461308.5505,
+  "latency_s": 0.028,
+  "exception": null,
+  "net_attempts": [],
+  "stages_top": {
+   "model.sample_state": {
+    "s": 0.0274,
+    "calls": 1
+   },
+   "model._build_feature_arc": {
+    "s": 0.0161,
+    "calls": 220
+   },
+   "model._build_parker_spiral": {
+    "s": 0.0084,
+    "calls": 1
+   },
+   "pfss.wsa_velocity_at_source_surface": {
+    "s": 0.008,
+    "calls": 6
+   },
+   "model._feature_temporal_state": {
+    "s": 0.001,
+    "calls": 1080
+   },
+   "model._feature_score": {
+    "s": 0.0008,
+    "calls": 540
+   },
+   "model._synthetic_coronal_holes": {
+    "s": 0.0,
+    "calls": 1
+   },
+   "pfss.get_or_compute": {
+    "s": 0.0,
+    "calls": 1
+   }
+  },
+  "live_data_enabled": true,
+  "forcing": "hybrid",
+  "assim_applied": false,
+  "live_data_available": false,
+  "observed_activity_index": null,
+  "activity_index": 0.7574206427397991,
+  "synthetic_activity_index": 0.7574206427397991,
+  "source_status": {
+   "swpc": {
+    "ok": false,
+    "error": "<urlopen error injected: upstream hung 10.0s>",
+    "endpoint": "https://services.swpc.noaa.gov/products/solar-wind/plasma-1-day.json"
+   },
+   "silso": {
+    "ok": false,
+    "error": "<urlopen error injected: upstream hung 10.0s>",
+    "endpoint": "https://www.sidc.be/SILSO/DATA/SN_d_tot_V2.0.csv"
+   },
+   "sdo_aia": {
+    "ok": false,
+    "error": "<urlopen error injected: upstream hung 10.0s>",
+    "endpoint": "https://api.helioviewer.org/v2/getClosestImage/"
+   },
+   "gong_synoptic": {
+    "ok": true,
+    "updated": "2026-09-25T02:13:57.961403Z",
+    "endpoint": "https://gong.nso.edu/data/magmap/QR/bqs/"
+   }
+  },
+  "pfss_source": "synthetic",
+  "coronal_holes_source": "synthetic",
+  "top_level_keys": [
+   "activity_index",
+   "corona",
+   "coronal_holes",
+   "cycle_phase_rad",
+   "data_assimilation",
+   "epoch_jd",
+   "fidelity",
+   "forcing",
+   "heliosphere",
+   "live_data_enabled",
+   "model",
+   "pfss_field_lines",
+   "schema",
+   "solar_radius_au",
+   "solar_radius_km",
+   "source",
+   "surface",
+   "synthetic_activity_index",
+   "wall_epoch_jd"
+  ]
+ },
+ {
+  "mode": "slow10",
+  "attempt": "next_jd",
+  "jd": 2461308.5505999997,
+  "latency_s": 43.843,
+  "exception": null,
+  "net_attempts": [
+   [
+    "services.swpc.noaa.gov",
+    "/products/solar-wind/plasma-1-day.json",
+    10.0,
+    "injected-slow10"
+   ],
+   [
+    "www.sidc.be",
+    "/SILSO/DATA/SN_d_tot_V2.0.csv",
+    10.0,
+    "injected-slow10"
+   ],
+   [
+    "api.helioviewer.org",
+    "/v2/getClosestImage/",
+    10.0,
+    "injected-slow10"
+   ],
+   [
+    "gong.nso.edu",
+    "/data/magmap/QR/bqs/202608/",
+    10.0,
+    "injected-slow10"
+   ]
+  ],
+  "stages_top": {
+   "rt.latest": {
+    "s": 30.0009,
+    "calls": 1
+   },
+   "rt._fetch_snapshot": {
+    "s": 30.0009,
+    "calls": 1
+   },
+   "rt._fetch_json": {
+    "s": 20.0003,
+    "calls": 2
+   },
+   "model.sample_state": {
+    "s": 13.8404,
+    "calls": 1
+   },
+   "pfss.get_or_compute": {
+    "s": 13.7981,
+    "calls": 1
+   },
+   "pfss._compute": {
+    "s": 13.7981,
+    "calls": 1
+   },
+   "rt._fetch_silso": {
+    "s": 10.0004,
+    "calls": 1
+   },
+   "rt._fetch_text": {
+    "s": 10.0003,
+    "calls": 1
+   }
+  },
+  "live_data_enabled": true,
+  "forcing": "hybrid",
+  "assim_applied": false,
+  "live_data_available": false,
+  "observed_activity_index": null,
+  "activity_index": 0.7574217435895515,
+  "synthetic_activity_index": 0.7574217435895515,
+  "source_status": {
+   "swpc": {
+    "ok": false,
+    "error": "<urlopen error injected: upstream hung 10.0s>",
+    "endpoint": "https://services.swpc.noaa.gov/products/solar-wind/plasma-1-day.json"
+   },
+   "silso": {
+    "ok": false,
+    "error": "<urlopen error injected: upstream hung 10.0s>",
+    "endpoint": "https://www.sidc.be/SILSO/DATA/SN_d_tot_V2.0.csv"
+   },
+   "sdo_aia": {
+    "ok": false,
+    "error": "<urlopen error injected: upstream hung 10.0s>",
+    "endpoint": "https://api.helioviewer.org/v2/getClosestImage/"
+   },
+   "gong_synoptic": {
+    "ok": true,
+    "updated": "2026-09-25T02:14:45.512076Z",
+    "endpoint": "https://gong.nso.edu/data/magmap/QR/bqs/"
+   }
+  },
+  "pfss_source": "synthetic",
+  "coronal_holes_source": "synthetic",
+  "top_level_keys": [
+   "activity_index",
+   "corona",
+   "coronal_holes",
+   "cycle_phase_rad",
+   "data_assimilation",
+   "epoch_jd",
+   "fidelity",
+   "forcing",
+   "heliosphere",
+   "live_data_enabled",
+   "model",
+   "pfss_field_lines",
+   "schema",
+   "solar_radius_au",
+   "solar_radius_km",
+   "source",
+   "surface",
+   "synthetic_activity_index",
+   "wall_epoch_jd"
+  ]
+ }
+]

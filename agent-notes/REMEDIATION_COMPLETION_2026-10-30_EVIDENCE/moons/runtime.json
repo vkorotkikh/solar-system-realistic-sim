@@ -1,0 +1,38 @@
+{
+  "node": "v22.23.2",
+  "nativeHttp": true,
+  "measurements": [
+    {
+      "key": "amalthea",
+      "coldRequests": [
+        {
+          "path": "/nested/moon-ephemerides/manifest.json",
+          "bytes": 303149
+        },
+        {
+          "path": "/nested/moon-ephemerides/839dc566e612f9c7ac16cf4136b6cf4fa140c35264c8d35010f0282065010f27.json",
+          "bytes": 403584
+        }
+      ],
+      "coldDecodedBytes": 706733,
+      "repeatRequests": 0
+    },
+    {
+      "key": "metis",
+      "coldRequests": [
+        {
+          "path": "/nested/moon-ephemerides/manifest.json",
+          "bytes": 303149
+        },
+        {
+          "path": "/nested/moon-ephemerides/be028fde6eb5b9ceb008e3c2093ac952e512d33e07618031dc57da6afec234a5.json",
+          "bytes": 1624520
+        }
+      ],
+      "coldDecodedBytes": 1927669,
+      "repeatRequests": 0
+    }
+  ],
+  "baseModels": 13,
+  "productionAssetFilesByteIdentical": 411
+}

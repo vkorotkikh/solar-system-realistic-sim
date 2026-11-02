@@ -510,7 +510,7 @@ class MissionPlannerAgent:
             if not isinstance(return_route, dict):
                 continue
 
-            transport_delay_days = float(outbound["totalTimeDays"]) + float(return_route["totalTimeDays"])
+            transport_delay_days = float(return_route["totalTimeDays"])
             if not candidate_checkpoint():
                 break
             mining_result = self._mining_agent.evaluate(
@@ -527,7 +527,7 @@ class MissionPlannerAgent:
                 propulsion=mission_burn_schedule(self._bodies, outbound, return_route,
                                                  mission_inputs["parking_altitude_km"]),
                 reserve_fraction=mission_inputs["reserve_fraction"],
-                return_cargo_available_kg=MiningService.deliverable_cargo_kg(
+                return_cargo_available_kg=MiningService.departure_cargo_kg(
                     mining_result, mission_inputs["handling_loss_fraction"]
                 ),
                 failure_probability_threshold=mission_inputs["risk_failure_probability_threshold"],
@@ -569,6 +569,7 @@ class MissionPlannerAgent:
                 base_total_delta_v_km_s=total_delta_v,
                 base_total_time_days=total_time_days,
                 base_returned_payload_kg=float(closure["returnedPayloadKg"]),
+                base_departure_cargo_kg=float(logistics.get("returnCargoKg", 0.0)),
                 base_arrival_jd=arrival_jd,
                 reclose=reclose,
                 samples=mission_inputs["risk_samples"],

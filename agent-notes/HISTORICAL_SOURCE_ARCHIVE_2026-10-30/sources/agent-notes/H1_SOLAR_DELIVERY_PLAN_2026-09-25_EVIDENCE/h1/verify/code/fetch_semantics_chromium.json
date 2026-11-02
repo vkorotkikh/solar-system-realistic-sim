@@ -1,0 +1,176 @@
+[
+  {
+    "label": "chromium-default-features (intercepted page origin = \"public\" for LNA)",
+    "result": {
+      "noCorsClosedPort": {
+        "resolved": false,
+        "name": "TypeError",
+        "ctor": "TypeError",
+        "isTypeError": true,
+        "isDOMException": false,
+        "message": "Failed to fetch",
+        "ms": 5
+      },
+      "corsClosedPort": {
+        "resolved": false,
+        "name": "TypeError",
+        "ctor": "TypeError",
+        "isTypeError": true,
+        "isDOMException": false,
+        "message": "Failed to fetch",
+        "ms": 2
+      },
+      "noCorsReachable500": {
+        "resolved": true,
+        "type": "opaque",
+        "status": 0,
+        "ms": 3
+      },
+      "noCorsReachableHealth": {
+        "resolved": true,
+        "type": "opaque",
+        "status": 0,
+        "ms": 2
+      },
+      "corsReachable500NoAcao": {
+        "resolved": true,
+        "type": "cors",
+        "status": 500,
+        "ms": 3
+      },
+      "cors503WithAcao": {
+        "resolved": true,
+        "type": "cors",
+        "status": 503,
+        "ms": 2
+      },
+      "abortControllerNoReason": {
+        "resolved": false,
+        "name": "AbortError",
+        "ctor": "DOMException",
+        "isTypeError": false,
+        "isDOMException": true,
+        "message": "signal is aborted without reason",
+        "ms": 151
+      },
+      "abortSignalTimeout": {
+        "resolved": false,
+        "name": "TimeoutError",
+        "ctor": "DOMException",
+        "isTypeError": false,
+        "isDOMException": true,
+        "message": "signal timed out",
+        "ms": 150
+      },
+      "defaultAbortReason": {
+        "name": "AbortError",
+        "ctor": "DOMException",
+        "isTypeError": false,
+        "isDOMException": true,
+        "message": "signal is aborted without reason"
+      }
+    },
+    "hits": [
+      "GET /err500 mode-hdr=? pragma=- cache-control=-",
+      "GET /health mode-hdr=? pragma=- cache-control=-",
+      "GET /err500 mode-hdr=? pragma=- cache-control=-",
+      "GET /busy503-cors mode-hdr=? pragma=- cache-control=-",
+      "GET /slow mode-hdr=? pragma=- cache-control=-",
+      "GET /slow mode-hdr=? pragma=- cache-control=-"
+    ],
+    "consoleMsgs": [
+      "error: Failed to load resource: net::ERR_CONNECTION_REFUSED",
+      "error: Failed to load resource: net::ERR_CONNECTION_REFUSED",
+      "error: Failed to load resource: the server responded with a status of 500 (Internal Server Error)",
+      "error: Failed to load resource: the server responded with a status of 500 (Internal Server Error)",
+      "error: Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+    ]
+  },
+  {
+    "label": "chromium-LNA-disabled",
+    "result": {
+      "noCorsClosedPort": {
+        "resolved": false,
+        "name": "TypeError",
+        "ctor": "TypeError",
+        "isTypeError": true,
+        "isDOMException": false,
+        "message": "Failed to fetch",
+        "ms": 6
+      },
+      "corsClosedPort": {
+        "resolved": false,
+        "name": "TypeError",
+        "ctor": "TypeError",
+        "isTypeError": true,
+        "isDOMException": false,
+        "message": "Failed to fetch",
+        "ms": 4
+      },
+      "noCorsReachable500": {
+        "resolved": true,
+        "type": "opaque",
+        "status": 0,
+        "ms": 3
+      },
+      "noCorsReachableHealth": {
+        "resolved": true,
+        "type": "opaque",
+        "status": 0,
+        "ms": 2
+      },
+      "corsReachable500NoAcao": {
+        "resolved": true,
+        "type": "cors",
+        "status": 500,
+        "ms": 3
+      },
+      "cors503WithAcao": {
+        "resolved": true,
+        "type": "cors",
+        "status": 503,
+        "ms": 3
+      },
+      "abortControllerNoReason": {
+        "resolved": false,
+        "name": "AbortError",
+        "ctor": "DOMException",
+        "isTypeError": false,
+        "isDOMException": true,
+        "message": "signal is aborted without reason",
+        "ms": 151
+      },
+      "abortSignalTimeout": {
+        "resolved": false,
+        "name": "TimeoutError",
+        "ctor": "DOMException",
+        "isTypeError": false,
+        "isDOMException": true,
+        "message": "signal timed out",
+        "ms": 150
+      },
+      "defaultAbortReason": {
+        "name": "AbortError",
+        "ctor": "DOMException",
+        "isTypeError": false,
+        "isDOMException": true,
+        "message": "signal is aborted without reason"
+      }
+    },
+    "hits": [
+      "GET /err500 mode-hdr=? pragma=- cache-control=-",
+      "GET /health mode-hdr=? pragma=- cache-control=-",
+      "GET /err500 mode-hdr=? pragma=- cache-control=-",
+      "GET /busy503-cors mode-hdr=? pragma=- cache-control=-",
+      "GET /slow mode-hdr=? pragma=- cache-control=-",
+      "GET /slow mode-hdr=? pragma=- cache-control=-"
+    ],
+    "consoleMsgs": [
+      "error: Failed to load resource: net::ERR_CONNECTION_REFUSED",
+      "error: Failed to load resource: net::ERR_CONNECTION_REFUSED",
+      "error: Failed to load resource: the server responded with a status of 500 (Internal Server Error)",
+      "error: Failed to load resource: the server responded with a status of 500 (Internal Server Error)",
+      "error: Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+    ]
+  }
+]

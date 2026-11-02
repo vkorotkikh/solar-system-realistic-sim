@@ -4,7 +4,6 @@ from __future__ import annotations
 import math
 import sys
 from pathlib import Path
-from unittest.mock import patch
 
 import numpy as np
 import pytest
@@ -80,6 +79,26 @@ def fresh_activated_engine():
 # ── Tests ─────────────────────────────────────────────────────────────────────
 
 class TestBinaryKBOGeneration:
+    def test_seeded_activation_reproduces_population_and_discloses_model(self):
+        first = KuiperBeltEngine(particle_count=32, seed=42)
+        second = KuiperBeltEngine(particle_count=32, seed=42)
+        third = KuiperBeltEngine(particle_count=32, seed=43)
+        for engine in (first, second, third):
+            engine.activate(**_activation_kwargs())
+        assert first.get_state() == second.get_state()
+        assert first.get_state()["positions"] != third.get_state()["positions"]
+        initial = first.get_state()
+        first.deactivate()
+        first.activate(**_activation_kwargs())
+        assert first.get_state() == initial
+        assert initial["population_seed"] == 42
+        assert initial["population_model"] == "synthetic_orbit_candidates_not_resonance_verified"
+
+    @pytest.mark.parametrize("seed", [-1, 2**32, float("nan"), True, 1.5])
+    def test_invalid_population_seed_rejected(self, seed):
+        with pytest.raises(ValueError, match="seed"):
+            KuiperBeltEngine(seed=seed)
+
     def test_engine_activates(self, activated_engine):
         assert activated_engine.active is True
         assert activated_engine.sim is not None
@@ -267,16 +286,10 @@ class TestKuiperActiveParticleBoundary:
 
     def test_test_particle_boundary_preserves_short_step_physics(self):
         """The optimized REBOUND partition must not alter massless trajectories."""
-        real_default_rng = np.random.default_rng
-
         def activate_with_seed():
-            engine = KuiperBeltEngine(particle_count=4)
+            engine = KuiperBeltEngine(particle_count=4, seed=20261023)
             engine.BINARY_FRACTION = 0.0
-            with patch(
-                "sim.kuiper.np.random.default_rng",
-                side_effect=lambda: real_default_rng(20261023),
-            ):
-                engine.activate(**_activation_kwargs(with_jupiter=True, with_saturn=True))
+            engine.activate(**_activation_kwargs(with_jupiter=True, with_saturn=True))
             return engine
 
         optimized = activate_with_seed()

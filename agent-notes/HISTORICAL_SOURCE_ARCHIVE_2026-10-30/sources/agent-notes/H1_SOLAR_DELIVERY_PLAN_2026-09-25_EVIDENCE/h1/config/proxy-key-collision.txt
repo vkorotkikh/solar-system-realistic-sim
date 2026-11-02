@@ -1,0 +1,4 @@
+== key '/solar' (no trailing slash), target http://localhost:8074
+GET /solar-systems/manifests/sirius.json -> 404 ctype=application/json
+GET /solar/physics fast -> 200
+direct static file size: 1396 bytes

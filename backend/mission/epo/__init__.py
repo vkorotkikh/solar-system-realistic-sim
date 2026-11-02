@@ -8,6 +8,7 @@ from .sample_episodes import (
     REACHER_FAMILY,
     RETURN_AND_DELAY_FAMILY,
     SAMPLE_EPISODE_FAMILIES,
+    SMOKE_EPISODE_FAMILIES,
     with_verifier_policies,
 )
 from .verifier import DemoVerifier
@@ -26,5 +27,6 @@ __all__ = [
     "REACHER_FAMILY",
     "RETURN_AND_DELAY_FAMILY",
     "SAMPLE_EPISODE_FAMILIES",
+    "SMOKE_EPISODE_FAMILIES",
     "with_verifier_policies",
 ]

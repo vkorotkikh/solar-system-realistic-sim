@@ -1,0 +1,50 @@
+{
+ "origin": "http://localhost:5173",
+ "backend": "http://127.0.0.1:8075",
+ "rewrite": "fidelity=high:fidelity=preview",
+ "seconds": 90,
+ "physics_total": 31,
+ "physics_settled": 31,
+ "physics_outcomes": {
+  "http_200": 29,
+  "aborted": 2
+ },
+ "physics_200_ratio": 0.935,
+ "physics_200_latency_ms": {
+  "p50": 2282,
+  "p95": 2581,
+  "max": 2590
+ },
+ "aia_requests": 1,
+ "aia_outcomes": [
+  "http_200"
+ ],
+ "status_samples": [
+  {
+   "t": 61,
+   "text": null,
+   "state": null
+  },
+  {
+   "t": 76,
+   "text": null,
+   "state": null
+  },
+  {
+   "t": 91,
+   "text": null,
+   "state": null
+  }
+ ],
+ "external_blocked": [
+  "https://fonts.googleapis.com"
+ ],
+ "checks": {
+  "physics_200_ratio_ge_0_95": false,
+  "aia_tile_loaded_ge_1": true,
+  "status_label_present": false,
+  "status_state_live_or_degraded": false
+ },
+ "pass": false,
+ "logs": []
+}

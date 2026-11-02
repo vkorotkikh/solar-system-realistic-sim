@@ -1,0 +1,112 @@
+{
+  "status": "completed_scoped_read_only_review_with_minor_finding",
+  "worktree": "/home/nomad/ai/projects/worktrees/solar-remediation-completion-20261030",
+  "base": "25aacf70cbc1288dfac21a7c21fec62d064e1dc0",
+  "reviewed_at_utc": "2026-10-30T05:19:26.942766+00:00",
+  "head_at_probe_start": "8be083ccf766d262cba4cb43f25a1c9c60f2fd7f",
+  "head_at_report": "2527db6dd32b5339190ded6d980ef7005ac2592d",
+  "snapshot_note": "Shared HEAD advanced during review. All 17 reviewed source/test hashes remained unchanged from probe start through final verification.",
+  "summary": "No confirmed Critical or Important defects in the requested integrated patches. One reproduced Minor particle-culling defect.",
+  "critical": [],
+  "important": [],
+  "minor": [
+    {
+      "id": "SOLAR-PARTICLE-CULLING",
+      "severity": "Minor",
+      "confidence": "high",
+      "file": "src/frontend/features/solar/sunVisuals.ts",
+      "line": 1701,
+      "related_lines": [
+        1253,
+        1265,
+        1304
+      ],
+      "title": "Uploaded particle motion leaves the cached bounding sphere stale",
+      "impact": "Near a viewport edge, Three.js can cull the whole eruption layer while updated particles are inside the frustum. This is a latent culling weakness made visible by the repaired shared particle buffer; it does not invalidate the alpha-zero or upload repair.",
+      "repro": "Create the real eruption layer at radius 0.00465; compute its initial boundingSphere as the renderer does; run the real blend updater with a normalized feature arc at 3 solar radii and alpha=0. Clip to x >= 2 solar radii. The first updated particle is inside this frustum, but Frustum.intersectsObject(layer) is false because the sphere still encloses the initial positions and layer.frustumCulled remains true.",
+      "observed": {
+        "initial_bound_radius": 0.0048094337416890315,
+        "updated_particle_radius": 0.01440337486565113,
+        "point_inside_frustum": true,
+        "object_intersects_frustum": false,
+        "bound_updated": false
+      },
+      "recommendation": "Recompute or conservatively maintain the particle bounding sphere after position updates, including base-radius changes; alternatively disable frustum culling for this small dynamic layer, as other solar lines already do.",
+      "replay": "/tmp/solar-remediation-completion-20261030/solar-time-client-independent-wjskdfwh/probe.mjs",
+      "evidence": "/tmp/solar-remediation-completion-20261030/solar-time-client-independent-wjskdfwh/frontend-probe.log"
+    }
+  ],
+  "verified_contracts": {
+    "time": "Independent pinned-Python probes covered all 27 active positive-leap boundaries: ordinary UTC-origin and independent TAI-origin midnights survive TwoPartJD; final genuine leap fractions are rejected as UnsupportedUTCInstant; scalar bins at both leap edges reject as AmbiguousScalarJD. Both components remain distinct cache-key inputs; mixed precise/scalar aliases reject. HTTP pair completeness, finiteness, precise bounds and 400/422 mapping were read against the integrated source and existing ingress tests.",
+    "observed_solar": "The public parser selects the bounded correction only for the pinned compressed identity plus the actual expanded FITS hash. The PFSS consumer reparses native bytes and compares field, grid, full identity and provenance. Independent probes accepted the retained authentic map and rejected forged compressed hash, source URL, native bytes and correction metadata. Both polarities, <=5% imbalance and the original post-correction roundoff limit remain required; no condition-number or physical acceptance threshold was weakened.",
+    "hale": "Independently ran 12 absolute-polarity/map-footpoint cases for both hemispheres in cycles 24/25/26 and the snapshot/cache identity regression. Synthetic transform v4 and model v5 separate the repaired polarity from old cache content. Cached prior evidence was inspected; the primary NASA manuscript was also independently opened and checked.",
+    "particles": "Independent pinned-Node probes confirmed the actual BufferAttribute shares the animator Float32Array; alpha 0 selects the source, 1 selects the target, finite out-of-range values clamp, nonfinite values select the target, and the midpoint follows the spherical arc. Eight actual geometry cases passed.",
+    "client": "Independent pinned-Node probes confirmed legacy replacements use a new socket both with and without explicit deactivation, delayed old-socket callbacks cannot update state, and legacy commands remain untagged. Modern old-subscription frames continue updating ordinary bodies while preserving the accepted replacement Kuiper snapshot."
+  },
+  "independent_probes": [
+    {
+      "interpreter": "uv run --offline --no-project --python 3.12.13 --with-requirements /home/nomad/ai/projects/worktrees/solar-remediation-completion-20261030/ci/backend-test-requirements.txt",
+      "script": "/tmp/solar-remediation-completion-20261030/solar-time-client-independent-wjskdfwh/probe.py",
+      "exit_code": 0,
+      "log": "/tmp/solar-remediation-completion-20261030/solar-time-client-independent-wjskdfwh/backend-probe.log"
+    },
+    {
+      "interpreter": "/home/nomad/.npm/_npx/f4985f1adc097c41/node_modules/node/bin/node",
+      "script": "/tmp/solar-remediation-completion-20261030/solar-time-client-independent-wjskdfwh/probe.mjs",
+      "exit_code": 0,
+      "log": "/tmp/solar-remediation-completion-20261030/solar-time-client-independent-wjskdfwh/frontend-probe.log",
+      "method": "esbuild bundled actual TypeScript source into new scratch modules; product files were not modified"
+    }
+  ],
+  "existing_evidence_inspected": [
+    {
+      "tests": 608,
+      "domain": "time/provider/security/validation",
+      "log": "/tmp/solar-remediation-completion-20261030/time/time-provider-final.log",
+      "verification": "All five hashes in verified-source-manifest.json match the reviewed files; result not independently rerun."
+    },
+    {
+      "tests": 345,
+      "domain": "solar consumer guards",
+      "log": "/tmp/solar-remediation-completion-20261030/solar/combined-consumer-guards.log"
+    },
+    {
+      "tests": 52,
+      "domain": "bounded observational acceptance",
+      "log": "/tmp/solar-remediation-completion-20261030/solar/combined-observational-final.log"
+    },
+    {
+      "tests": 250,
+      "domain": "frontend solar",
+      "log": "/tmp/solar-remediation-completion-20261030/solar/frontend-solar.log"
+    },
+    {
+      "tests": 59,
+      "domain": "simulation client",
+      "log": "/tmp/solar-remediation-completion-20261030/legacy-subscription-pinned.log"
+    }
+  ],
+  "solar_receipt_binding": "All source/artifact hashes listed in solar-result.json match the current integrated files. Existing suite counts are inherited evidence, not additional reviewer runs.",
+  "hale_source": {
+    "cached_evidence": [
+      "/tmp/solar-hale-verification-20261024.json",
+      "/tmp/solar-hale-independent-review.json"
+    ],
+    "primary_url": "https://ntrs.nasa.gov/api/citations/20250006012/downloads/pivot_250521_submitted.pdf",
+    "location": "Section 3.1.3, manuscript lines 215-218, page 5; hemispheric/cycle reversal discussion at manuscript lines 84-95.",
+    "support": "The manuscript identifies a negative-leading northern Cycle 25 region as contrary to the positive-leading northern majority. Together with its hemispheric and cycle reversal rule, this supports the literal six-case polarity table.",
+    "independent_access": "Primary PDF text independently opened and checked during this review; local cached verification receipts also read."
+  },
+  "boundaries": [
+    "This is the requested scoped code review; backend/server.py was reviewed only for time-related changes. No repository edits, commits, deletions or subagents were performed. New report and probe artifacts exist only under the requested /tmp directory.",
+    "The authentic retained map still fails degree-90 numerical admission; degrees 64, 30 and 15 all fail the retained real-map feature budgets. The passing provider-native comparison is not a passing actual-map pipeline or corrected scientific calibration.",
+    "Observed scene/frame eligibility and WSA speed calibration are not established by bounded map admission; no such claims are made.",
+    "The pair API is for the AIA tile route/provider path. GONG acquisition remains scalar-only; precise GONG support and genuine leap-second provider support are not claimed.",
+    "The parent full suite, production transport and deployed/manual behavior were not independently rerun. Their absence was not treated as a code-review blocker or defect. The culling finding was reproduced with Three.js geometry/frustum logic, without a browser render.",
+    "Review evidence is bound to the recorded source hashes; later concurrent source changes require rechecking affected conclusions."
+  ],
+  "source_manifests": [
+    "/tmp/solar-remediation-completion-20261030/solar-time-client-independent-wjskdfwh/start.json",
+    "/tmp/solar-remediation-completion-20261030/solar-time-client-independent-wjskdfwh/end.json"
+  ]
+}

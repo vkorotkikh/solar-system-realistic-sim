@@ -1,0 +1,11 @@
+# Exact scanner spans from four immutable archived Vitest JSON reports.
+# Each is the deliberately invalid basic-auth URL test case in
+# src/frontend/app/runtimeConfig.test.ts, already present on origin/main519c894.
+# The test requires rejecting credential-bearing origins; these are not secrets.
+# The scanner includes adjacent JSON fields in its URL match. Keep exact spans
+# rather than a pattern exemption; preserve the evidence files and their hashes.
+https://user:pass@solar.example","duration":0.14855000000000018,"failureMessages":[],"meta":{},"tags":[],"benchmarks":[]},{"ancestorTitles":[],"fullName":"rejects
+https://user:pass@solar.example","duration":0.16295900000000074,"failureMessages":[],"meta":{},"tags":[],"benchmarks":[]},{"ancestorTitles":[],"fullName":"rejects
+https://user:pass@solar.example","duration":0.2254670000000374,"failureMessages":[],"meta":{},"tags":[],"benchmarks":[]},{"ancestorTitles":[],"fullName":"rejects
+https://user:pass@solar.example","duration":0.23762599999997747,"failureMessages":[],"meta":{},"tags":[],"benchmarks":[]},{"ancestorTitles":[],"fullName":"rejects
+https://user:pass@solar.example","status":"passed","title":"rejects

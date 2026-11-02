@@ -1,0 +1,230 @@
+{
+  "review": "Independent read-only startup/UI acquisition and integration review",
+  "status": "complete",
+  "verdict": "No concrete Critical or Important regressions found in the reviewed snapshot.",
+  "base_commit": "25aacf70cbc1288dfac21a7c21fec62d064e1dc0",
+  "head_commit": "409b8a9bb797aef8077bb48e5538afaf0859ab24",
+  "includes_uncommitted_and_untracked_scope_files": true,
+  "worktree": "/home/nomad/ai/projects/worktrees/solar-remediation-completion-20261030",
+  "completed_at_utc": "2026-10-30T05:22:06.849127+00:00",
+  "findings": [],
+  "counts": {
+    "critical": 0,
+    "important": 0
+  },
+  "new_scene_setup_fix": {
+    "assessment": "The internal ownership gap is closed for failures after renderer acquisition and after controls construction. Cleanup attempts are independent and preserve the original setup error.",
+    "source_evidence": [
+      {
+        "path": "src/frontend/app/sceneSetup.ts",
+        "line": 98,
+        "detail": "Controls handle remains available to the failure handler after construction."
+      },
+      {
+        "path": "src/frontend/app/sceneSetup.ts",
+        "line": 118,
+        "detail": "Separate guarded controls and renderer disposal attempts precede rethrowing the original error."
+      },
+      {
+        "path": "src/main.ts",
+        "line": 276,
+        "detail": "Successful scene setup immediately transfers renderer and controls to the runtime owner."
+      }
+    ],
+    "tests_read": [
+      "src/frontend/app/sceneSetup.test.ts: failed scene setup retains acquisition ownership (two pixel-ratio variants and controls configuration failure)",
+      "src/frontend/app/runtimeLifetime.test.ts: throwing disposer and diagnostic reporter containment"
+    ],
+    "independent_probe": {
+      "command": "node /tmp/solar-remediation-completion-20261030/startup-ui-independent-fault-probe.mjs",
+      "exit_code": 0,
+      "current_scenarios_passed": 7,
+      "baseline_leak_scenarios_reproduced": 6,
+      "artifact": "/tmp/solar-remediation-completion-20261030/startup-ui-independent-fault-probe.json",
+      "method": "bounded fault probe; renderer double plus real OrbitControls; actual extracted createSceneSetup",
+      "cases": [
+        "Pixel-ratio failure with successful or throwing renderer disposal.",
+        "Controls configuration failure with every combination of successful or throwing controls and renderer disposal.",
+        "Healthy construction transfers ownership without premature disposal."
+      ],
+      "verified": [
+        "Original error identity",
+        "Disposal order and single attempts",
+        "Removal of real controls canvas/document listeners"
+      ],
+      "limit": "Uses a renderer double; does not exercise native GPU disposal."
+    }
+  },
+  "requirement_review": [
+    {
+      "requirement": "One catalog-or-procedural asteroid population and renderer; early catalog fetch",
+      "assessment": "Supported by source trace: transport starts before textures and scene assembly, source selection precedes the single population and renderer allocation.",
+      "evidence": [
+        "src/main.ts:283",
+        "src/main.ts:548",
+        "src/frontend/features/asteroids/startupBelt.ts:71"
+      ]
+    },
+    {
+      "requirement": "50k asteroids, 5k Kuiper objects, checksum validation and 2-second load budget",
+      "assessment": "Main retains the population counts and existing loader budget parameter. The loader still hashes the binary and evaluates acceptance over its original fetch-to-parse/hash clock; no full-scene startup timing claim is inferred.",
+      "evidence": [
+        "src/main.ts:251",
+        "src/main.ts:285",
+        "src/main.ts:556",
+        "src/sim/phase1AsteroidCatalog.ts:182",
+        "src/sim/phase1AsteroidCatalog.ts:752",
+        "src/sim/phase1AsteroidCatalog.ts:787"
+      ]
+    },
+    {
+      "requirement": "Cancellation, ownership and latest scale",
+      "assessment": "Pending cancellation rejects without allocating fallback resources; cancellation is rechecked around allocation and scale application. Main registers the returned renderer before its post-await liveness check and synchronizes scale from the checkbox.",
+      "evidence": [
+        "src/frontend/features/asteroids/startupBelt.ts:53",
+        "src/frontend/features/asteroids/startupBelt.ts:78",
+        "src/main.ts:552"
+      ]
+    },
+    {
+      "requirement": "Runtime acquisition cleanup including quadtree, Sun, worker and listeners",
+      "assessment": "Ownership is registered as resources are acquired. Disposal aborts first, retires callbacks in reverse order and contains callback/reporting errors. Main registers quadtree and Sun teardown, worker termination, observer disconnection, frame disposal and event-listener cancellation.",
+      "evidence": [
+        "src/frontend/app/runtimeLifetime.ts:13",
+        "src/frontend/app/runtimeLifetime.ts:34",
+        "src/main.ts:354",
+        "src/main.ts:415",
+        "src/main.ts:825",
+        "src/main.ts:1138",
+        "src/main.ts:1171",
+        "src/main.ts:1310"
+      ]
+    },
+    {
+      "requirement": "Immediate keyboard camera feedback independent of RAF",
+      "assessment": "Actions flush in a microtask and publish Range through onActionApplied; disposal clears pending input. Main supplies updateZoomStatus to that callback.",
+      "evidence": [
+        "src/frontend/app/viewportCameraController.ts:54",
+        "src/main.ts:280",
+        "src/main.ts:658",
+        "src/frontend/app/viewportCameraController.test.ts:68",
+        "tests/browser/camera.spec.ts:8"
+      ]
+    },
+    {
+      "requirement": "Native zoom width-based modality and focus",
+      "assessment": "Both production and shell callers supply innerWidth-based layout state. Resize, visual viewport and media-query signals reconcile that state, with a next-task width recheck and disposal cancellation. Existing focus transition ordering and modal trap remain in place.",
+      "evidence": [
+        "src/main.ts:169",
+        "src/frontend/app/panelController.ts:29",
+        "src/frontend/app/panelController.ts:74",
+        "tests/browser/panel.spec.ts:58",
+        "playwright.config.ts:25"
+      ]
+    },
+    {
+      "requirement": "No background restarts after unload",
+      "assessment": "Unload closes the runtime owner; catalog adoption and shader-warmup continuations check cancellation, frame disposal removes visibility listeners and prevents restart, and worker callbacks reject retired ownership. This is a static ownership trace, not a new browser-run claim.",
+      "evidence": [
+        "src/main.ts:194",
+        "src/main.ts:553",
+        "src/main.ts:839",
+        "src/main.ts:1316",
+        "src/frontend/app/frameLifecycle.ts:90",
+        "src/frontend/app/rendererWarmup.ts:19",
+        "tests/browser/startup-ownership.spec.ts:153"
+      ]
+    }
+  ],
+  "verification_limits": [
+    "No broad unit suite, browser matrix, build, DEV cold-start or PREVIEW cold-start was run in this independent review.",
+    "Parent/worker-reported test counts were not independently rerun or treated as completion evidence.",
+    "Native browser zoom and actual GPU cleanup were reviewed through source and test changes, not independently executed.",
+    "The shared worktree was not frozen; the recorded file hashes bind this review to the bytes inspected at completion.",
+    "Simulation subscription and backend/science remediation outside the requested startup/UI scope were not reviewed."
+  ],
+  "constraints_observed": {
+    "source_edits": false,
+    "commits": false,
+    "deletions": false,
+    "subagents": false,
+    "writes": "Only this report and the bounded fault-probe script/result under /tmp/solar-remediation-completion-20261030"
+  },
+  "reviewed_files": [
+    "src/main.ts",
+    "src/main.asteroidRefresh.test.ts",
+    "src/main.bodyInfo.test.ts",
+    "src/main.resizeRenderer.test.ts",
+    "src/frontend/app/runtimeLifetime.ts",
+    "src/frontend/app/runtimeLifetime.test.ts",
+    "src/frontend/app/rendererRecovery.ts",
+    "src/frontend/app/rendererRecovery.test.ts",
+    "src/frontend/app/timeController.ts",
+    "src/frontend/app/timeController.test.ts",
+    "src/frontend/features/asteroids/startupBelt.ts",
+    "src/frontend/features/asteroids/startupBelt.test.ts",
+    "src/frontend/app/sceneSetup.ts",
+    "src/frontend/app/sceneSetup.test.ts",
+    "src/frontend/app/panelController.ts",
+    "src/frontend/app/panelController.test.ts",
+    "src/frontend/app/viewportCameraController.ts",
+    "src/frontend/app/viewportCameraController.test.ts",
+    "playwright.config.ts",
+    ".github/workflows/frontend-ui.yml",
+    "tests/browser/camera.spec.ts",
+    "tests/browser/panel.spec.ts",
+    "tests/browser/fixtures/ui-shell.ts",
+    "tests/browser/startup-warmup.spec.ts",
+    "tests/browser/startup-ownership.spec.ts",
+    "tests/browser/tab-zoom.spec.ts",
+    "tests/browser/tab-zoom.ts"
+  ],
+  "dependency_files_inspected": [
+    "src/sim/phase1AsteroidCatalog.ts",
+    "src/frontend/app/runtimeConfig.ts",
+    "src/frontend/app/rendererWarmup.ts",
+    "src/frontend/app/frameLifecycle.ts",
+    "src/frontend/features/planetary/quadtreeLOD.ts",
+    "src/sunController.ts",
+    "src/frontend/app/textureManager.ts"
+  ],
+  "snapshot": {
+    "tracked_scope_diff_sha256": "41b8184f4c30f75b9bf175b5dc95bc1aa6cc272b5403d3c5ec199c95fcf8fa77",
+    "file_sha256": {
+      ".github/workflows/frontend-ui.yml": "1d63e67c55ad7f272849f0cd88366e68bb6c381196532372fb2aaf75b782035d",
+      "playwright.config.ts": "c22ac0cb7e62f68979763ad70355c82d130caa72aed70e208a5fabed2ab79885",
+      "src/frontend/app/frameLifecycle.ts": "e5caa07526c016ac94c9b5c64001513277148542df49380d818c19ed8f34b226",
+      "src/frontend/app/panelController.test.ts": "99b48370d20de305b164ad461548e5484c2ac8537841ff7b2b2079ab4ef2dce1",
+      "src/frontend/app/panelController.ts": "d0cdd704883a053723d301c899f4da9f316707731a756614180b85f73b84c633",
+      "src/frontend/app/rendererRecovery.test.ts": "05701d3cb018675bc7325aadab91d8f3da52eeae4fa6cfcf974c30eeaa66dfbf",
+      "src/frontend/app/rendererRecovery.ts": "4cd952dbc3804b8df6df310b948b54ae2202e641c753f2daebb08f1c0f5d8c16",
+      "src/frontend/app/rendererWarmup.ts": "5f64f9ca35c0f07316d322229b98050c733ebd9ef3649727839990e665ec5503",
+      "src/frontend/app/runtimeConfig.ts": "9e16bd90eaad2ff5b1e3dfa21e4df1e5bc1cc7b37255a608709070bbfdc6aa23",
+      "src/frontend/app/runtimeLifetime.test.ts": "b28db9f4020afe5fbf330cc5855d3d02d8a7475b065f46c83e2508fd8907472b",
+      "src/frontend/app/runtimeLifetime.ts": "f19e7d2c6f60a7d599d4912de2c3bfb5834d8348c2b52e37080ce15b17449718",
+      "src/frontend/app/sceneSetup.test.ts": "f8b03bb2fd40754b1653cfeddf005f72e832ce020ec221b3de88ed18cff87969",
+      "src/frontend/app/sceneSetup.ts": "7984f156fc8c0b8a83dd75b3506dadb7fd52db23e17edd1cf71d2437d5e4191e",
+      "src/frontend/app/textureManager.ts": "5ae770ca19890b6a0c6204d8f6bc7864f0322755f233f8db3f22059fd44173c0",
+      "src/frontend/app/timeController.test.ts": "90f4b61df8915881d4956f33e0bb0001db5d61a46d34f097a3d6250ecdcce44d",
+      "src/frontend/app/timeController.ts": "c07dbf492fef87d8b21e4827a2032587d358505f20ae7948e91f70d5f3b2d8a4",
+      "src/frontend/app/viewportCameraController.test.ts": "5f3ea37bca5df3c9f9790f4a687017ead37b020865f6bfa6663c1019127a48ed",
+      "src/frontend/app/viewportCameraController.ts": "11e5145a0fca5452b74264e85032d13a0c0e0024fccc54a6d51737dda9a4bd64",
+      "src/frontend/features/asteroids/startupBelt.test.ts": "be2d328f9cf64659838bb8138dd3f4fa7a7f7e256337895c4fc42372340e8885",
+      "src/frontend/features/asteroids/startupBelt.ts": "87862911a41c3d3e483eee7280957fc13f61271adf3ebf004d1ff4953e466410",
+      "src/frontend/features/planetary/quadtreeLOD.ts": "3908f113b7e098f9ec0022c891b4a48410c124cd7615348ae2ade3ef25c3fc1e",
+      "src/main.asteroidRefresh.test.ts": "b9c88e7debe91c97e418c3304b980073ef7419e5c5380d2af3f7589e8dde45d3",
+      "src/main.bodyInfo.test.ts": "85ced7c7a9403c13ffb5c7ad0de7b472bdc0c60b5f7b9160af6c40fc2e9f78a2",
+      "src/main.resizeRenderer.test.ts": "871ef7cd85a08f12a97b19313a019e9bfc23133e0790518f2076c2f3a3b7975f",
+      "src/main.ts": "1e507d2b050c6a5ba9780d1eea0707b323dbb310af71d99f0334fc3512f2f9e5",
+      "src/sim/phase1AsteroidCatalog.ts": "1c7ef875e39b70c4192363592f0ebf491314b2987a04dbe6b207527b73f730c5",
+      "src/sunController.ts": "cbb85e9599660985efec6fe844a161cb21fbc3e8dca99efa8d10518024383644",
+      "tests/browser/camera.spec.ts": "f39704450491d9d6f86e609e7b5aa36e134aa93c6619ae007512c67571e46624",
+      "tests/browser/fixtures/ui-shell.ts": "f646b0363c65270c09d5d55cdad88430c8c7232e7b028daaa97118a0ec9d1085",
+      "tests/browser/panel.spec.ts": "2e32b0a241388e290a96847eb1bf849fc3db5b07cd12912c30861d9c526e2834",
+      "tests/browser/startup-ownership.spec.ts": "4c41c669d8384670d19f63f376a6711adacfab1719f9ec58ef90731a7804bae5",
+      "tests/browser/startup-warmup.spec.ts": "207e44e65513281edb3222d08cfe6aff28f924879c8f6caf9b093adc1f1268e6",
+      "tests/browser/tab-zoom.spec.ts": "82ebce909d9db5fba66edd851b64074e351be8e61cf6188dbd98125c15c8acef",
+      "tests/browser/tab-zoom.ts": "701a93b6d582f760586fe4f2b89d6db9756207b9595ad55f1fdbe15524c9c9b3"
+    }
+  }
+}

@@ -1,0 +1,160 @@
+{
+  "domain": "global",
+  "notesCovered": [
+    "REMEDIATION_EFFORT_2026-10-14.md",
+    "REMEDIATION_WAVE3_2026-10-14.md",
+    "REMEDIATION_TOOLCHAIN_2026-10-14.md",
+    "REMEDIATION_PROVENANCE_2026-10-14.md",
+    "REMEDIATION_INTEGRATION_CHECKPOINT_2026-10-14.md",
+    "REMEDIATION_INTEGRATION_CHECKPOINT_A51BEBC_2026-10-14.md",
+    "REMEDIATION_VERIFICATION_CHECKPOINT_4728428_2026-10-14.md",
+    "REMEDIATION_VERIFICATION_CHECKPOINT_4B55DFF_2026-10-14.md",
+    "REMEDIATION_VERIFICATION_CHECKPOINT_4F2E250_2026-10-14.md",
+    "REMEDIATION_CLOSURE_CHECKPOINT_6539902_2026-10-15.md",
+    "REMEDIATION_CLOSURE_PLAN_2026-10-15.md"
+  ],
+  "issues": [
+    {
+      "id": "SCN-025",
+      "verdict": "CODE_CONFIRMED",
+      "fix": "Strict TypeScript compiles the complete source tree with zero diagnostics; strict CI gate retained.",
+      "evidence": [
+        "tsconfig.json:9",
+        "package.json:20",
+        ".github/workflows/r3-r4-science.yml:61"
+      ],
+      "remaining": "Explicit-any cleanup is maintenance, not a claim that strict checking is disabled.",
+      "branchEvidence": "19d1b6f and 94cf1d4 are ancestors of audited origin/main."
+    },
+    {
+      "id": "SCN-026",
+      "verdict": "CODE_CONFIRMED",
+      "fix": "Vitest discovery includes product/script trees and excludes copied audit suites.",
+      "evidence": [
+        "vitest.config.ts:9"
+      ],
+      "remaining": "None for audit-directory test discovery.",
+      "branchEvidence": "PR7 implementation is in origin/main."
+    },
+    {
+      "id": "SCN-027",
+      "verdict": "CODE_CONFIRMED",
+      "fix": "README documents the pinned backend test requirements including httpx and the complete backend invocation.",
+      "evidence": [
+        "README.md:486",
+        "ci/backend-test-requirements.txt:1"
+      ],
+      "remaining": "Optional native runtimes retain their own environments; the default CI environment does not certify them.",
+      "branchEvidence": "PR7 implementation is in origin/main."
+    },
+    {
+      "id": "SCN-028",
+      "verdict": "CODE_CONFIRMED",
+      "fix": "Pinned install succeeds on Node22.23.2/npm10.9.8 and reports zero registry advisories.",
+      "evidence": [
+        "package.json:7",
+        "package.json:36",
+        "package-lock.json:1"
+      ],
+      "remaining": "Advisory assessment is time-scoped; unknown vulnerabilities are outside this result.",
+      "branchEvidence": "94cf1d4 is an ancestor of origin/main."
+    },
+    {
+      "id": "SCN-029",
+      "verdict": "CODE_CONFIRMED",
+      "fix": "Blocking backend and scientific CI jobs retain fail-closed verifier contracts; six current baselines pass and six mutations are killed.",
+      "evidence": [
+        ".github/workflows/r3-r4-science.yml:9",
+        "scripts/ci/tests/test_r3_r4_workflow.py:89",
+        "scripts/ci/verify_r3_r4.py:854"
+      ],
+      "remaining": "Browser workflow is nonblocking at origin/main and branch-protection settings were not queried; release gaps are SCN047.",
+      "branchEvidence": "Workflow and verifier are tracked at audited origin/main."
+    },
+    {
+      "id": "SCN-032",
+      "verdict": "PARTIAL",
+      "fix": "README correctly describes the API-only SimulationClient and moon-display limitations.",
+      "evidence": [
+        "README.md:8",
+        "README.md:15",
+        "README.md:26",
+        "README.md:27",
+        "README.md:65"
+      ],
+      "remaining": "README still advertises 1.9M Phase1 particles rather than50k rendered instances, has three broken source links (main.ts, modelWorker.ts, asteroidCatalogLoader.ts), and claims an unconfirmed FNV1a checksum fallback. Recheck that fallback claim with catalog reviewer before final wording.",
+      "branchEvidence": "PR7 and later scope documentation are merged; documentation freshness is still incomplete."
+    },
+    {
+      "id": "SCN-033",
+      "verdict": "CODE_CONFIRMED",
+      "fix": "Moon maintenance tooling validates shape/count/orbits, requires explicit count-change admission, and publishes with atomic rename.",
+      "evidence": [
+        "scripts/update-moons-data.mjs:130",
+        "scripts/update-moons-data.mjs:182",
+        "scripts/update-moons-data.test.mjs:68"
+      ],
+      "remaining": "No remaining defect identified within this tooling scope.",
+      "branchEvidence": "PR7 implementation is merged."
+    },
+    {
+      "id": "SCN-035",
+      "verdict": "DECISION_REQUIRED",
+      "fix": "NOTICE records source attribution and unresolved redistribution terms.",
+      "evidence": [
+        "NOTICE.md:1",
+        "NOTICE.md:9",
+        "NOTICE.md:23",
+        "agent-notes/REMEDIATION_PROVENANCE_2026-10-14.md:30"
+      ],
+      "remaining": "No original-code license file exists; owner distribution/license decision, SILSO terms disposition, Deimos permission/replacement and complete release inventory remain.",
+      "branchEvidence": "14741bd notice is in origin/main; no owner acceptance inferred."
+    },
+    {
+      "id": "SCN-040",
+      "verdict": "PARTIAL",
+      "fix": "Selected reports and164 original scan files are tracked;164/164 archived hashes pass at current baseline, and4/4 dated report hashes match56e799a.",
+      "evidence": [
+        "agent-notes/SCAN_EVIDENCE_ARCHIVE_2026-10-17.json:1",
+        "agent-notes/REMEDIATION_SOURCE_MANIFEST_2026-10-14.json:1"
+      ],
+      "remaining": "Older September/H1 raw materials remain outside the declared archive; two report files evolved after their historical manifest. Current worktree-only evidence must remain distinguished from committed baseline.",
+      "branchEvidence": "56e799a and0964ed9 are ancestors of audited origin/main."
+    },
+    {
+      "id": "SCN-047",
+      "verdict": "PARTIAL",
+      "fix": "Fresh frontend/type/build/science checks and current source/evidence reconciliation are recorded.",
+      "evidence": [
+        ".github/workflows/frontend-ui.yml:29",
+        "agent-notes/REMEDIATION_CLOSURE_PLAN_2026-10-15.md:38"
+      ],
+      "remaining": "Full backend/browser results pending at report creation; global acceptance also needs moons, startup, manual accessibility, deployment/TLS and scientific/render calibration. No single all-subsystem release pass exists.",
+      "branchEvidence": "Local browser/startup fixes have not been merged into baseline."
+    }
+  ],
+  "findings": [
+    {
+      "id": "DOC-README",
+      "severity": "P2",
+      "issues": [
+        "SCN-032"
+      ],
+      "finding": "Current README has stale particle-count claims and three broken source links."
+    },
+    {
+      "id": "CI-BROWSER",
+      "severity": "P1",
+      "issues": [
+        "SCN-030",
+        "SCN-031",
+        "SCN-047"
+      ],
+      "finding": "Browser step uses continue-on-error:true; passing required jobs can coexist with browser failures."
+    }
+  ],
+  "caveats": [
+    "Historical checkpoints remain dated evidence and their old unmerged/approval wording must not be copied into current statuses.",
+    "Main local checkout is e9052f9, one ahead/219behind locally available origin/main bb29d4b; no fetch or remote-current claim."
+  ]
+}
