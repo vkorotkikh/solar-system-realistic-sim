@@ -1,0 +1,54 @@
+
+ RUN  v5.0.4 /home/nomad/ai/projects/worktrees/solar-scn030-closure-20261102
+
+ ❯ scripts/validate-accessibility-evidence.test.mjs (15 tests | 2 failed) 478ms
+   ❯ manual accessibility evidence readiness CLI (15)
+     × rejects desktop device presented as a phone 38ms
+     × accepts an honest partial record while keeping missing lanes pending 29ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  scripts/validate-accessibility-evidence.test.mjs > manual accessibility evidence readiness CLI > rejects desktop device presented as a phone
+AssertionError: expected +0 to be 2 // Object.is equality
+
+- Expected
++ Received
+
+- 2
++ 0
+
+ ❯ scripts/validate-accessibility-evidence.test.mjs:58:27
+     56|     const record = observedRecord(); mutate(record);
+     57|     const result = run(record, { 'observation.txt': 'Actual observatio…
+     58|     expect(result.status).toBe(2);
+       |                           ^
+     59|     expect(result.output.ready).toBe(false);
+     60|     expect(result.output.errors.length).toBeGreaterThan(0);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  scripts/validate-accessibility-evidence.test.mjs > manual accessibility evidence readiness CLI > accepts an honest partial record while keeping missing lanes pending
+AssertionError: expected 2 to be 1 // Object.is equality
+
+- Expected
++ Received
+
+- 1
++ 2
+
+ ❯ scripts/validate-accessibility-evidence.test.mjs:68:27
+     66|     record.lanes[0].cases[1] = structuredClone(template.lanes[0].cases…
+     67|     const result = run(record, { 'observation.txt': 'Actual observed c…
+     68|     expect(result.status).toBe(1);
+       |                           ^
+     69|     expect(result.output.status).toBe('NOT_RUN');
+     70|     expect(result.output.errors).toEqual([]);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 13 passed (15)
+   Start at  12:23:28
+   Duration  612ms (tests 92%, transform 5%, import 2%, worker 1%)
+

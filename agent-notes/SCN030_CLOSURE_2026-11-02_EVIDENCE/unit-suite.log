@@ -1,0 +1,170 @@
+
+ RUN  v5.0.4 /home/nomad/ai/projects/worktrees/solar-scn030-closure-20261102
+
+ ❯ scripts/generated-solar-period.test.mjs (18 tests | 7 failed) 62ms
+   × control complete asteroid non-generated-period projection seed 0 22ms
+   × control Kuiper non-generated-period projection and population metadata seed 0 4ms
+   × control complete asteroid non-generated-period projection seed 42 2ms
+   × control Kuiper non-generated-period projection and population metadata seed 42 3ms
+   × control complete asteroid non-generated-period projection seed 137 1ms
+   × control Kuiper non-generated-period projection and population metadata seed 137 2ms
+   × control nonempty mutual binaries preserve complete parameters and periods exactly 2ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 7 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  scripts/generated-solar-period.test.mjs > control complete asteroid non-generated-period projection seed 0
+AssertionError: Expected values to be strictly equal:
++ actual - expected
+
++ 'cb18ac109cdeca6b5ce6536c03a7fb05db2c9571871874a42cc12f1e4ec823b2'
+- '70cc1a3b8f3db67e52297385f8424691638e9540e953db59d2af2785e99c1652'
+
+
+Expected: "70cc1a3b8f3db67e52297385f8424691638e9540e953db59d2af2785e99c1652"
+Received: "cb18ac109cdeca6b5ce6536c03a7fb05db2c9571871874a42cc12f1e4ec823b2"
+
+ ❯ scripts/generated-solar-period.test.mjs:76:12
+     74|
+     75|   test('control complete asteroid non-generated-period projection seed…
+     76|     assert.equal(hash(withoutGeneratedPeriods(generateAsteroidBelt(64,…
+       |            ^
+     77|       'asteroids', NAMED_ASTEROIDS.length)), BASELINES[index].asteroid…
+     78|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/7]⎯
+
+ FAIL  scripts/generated-solar-period.test.mjs > control Kuiper non-generated-period projection and population metadata seed 0
+AssertionError: Expected values to be strictly equal:
++ actual - expected
+
++ '23281a0a4ef2a1dced625e86e9fec3044d96030d4177247bf10acd08721b7850'
+- 'f423be246ed4ec3ab26fde76e0ace008ce7414166bcdcf6f463548530e618c38'
+
+
+Expected: "f423be246ed4ec3ab26fde76e0ace008ce7414166bcdcf6f463548530e618c38"
+Received: "23281a0a4ef2a1dced625e86e9fec3044d96030d4177247bf10acd08721b7850"
+
+ ❯ scripts/generated-solar-period.test.mjs:86:12
+     84|     // Preserve the original numeric oracle. Only the two explicitly c…
+     85|     // metadata fields are outside its pre-PR22 population envelope.
+     86|     assert.equal(hash(withoutGeneratedPeriods(originalFields,
+       |            ^
+     87|       'kbos', NAMED_KBOS.length)), BASELINES[index].kuiper);
+     88|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/7]⎯
+
+ FAIL  scripts/generated-solar-period.test.mjs > control complete asteroid non-generated-period projection seed 42
+AssertionError: Expected values to be strictly equal:
++ actual - expected
+
++ '1b66a89be773a8bdc8dbdc9836140a327b7d4481a09ffde2559e8e0b77610611'
+- 'e53ad5d3cda40b4fb7f00c20d31fd12ccd29df8b1b607592a9a8d86d91f2771b'
+
+
+Expected: "e53ad5d3cda40b4fb7f00c20d31fd12ccd29df8b1b607592a9a8d86d91f2771b"
+Received: "1b66a89be773a8bdc8dbdc9836140a327b7d4481a09ffde2559e8e0b77610611"
+
+ ❯ scripts/generated-solar-period.test.mjs:76:12
+     74|
+     75|   test('control complete asteroid non-generated-period projection seed…
+     76|     assert.equal(hash(withoutGeneratedPeriods(generateAsteroidBelt(64,…
+       |            ^
+     77|       'asteroids', NAMED_ASTEROIDS.length)), BASELINES[index].asteroid…
+     78|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/7]⎯
+
+ FAIL  scripts/generated-solar-period.test.mjs > control Kuiper non-generated-period projection and population metadata seed 42
+AssertionError: Expected values to be strictly equal:
++ actual - expected
+
++ '925135ec46e254f280d4a82ad873ccb7fc5614d00389093e3bcdec648250a3fd'
+- '3dfc3a7c341018ed5a61a80aadaf98a65baf0427845ceb1a720bae1efff9a7d5'
+
+
+Expected: "3dfc3a7c341018ed5a61a80aadaf98a65baf0427845ceb1a720bae1efff9a7d5"
+Received: "925135ec46e254f280d4a82ad873ccb7fc5614d00389093e3bcdec648250a3fd"
+
+ ❯ scripts/generated-solar-period.test.mjs:86:12
+     84|     // Preserve the original numeric oracle. Only the two explicitly c…
+     85|     // metadata fields are outside its pre-PR22 population envelope.
+     86|     assert.equal(hash(withoutGeneratedPeriods(originalFields,
+       |            ^
+     87|       'kbos', NAMED_KBOS.length)), BASELINES[index].kuiper);
+     88|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/7]⎯
+
+ FAIL  scripts/generated-solar-period.test.mjs > control complete asteroid non-generated-period projection seed 137
+AssertionError: Expected values to be strictly equal:
++ actual - expected
+
++ '6f83bfa9b0d213995bbd869f10d2fda63ba9dbdc1a5cecbce7227b1e27380283'
+- '84531be183a08c2d5cf7167a677d0b2bf1f21575fb126c3d8618a730d0438357'
+
+
+Expected: "84531be183a08c2d5cf7167a677d0b2bf1f21575fb126c3d8618a730d0438357"
+Received: "6f83bfa9b0d213995bbd869f10d2fda63ba9dbdc1a5cecbce7227b1e27380283"
+
+ ❯ scripts/generated-solar-period.test.mjs:76:12
+     74|
+     75|   test('control complete asteroid non-generated-period projection seed…
+     76|     assert.equal(hash(withoutGeneratedPeriods(generateAsteroidBelt(64,…
+       |            ^
+     77|       'asteroids', NAMED_ASTEROIDS.length)), BASELINES[index].asteroid…
+     78|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/7]⎯
+
+ FAIL  scripts/generated-solar-period.test.mjs > control Kuiper non-generated-period projection and population metadata seed 137
+AssertionError: Expected values to be strictly equal:
++ actual - expected
+
++ '4ddcc04f08f5ed054db6d4cf60f6030f90d22e5867031a42b07f227a9b6ce5fe'
+- 'c04903d9b640bdfb5574e4808e84bf32b322268961064e5baf1099443fc7b65f'
+
+
+Expected: "c04903d9b640bdfb5574e4808e84bf32b322268961064e5baf1099443fc7b65f"
+Received: "4ddcc04f08f5ed054db6d4cf60f6030f90d22e5867031a42b07f227a9b6ce5fe"
+
+ ❯ scripts/generated-solar-period.test.mjs:86:12
+     84|     // Preserve the original numeric oracle. Only the two explicitly c…
+     85|     // metadata fields are outside its pre-PR22 population envelope.
+     86|     assert.equal(hash(withoutGeneratedPeriods(originalFields,
+       |            ^
+     87|       'kbos', NAMED_KBOS.length)), BASELINES[index].kuiper);
+     88|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/7]⎯
+
+ FAIL  scripts/generated-solar-period.test.mjs > control nonempty mutual binaries preserve complete parameters and periods exactly
+AssertionError: Expected values to be strictly equal:
++ actual - expected
+
++ 'e0bdf235084eafdd75a6cd0590a4c2e603414f5239be9bee0ccd943793503964'
+- '7f5cd0663bdc9989df504d1edaffce709d88df321a9f9e8372ee4fe0eaa39227'
+
+
+Expected: "7f5cd0663bdc9989df504d1edaffce709d88df321a9f9e8372ee4fe0eaa39227"
+Received: "e0bdf235084eafdd75a6cd0590a4c2e603414f5239be9bee0ccd943793503964"
+
+ ❯ scripts/generated-solar-period.test.mjs:170:12
+    168|     assert.ok(population.binaryCount > 0);
+    169|     assert.equal(binaries.length, population.binaryCount);
+    170|     assert.equal(hash(population.kbos.map(row => row.binary ?? null)),…
+       |            ^
+    171|     for (const row of binaries) assert.ok(Number.isFinite(row.binary.p…
+    172|   }
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/7]⎯
+
+
+ Test Files  1 failed | 164 passed | 1 skipped (166)
+      Tests  7 failed | 3004 passed | 2 skipped (3013)
+   Start at  12:28:16
+   Duration  10.64s (tests 51%, transform 33%, import 15%, worker 1%)
+
+    Isolate  166 workers spawned · ~123ms startup each (spawn + environment, per file)
+             at least ~536ms faster with isolate: false — reuses workers across files instead of one per file
+

@@ -1,0 +1,34 @@
+
+ RUN  v5.0.4 /home/nomad/ai/projects/worktrees/solar-scn030-closure-20261102
+
+ ❯ scripts/validate-accessibility-evidence.test.mjs (16 tests | 1 failed) 468ms
+   ❯ manual accessibility evidence readiness CLI (16)
+     × rejects unacknowledged observed failure outside required case set 38ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  scripts/validate-accessibility-evidence.test.mjs > manual accessibility evidence readiness CLI > rejects unacknowledged observed failure outside required case set
+AssertionError: expected +0 to be 2 // Object.is equality
+
+- Expected
++ Received
+
+- 2
++ 0
+
+ ❯ scripts/validate-accessibility-evidence.test.mjs:59:27
+     57|     const record = observedRecord(); mutate(record);
+     58|     const result = run(record, { 'observation.txt': 'Actual observatio…
+     59|     expect(result.status).toBe(2);
+       |                           ^
+     60|     expect(result.output.ready).toBe(false);
+     61|     expect(result.output.errors.length).toBeGreaterThan(0);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 15 passed (16)
+   Start at  12:30:39
+   Duration  568ms (tests 94%, transform 3%, import 2%, worker 1%)
+

@@ -151,9 +151,8 @@ svg {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background:
-    radial-gradient(circle at 12% 0%, rgba(120, 183, 191, 0.055), transparent 28%),
-    var(--color-panel);
+  /* Text-bearing surfaces stay deterministic for every scene and audit. */
+  background: var(--color-panel);
   border-right: 1px solid var(--color-line);
   box-shadow: var(--shadow-panel);
   transform: translateX(0);
@@ -400,9 +399,7 @@ svg {
   display: grid;
   gap: 2px;
   padding: var(--space-3) var(--space-4);
-  background:
-    linear-gradient(100deg, rgba(230, 166, 75, 0.07), transparent 58%),
-    var(--color-surface);
+  background: #1b1c1b;
   border: 1px solid var(--color-line);
   border-left-color: rgba(230, 166, 75, 0.72);
   border-radius: var(--radius-md);
@@ -759,7 +756,7 @@ select option {
 
 #body-list option:checked {
   color: #fff5df;
-  background: linear-gradient(rgba(166, 111, 38, 0.72), rgba(166, 111, 38, 0.72));
+  background: #7c5623;
 }
 
 .control-help {
@@ -866,7 +863,7 @@ select option {
 
 .panel-disclosure--danger {
   margin-top: var(--space-4);
-  background: linear-gradient(180deg, var(--color-danger-soft), transparent 130px);
+  background: #1e171a;
   border: 1px solid rgba(218, 101, 94, 0.32);
   border-radius: var(--radius-md);
 }
@@ -963,7 +960,7 @@ select option {
   min-width: 116px;
   width: auto;
   color: var(--color-text);
-  background: rgba(9, 14, 18, 0.9);
+  background: var(--color-panel);
   border-color: rgba(120, 183, 191, 0.48);
   box-shadow: var(--shadow-float);
   pointer-events: auto;
@@ -994,7 +991,7 @@ select option {
   gap: 8px;
   padding: 6px 10px;
   color: #a6b3b6;
-  background: rgba(7, 11, 14, 0.64);
+  background: #070b0e;
   border: 1px solid rgba(87, 111, 120, 0.32);
   border-radius: var(--radius-sm);
   font-family: 'Chakra Petch', ui-sans-serif, system-ui, sans-serif;
@@ -1022,7 +1019,7 @@ select option {
   margin: 0;
   padding: 7px 10px;
   color: rgba(209, 218, 218, 0.72);
-  background: rgba(7, 11, 14, 0.58);
+  background: #070b0e;
   border: 1px solid rgba(87, 111, 120, 0.25);
   border-radius: var(--radius-sm);
   font-size: 0.66rem;
@@ -1061,7 +1058,7 @@ select option {
   gap: 7px;
   padding: 5px 10px;
   overflow-wrap: anywhere;
-  background: rgba(7, 12, 15, 0.84);
+  background: #070c0f;
   border: 1px solid rgba(75, 98, 106, 0.54);
   border-radius: var(--radius-sm);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
@@ -1152,6 +1149,31 @@ select option {
   background: var(--color-danger);
 }
 
+/* At desktop widths the status may wrap as live data arrives. Keep its
+   instructions in the same flow so text never overlaps the status chips. */
+.viewport-footer { display: contents; }
+@media (min-width: 1101px) and (min-height: 480px) {
+  .viewport-footer {
+    position: absolute;
+    z-index: 5;
+    left: calc(var(--space-4) + env(safe-area-inset-left, 0px));
+    right: calc(var(--space-4) + env(safe-area-inset-right, 0px));
+    bottom: calc(var(--space-4) + env(safe-area-inset-bottom, 0px));
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-3);
+    pointer-events: none;
+  }
+  .viewport-footer .interaction-hint,
+  .viewport-footer #status-bar {
+    position: static;
+    inset: auto;
+    transform: none;
+  }
+  .viewport-footer #status-bar { width: 100%; }
+}
+
 .panel-backdrop {
   display: none;
 }
@@ -1217,6 +1239,12 @@ select option {
 
   .panel-close svg {
     transform: rotate(0deg);
+  }
+
+  #viewport-shell #renderer-unavailable {
+    /* Keep the still-readable camera hint above the recovery message. */
+    inset-block-start: 128px;
+    max-height: calc(100% - 148px);
   }
 
   /* The status chips wrap onto extra rows at this width, so keep the hint clear of them. */
@@ -1442,7 +1470,7 @@ select option {
   #space-canvas:focus-visible ~ .keyboard-help { display: block; }
   .interaction-hint { order: 4; }
   #status-bar { order: 5; }
-  #renderer-unavailable { order: 1; }
+  #viewport-shell #renderer-unavailable { order: 1; inset: auto; max-height: none; }
   #control-panel { overflow-y: auto; max-height: 100dvh; }
   .panel-scroll { overflow: visible; flex: 0 0 auto; }
 }

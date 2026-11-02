@@ -1,0 +1,112 @@
+
+ RUN  v5.0.4 /home/nomad/ai/projects/worktrees/solar-scn030-closure-20261102
+
+ ❯ scripts/validate-accessibility-evidence.test.mjs (13 tests | 13 failed) 405ms
+   ❯ manual accessibility evidence readiness CLI (13)
+     × retains the unexecuted template as NOT_RUN and exits nonzero 39ms
+     × recognizes complete recorded observations without claiming independent certification 31ms
+     × rejects Linux WebKit presented as VoiceOver 32ms
+     × rejects emulated touch presented as physical 29ms
+     × rejects missing actual spoken output 30ms
+     × rejects missing application revision 32ms
+     × rejects missing required lane 30ms
+     × rejects missing required case 30ms
+     × rejects duplicate case instead of coverage 33ms
+     × rejects unknown outcome 31ms
+     × rejects missing evidence artifact 31ms
+     × rejects unresolved audit review 31ms
+     × retains observed failures and never reports readiness 25ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 13 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  scripts/validate-accessibility-evidence.test.mjs > manual accessibility evidence readiness CLI > retains the unexecuted template as NOT_RUN and exits nonzero
+AssertionError: expected undefined to be 'NOT_RUN' // Object.is equality
+
+- Expected:
+"NOT_RUN"
+
++ Received:
+undefined
+
+ ❯ scripts/validate-accessibility-evidence.test.mjs:32:34
+     30|     const result = run(template);
+     31|     expect(result.status).toBe(1);
+     32|     expect(result.output.status).toBe('NOT_RUN');
+       |                                  ^
+     33|     expect(result.output.ready).toBe(false);
+     34|     expect(result.output.errors).toEqual([]);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/13]⎯
+
+ FAIL  scripts/validate-accessibility-evidence.test.mjs > manual accessibility evidence readiness CLI > recognizes complete recorded observations without claiming independent certification
+AssertionError: expected 1 to be +0 // Object.is equality
+
+- Expected
++ Received
+
+- 0
++ 1
+
+ ❯ scripts/validate-accessibility-evidence.test.mjs:39:27
+     37|   it('recognizes complete recorded observations without claiming indep…
+     38|     const result = run(observedRecord(), { 'observation.txt': 'Observe…
+     39|     expect(result.status).toBe(0);
+       |                           ^
+     40|     expect(result.output.ready).toBe(true);
+     41|     expect(result.output.scope).toBe('record completeness only; human …
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/13]⎯
+
+ FAIL  scripts/validate-accessibility-evidence.test.mjs > manual accessibility evidence readiness CLI > rejects Linux WebKit presented as VoiceOver
+ FAIL  scripts/validate-accessibility-evidence.test.mjs > manual accessibility evidence readiness CLI > rejects emulated touch presented as physical
+ FAIL  scripts/validate-accessibility-evidence.test.mjs > manual accessibility evidence readiness CLI > rejects missing actual spoken output
+ FAIL  scripts/validate-accessibility-evidence.test.mjs > manual accessibility evidence readiness CLI > rejects missing application revision
+ FAIL  scripts/validate-accessibility-evidence.test.mjs > manual accessibility evidence readiness CLI > rejects missing required lane
+ FAIL  scripts/validate-accessibility-evidence.test.mjs > manual accessibility evidence readiness CLI > rejects missing required case
+ FAIL  scripts/validate-accessibility-evidence.test.mjs > manual accessibility evidence readiness CLI > rejects duplicate case instead of coverage
+ FAIL  scripts/validate-accessibility-evidence.test.mjs > manual accessibility evidence readiness CLI > rejects unknown outcome
+ FAIL  scripts/validate-accessibility-evidence.test.mjs > manual accessibility evidence readiness CLI > rejects missing evidence artifact
+ FAIL  scripts/validate-accessibility-evidence.test.mjs > manual accessibility evidence readiness CLI > rejects unresolved audit review
+AssertionError: expected 1 to be 2 // Object.is equality
+
+- Expected
++ Received
+
+- 2
++ 1
+
+ ❯ scripts/validate-accessibility-evidence.test.mjs:57:27
+     55|     const record = observedRecord(); mutate(record);
+     56|     const result = run(record, { 'observation.txt': 'Actual observatio…
+     57|     expect(result.status).toBe(2);
+       |                           ^
+     58|     expect(result.output.ready).toBe(false);
+     59|     expect(result.output.errors.length).toBeGreaterThan(0);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/13]⎯
+
+ FAIL  scripts/validate-accessibility-evidence.test.mjs > manual accessibility evidence readiness CLI > retains observed failures and never reports readiness
+AssertionError: expected undefined to be 'FAIL' // Object.is equality
+
+- Expected:
+"FAIL"
+
++ Received:
+undefined
+
+ ❯ scripts/validate-accessibility-evidence.test.mjs:65:34
+     63|     const result = run(record, { 'observation.txt': 'Failure reproduct…
+     64|     expect(result.status).toBe(1);
+     65|     expect(result.output.status).toBe('FAIL');
+       |                                  ^
+     66|     expect(result.output.failures).toContain('nvda_chrome/desktop_disc…
+     67|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/13]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  13 failed (13)
+   Start at  12:21:02
+   Duration  563ms (tests 91%, transform 5%, import 2%, worker 1%)
+
