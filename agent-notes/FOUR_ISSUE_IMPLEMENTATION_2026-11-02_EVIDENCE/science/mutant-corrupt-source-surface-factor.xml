@@ -17,7 +17,7 @@
             batch, expected_xyz, rtol=RELATIVE_BUDGET, atol=ABSOLUTE_BUDGET,
             err_msg="R4-PFSS-SOURCE-SURFACE",
         )
-E       AssertionError: 
+E       AssertionError:
 E       Not equal to tolerance rtol=1e-11, atol=5.68434e-14
 E       R4-PFSS-SOURCE-SURFACE
 E       Mismatched elements: 6144 / 6144 (100%)

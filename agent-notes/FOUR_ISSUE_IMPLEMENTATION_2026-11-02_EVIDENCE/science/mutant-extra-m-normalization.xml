@@ -14,7 +14,7 @@
 &gt;       np.testing.assert_allclose(
             g, expected_g, rtol=0, atol=1e-10, err_msg="R4-M-NORMALIZATION",
         )
-E       AssertionError: 
+E       AssertionError:
 E       Not equal to tolerance rtol=0, atol=1e-10
 E       R4-M-NORMALIZATION
 E       Mismatched elements: 1 / 4 (25%)

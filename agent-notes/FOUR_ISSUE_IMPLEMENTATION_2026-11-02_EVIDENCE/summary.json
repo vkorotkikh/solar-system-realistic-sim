@@ -212,5 +212,6 @@
     "Provenance hashes are not rights grants.",
     "Scientific external-model comparisons are not application calibration.",
     "No remote CI/deployment acceptance asserted."
-  ]
+  ],
+  "readableEvidenceNormalization": "readable-evidence-normalization.json"
 }

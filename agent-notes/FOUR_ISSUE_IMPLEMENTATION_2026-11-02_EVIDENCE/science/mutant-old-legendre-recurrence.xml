@@ -9,7 +9,7 @@
             )
             reference = np.array(mode["theta_derivatives"])
             assert np.all(abs(derivatives[key] - reference) &lt;= 1e-8), key
-    
+
             # Keep the immutable helper oracle and also exercise the production
             # streaming evaluator. The monopole is intentionally absent from PFSS.
             if key == (0, 0):

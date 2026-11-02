@@ -78,3 +78,7 @@ actual speech/focus/actions, OS text resizing and native zoom, and physical touc
 The validator checks record completeness and artifact existence; it cannot verify
 that a human observation is true. Unavailable lanes remain NOT_RUN. The user has
 confirmed device checks are possible; specific device inventory/results are pending.
+
+Readable log/JUnit copies have trailing whitespace normalized. Exact original
+bytes and SHA-256 mappings are preserved in the
+[raw evidence archive manifest](FOUR_ISSUE_IMPLEMENTATION_2026-11-02_EVIDENCE/readable-evidence-normalization.json).

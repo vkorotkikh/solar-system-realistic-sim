@@ -48,4 +48,3 @@ TypeError: Cannot read properties of null (reading 'id')
       Tests  3 failed | 16 passed (19)
    Start at  12:34:34
    Duration  642ms (tests 92%, transform 5%, import 2%)
-

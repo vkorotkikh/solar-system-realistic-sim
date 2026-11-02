@@ -27,4 +27,3 @@ simple
       Tests  1 failed | 3 passed (4)
    Start at  12:23:41
    Duration  234ms (tests 66%, transform 24%, import 8%, worker 2%)
-

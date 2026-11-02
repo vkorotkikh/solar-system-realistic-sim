@@ -5,4 +5,3 @@
 
 > solar-system-realistic-sim@0.0.0 typecheck:scripts
 > tsc --project tsconfig.scripts.json --noEmit && tsc --project tsconfig.asteroid-scripts.json --noEmit
-

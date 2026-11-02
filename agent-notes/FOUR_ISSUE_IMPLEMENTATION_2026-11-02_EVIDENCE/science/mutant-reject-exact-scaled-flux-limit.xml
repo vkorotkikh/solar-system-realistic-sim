@@ -5,8 +5,8 @@
                 trusted_correction=_trusted_correction(1.0),
             )
 
-backend/tests/test_solar_observational_acceptance.py:114: 
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+backend/tests/test_solar_observational_acceptance.py:114:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
 
 field_gauss = array([ 21., -19.])
 trusted_correction = _TrustedFluxCorrection(provider='NASA/CCMC WSA_V6.2', product_sha256='5b8f1da9e8bcf057b1c86ecd80207166e3362e1ecb92db7a...daec232b5c98583d15a589130c3bc588201c25e980455db9aa8144efd', correction_method=2, pre_mean_g=1.0, post_mean_g=5.473e-05)
