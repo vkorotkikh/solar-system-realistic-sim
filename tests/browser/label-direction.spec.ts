@@ -135,7 +135,12 @@ async function open(page: Page) {
   await expect(page.locator('#renderer-unavailable')).toBeHidden();
   await expect(page.locator('#toggle-labels')).toBeChecked();
 }
-async function snapshot(page: Page) { return page.evaluate(() => (window as unknown as ProbeWindow).__labelProbe); }
+const lastSnapshots = new WeakMap<Page, Probe>();
+async function snapshot(page: Page) {
+  const probe = await page.evaluate(() => (window as unknown as ProbeWindow).__labelProbe);
+  lastSnapshots.set(page, probe);
+  return probe;
+}
 function healthy(probe: Probe, errors: Awaited<ReturnType<typeof routeAndObserve>>) {
   expect(errors.consoleErrors).toEqual([]); expect(errors.pageErrors).toEqual([]); expect(errors.unexpectedRequests).toEqual([]);
   expect(probe.errors).toEqual([]); expect(probe.rendererCount).toBe(1); expect(probe.first?.index).toBe(1);
@@ -163,8 +168,10 @@ function screenUp(draw: Draw) {
   expect.soft(draw.labelNdc[1] - draw.bodyNdc[1], `draw ${draw.index}: projected label is above body`).toBeGreaterThan(1e-8);
 }
 async function retain(page: Page, testInfo: TestInfo, errors: Awaited<ReturnType<typeof routeAndObserve>>) {
+  // A timeout can close the page before finally runs. Retain the observations
+  // already used by the assertions without replacing the original failure.
   const body = Buffer.from(JSON.stringify({ fixtureScope: 'FE041 passive actual-render geometry; synthetic services; projected geometry only; no raster/science/font claim',
-    probe: await snapshot(page), ...errors }, null, 2));
+    snapshotScope: 'last successfully captured probe', probe: lastSnapshots.get(page) ?? null, ...errors }, null, 2));
   await writeFile(testInfo.outputPath('label-observations.json'), body);
   await testInfo.attach('label-observations.json', { body, contentType: 'application/json' });
 }
@@ -189,20 +196,25 @@ test('real OrbitControls drag keeps labels screen-up in the same rendered frames
     await open(page);
     const before = await snapshot(page); healthy(before, errors); compatible(before.latest!, before.first!);
     // Intentionally no direction assertion before dragging: baseline must reach real input.
-    await page.screenshot({ path: testInfo.outputPath('before-drag-diagnostic.png') });
+    // Raster captures are not this geometry oracle: on CI SwiftShader they cost
+    // 19–27s before input. Keep the actual-render probe and failure trace instead.
     const box = await page.locator('#space-canvas').boundingBox(); expect(box).not.toBeNull();
     const x = box!.x + box!.width * 0.55, y = box!.y + box!.height * 0.5;
     await page.mouse.move(x, y); await page.mouse.down();
-    await page.mouse.move(x + box!.width * 0.22, y + box!.height * 0.12, { steps: 20 });
+    // Native moves are acknowledged sequentially, taking ~5s each on CI. Nine
+    // waypoints exercise real OrbitControls; gate on nine changed render samples
+    // below, rather than spending the deadline on extra input interpolation.
+    await page.mouse.move(x + box!.width * 0.22, y + box!.height * 0.12, { steps: 9 });
     await page.mouse.up();
-    await expect.poll(async () => (await snapshot(page)).afterPointerDown.length, { timeout: 15_000 }).toBeGreaterThan(8);
+    const changedDraws = (probe: Probe) => probe.afterPointerDown.filter(draw =>
+      draw.cameraQuaternion.some((v, i) => Math.abs(v - before.latest!.cameraQuaternion[i]!) > 1e-6));
+    await expect.poll(async () => changedDraws(await snapshot(page)).length, { timeout: 15_000 }).toBeGreaterThan(8);
     const after = await snapshot(page); healthy(after, errors);
-    expect(after.pointerDown).toBe(1); expect(after.pointerMove).toBeGreaterThan(0); expect(after.pointerUp).toBe(1);
-    const changed = after.afterPointerDown.filter(draw => draw.cameraQuaternion.some((v, i) => Math.abs(v - before.latest!.cameraQuaternion[i]!) > 1e-6));
-    expect(changed.length, 'real pointer drag changes actual camera quaternion').toBeGreaterThan(0);
+    expect(after.pointerDown).toBe(1); expect(after.pointerMove).toBeGreaterThanOrEqual(9); expect(after.pointerUp).toBe(1);
+    const changed = changedDraws(after);
+    expect(changed.length, 'real pointer drag changes actual camera quaternion across rendered frames').toBeGreaterThan(8);
     // Check all selected samples for compatibility before any expected direction failures.
     for (const draw of changed) compatible(draw, before.first!);
-    await page.screenshot({ path: testInfo.outputPath('after-drag-diagnostic.png') });
     for (const draw of changed) screenUp(draw);
   } finally { await retain(page, testInfo, errors); }
 });
