@@ -63,9 +63,13 @@ async function observeApp(page: Page, origin: string, corruptWorker = false) {
   }, corruptWorker);
 }
 
-async function loaded(page: Page, url: string) {
+async function sceneLoaded(page: Page, url: string) {
   await page.goto(`${url}/?uiWidth=500&uiHeight=500&renderScale=0.5&maxPixelRatio=1`);
   await expect(page.locator('#status-zoom')).not.toHaveText('Range · —', { timeout: 60_000 });
+}
+
+async function loaded(page: Page, url: string) {
+  await sceneLoaded(page, url);
   await expect.poll(() => page.evaluate(() => window.__frameProbe.tickCount), { timeout: 30_000 }).toBeGreaterThan(2);
 }
 
@@ -101,9 +105,11 @@ test.describe('active app frame lifecycle', () => {
     const origin = new URL(baseURL!).origin;
     // Arm before navigation: late arming after a UI click races the next real
     // worker delivery against the assertion clock on slow software-GPU frames.
-    // The third tick required by loaded() also proves bounded recovery restarted
-    // the real worker after the earlier corrupt deliveries were quarantined.
-    await observeApp(page, origin, true); await loaded(page, origin);
+    // Scene readiness must not require healthy worker traffic under this fault.
+    // CI 41425317639 used one initialization timeout and two quarantines to
+    // exhaust the permitted restarts correctly, leaving exactly two ticks.
+    // Observe real corruption/quarantine below, then require a usable scene.
+    await observeApp(page, origin, true); await sceneLoaded(page, origin);
     await expect.poll(() => page.evaluate(() => window.__frameProbe.corruptions)).toBeGreaterThan(0);
     await expect.poll(() => page.evaluate(() => window.__frameProbe.terminated)).toBeGreaterThanOrEqual(1);
     expect(fallbacks).toContain('[modelWorker] local propagation active: nonfinite available state');
