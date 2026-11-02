@@ -1,8 +1,11 @@
-"""Regression: BKP-031 / PEER-b, request coverage must not poison Horizons.
+"""A Horizons coverage refusal is request-scoped: it must not open the outage breaker.
 
-Found by /qa on 2026-10-24.
-Synthetic in-window cutoff follows the captured Horizons coverage-error shape;
-it makes no claim that Earth actually lacks coverage at this epoch.
+Horizons answers an epoch outside one target's ephemeris with HTTP 200 and
+"No ephemeris for target ... after|prior to <date>". That refusal belongs to the
+one request: the client gets a non-retryable 422, and the process-wide outage
+breaker that would block every other client stays closed.
+The synthetic in-window cutoff below follows the captured shape; it makes no
+claim that Earth actually lacks coverage at this epoch.
 """
 from __future__ import annotations
 
@@ -126,10 +129,17 @@ def test_coverage_error_requires_provider_provenance_before_classification(monke
     assert len(calls) == 1
 
 
+# Extended by /ship coverage audit, 2026-11-02: last row only (refusal sentence behind a prefix).
+# Value: protects=Provider error text that embeds the refusal sentence after other text stays a protocol failure, so untrusted envelopes keep outage protection;
+#   fails_when=the refusal match is loosened from anchored-at-start (re.match plus ^) to a substring search;
+#   why_new=existing negative rows either start with the sentence or lack its era-and-date tail; none carries a full sentence behind a prefix;
+#   seam=none;
+#   no_claim=breaker side effects (this table asserts the exception type only; the signature test asserts breaker state)
 @pytest.mark.parametrize("message", [
     "service unavailable", "No ephemeris for target Earth", {"error": "after"},
     "No ephemeris for target Earth because the service is unavailable",
     "No ephemeris for target Earth after connection failure",
+    'Gateway relayed: No ephemeris for target "Earth" after A.D. 2024-MAR-30 00:00:00.0000 TDB',
 ])
 def test_unknown_provider_error_remains_a_protocol_failure(monkeypatch, message):
     payload = refusal()
@@ -137,6 +147,35 @@ def test_unknown_provider_error_remains_a_protocol_failure(monkeypatch, message)
     monkeypatch.setattr(module, "_horizons_urlopen", lambda request, *, timeout: _Response(json.dumps(payload).encode()))
     with pytest.raises(module.EphemerisProtocolError):
         service().sample_state("earth", JD)
+
+
+# Added by /ship coverage audit, 2026-11-02.
+# Value: protects=A coverage refusal padded with whitespace is still a request-scoped epoch refusal, not a provider-wide protocol outage;
+#   fails_when=the strip() before the refusal match is removed, so padded text becomes a protocol error that blocks every client for 30-60 s;
+#   why_new=every other refusal row is unpadded, so nothing else exercises strip();
+#   seam=none;
+#   no_claim=whether live Horizons ever pads the error field (padding here is synthetic)
+@pytest.mark.parametrize("pad", [
+    pytest.param("\n", id="newline"),
+    pytest.param("  ", id="spaces"),
+    pytest.param(" \t\r\n", id="mixed"),
+])
+def test_coverage_refusal_ignores_surrounding_whitespace(monkeypatch, pad):
+    padded = refusal()
+    padded["error"] = f"{pad}{padded['error']}{pad}"
+    calls = []
+
+    def transport(request, *, timeout):
+        calls.append(request.full_url)
+        if len(calls) == 1:
+            return _Response(json.dumps(padded).encode())
+        return _Response(_horizons_payload(target_id="499", jd=JD + 1))
+
+    monkeypatch.setattr(module, "_horizons_urlopen", transport)
+    with pytest.raises(module.EphemerisEpochUnsupported):
+        service().sample_state("earth", JD)
+    assert service().sample_state("mars", JD + 1).body_id == "mars"
+    assert len(calls) == 2
 
 
 def test_coverage_refusal_reaches_http_as_nonretryable_422(monkeypatch):
@@ -154,6 +193,35 @@ def test_coverage_refusal_reaches_http_as_nonretryable_422(monkeypatch):
     assert detail["context"]["bodyId"] == "earth"
     assert detail["context"]["jdTdb"] == JD
     assert "retry-after" not in response.headers
+
+
+# Added by /ship coverage audit, 2026-11-02.
+# Value: protects=Lambert to a Horizons-unmapped body returns a non-retryable HTTP 422 ephemeris_target_unsupported and makes no upstream call;
+#   fails_when=_ephemeris_http_exception stops mapping EphemerisTargetUnsupported to 422 (falls to 503), or preflight lets the call reach Horizons;
+#   why_new=no other test asserts this status; the 422 isinstance tuple covers target and epoch refusals, and the other 422 test covers only the epoch side;
+#   seam=none;
+#   no_claim=live Horizons target coverage (static id map; fake transport must stay unused)
+def test_unmapped_horizons_target_reaches_http_as_nonretryable_422_without_upstream_call(monkeypatch):
+    calls = []
+
+    def transport(request, *, timeout):
+        calls.append(request.full_url)
+        raise AssertionError("target preflight must reject before any Horizons call")
+
+    monkeypatch.setattr(module, "_horizons_urlopen", transport)
+    monkeypatch.setattr(server, "_trajectory_lambert_concurrent_guard", threading.BoundedSemaphore(1))
+    client = TestClient(server.app, raise_server_exceptions=False)
+    response = client.post("/trajectory/lambert", json={
+        "from_id": "earth", "to_id": "psyche", "departure_jd": JD,
+        "arrival_jd": JD + 250, "ephemeris_provider": "horizons", "prograde": True,
+    })
+    assert response.status_code == 422, response.text
+    detail = response.json()["detail"]
+    assert detail["code"] == "ephemeris_target_unsupported"
+    assert detail["retryable"] is False
+    assert detail["context"]["bodyId"] == "psyche"
+    assert "retry-after" not in response.headers
+    assert calls == []
 
 
 def test_shared_coverage_refusal_keeps_typed_follower_error(monkeypatch):
@@ -227,6 +295,75 @@ def test_half_open_coverage_refusal_does_not_extend_provider_outage(monkeypatch)
     clock[0] += 31.0
     with pytest.raises(module.EphemerisEpochUnsupported):
         service().sample_state("earth", JD)
+    # The refused probe hands the breaker back to half-open, so the next client probes alone.
+    outage = module._SHARED_PROVIDER_OUTAGES["horizons"]
+    assert outage.probing is False
+    assert outage.probe_event is None
     # No second time advance: re-opening the outage would reject this client.
-    assert service().sample_state("mars", JD + 1).body_id == "mars"
+    # Bounded because a probe-reset regression makes this client wait forever on
+    # the frozen clock (seen under mutation on 2026-11-02): fail, never hang CI.
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        try:
+            sample = executor.submit(service().sample_state, "mars", JD + 1).result(timeout=5.0)
+        finally:
+            clock[0] += 10_000.0
+    assert sample.body_id == "mars"
     assert len(calls) == 3
+
+
+# Added by /ship coverage audit, 2026-11-02.
+# Value: protects=A client waiting on a half-open Horizons probe is released and proceeds when the probe owner is refused for its own epoch;
+#   fails_when=the probe event is never set, or the half-open state is not reset at all, when the probe owner is refused, hanging or re-rejecting the waiter;
+#   why_new=the existing half-open refusal test is sequential, so no test has a second client waiting on the probe event;
+#   seam=none;
+#   no_claim=wall-clock cooldown timing and live network (fake clock and transport; thread order is event-synchronised)
+def test_waiter_on_half_open_probe_proceeds_when_probe_is_refused_for_its_epoch(monkeypatch):
+    calls = []
+    clock = [time.monotonic()]
+    probe_in_flight = threading.Event()
+    waiter_waiting = threading.Event()
+    release = threading.Event()
+
+    def transport(request, *, timeout):
+        calls.append(request.full_url)
+        if len(calls) == 1:
+            raise socket.timeout("fixture provider outage")
+        if len(calls) == 2:
+            probe_in_flight.set()
+            assert release.wait(5.0)
+            return _Response(json.dumps(refusal()).encode())
+        return _Response(_horizons_payload(target_id="499", jd=JD + 1))
+
+    original_wait = module.EphemerisService._wait_for_shared_ephemeris_event
+
+    def observed_wait(self, event):
+        waiter_waiting.set()
+        return original_wait(self, event)
+
+    monkeypatch.setattr(module, "_horizons_urlopen", transport)
+    monkeypatch.setattr(module.EphemerisService, "_wait_for_shared_ephemeris_event", observed_wait)
+    owned_time = SimpleNamespace(monotonic=lambda: clock[0], sleep=time.sleep)
+    monkeypatch.setattr(module, "time", owned_time)
+    monkeypatch.setattr(budget_module, "time", owned_time)
+    monkeypatch.setattr(module, "HORIZONS_PROVIDER_OUTAGE_COOLDOWN_S", 30.0)
+    monkeypatch.setattr(module, "HORIZONS_PROVIDER_OUTAGE_MAX_COOLDOWN_S", 60.0)
+    with pytest.raises(module.EphemerisUpstreamTimeout):
+        service().sample_state("earth", JD)
+    clock[0] += 31.0
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        try:
+            probe = executor.submit(service().sample_state, "earth", JD)
+            assert probe_in_flight.wait(5.0)
+            waiter = executor.submit(service().sample_state, "mars", JD + 1)
+            assert waiter_waiting.wait(5.0)
+            release.set()
+            with pytest.raises(module.EphemerisEpochUnsupported):
+                probe.result(timeout=5.0)
+            sample = waiter.result(timeout=5.0)
+        finally:
+            release.set()
+            # Expire every deadline so a stranded waiter exits and the executor can join.
+            clock[0] += 10_000.0
+    assert sample.body_id == "mars"
+    assert len(calls) == 3
+    assert module._SHARED_PROVIDER_OUTAGES == {}
