@@ -1,0 +1,92 @@
+{
+  "schema": "scn041_primary_source_capture_v1",
+  "sources": [
+    {
+      "file": "gong-zql-listing.html",
+      "url": "https://gong.nso.edu/data/magmap/QR/zql/202610/mrzql261012/",
+      "sha256": "11c4438b088ec4bd45c07249495eaf2135958d857a6d9e29856c22d2ce29ca60",
+      "bytes": 5068,
+      "status": 200,
+      "retrieved_utc": "2026-11-02T17:19:54.939690+00:00",
+      "headers_file": "gong-zql-listing.html.headers",
+      "headers_sha256": "c33925f30cfccde62149805a425e5a6b19be15d9758deab2997eeda305e7fa1f"
+    },
+    {
+      "file": "wsa-r5-listing.html",
+      "url": "https://iswa.ccmc.gsfc.nasa.gov/iswa_data_tree/model/solar/WSA6/R5.0/",
+      "sha256": "ed25955681566c275206cc1515b9b777b68da6e9e0b5ef18788f5e437ac7b75d",
+      "bytes": 1156,
+      "status": 200,
+      "retrieved_utc": "2026-11-02T17:19:55.332775+00:00",
+      "headers_file": "wsa-r5-listing.html.headers",
+      "headers_sha256": "6b59891498395b6fed9d2f33a5b6bac8252150c9bcb4e57bc05cbf804aa66de9"
+    },
+    {
+      "file": "mrzql261012t1744c2316_079.lst.gz",
+      "url": "https://gong.nso.edu/data/magmap/QR/zql/202610/mrzql261012/mrzql261012t1744c2316_079.lst.gz",
+      "sha256": "29a0e5c2819c938736f293b7a62325ef43309dfa8224b8c9537d5d4b96bc8e3c",
+      "bytes": 16129,
+      "status": 200,
+      "retrieved_utc": "2026-11-02T17:20:04.224852+00:00",
+      "headers_file": "mrzql261012t1744c2316_079.lst.gz.headers",
+      "headers_sha256": "302a0ac789075ef8516deeee975cc904dfdf01879c1e55fdc61c734db8c3390c"
+    },
+    {
+      "file": "wsa-out-listing.html",
+      "url": "https://iswa.ccmc.gsfc.nasa.gov/iswa_data_tree/model/solar/WSA6/R5.0/WSA_OUT/",
+      "sha256": "9ca7e5d4c6dbe45489fe574c0713d1aba17f403d197da7c3aca92c18ed52d567",
+      "bytes": 1167,
+      "status": 200,
+      "retrieved_utc": "2026-11-02T17:20:04.410061+00:00",
+      "headers_file": "wsa-out-listing.html.headers",
+      "headers_sha256": "6ee87b1346e1ac0cdb582d7b03249bb39516be8313d8a06f07bb2c71792f922b"
+    },
+    {
+      "file": "nasa_wsa_agong_ace_20261013_14.json",
+      "url": "https://ccmc.gsfc.nasa.gov/wsa-dashboard/api/get_solarwind_simple?start_date=2026-10-13&end_date=2026-10-14&input_map=AGONG&sat=ACE",
+      "sha256": "e863bd816f0027b57a60ddfc89981c828f8523e67c49aeeee816c2afd72d5def",
+      "bytes": 576,
+      "status": 200,
+      "retrieved_utc": "2026-11-02T17:21:09.225274+00:00",
+      "headers_file": "nasa_wsa_agong_ace_20261013_14.json.headers",
+      "headers_sha256": "c6c4472895b27d8e4fa48a31a29ad9ef341b1cbdd5a55766bc032bc5bd154110"
+    },
+    {
+      "url": "https://gong.nso.edu/data/magmap/product_names.html",
+      "error": "HTTP Error 404: Not Found",
+      "retrieved_utc": "2026-11-02T17:21:09.366346+00:00"
+    },
+    {
+      "file": "gong-zqs-header.txt",
+      "url": "https://gong.nso.edu/data/magmap/headers.html",
+      "sha256": "f5da95ce2f3f31bd653fc656eeb06a0f289388fd113fc80374a99082882e3241",
+      "bytes": 6626,
+      "status": 200,
+      "retrieved_utc": "2026-11-02T17:21:09.510951+00:00",
+      "headers_file": "gong-zqs-header.txt.headers",
+      "headers_sha256": "8032176d3211058e292bbc8470447a1d30f663ff29bbbc3f47195da2bcab95f0"
+    },
+    {
+      "file": "nasa_wsa_agong_ace_same_query_20261010_14.json",
+      "url": "https://ccmc.gsfc.nasa.gov/wsa-dashboard/api/get_solarwind_simple?start_date=2026-10-10&end_date=2026-10-14&input_map=AGONG&sat=ACE",
+      "sha256": "6960de2109f46e9f340b8d102e98f87ff71ca798a0c569004447df28e13fee19",
+      "bytes": 1528,
+      "status": 200,
+      "retrieved_utc": "2026-11-02T17:26:26.948983+00:00",
+      "headers_file": "nasa_wsa_agong_ace_same_query_20261010_14.json.headers",
+      "headers_sha256": "8a9d784a1c55cd7e314889422727205c6aafbb48c50ff679c84c40a28055d2f5"
+    },
+    {
+      "file": "nasa_wsa_gong_z_ace_rejection.json",
+      "url": "https://ccmc.gsfc.nasa.gov/wsa-dashboard/api/get_solarwind_simple?start_date=2026-10-12&end_date=2026-10-20&input_map=GONG_Z&sat=ACE",
+      "sha256": "d207ec79cd2c741077b740ecc01b15c7dade8e7a45d69c26e0bfb10035d2b35a",
+      "bytes": 66,
+      "status": 400,
+      "retrieved_utc": "2026-11-02T17:26:27.097425+00:00",
+      "headers_file": "nasa_wsa_gong_z_ace_rejection.json.headers",
+      "headers_sha256": "07b35ff58d03fd300fca99525ebe34387d2034ebe566384f3cccf6f346a031e4"
+    }
+  ],
+  "attribution": "NSO/GONG; NASA/CCMC. Provider publication policies apply.",
+  "header_storage": "Parsed HTTP header fields serialized by urllib; final blank line omitted. Response body bytes are unchanged."
+}
