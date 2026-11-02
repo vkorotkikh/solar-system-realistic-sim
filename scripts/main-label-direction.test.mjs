@@ -202,3 +202,33 @@ function footprint(draw) {
   assert.ok(Math.abs(draw.gapPixels - 8) < 1e-8, `body clearance=${draw.gapPixels} CSS px`);
   assert.equal(draw.aspect, 4);
 }
+
+test('native drag waits for each rendered phase and cannot finish with only eight frames', async () => {
+  const browserSource = fs.readFileSync(`${ROOT}/tests/browser/label-direction.spec.ts`, 'utf8');
+  const browserFile = ts.createSourceFile('label-direction.spec.ts', browserSource, ts.ScriptTarget.ESNext, true, ts.ScriptKind.TS);
+  const driver = browserFile.statements.find(n => ts.isFunctionDeclaration(n) && n.name?.text === 'dragThroughRenderedFrames');
+  assert.ok(driver, 'exercise the browser fixture’s actual input/render sequencing');
+  const js = ts.transpileModule(driver.getText(browserFile), { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
+  const drag = new Function(`${js}; return dragThroughRenderedFrames;`)();
+  const moves = [], waits = [], renderedFrames = [];
+  let complete = false;
+  // Input acknowledgments resolve immediately. Rendering progresses only when
+  // released below, reproducing CI's nine trusted inputs but eight draws.
+  const pending = drag(async fraction => { moves.push(fraction); }, step => new Promise(resolve => waits.push({ step, resolve })));
+  void pending.then(() => { complete = true; });
+  const flush = () => new Promise(resolve => setImmediate(resolve));
+  await flush();
+  for (let step = 1; step <= 9; step++) {
+    assert.equal(moves.length, step, 'no later native input before the current rendered phase');
+    assert.equal(waits.length, 1);
+    assert.equal(waits[0].step, step);
+    assert.equal(complete, false, 'eight rendered frames cannot satisfy the nine-frame contract');
+    const frame = { index: step + 3, pointerMove: step };
+    renderedFrames.push(frame);
+    waits.shift().resolve(frame);
+    await flush();
+  }
+  assert.deepEqual(await pending, renderedFrames);
+  assert.deepEqual(moves, Array.from({ length: 9 }, (_, i) => (i + 1) / 9));
+  assert.equal(complete, true);
+});

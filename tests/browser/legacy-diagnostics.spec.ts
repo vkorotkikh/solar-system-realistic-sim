@@ -115,24 +115,49 @@ test('legacy named H29 trigger and error window [TOOL045 warp]', async ({ page, 
 
 test('legacy realistic scale captures and raw center diagnostics [TOOL045 scale]', async ({ page, browserName, baseURL }, testInfo) => {
   test.skip(browserName !== 'chromium', 'compatibility diagnostics deliberately target configured Chromium only');
-  test.setTimeout(90_000);
+  // CI run 41421716040: full-resolution SwiftShader screenshots took 21.2s
+  // and 25.1s, UI clicks 29s, and the legacy observation windows 13s. The
+  // second screenshot finished at 92.2s, before readPixels could even start.
+  // This is a compatibility diagnostic, not a 90s product performance gate.
+  const softwareGpuBudgetMs = 180_000;
+  test.setTimeout(softwareGpuBudgetMs);
+  const started = Date.now();
+  const progress: Array<{ phase: string; startMs: number; elapsedMs?: number; completed: boolean }> = [];
+  async function phase<T>(name: string, run: () => Promise<T>): Promise<T> {
+    const entry = { phase: name, startMs: Date.now() - started, elapsedMs: 0, completed: false };
+    progress.push(entry);
+    try {
+      const result = await test.step(name, run);
+      entry.completed = true;
+      return result;
+    } finally { entry.elapsedMs = Date.now() - started - entry.startMs; }
+  }
+  async function capture(name: string) {
+    const png = await page.screenshot({ path: testInfo.outputPath(name), fullPage: false });
+    // Both artifacts retain the actual legacy viewport at native resolution.
+    expect([png.readUInt32BE(16), png.readUInt32BE(20)], `${name} PNG dimensions`).toEqual([1280, 800]);
+  }
   expect(baseURL).toBeTruthy();
   await page.setViewportSize({ width: 1280, height: 800 });
   const state = await observeAndRoute(page, baseURL!);
   try {
-    await openRealApp(page);
-    await page.locator('summary[aria-controls="display-controls"]').click();
-    await expect(page.locator('#display-controls')).toBeVisible();
+    await phase('load the real app', () => openRealApp(page));
+    await phase('open Display controls', async () => {
+      await page.locator('summary[aria-controls="display-controls"]').click();
+      await expect(page.locator('#display-controls')).toBeVisible();
+    });
     const toggle = page.locator('#toggle-realistic-scale');
     await expect(toggle).toHaveCount(1);
     await expect(toggle).not.toBeChecked();
-    await page.waitForTimeout(8_000);
-    await page.screenshot({ path: testInfo.outputPath('screenshot_normal_scale.png'), fullPage: false });
-    await page.locator('label.switch-control').filter({ has: toggle }).click();
-    await expect(toggle).toBeChecked();
-    await page.waitForTimeout(5_000);
-    await page.screenshot({ path: testInfo.outputPath('screenshot_realistic_scale.png'), fullPage: false });
-    const center = await page.evaluate(() => {
+    await phase('legacy default-scale observation window', () => page.waitForTimeout(8_000));
+    await phase('capture default scale', () => capture('screenshot_normal_scale.png'));
+    await phase('enable realistic scale', async () => {
+      await page.locator('label.switch-control').filter({ has: toggle }).click();
+      await expect(toggle).toBeChecked();
+    });
+    await phase('legacy realistic-scale observation window', () => page.waitForTimeout(5_000));
+    await phase('capture realistic scale', () => capture('screenshot_realistic_scale.png'));
+    const center = await phase('raw 20x20 center readPixels', () => page.evaluate(() => {
       const canvas = document.querySelector('canvas');
       if (!canvas) return { error: 'No canvas found' };
       const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
@@ -150,13 +175,19 @@ test('legacy realistic scale captures and raw center diagnostics [TOOL045 scale]
       }
       return { canvasSize: `${w}x${h}`, avgR: Math.round(totalR / numPixels), avgG: Math.round(totalG / numPixels),
         avgB: Math.round(totalB / numPixels), darkPixelPercent: Math.round((darkCount / numPixels) * 100), sampleCenter: `${cx},${cy}` };
-    });
+    }));
     await retainAttachment(testInfo, 'realistic-center-diagnostics.json', { contentType: 'application/json', body: Buffer.from(JSON.stringify({
       diagnosticOnly: true, noPixelAccuracyThreshold: true, center,
     }, null, 2)) });
     expect('error' in center, 'center diagnostic requires a real available WebGL canvas').toBe(false);
     assertNoErrors(state);
-  } finally { await saveDiagnostics(testInfo, state); }
+  } finally {
+    await retainAttachment(testInfo, 'scale-progress.json', { contentType: 'application/json', body: Buffer.from(JSON.stringify({
+      softwareGpuBudgetMs, elapsedMs: Date.now() - started, viewport: page.viewportSize(),
+      renderConfiguration: 'application defaults; no resolution override', progress,
+    }, null, 2)) });
+    await saveDiagnostics(testInfo, state);
+  }
 });
 
 test('legacy 1920x1080 debug capture [TOOL045 debug]', async ({ page, browserName, baseURL }, testInfo) => {

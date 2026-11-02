@@ -7,6 +7,7 @@ import type { Sprite, WebGLRenderer } from 'three';
 type XYZ = [number, number, number];
 interface Draw {
   index: number; sunName: string; candidates: number; cameraQuaternion: number[];
+  pointerMove: number; pointerUp: number;
   bodyWorld: XYZ; labelWorld: XYZ; bodyView: XYZ; labelView: XYZ;
   bodyNdc: XYZ; labelNdc: XYZ; viewDelta: XYZ; worldMagnitude: number;
   localMagnitude: number; scale: number[]; visible: boolean; parentVisible: boolean;
@@ -113,6 +114,7 @@ async function routeAndObserve(page: Page, baseURL: string) {
           const pixelHeight = (top[1] - bottom[1]) * viewportHeight / 2;
           const image = map.image as HTMLCanvasElement;
           const draw: Draw = { pixelHeight, index: probe.draws, sunName: sun.name, candidates: candidates.length,
+            pointerMove: probe.pointerMove, pointerUp: probe.pointerUp,
             cameraQuaternion: camera.quaternion.toArray(), bodyWorld, labelWorld, bodyView, labelView,
             bodyNdc: transformed(projection, bodyView), labelNdc: transformed(projection, labelView), viewDelta,
             worldMagnitude: Math.hypot(...labelWorld.map((v, i) => v - bodyWorld[i]!)),
@@ -140,6 +142,17 @@ async function snapshot(page: Page) {
   const probe = await page.evaluate(() => (window as unknown as ProbeWindow).__labelProbe);
   lastSnapshots.set(page, probe);
   return probe;
+}
+async function dragThroughRenderedFrames(
+  move: (fraction: number) => Promise<void>,
+  rendered: (step: number) => Promise<Draw>,
+): Promise<Draw[]> {
+  const frames: Draw[] = [];
+  for (let step = 1; step <= 9; step++) {
+    await move(step / 9);
+    frames.push(await rendered(step));
+  }
+  return frames;
 }
 function healthy(probe: Probe, errors: Awaited<ReturnType<typeof routeAndObserve>>) {
   expect(errors.consoleErrors).toEqual([]); expect(errors.pageErrors).toEqual([]); expect(errors.unexpectedRequests).toEqual([]);
@@ -191,6 +204,11 @@ test('first actual scene draw places the Sun label in camera screen-up direction
 });
 
 test('real OrbitControls drag keeps labels screen-up in the same rendered frames', async ({ page, baseURL }, testInfo) => {
+  // CI trace 41421718506: native input acknowledgments take ~5s and a
+  // post-input render can take ~10s. Budget nine completed phases at 15s each,
+  // plus 30s startup and 15s for final observations/retention: 180s, bounded.
+  // This is a software-GPU sampling budget, not a product performance limit.
+  test.setTimeout(180_000);
   const errors = await routeAndObserve(page, baseURL!);
   try {
     await open(page);
@@ -201,17 +219,36 @@ test('real OrbitControls drag keeps labels screen-up in the same rendered frames
     const box = await page.locator('#space-canvas').boundingBox(); expect(box).not.toBeNull();
     const x = box!.x + box!.width * 0.55, y = box!.y + box!.height * 0.5;
     await page.mouse.move(x, y); await page.mouse.down();
-    // Native moves are acknowledged sequentially, taking ~5s each on CI. Nine
-    // waypoints exercise real OrbitControls; gate on nine changed render samples
-    // below, rather than spending the deadline on extra input interpolation.
-    await page.mouse.move(x + box!.width * 0.22, y + box!.height * 0.12, { steps: 9 });
+    // Input acknowledgment does not imply a render. Hold each native waypoint
+    // until its FIRST observed render; never skip a bad first frame to settle.
+    let previousFrame = before.latest!;
+    const phases = await dragThroughRenderedFrames(
+      fraction => page.mouse.move(x + box!.width * 0.22 * fraction, y + box!.height * 0.12 * fraction),
+      async step => {
+        let frame: Draw | undefined;
+        await expect.poll(async () => {
+          const probe = await snapshot(page);
+          frame = probe.afterPointerDown.find(draw => draw.pointerMove === step);
+          return frame?.index ?? 0;
+        }, { timeout: 15_000, message: `native waypoint ${step}: first completed render` }).toBeGreaterThan(previousFrame.index);
+        const observed = frame!;
+        expect(observed.pointerUp, `waypoint ${step} renders while the native button is held`).toBe(0);
+        expect(observed.cameraQuaternion.some((v, i) => Math.abs(v - previousFrame.cameraQuaternion[i]!) > 1e-6),
+          `waypoint ${step} changes the rendered camera`).toBe(true);
+        compatible(observed, before.first!); screenUp(observed);
+        previousFrame = observed;
+        return observed;
+      },
+    );
     await page.mouse.up();
     const changedDraws = (probe: Probe) => probe.afterPointerDown.filter(draw =>
       draw.cameraQuaternion.some((v, i) => Math.abs(v - before.latest!.cameraQuaternion[i]!) > 1e-6));
-    await expect.poll(async () => changedDraws(await snapshot(page)).length, { timeout: 15_000 }).toBeGreaterThan(8);
     const after = await snapshot(page); healthy(after, errors);
     expect(after.pointerDown).toBe(1); expect(after.pointerMove).toBeGreaterThanOrEqual(9); expect(after.pointerUp).toBe(1);
     const changed = changedDraws(after);
+    expect(phases).toHaveLength(9);
+    expect(new Set(phases.map(draw => draw.index)).size).toBe(9);
+    expect(phases[0]!.index, 'the first camera-changed frame is retained and checked').toBe(changed[0]?.index);
     expect(changed.length, 'real pointer drag changes actual camera quaternion across rendered frames').toBeGreaterThan(8);
     // Check all selected samples for compatibility before any expected direction failures.
     for (const draw of changed) compatible(draw, before.first!);
