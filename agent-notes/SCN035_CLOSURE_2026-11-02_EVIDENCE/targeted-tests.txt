@@ -1,0 +1,9 @@
+
+ RUN  v5.0.4 /home/nomad/ai/projects/worktrees/solar-four-closure-20261102
+
+
+ Test Files  2 passed (2)
+      Tests  12 passed (12)
+   Start at  12:29:39
+   Duration  257ms (tests 73%, transform 17%, import 9%, worker 2%)
+

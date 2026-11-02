@@ -56,10 +56,15 @@ that software license does not, by itself, settle every underlying astronomical
 catalog's terms. [Upstream license](https://github.com/ofrohn/d3-celestial/blob/master/LICENSE).
 Gaia acknowledgments depend on the particular release/product actually used.
 
-The current local/static release inventory is recorded in
-[`DISTRIBUTION_INVENTORY_2026-10-30.md`](agent-notes/DISTRIBUTION_INVENTORY_2026-10-30.md).
+The current local/static inventory and product credits are recorded in
+[the file register](docs/data/distribution-files.json) and
+[the source register](docs/data/distribution-sources.json). Both accompany the
+build under `legal/`. They cover every copied public file plus the named retained
+data inputs; remote response bytes and the full repository history are outside
+that inventory. The [2026-10-30 inventory](agent-notes/DISTRIBUTION_INVENTORY_2026-10-30.md)
+is historical.
 The current [distribution policy](docs/distribution-policy.md) restricts the
 SILSO-enabled data workflow to noncommercial research/evaluation and removes
-the unresolved Deimos map. The build validates curated image provenance and
-packages notices. The historical inventory is not a legal clearance or a
+the unresolved Deimos map. The build validates all inventoried input bytes and
+packages six notices/registers. The inventory is not a legal clearance or a
 current byte inventory; new products require their own source and rights review.

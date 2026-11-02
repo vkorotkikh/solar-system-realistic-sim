@@ -13,6 +13,8 @@
     "dev:ui": "node ./scripts/run-ui-dev.mjs",
     "build": "vite build",
     "prebuild": "node scripts/prepare-distribution.mjs",
+    "verify:distribution": "node scripts/distribution-inventory.mjs",
+    "verify:distribution:rights": "node scripts/distribution-inventory.mjs --require-rights",
     "test": "vitest run",
     "typecheck:ratchet": "node ./scripts/ci/typescript-error-ratchet.mjs",
     "phase1:asteroid-dataset": "python3 scripts/build_asteroid_phase1_dataset.py",
