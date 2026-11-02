@@ -74,3 +74,37 @@ Chromium, Firefox, and WebKit jobs. Independent review found no Critical or
 Important findings in the scoped budget adjustment. The adjusted native-zoom
 project passed all four tests on two local CPU cores in 2.9 minutes, including
 both final resets. A new remote run must verify the adjusted scenario budget.
+
+## Ordinary Chromium context-lifecycle follow-up
+
+Both native-zoom jobs passed all four tests on `8ea4248`. The
+[ordinary Chromium PR job](https://github.com/vkorotkikh/solar-system-realistic-sim/actions/runs/41404201190/job/125142904900)
+then failed context-loss recovery, frame-lifecycle teardown, and subsequent
+context setup (53 passed, three failed, one existing native-display skip). The
+push run of the same commit passed, so the failure was timing-dependent.
+
+The PR traces recorded 85 seconds inside real WebGL context-loss injection,
+90 seconds in the cleanup helper after the frame assertions passed, and a later
+60-second context-creation timeout. A local two-core run reproduced the teardown
+failure. Instrumentation isolated the blocking call to `WEBGL_lose_context`'s
+`loseContext()`; obtaining the existing context and extension returned immediately.
+
+The ordinary Chromium project now selects `channel: 'chromium'`, using full
+Chromium's headless mode as the native-zoom gate already does. CI's existing
+browser installation includes this binary. WebGL2, SwiftShader, antialiasing,
+actual context loss, full scene contents, cleanup, assertions, and individual
+test deadlines remain intact. No production code or test fixture is changed.
+
+With this configuration, the three original failing cases passed on two local
+CPU cores in 1.5 minutes: context loss 23.5 seconds, frame lifecycle including
+cleanup 1.1 minutes, and pending-catalog unload 3.1 seconds. Independent review
+found no blocking issue with the mode change. Full-project and remote CI results
+must also be checked before landing this repair.
+
+The subsequent full two-core stress run completed with 54 passed, one existing
+native-display skip, and two failures waiting for a third startup worker tick
+within 30 seconds (both observed two ticks). The original context-loss,
+cleanup, and context-creation failures did not recur. During that run the shared
+32-CPU host's load average reached 109. No readiness condition or timeout was
+relaxed in response. This stress result is not a clean-suite acceptance claim;
+an unrestricted local rerun and the new GitHub run remain required evidence.

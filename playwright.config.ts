@@ -2,7 +2,10 @@ import { defineConfig } from '@playwright/test';
 
 const port = Number(process.env.UI_TEST_PORT || 4175);
 const hardwareWebGL = process.env.UI_HARDWARE_WEBGL === '1';
-const chromiumUse = { browserName: 'chromium' as const, headless: !hardwareWebGL, launchOptions: {
+// Use full Chromium's headless mode, as the native-zoom gate already does.
+// Headless shell stalled in real WEBGL_lose_context calls and later context
+// setup on SwiftShader. Keep the real GPU fault and lifecycle checks.
+const chromiumUse = { browserName: 'chromium' as const, channel: 'chromium', headless: !hardwareWebGL, launchOptions: {
   args: hardwareWebGL
     ? ['--no-sandbox', '--ignore-gpu-blocklist', '--use-gl=angle', '--use-angle=gl']
     : ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox'],
