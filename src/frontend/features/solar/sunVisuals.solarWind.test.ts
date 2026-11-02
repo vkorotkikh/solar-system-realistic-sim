@@ -92,24 +92,93 @@ describe('solar wind outflow', () => {
     });
   });
 
-  it('keeps particles in place when a backend poll changes the wind speed', () => {
+  it.each([300, 650])('preserves XYZ on a poll, then moves at the latest %s km/s rate', kms => {
     withLayer(layer => {
-      pin(layer, 0, { progress: 0.4 });
-      updateSolarWindLayer(layer, spiral({ lonDeg: 0, kms: 400 }), SOLAR_RADIUS_AU, 100, cameraAt(0.05));
-      const before = radius(layer, 0);
-      updateSolarWindLayer(layer, spiral({ lonDeg: 0, kms: 650 }), SOLAR_RADIUS_AU, 100, cameraAt(0.05));
-      // Float32 positions: the changed lag re-rounds x/y; any real jump is >= 1e-4 AU.
-      expect(radius(layer, 0)).toBeCloseTo(before, 8);
+      pin(layer, 0, { progress: 0.4, lonDeg: 20, sinLat: 0.35 });
+      const camera = cameraAt(1);
+      const initial = spiral({ lonDeg: 0, kms: 400 });
+      updateSolarWindLayer(layer, initial, SOLAR_RADIUS_AU, 100, camera);
+      const startRadius = radius(layer, 0);
+      updateSolarWindLayer(layer, initial, SOLAR_RADIUS_AU, 100.1, camera);
+      const before = position(layer, 0);
+      const beforeRadius = radius(layer, 0);
+      const latest = spiral({ lonDeg: 0, kms });
+      for (let i = 0; i < 3; i++) {
+        updateSolarWindLayer(layer, latest, SOLAR_RADIUS_AU, 100.1, camera);
+        expect(position(layer, 0)).toEqual(before);
+      }
+      updateSolarWindLayer(layer, latest, SOLAR_RADIUS_AU, 100.2, camera);
+      const step = radius(layer, 0) - beforeRadius;
+      expect(step).toBeGreaterThan(0);
+      expect(step / (beforeRadius - startRadius)).toBeCloseTo(kms / 400, 4);
     });
   });
 
-  it('keeps streamlines in place when the backend arms rotate', () => {
+  it('preserves XYZ when rotating unequal-speed arms reassign both sectors', () => {
     withLayer(layer => {
-      pin(layer, 0, { progress: 0.4, lonDeg: 20 });
-      updateSolarWindLayer(layer, spiral({ lonDeg: 0, kms: 400 }), SOLAR_RADIUS_AU, 0, cameraAt(0.05));
+      pin(layer, 0, { progress: 0.2, lonDeg: 20, sinLat: 0.4 });
+      pin(layer, 1, { progress: 0.2, lonDeg: 200, sinLat: -0.4 });
+      const camera = cameraAt(1);
+      const initial = spiral({ lonDeg: 0, kms: 350 }, { lonDeg: 180, kms: 700 });
+      updateSolarWindLayer(layer, initial, SOLAR_RADIUS_AU, 0, camera);
+      const start = [radius(layer, 0), radius(layer, 1)];
+      updateSolarWindLayer(layer, initial, SOLAR_RADIUS_AU, 0.1, camera);
+      const before = [position(layer, 0), position(layer, 1)];
+      const beforeRadii = [radius(layer, 0), radius(layer, 1)];
+      const rotated = spiral({ lonDeg: 180, kms: 350 }, { lonDeg: 0, kms: 700 });
+      updateSolarWindLayer(layer, rotated, SOLAR_RADIUS_AU, 0.1, camera);
+      expect([position(layer, 0), position(layer, 1)]).toEqual(before);
+      updateSolarWindLayer(layer, rotated, SOLAR_RADIUS_AU, 0.2, camera);
+      expect((radius(layer, 0) - beforeRadii[0]) / (beforeRadii[0] - start[0])).toBeCloseTo(2, 4);
+      expect((radius(layer, 1) - beforeRadii[1]) / (beforeRadii[1] - start[1])).toBeCloseTo(0.5, 4);
+    });
+  });
+
+  it.each([null, spiral()])('discards hidden time and preserves XYZ on readmission from %j', withdrawn => {
+    withLayer(layer => {
+      pin(layer, 0, { progress: 0.4, sinLat: 0.35 });
+      const camera = cameraAt(1);
+      const initial = spiral({ lonDeg: 0, kms: 400 });
+      updateSolarWindLayer(layer, initial, SOLAR_RADIUS_AU, 0, camera);
+      const startRadius = radius(layer, 0);
+      updateSolarWindLayer(layer, initial, SOLAR_RADIUS_AU, 0.1, camera);
       const before = position(layer, 0);
-      updateSolarWindLayer(layer, spiral({ lonDeg: 90, kms: 400 }), SOLAR_RADIUS_AU, 0, cameraAt(0.05));
+      const beforeRadius = radius(layer, 0);
+      for (const time of [4, 7]) {
+        updateSolarWindLayer(layer, withdrawn, SOLAR_RADIUS_AU, time, camera);
+        expect(layer.visible).toBe(false);
+      }
+      const latest = spiral({ lonDeg: 90, kms: 650 });
+      updateSolarWindLayer(layer, latest, SOLAR_RADIUS_AU, 9, camera);
+      expect(layer.visible).toBe(true);
       expect(position(layer, 0)).toEqual(before);
+      updateSolarWindLayer(layer, latest, SOLAR_RADIUS_AU, 9, camera);
+      expect(position(layer, 0)).toEqual(before);
+      updateSolarWindLayer(layer, latest, SOLAR_RADIUS_AU, 9.1, camera);
+      expect((radius(layer, 0) - beforeRadius) / (beforeRadius - startRadius)).toBeCloseTo(650 / 400, 4);
+    });
+  });
+
+  it.each([0.7, 14.7])('adopts the latest Parker curvature after wrapping at %s seconds', time => {
+    withLayer(layer => {
+      pin(layer, 0, { progress: 0.95, lonDeg: 30 });
+      const camera = cameraAt(1);
+      updateSolarWindLayer(layer, spiral({ lonDeg: 0, kms: 400 }), SOLAR_RADIUS_AU, 0, camera);
+      const before = position(layer, 0);
+      const latest = spiral({ lonDeg: 0, kms: 800 });
+      updateSolarWindLayer(layer, latest, SOLAR_RADIUS_AU, 0, camera);
+      expect(position(layer, 0)).toEqual(before);
+      // At 800 km/s a flight takes 7 seconds: wrap once or three times, with 5% left over.
+      updateSolarWindLayer(layer, latest, SOLAR_RADIUS_AU, time, camera);
+      expect(radius(layer, 0)).toBeCloseTo(SOURCE_AU + (1.5 - SOURCE_AU) * 0.05, 6);
+      const [x, y] = position(layer, 0);
+      const lag = (OMEGA_RAD_DAY / ((800 * 86_400) / AU_KM)) * (radius(layer, 0) - SOURCE_AU);
+      expect(Math.cos(Math.atan2(y, x) - (30 * DEG - lag))).toBeCloseTo(1, 8);
+      const wrapped = position(layer, 0);
+      updateSolarWindLayer(layer, latest, SOLAR_RADIUS_AU, time, camera);
+      expect(position(layer, 0)).toEqual(wrapped);
+      updateSolarWindLayer(layer, latest, SOLAR_RADIUS_AU, time + 0.1, camera);
+      expect(radius(layer, 0)).toBeGreaterThan(Math.hypot(...wrapped));
     });
   });
 

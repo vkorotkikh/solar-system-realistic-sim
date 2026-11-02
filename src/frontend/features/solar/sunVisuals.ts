@@ -1671,17 +1671,19 @@ const SOLAR_WIND_CROSSING_SEC_AT_400_KMS = 14;
 const KMS_TO_AU_PER_DAY = 86_400 / AU_KM;
 
 /**
- * Faint solar-wind outflow on Parker-spiral streamlines. Streamlines leave the source
- * surface at fixed solar longitudes and latitudes; each frame a streamline takes the
- * wind speed of the nearest backend spiral arm, its particles advance outward at that
- * speed and trail by omega / v * (r - r_source), the backend's own Parker formula.
+ * Illustrative tracers on Parker curves, not physical bulk-wind trajectories.
+ * Source longitudes/latitudes stay fixed. The nearest backend arm sets the current
+ * outward rate and tint, while each particle retains its omega / v curvature until
+ * wrapping so backend polls cannot move an in-flight particle sideways.
  */
 export function createSolarWindLayer(count = 4000, streamlines = 48): Points {
   const positions = new Float32Array(count * 3);
   const colors = new Float32Array(count * 3);
   const lons = new Float32Array(count);
   const sinLats = new Float32Array(count);
-  const progress = new Float32Array(count);
+  // Keep CPU flight state at JS precision so a frozen frame reproduces the same XYZ.
+  const progress = new Float64Array(count);
+  const curvatures = new Float64Array(count).fill(NaN);
   const lineLons = Array.from({ length: streamlines }, () => Math.random() * TWO_PI);
   const lineSinLats = Array.from({ length: streamlines }, () => Math.random() * 2 - 1);
   for (let i = 0; i < count; i += 1) {
@@ -1711,7 +1713,7 @@ export function createSolarWindLayer(count = 4000, streamlines = 48): Points {
   const points = new Points(geometry, material);
   points.userData.bodyId = 'sun-solar-wind';
   points.userData.solarWind = {
-    count, positions, colors, lons, sinLats, progress, lastTimeSec: null as number | null
+    count, positions, colors, lons, sinLats, progress, curvatures, lastTimeSec: null as number | null
   };
   // Positions span up to 3 AU and move every frame.
   points.frustumCulled = false;
@@ -1741,7 +1743,11 @@ export function updateSolarWindLayer(
     }
   }
   solarWindLayer.visible = arms.length > 0;
-  if (!arms.length) return;
+  if (!arms.length) {
+    // Readmission resumes the existing flight without consuming hidden time.
+    wind.lastTimeSec = null;
+    return;
+  }
 
   const omegaRaw = Number(spiral?.omega_sun_rad_day);
   const omegaRadDay = Number.isFinite(omegaRaw) ? omegaRaw : TWO_PI / 25.38;
@@ -1774,10 +1780,15 @@ export function updateSolarWindLayer(
         arm = arms[a];
       }
     }
-    const progress = (wind.progress[i] + (dt * arm.kms) / (400 * SOLAR_WIND_CROSSING_SEC_AT_400_KMS)) % 1;
+    const advancedProgress = wind.progress[i] + (dt * arm.kms) / (400 * SOLAR_WIND_CROSSING_SEC_AT_400_KMS);
+    if (Number.isNaN(wind.curvatures[i]) || advancedProgress >= 1) {
+      // Adopt the latest Parker curve only at initialization or a new flight.
+      wind.curvatures[i] = omegaRadDay / (arm.kms * KMS_TO_AU_PER_DAY);
+    }
+    const progress = advancedProgress % 1;
     wind.progress[i] = progress;
     const rAu = innerAu + (outerAu - innerAu) * progress;
-    const lon = lon0 - (omegaRadDay / (arm.kms * KMS_TO_AU_PER_DAY)) * (rAu - sourceAu);
+    const lon = lon0 - wind.curvatures[i] * (rAu - sourceAu);
     const sinLat = wind.sinLats[i];
     const cosLat = Math.sqrt(Math.max(0, 1 - sinLat * sinLat));
     const base = i * 3;
