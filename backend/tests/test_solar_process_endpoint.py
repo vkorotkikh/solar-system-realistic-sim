@@ -44,6 +44,38 @@ class _FakeRunner:
         self.shutdown_calls += 1
 
 
+# SDEL-016: /qa 2026-10-24; agent-notes/CONSOLIDATED_MARKDOWN_ISSUE_AUDIT_2026-10-24.md.
+@pytest.mark.parametrize("raise_server_exceptions", [True, False])
+def test_unexpected_solar_failure_keeps_testclient_exception_policy(monkeypatch, raise_server_exceptions):
+    failure = RuntimeError("private-unexpected-worker-defect")
+    runner = _FakeRunner(failure)
+    monkeypatch.setattr(server, "_solar_physics_runner", runner)
+    monkeypatch.setattr(server, "_solar_physics_rate_locks", {})
+    monkeypatch.setattr(server.app, "middleware_stack", None)
+    request_client = TestClient(server.app, raise_server_exceptions=raise_server_exceptions)
+
+    def request():
+        return request_client.get(
+            "/solar/physics",
+            params={"jd_tdb": 2_460_000.5, "fidelity": "preview", "max_features": 8},
+            headers={"Origin": "http://localhost:3000"},
+        )
+
+    with request_client:
+        if raise_server_exceptions:
+            with pytest.raises(RuntimeError) as caught:
+                request()
+            assert caught.value is failure
+        else:
+            response = request()
+            assert response.status_code == 500
+            assert response.text == "Internal Server Error"
+            assert response.headers["content-type"] == "text/plain; charset=utf-8"
+            assert response.headers["access-control-allow-origin"] == "http://localhost:3000"
+            assert response.headers["cache-control"] == "private, no-store"
+    assert len(runner.calls) == 1
+
+
 def test_solar_endpoint_uses_dedicated_process_runner_not_heavy_thread_pool(
     monkeypatch,
 ) -> None:
@@ -83,6 +115,8 @@ def test_solar_endpoint_uses_dedicated_process_runner_not_heavy_thread_pool(
     ]
 
 
+# SDEL-017: /qa 2026-10-24; agent-notes/CONSOLIDATED_MARKDOWN_ISSUE_AUDIT_2026-10-24.md.
+@pytest.mark.parametrize("origin", [None, "http://localhost:3000", "https://untrusted.invalid"])
 @pytest.mark.parametrize(
     ("failure", "expected_code", "retryable"),
     [
@@ -99,13 +133,17 @@ def test_solar_endpoint_maps_supervisor_failures_to_stable_503_contract(
     failure: BaseException,
     expected_code: str,
     retryable: bool,
+    origin: str | None,
 ) -> None:
-    monkeypatch.setattr(server, "_solar_physics_runner", _FakeRunner(failure), raising=False)
+    runner = _FakeRunner(failure)
+    monkeypatch.setattr(server, "_solar_physics_runner", runner, raising=False)
     monkeypatch.setattr(server, "_solar_physics_rate_locks", {})
+    monkeypatch.setattr(server.app, "middleware_stack", None)
 
     response = client.get(
         "/solar/physics",
         params={"jd_tdb": 2_460_000.5, "fidelity": "preview", "max_features": 8},
+        headers={"Origin": origin} if origin is not None else {},
     )
 
     assert response.status_code == 503
@@ -113,8 +151,19 @@ def test_solar_endpoint_maps_supervisor_failures_to_stable_503_contract(
     assert detail["code"] == expected_code
     assert detail["retryable"] is retryable
     assert "process" not in detail["message"].lower()
-    if expected_code == "solar_compute_saturated":
+    assert len(runner.calls) == 1
+    if expected_code in {"solar_compute_saturated", "solar_compute_timeout"}:
         assert response.headers["retry-after"] == "2"
+    else:
+        assert "retry-after" not in response.headers
+    if origin == "http://localhost:3000":
+        assert response.headers["access-control-allow-origin"] == origin
+        assert response.headers["access-control-allow-credentials"] == "true"
+        assert response.headers["access-control-expose-headers"] == "Retry-After"
+    else:
+        assert "access-control-allow-origin" not in response.headers
+        if origin is None:
+            assert "access-control-expose-headers" not in response.headers
 
 
 def test_health_path_remains_available_when_solar_process_capacity_is_full(

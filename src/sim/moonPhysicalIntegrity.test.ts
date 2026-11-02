@@ -17,11 +17,15 @@ describe('active moon identity and physical radius integrity', () => {
     expect(moons.filter(b => b.radiusKm !== null)).toHaveLength(46);
     for (const moon of moons) {
       expect(moon.displayRadiusAu).toBeGreaterThan(0);
+      expect(Number.isFinite(moon.displayRadiusAu)).toBe(true);
+      expect(Number.isFinite(moon.displayRadiusEstimateKm)).toBe(true);
+      expect(moon.displayRadiusEstimateKm).toBeGreaterThan(0);
       // The pinned table reports mean radius, not equatorial/polar dimensions.
       expect(moon.equatorialRadiusKm).toBeNull();
       expect(moon.polarRadiusKm).toBeNull();
       if (moon.radiusKm === null) {
         expect(moon.realRadiusAu).toBeNull();
+        expect(moon.radiusProvenance).toBeUndefined();
         expect(moon.equatorialRadiusKm).toBeNull();
         expect(moon.polarRadiusKm).toBeNull();
       } else {
@@ -32,6 +36,12 @@ describe('active moon identity and physical radius integrity', () => {
     }
     expect(moons.find(b => b.name === 'Hydra')?.radiusKm).toBe(18.5);
     expect(moons.find(b => b.name === 'Callirrhoe')?.radiusKm).toBeNull();
+    for (const name of ['Puck', 'Megaclite']) {
+      const moon = moons.find(b => b.name === name)!;
+      expect(moon.radiusKm).toBeNull();
+      expect(moon.realRadiusAu).toBeNull();
+      expect(moon).not.toHaveProperty('radiusSource');
+    }
   });
 
   it('the actual main info path displays Unknown and scaling keeps an unknown-radius marker finite', () => {

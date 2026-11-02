@@ -217,6 +217,9 @@ class SolarRealtimeDataProvider:
         self._snapshot_cache: OrderedDict[
             tuple[str, str, float | TwoPartJD | None], tuple[float, dict[str, Any]]
         ] = OrderedDict()
+        self._aia_bundle_cache: OrderedDict[
+            tuple[str, str, float | TwoPartJD | None], tuple[float, dict[str, Any]]
+        ] = OrderedDict()
         self._binary_cache: OrderedDict[
             str, tuple[float, bytes, int]
         ] = OrderedDict()
@@ -875,6 +878,143 @@ class SolarRealtimeDataProvider:
             requested_jd_tdb=requested_jd_tdb,
         )
 
+    def _latest_aia_bundle(
+        self,
+        *,
+        jd_tdb: float | TwoPartJD | None,
+        force_refresh: bool,
+        channel: str,
+        image_id: str | None,
+    ) -> dict[str, Any]:
+        """Acquire AIA metadata without other feeds or snapshot-LRU writes."""
+        epoch = ("latest", None) if jd_tdb is None else ("jd_tdb", jd_tdb)
+        key = ("aia_bundle", *epoch)
+        snapshot_key = ("snapshot", *epoch)
+
+        def retained_bundles() -> list[dict[str, Any]]:
+            now = time.monotonic()
+            retained = []
+            with self._lock:
+                cached = self._aia_bundle_cache.get(key)
+                if cached is not None:
+                    if now < cached[0]:
+                        self._aia_bundle_cache.move_to_end(key)
+                        retained.append(cached[1])
+                    else:
+                        self._aia_bundle_cache.pop(key, None)
+                full = self._snapshot_cache.get(snapshot_key)
+                if full is not None and now < full[0]:
+                    retained.append(full[1])
+                # Borrow only AIA, not unrelated payloads or the full LRU order.
+                envelopes = []
+                for snapshot in retained:
+                    statuses = snapshot.get("source_status")
+                    status = statuses.get("sdo_aia") if isinstance(statuses, Mapping) else None
+                    envelopes.append(copy.deepcopy({
+                        "sdo_aia": snapshot.get("sdo_aia"),
+                        "source_status": {"sdo_aia": status},
+                    }))
+            return envelopes
+
+        def for_caller(bundles: list[dict[str, Any]]) -> dict[str, Any]:
+            delivered = []
+            for bundle in bundles:
+                view = self._snapshot_for_delivery(
+                    bundle, now_utc=self._utc_now().astimezone(timezone.utc),
+                    requested_jd_tdb=jd_tdb,
+                )
+                status = view["source_status"].get("sdo_aia")
+                if not isinstance(status, Mapping) or status.get("ok") is not True:
+                    view["sdo_aia"] = None
+                delivered.append(view)
+            preferred = delivered[0]
+            if image_id is not None:
+                channel_key = channel.strip().lower()
+                mismatch_available = None
+                for view in delivered:
+                    aia = view.get("sdo_aia")
+                    channels = aia.get("channels") if isinstance(aia, dict) else None
+                    entry = channels.get(channel_key) if isinstance(channels, dict) else None
+                    if isinstance(entry, dict):
+                        try:
+                            available = self._normalize_aia_image_id(entry.get("image_id"))
+                        except SolarRealtimeFetchError:
+                            continue
+                        if available == image_id:
+                            return view
+                        if mismatch_available is None:
+                            mismatch_available = available
+                # Request-specific mismatch must never enter shared flight or
+                # failure caching. Prefer the first independently valid identity,
+                # even if the dedicated entry failed but the full snapshot did not.
+                if mismatch_available is not None:
+                    raise AiaImageIdentityMismatch(
+                        requested_image_id=image_id,
+                        available_image_id=mismatch_available,
+                    )
+            return preferred
+
+        if not force_refresh:
+            retained = retained_bundles()
+            if retained:
+                return for_caller(retained)
+
+        def fetch_and_cache_bundle() -> tuple[dict[str, Any], bool]:
+            if not force_refresh:
+                # A previous leader may have published after our initial miss
+                # but before this leader entered single-flight. Common data
+                # only: selection by caller pin happens after the shared flight.
+                retained = retained_bundles()
+                if retained:
+                    return retained[0], False
+            bundle: dict[str, Any] = {"sdo_aia": None, "source_status": {}}
+            try:
+                self._remaining_provider_budget()
+                aia = self._fetch_sdo_aia(jd_tdb)
+                bundle["sdo_aia"] = aia
+                bundle["source_status"]["sdo_aia"] = {
+                    "ok": True,
+                    "updated": aia.get("latest_image_date_utc") or aia.get("request_date_utc"),
+                    "endpoint": self.HELIOVIEWER_CLOSEST_URL,
+                }
+            except Exception as exc:
+                bundle["source_status"]["sdo_aia"] = {
+                    "ok": False, "error": str(exc), "endpoint": self.HELIOVIEWER_CLOSEST_URL,
+                }
+            completed = time.monotonic()
+            lifetime = self._snapshot_cache_lifetime_s(
+                bundle, now_utc=self._utc_now().astimezone(timezone.utc),
+                requested_jd_tdb=jd_tdb,
+            )
+            with self._lock:
+                # Publish acquisition failures too: no stale fallback/hot loop.
+                self._aia_bundle_cache[key] = (completed + lifetime, bundle)
+                self._aia_bundle_cache.move_to_end(key)
+                expired = [k for k, entry in self._aia_bundle_cache.items() if entry[0] <= completed]
+                for expired_key in expired:
+                    self._aia_bundle_cache.pop(expired_key, None)
+                while len(self._aia_bundle_cache) > self.snapshot_cache_max_entries:
+                    self._aia_bundle_cache.popitem(last=False)
+            return bundle, True
+
+        while True:
+            bundle, acquired = self._singleflight_fetch(
+                key=key, fetch_fn=fetch_and_cache_bundle,
+                wait_timeout_s=self._remaining_provider_budget(),
+                allow_cached_failure=not force_refresh,
+            )
+            if not force_refresh or acquired:
+                break
+            # A forced follower may have joined a cache-only leader recheck.
+            # Retry the same flight, preserving one metadata owner per epoch;
+            # every retry/wait checks the original shared absolute deadline.
+        # The shared result is independent of the leader's requested pin/channel.
+        # A separately valid retained full snapshot can still satisfy an old pin.
+        candidates = [bundle]
+        if not force_refresh and image_id is not None:
+            candidates.extend(retained_bundles())
+        return for_caller(candidates)
+
     def latest_aia_tile(
         self,
         channel: str = "aia_193",
@@ -904,9 +1044,11 @@ class SolarRealtimeDataProvider:
     ) -> dict[str, Any]:
         requested_image_id = self._normalize_aia_image_id(image_id)
         requested_jd_tdb = self._resolve_jd_tdb_alias(jd_tdb, jd)
-        snapshot = self.latest(
+        snapshot = self._latest_aia_bundle(
             jd_tdb=requested_jd_tdb,
             force_refresh=force_refresh,
+            channel=channel,
+            image_id=requested_image_id,
         )
         channel_key = channel.strip().lower()
         sdo_aia = snapshot.get("sdo_aia")

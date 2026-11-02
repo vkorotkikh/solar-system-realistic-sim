@@ -7,6 +7,8 @@ import random
 from statistics import NormalDist
 from typing import Any, Callable, Dict, List
 
+from .schemas import MIN_MISSION_RISK_SAMPLES
+
 DEFAULT_EPHEMERIS_SIGMA_FRACTION = 0.01
 DEFAULT_THRUST_SIGMA_FRACTION = 0.04
 DEFAULT_EXTRACTION_SIGMA_FRACTION = 0.12
@@ -67,7 +69,7 @@ class RiskService:
                     or not math.isfinite(base_returned_payload_kg)
                     or not 0.0 <= base_returned_payload_kg <= base_departure_cargo_kg):
                 raise ValueError("Explicit cargo masses must be finite with 0 <= returned payload <= departure cargo")
-        samples = max(30, min(50_000, int(samples)))
+        samples = max(MIN_MISSION_RISK_SAMPLES, min(50_000, int(samples)))
         rng = random.Random(int(seed))
 
         dv_sigma = max(0.0, float(ephemeris_sigma_fraction)) + max(0.0, float(thrust_sigma_fraction))

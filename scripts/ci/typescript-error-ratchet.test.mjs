@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -63,4 +64,41 @@ describe('TypeScript legacy-error ratchet', () => {
       buckets: {}
     })).toContain('parsed 0 of 1 TypeScript diagnostics');
   });
+});
+
+// TOOL098 / scoped TOOL097. Found by /qa, 2026-10-24.
+// agent-notes/CONSOLIDATED_MARKDOWN_ISSUE_AUDIT_2026-10-24.md
+// These are parser fixtures from separately reproduced real TypeScript output;
+// this suite exercises the committed budget and does not invoke the compiler.
+describe('committed strict-zero TypeScript bucket baseline', () => {
+  const baseline = JSON.parse(readFileSync(
+    new URL('../../ci/typescript-error-baseline.json', import.meta.url), 'utf8'
+  ));
+
+  it('does not retain an allowance after strict source diagnostics reach zero', () => {
+    expect(baseline.total_error_budget).toBe(0);
+    expect(baseline.buckets).toEqual({});
+  });
+
+  it('accepts clean parsed output with the committed baseline', () => {
+    expect(compareAgainstBaseline(parseDiagnostics(''), baseline)).toEqual([]);
+  });
+
+  it.each(['deg', 'ownedReplacement'])(
+    'rejects the %s parser fixture in a formerly allowed file/code bucket',
+    (parameter) => {
+      const parsed = parseDiagnostics(
+        'src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts(1,28): '
+        + `error TS7006: Parameter '${parameter}' implicitly has an 'any' type.`
+      );
+      expect(parsed).toEqual({
+        parsedCount: 1,
+        reportedCount: 1,
+        buckets: {
+          'src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts|TS7006': 1
+        }
+      });
+      expect(compareAgainstBaseline(parsed, baseline)).not.toEqual([]);
+    }
+  );
 });

@@ -562,7 +562,8 @@ export class OrbitalSatelliteSystem {
     markerColorOverrides = null
   }: OrbitalSatelliteSystemOptions = {}) {
     this.primaryId = primaryId;
-    this.primaryModel = PRIMARY_MODELS[primaryId] ?? PRIMARY_MODELS.earth;
+    this.primaryModel = (Object.prototype.hasOwnProperty.call(PRIMARY_MODELS, primaryId)
+      ? PRIMARY_MODELS[primaryId] : undefined) ?? PRIMARY_MODELS.earth;
     this.maxGeoCount = maxGeoCount;
     this.showOrbits = showOrbits;
     this.useJ2 = useJ2;
@@ -743,7 +744,7 @@ export class OrbitalSatelliteSystem {
 
     this.worker.postMessage({
       type: 'init',
-      primaryId: this.primaryId,
+      primaryId: this.primaryModel.id,
       satellites: this.satellites
     });
   }
@@ -942,7 +943,7 @@ export class OrbitalSatelliteSystem {
     const snapshot = this.workerSnapshot;
     if (!Number.isFinite(jd) || !Number.isFinite(snapshot.jd0) || !Number.isFinite(snapshot.jd1)) return false;
     if (snapshot.count !== this.satellites.length) return false;
-    if (snapshot.applyJ2 !== this.useJ2) return false;
+    if (typeof snapshot.applyJ2 !== 'boolean' || snapshot.applyJ2 !== this.useJ2) return false;
     // Validate the entire snapshot before touching any marker. A bad later
     // coordinate must not leave earlier markers at a partially applied epoch.
     if (!(snapshot.positions0 instanceof Float32Array) || !(snapshot.positions1 instanceof Float32Array)

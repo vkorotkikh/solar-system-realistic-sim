@@ -11,6 +11,7 @@ import {
 import type { MoonChebyshevEphemeris } from './moonEphemeris';
 import type { KeplerOrbit } from './orbitMath';
 import { planetaryRotationFields, type IauPlanetRotation } from '../data/planetaryRotation';
+import { moonDisplayName } from './moonDisplayName';
 
 export interface RawMoonRecord {
   id: number;
@@ -37,6 +38,18 @@ export interface RawMoonRecord {
 
 const moons = rawMoons as readonly RawMoonRecord[];
 const EPHEMERIS_REQUIRED_MOONS = new Set(['Titan', 'Iapetus', 'Phoebe', 'Cordelia']);
+
+// PLU060 adopted component/system GMs (km^3/s^2), used only as coordinate weights.
+// https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/satellites/plu060.cmt
+// These do not replace catalog masses or the backend's reduced target-9 model.
+const PLUTO_SYSTEM_GM = 975.4308664317557;
+const PLUTO_COMPANION_GMS = [
+  ['901', 106.1011388236118],
+  ['902', 0.001496176095836919],
+  ['903', 0.002007962473606101],
+  ['904', 0.0000603845078026937],
+  ['905', 0.00004045391585487917],
+] as const;
 
 export type MoonEphemerisMap = Readonly<Record<string, MoonChebyshevEphemeris>>;
 
@@ -644,6 +657,24 @@ function makeMoonId(moon: RawMoonRecord, usedIds: Set<string>): string {
   return id;
 }
 
+function selectRuntimeMoons(
+  sourceMoons: readonly RawMoonRecord[],
+  planetNameToId: ReadonlyMap<string, string>
+): readonly RawMoonRecord[] {
+  // Keep the canonical source order; runtime bodies represent exact parent/IAU
+  // identities. Do not select a retired source row for any named moon.
+  const emitted = new Set<string>();
+  return sourceMoons.filter(moon => {
+    const parentId = planetNameToId.get(moon.planet);
+    if (!parentId) return false;
+    if (typeof moon.iauCode !== 'string' || moon.iauCode.trim().length === 0) return true;
+    const key = JSON.stringify([parentId, moon.iauCode]);
+    if (emitted.has(key)) return false;
+    emitted.add(key);
+    return true;
+  });
+}
+
 function applyDisplayScaleConstraints(bodies: CatalogBody[], moonsVisible: boolean): void {
   const minMoonOrbitByParent = new Map();
 
@@ -788,7 +819,8 @@ export function createSolarSystemCatalog(
     ['Pluto', 'pluto']
   ]);
 
-  for (const sourceMoon of moons) {
+  const plutoCompanionOrbits = new Map<string, KeplerOrbit>();
+  for (const sourceMoon of selectRuntimeMoons(moons, planetNameToId)) {
     const measuredPeriodDays = MEASURED_ORBITS[sourceMoon.name]?.periodDays;
     const moon = measuredPeriodDays === undefined ? sourceMoon : { ...sourceMoon, periodDays: measuredPeriodDays };
     const parentId = planetNameToId.get(moon.planet);
@@ -814,7 +846,7 @@ export function createSolarSystemCatalog(
 
     bodies.push({
       id,
-      name: moon.name,
+      name: moonDisplayName(moon),
       type: 'moon',
       parentId,
       massKg: null,
@@ -860,6 +892,9 @@ export function createSolarSystemCatalog(
         ephemerisRequired
       }
     });
+    if (parentId === 'pluto' && !plutoCompanionOrbits.has(sourceMoon.iauCode)) {
+      plutoCompanionOrbits.set(sourceMoon.iauCode, bodies[bodies.length - 1].orbit!);
+    }
   }
 
   // Standish's "Earth" elements are the Earth-Moon barycentre; put Earth at the geocentre
@@ -868,6 +903,16 @@ export function createSolarSystemCatalog(
   const moon = bodies.find((body) => body.parentId === 'earth' && body.name === 'Moon');
   if (earth?.orbit && moon?.orbit) {
     earth.orbit = { ...earth.orbit, barycentreCompanion: { orbit: moon.orbit, massFraction: 0.01215058 } };
+  }
+
+  // Standish Pluto is target9 (system centre); the runtime body is physical Pluto.
+  // Keep every required identity even in partial catalogs and when moons are hidden.
+  const pluto = bodies.find((body) => body.id === 'pluto');
+  if (pluto?.orbit) {
+    pluto.orbit = { ...pluto.orbit, barycentreCompanions: PLUTO_COMPANION_GMS.map(([identity, gm]) => ({
+      orbit: plutoCompanionOrbits.get(identity) ?? null,
+      massFraction: gm / PLUTO_SYSTEM_GM,
+    })) };
   }
 
   applyDisplayScaleConstraints(bodies, moonsVisible);

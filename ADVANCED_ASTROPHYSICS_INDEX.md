@@ -176,7 +176,7 @@ Actual running code for SMBH/AGN/superluminal/exotic physics.
 
 | # | File | Description |
 |---|------|-------------|
-| 10 | `testWarp.js` | E2E test: selects H29 warp wave preset, triggers AGN shockwave, verifies visualization. |
+| 10 | `testWarp.js` | Playwright diagnostic: selects the H29 preset and hypothesis, triggers it, and checks the 10-second error window; not visual or physics accuracy verification. |
 
 ---
 

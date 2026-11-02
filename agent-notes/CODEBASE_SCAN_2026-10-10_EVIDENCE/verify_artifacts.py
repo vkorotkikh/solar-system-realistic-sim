@@ -82,12 +82,13 @@ out = {
     'tracked_worktree_diff': tracked_diff, 'staged_diff': staged_diff,
     'broken_main_report_or_guide_links': bad_links,
 }
-(EVIDENCE / 'inventory.json').write_text(json.dumps(out, indent=2) + '\n')
 assert not bad_links, bad_links
 assert head == branches['workspace_head']
 assert not tracked_diff and not staged_diff, (tracked_diff, staged_diff)
 assert all(not b['changed_snapshot_tracked_files'] and not b['missing_snapshot_tracked_files']
            for b in inventories), inventories
+
+(EVIDENCE / 'inventory.json').write_text(json.dumps(out, indent=2) + '\n')
 
 hash_lines = []
 for path in sorted(EVIDENCE.rglob('*')):

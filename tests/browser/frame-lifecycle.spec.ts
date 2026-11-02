@@ -18,13 +18,13 @@ interface FrameProbe {
 }
 declare global { interface Window { __frameProbe: FrameProbe } }
 
-async function observeApp(page: Page, origin: string) {
+async function observeApp(page: Page, origin: string, corruptWorker = false) {
   await page.route('**/*', route => new URL(route.request().url()).origin === origin
     ? route.continue()
     : route.fulfill({ status: 503, body: 'Offline frame lifecycle gate', headers: { 'Access-Control-Allow-Origin': '*' } }));
-  await page.addInitScript(() => {
+  await page.addInitScript(corruptWorker => {
     const probe: FrameProbe = window.__frameProbe = {
-      offsetMs: 0, ticks: [], tickCount: 0, corruptWorker: false, corruptions: 0, terminated: 0,
+      offsetMs: 0, ticks: [], tickCount: 0, corruptWorker, corruptions: 0, terminated: 0,
       failKuiper: false, stageFailures: 0, visibility: []
     };
     document.addEventListener('visibilitychange', event => {
@@ -41,6 +41,7 @@ async function observeApp(page: Page, origin: string) {
           const bodies = new Float64Array(event.data.bodies);
           const index = (event.data.availability as Uint8Array).findIndex(flag => flag === 1);
           if (index < 0) throw new Error('Real worker delivered no available bodies');
+          if (!Number.isFinite(bodies[index * 6])) throw new Error('Real worker delivered an already nonfinite position');
           bodies[index * 6] = NaN;
           event.stopImmediatePropagation();
           probe.corruptions++;
@@ -59,12 +60,16 @@ async function observeApp(page: Page, origin: string) {
       }
       override terminate() { probe.terminated++; super.terminate(); }
     };
-  });
+  }, corruptWorker);
+}
+
+async function sceneLoaded(page: Page, url: string) {
+  await page.goto(`${url}/?uiWidth=500&uiHeight=500&renderScale=0.5&maxPixelRatio=1`);
+  await expect(page.locator('#status-zoom')).not.toHaveText('Range · —', { timeout: 60_000 });
 }
 
 async function loaded(page: Page, url: string) {
-  await page.goto(`${url}/?uiWidth=500&uiHeight=500&renderScale=0.5&maxPixelRatio=1`);
-  await expect(page.locator('#status-zoom')).not.toHaveText('Range · —', { timeout: 60_000 });
+  await sceneLoaded(page, url);
   await expect.poll(() => page.evaluate(() => window.__frameProbe.tickCount), { timeout: 30_000 }).toBeGreaterThan(2);
 }
 
@@ -93,20 +98,36 @@ test.describe('active app frame lifecycle', () => {
 
   test('a nonfinite available worker state is quarantined without stopping the actual scene', async ({ page, baseURL }) => {
     const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
+    const fallbacks: string[] = [];
+    page.on('console', message => {
+      if (message.text().startsWith('[modelWorker] local propagation active:')) fallbacks.push(message.text());
+    });
     const origin = new URL(baseURL!).origin;
-    await observeApp(page, origin); await loaded(page, origin);
-    await page.locator('#toggle-play').click();
-    await page.evaluate(() => { window.__frameProbe.corruptWorker = true; });
-    await expect.poll(() => page.evaluate(() => window.__frameProbe.corruptions)).toBeGreaterThan(0);
+    // Arm before navigation: late arming after a UI click races the next real
+    // worker delivery against the assertion clock on slow software-GPU frames.
+    // Scene readiness must not require healthy worker traffic under this fault.
+    // CI 41425317639 used one initialization timeout and two quarantines to
+    // exhaust the permitted restarts correctly, leaving exactly two ticks.
+    // Observe real corruption/quarantine below, then require a usable scene.
+    await observeApp(page, origin, true); await sceneLoaded(page, origin);
+    // Allow the existing three boot attempts (5s each plus retry delays) to
+    // reach a real delivery; an 8s generic poll can expire after valid retries.
+    await expect.poll(() => page.evaluate(() => window.__frameProbe.corruptions), { timeout: 30_000 }).toBeGreaterThan(0);
     await expect.poll(() => page.evaluate(() => window.__frameProbe.terminated)).toBeGreaterThanOrEqual(1);
+    expect(fallbacks).toContain('[modelWorker] local propagation active: nonfinite available state');
     await expect(page.locator('#renderer-unavailable')).toBeHidden();
     await page.locator('#body-search').fill('Earth');
+    await expect(page.locator('#body-info-name')).toHaveText('Earth');
     await expect(page.locator('#body-info-distance')).not.toContainText('NaN');
     const range = await page.locator('#status-zoom').textContent();
     await page.locator('#space-canvas').focus(); await page.keyboard.press('+');
     await expect(page.locator('#status-zoom')).not.toHaveText(range!);
     expect(errors).toEqual([]);
     expect(await page.evaluate(() => window.__frameProbe.terminated)).toBeLessThanOrEqual(3);
+    await test.info().attach('nonfinite-worker-recovery', {
+      body: JSON.stringify({ ...await page.evaluate(() => window.__frameProbe), fallbacks }),
+      contentType: 'application/json'
+    });
   });
 
   test('a persistently failing stage cannot starve camera, render, HUD, or later frames', async ({ page, baseURL }) => {

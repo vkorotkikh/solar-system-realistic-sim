@@ -1176,7 +1176,7 @@ def test_aia_tile_reuses_snapshot_deadline_before_binary_work(
         work.append("tile")
         return b"png", "image/png"
 
-    monkeypatch.setattr(provider, "latest", latest)
+    monkeypatch.setattr(provider, "_latest_aia_bundle", latest)
     monkeypatch.setattr(provider, "_fetch_aia_png_cached", fetch_tile)
 
     with pytest.raises(SolarRealtimeFetchError) as raised:
@@ -1392,7 +1392,7 @@ def test_aia_rejects_megabyte_requested_image_identity_before_snapshot_work(
         latest_calls += 1
         return {}
 
-    monkeypatch.setattr(provider, "latest", forbidden_latest)
+    monkeypatch.setattr(provider, "_latest_aia_bundle", forbidden_latest)
 
     with pytest.raises(SolarRealtimeFetchError, match="image identity"):
         provider.latest_aia_tile(image_id="1" * 1_000_000)
@@ -1473,7 +1473,14 @@ def test_aia_provider_accepts_equal_legacy_epoch_alias(
             }
         }
 
-    monkeypatch.setattr(provider, "latest", fake_latest)
+    def aia_bundle(
+        *, channel: str, image_id: str | None, **kwargs: Any
+    ) -> dict[str, Any]:
+        assert channel == "aia_193"
+        assert image_id is None
+        return fake_latest(**kwargs)
+
+    monkeypatch.setattr(provider, "_latest_aia_bundle", aia_bundle)
     monkeypatch.setattr(
         provider,
         "_fetch_aia_png_cached",
@@ -1495,7 +1502,7 @@ def test_aia_tile_rejects_changed_snapshot_identity_before_binary_fetch(
     provider = SolarRealtimeDataProvider()
     monkeypatch.setattr(
         provider,
-        "latest",
+        "_latest_aia_bundle",
         lambda **_kwargs: {
             "sdo_aia": {
                 "channels": {
@@ -1531,7 +1538,7 @@ def test_aia_tile_serves_the_exact_requested_snapshot_artifact(
     tile_url = "https://example.invalid/image-a.png"
     monkeypatch.setattr(
         provider,
-        "latest",
+        "_latest_aia_bundle",
         lambda **_kwargs: {
             "sdo_aia": {
                 "channels": {
@@ -1581,7 +1588,7 @@ def test_aia_tile_provider_does_not_relabel_missing_content_type(
     provider = SolarRealtimeDataProvider()
     monkeypatch.setattr(
         provider,
-        "latest",
+        "_latest_aia_bundle",
         lambda **_kwargs: {
             "sdo_aia": {
                 "channels": {

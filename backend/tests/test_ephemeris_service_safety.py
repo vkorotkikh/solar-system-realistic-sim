@@ -17,6 +17,7 @@ from data.bodies import ALL_BODIES
 from mission import ephemeris_service as module
 from mission.ephemeris_service import (
     EPHEMERIS_FRAME_ID,
+    EphemerisEpochUnsupported,
     EphemerisProtocolError,
     EphemerisProviderUnavailable,
     EphemerisSample,
@@ -1474,3 +1475,63 @@ def test_horizons_timeout_opens_request_circuit_after_one_attempt(
     counters = context.snapshot()["counters"]
     assert counters["provider_failures"] == 1
     assert counters["circuit_open_rejections"] == 1
+
+
+def _horizons_coverage_refusal(message: str) -> bytes:
+    # Exact shape JPL returns (HTTP 200) for an epoch outside the target's ephemeris.
+    return json.dumps(
+        {
+            "signature": {"source": "NASA/JPL Horizons API", "version": "1.2"},
+            "error": message,
+            "result": f"\n{message}\n",
+        }
+    ).encode("utf-8")
+
+
+@pytest.mark.parametrize(
+    ("bad_jd", "message"),
+    [
+        (1e15, 'No ephemeris for target "Earth" after A.D. 9999-DEC-30 12:00:00.0000 TDB'),
+        (-1e9, 'No ephemeris for target "Earth" prior to B.C. 9999-MAR-21 00:00:00.0000 TDB'),
+    ],
+)
+def test_horizons_out_of_coverage_epoch_is_request_scoped_not_a_provider_outage(
+    monkeypatch: pytest.MonkeyPatch,
+    bad_jd: float,
+    message: str,
+) -> None:
+    # One caller's out-of-coverage epoch must not open the process-wide Horizons
+    # breaker and deny every other client (it previously mapped to the
+    # provider-wide EphemerisProtocolError).
+    requested: list[float] = []
+
+    def fake_urlopen(request: Any, *, timeout: float) -> _Response:
+        query = urllib.parse.parse_qs(urllib.parse.urlparse(request.full_url).query)
+        jd = float(query["TLIST"][0])
+        requested.append(jd)
+        if jd == bad_jd:
+            return _Response(_horizons_coverage_refusal(message))
+        return _Response(_horizons_payload(jd=jd))
+
+    monkeypatch.setattr(module.urllib.request, "urlopen", fake_urlopen)
+    # Later transports route through module._horizons_urlopen; stub both seams so
+    # this test can never reach live JPL.
+    monkeypatch.setattr(module, "_horizons_urlopen", fake_urlopen, raising=False)
+    caller = EphemerisService(ALL_BODIES, provider="horizons", context=PlanningContext.with_timeout(1.0))
+    with pytest.raises(EphemerisEpochUnsupported) as rejected:
+        caller.sample_state("earth", bad_jd)
+    assert rejected.value.code == "ephemeris_epoch_unsupported"
+    assert rejected.value.retryable is False
+    assert "horizons" not in module._SHARED_PROVIDER_OUTAGES
+
+    other_client = EphemerisService(ALL_BODIES, provider="horizons", context=PlanningContext.with_timeout(1.0))
+    sample = other_client.sample_state("earth", 2_460_400.5)
+    assert sample.source == "horizons"
+    assert requested == [bad_jd, 2_460_400.5]
+
+
+def test_out_of_coverage_epoch_maps_to_client_error() -> None:
+    import server
+
+    exc = EphemerisEpochUnsupported("no ephemeris at this epoch", provider="horizons", body_id="earth", jd=1e15)
+    assert server._ephemeris_http_exception(exc).status_code == 422

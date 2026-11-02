@@ -71,6 +71,9 @@ class EpisodeRunner:
         )
 
     def run_family(self, family: EpisodeFamily) -> EpisodeFamilyMetrics:
+        for episode in family.episodes:
+            if episode.family != family.name:
+                raise ValueError("Episode family must match its owning family.")
         if family.policy is not None:
             self.verifier.register_policy(family.name, family.policy)
         metrics = EpisodeFamilyMetrics(family=family.name)

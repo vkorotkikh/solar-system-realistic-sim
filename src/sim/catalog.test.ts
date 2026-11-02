@@ -1,11 +1,10 @@
 /**
- * NOTE (R4): several tests in this file re-implement the frame-conversion math
- * they check (raDecToEquatorialUnit, crossProduct, the plane->ecliptic rotation
- * are recomputed locally and asserted equal to the code's output). That is
- * tautological -- it agrees with the implementation by construction and passed
- * while converted moon positions were ~2 orbital radii wrong (SF-9). Treat these
- * as STRUCTURAL/consistency checks only. Accuracy is pinned by the multi-epoch
- * JPL Horizons oracle in moonFrames.horizons.test.ts, never by recomputing the formula.
+ * Catalog, provenance, wiring and display regressions, not general astronomical
+ * accuracy evidence. Earlier copied-transform assertions agreed with the frame
+ * implementation by construction (SF-9); those assertions have been removed.
+ * moonFrames.horizons.test.ts compares position, velocity, plane and drift with
+ * committed multi-epoch JPL Horizons snapshots for its covered fixture bodies
+ * and declared budgets. That gate does not certify every catalog moon.
  */
 import { describe, expect, it } from 'vitest';
 import rawMoonEphemerides from '../data/moonEphemerisChebyshev.json';
@@ -135,7 +134,7 @@ describe('moon-aware display radii (B024)', () => {
     }
   });
 
-  it('retains every moon record and the Earth barycentric correction in hidden mode', () => {
+  it('retains every unique runtime moon and the Earth barycentric correction in hidden mode', () => {
     const visibleCatalog = createSolarSystemCatalog({ moonsVisible: true });
     const hiddenCatalog = createSolarSystemCatalog({ moonsVisible: false });
     const visibleMoons = visibleCatalog.bodies.filter(body => body.type === 'moon');

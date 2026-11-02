@@ -191,7 +191,7 @@ Not every module or asset below is imported by the shipped entry.
 │   │       ├── asteroidDistributions.ts       #   Size/taxonomy/family distributions
 │   │       ├── asteroidGeometry.ts            #   Instanced mesh generation
 │   │       ├── asteroidPipeline.ts            #   Central simulation pipeline
-│   │       └── asteroidShaders.ts             #   GPU vertex/fragment shaders
+│   │       └── asteroidShaders.ts             #   Asteroid vertex-shader patch
 │   ├── frontend/
 │   │   ├── app/
 │   │   │   ├── sceneSetup.ts                  # Three.js scene, renderer, lights
@@ -445,6 +445,8 @@ Phase 1 builder below for validated offline preview or explicit publication:
 python scripts/fetch_jpl_sbdb.py --dry-run
 ```
 
+Append mode requires both `backend/data/bodies.py` and the removed `src/data/planets.js`, so it is unavailable in the current checkout and fails before cache setup or provider requests. It does not target `planets.ts`. Use the separate supported Phase 1 dataset workflow below for the rendered asteroid catalog.
+
 Verify the committed REBOUND initial states and off-epoch accuracy fixtures
 against live JPL Horizons and the pinned DE440 GM kernel:
 
@@ -553,6 +555,12 @@ npm run typecheck
 npm run typecheck:scripts
 npm run test:types:ui
 ```
+
+Fixed browser diagnostics use the maintained Playwright configuration:
+`node scripts/run-browser-diagnostic.mjs <warp|scale|debug>`.
+Use `--help` or `--list` for inspection without launching a browser, and
+`--output EXISTING_PARENT` to keep artifacts in a new child directory.
+The former root `testWarp.js` and `testRealisticScale.mjs` scratch commands remain retired.
 
 ## Backend Tests
 

@@ -62,7 +62,8 @@ def test_precise_http_midnight_reaches_real_provider_and_cache(ingress, midnight
     unsupported = client.get("/solar/realtime/aia-tile", params=precise_params(genuine_leap))
     assert unsupported.status_code == 422, unsupported.text
     assert unsupported.json()["detail"]["code"] == "unsupported_utc_instant"
-    assert len(provider._snapshot_cache) == 1
+    assert not provider._snapshot_cache
+    assert len(provider._aia_bundle_cache) == 1
     cached = client.get("/solar/realtime/aia-tile", params=precise_params(instant))
     assert cached.status_code == 200
     assert len(queries) == len(provider.AIA_SOURCE_IDS)
@@ -78,7 +79,7 @@ def test_http_scalar_leap_boundary_rejected_before_provider_work(ingress, midnig
     assert response.status_code == 400, response.text
     assert response.json()["detail"]["code"] == "ambiguous_scalar_jd"
     assert response.json()["detail"]["retryable"] is False
-    assert not queries and not provider._snapshot_cache
+    assert not queries and not provider._snapshot_cache and not provider._aia_bundle_cache
     assert not server._solar_aia_tile_rate_locks
 
 
@@ -89,7 +90,7 @@ def test_http_scalar_leap_interior_has_typed_unsupported_error(ingress, midnight
     response = client.get("/solar/realtime/aia-tile", params={"jd_tdb": repr(float(instant.tdb.jd))})
     assert response.status_code == 422, response.text
     assert response.json()["detail"]["code"] == "unsupported_utc_instant"
-    assert not queries and not provider._snapshot_cache
+    assert not queries and not provider._snapshot_cache and not provider._aia_bundle_cache
 
 
 @pytest.mark.parametrize("midnight,leap,offset", BOUNDARIES)
@@ -105,7 +106,7 @@ def test_http_precise_leap_second_is_typed_unsupported_before_provider_work(
     assert response.status_code == 422, response.text
     assert response.json()["detail"]["code"] == "unsupported_utc_instant"
     assert response.json()["detail"]["retryable"] is False
-    assert not queries and not provider._snapshot_cache
+    assert not queries and not provider._snapshot_cache and not provider._aia_bundle_cache
     assert not server._solar_aia_tile_rate_locks
 
 
@@ -128,7 +129,7 @@ def test_invalid_http_precise_input_is_rejected_before_admission(ingress, params
     response = client.get("/solar/realtime/aia-tile", params=params)
     assert response.status_code == 400, response.text
     assert response.json()["detail"]["code"] == code
-    assert not queries and not provider._snapshot_cache
+    assert not queries and not provider._snapshot_cache and not provider._aia_bundle_cache
     assert not server._solar_aia_tile_rate_locks
 
 
@@ -143,7 +144,7 @@ def test_precise_http_epoch_bounds_do_not_collapse_the_residual(ingress, bound, 
     )
     assert response.status_code == 400, response.text
     assert response.json()["detail"]["code"] == "jd_out_of_range"
-    assert not queries and not provider._snapshot_cache
+    assert not queries and not provider._snapshot_cache and not provider._aia_bundle_cache
 
 
 def test_precise_http_epochs_sharing_a_scalar_do_not_alias_in_the_provider_cache(ingress):
@@ -154,7 +155,12 @@ def test_precise_http_epochs_sharing_a_scalar_do_not_alias_in_the_provider_cache
     for instant in instants:
         response = client.get("/solar/realtime/aia-tile", params=precise_params(instant))
         assert response.status_code == 200, response.text
-    assert len(provider._snapshot_cache) == 2
+    assert not provider._snapshot_cache
+    assert len(provider._aia_bundle_cache) == 2
+    assert len(queries) == 2 * len(provider.AIA_SOURCE_IDS)
+    for instant in instants:
+        cached = client.get("/solar/realtime/aia-tile", params=precise_params(instant))
+        assert cached.status_code == 200, cached.text
     assert len(queries) == 2 * len(provider.AIA_SOURCE_IDS)
 
 

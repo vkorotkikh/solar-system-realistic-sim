@@ -190,6 +190,24 @@ export interface SolarPhysicsFailure {
   atMs: number;
 }
 
+interface SolarEpochRange {
+  minJdTdb: number;
+  maxJdTdb: number;
+}
+
+export interface SolarPhysicsEpochRangeBlock extends SolarEpochRange {
+  baseUrl: string;
+  /** Stable for one outside episode, including advancing unsupported epochs. */
+  atMs: number;
+  episode: number;
+}
+
+interface SolarEpochRangeReadiness {
+  readonly baseUrl: string;
+  readonly blocked: boolean;
+  readonly bypassCadence: boolean;
+}
+
 export interface SolarPhysicsClientStatus {
   lastError: string | null;
   lastFailure: SolarPhysicsFailure | null;
@@ -202,6 +220,8 @@ export interface SolarPhysicsClientStatus {
   nextRefreshMs: number;
   inFlight: boolean;
   disposed: boolean;
+  /** Local admission state, not a fabricated HTTP failure or refresh attempt. */
+  epochRangeBlocked: SolarPhysicsEpochRangeBlock | null;
 }
 
 /** Each `/health` probe only has to tell "answers" from "refused" from "nothing listening". */
@@ -212,9 +232,16 @@ const HEALTH_PROBE_REUSE_MS = 30_000;
 const MAX_RETRY_AFTER_MS = 120_000;
 
 type HealthProbeVerdict = 'origin-allowed' | 'origin-refused' | 'unreachable' | 'inconclusive';
-type HealthProbeOutcome = 'ok' | 'failed' | 'timed-out';
+type HealthProbeOutcome = 'ok' | 'failed' | 'timed-out' | 'cancelled';
 /** What made us probe; a verdict is only reused for the same kind of failure. */
 type HealthProbeTrigger = 'type-error' | 'timeout';
+
+interface SolarPhysicsRequestContext {
+  baseUrl: string;
+  /** Unlike the physics deadline, retirement also cancels any subsequent diagnosis. */
+  lifetime: AbortController;
+  ownsRequest: () => boolean;
+}
 
 class SolarPhysicsRequestError extends Error {
   kind: SolarPhysicsFailureKind;
@@ -253,22 +280,37 @@ function classifyHttpFailure(status: number, code: string | null): SolarPhysicsF
 }
 
 /** `detail` is `{code, message, retryable}` on structured backend errors and a string on plain ones. */
-async function readErrorDetail(response: Response): Promise<{ code: string | null; message: string }> {
+async function readErrorDetail(response: Response): Promise<{ code: string | null; message: string; validJdRange?: SolarEpochRange | null }> {
   try {
     const body: unknown = await response.json();
     const detail = body && typeof body === 'object' ? (body as { detail?: unknown }).detail : undefined;
     if (typeof detail === 'string') return { code: null, message: detail };
     if (detail && typeof detail === 'object') {
-      const { code, message } = detail as { code?: unknown; message?: unknown };
+      const { code, message, valid_jd_range } = detail as { code?: unknown; message?: unknown; valid_jd_range?: unknown };
       return {
         code: typeof code === 'string' ? code : null,
-        message: typeof message === 'string' ? message : ''
+        message: typeof message === 'string' ? message : '',
+        validJdRange: parseEpochRange(valid_jd_range)
       };
     }
   } catch {
     // An unreadable error body still has a status to report.
   }
   return { code: null, message: '' };
+}
+
+function parseEpochRange(value: unknown): SolarEpochRange | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const { min_jd_tdb: min, max_jd_tdb: max } = value as Record<string, unknown>;
+  return typeof min === 'number' && Number.isFinite(min)
+    && typeof max === 'number' && Number.isFinite(max) && min < max
+    ? { minJdTdb: min, maxJdTdb: max } : null;
+}
+
+function outsideEpochRange(jd: number, range: SolarEpochRange): boolean {
+  // Admission follows the same eight-decimal identity as the actual request.
+  const wireJd = Number(Number(jd).toFixed(8));
+  return Number.isFinite(wireJd) && (wireJd < range.minJdTdb || wireJd > range.maxJdTdb);
 }
 
 function parseRetryAfterMs(value: string | null | undefined): number | null {
@@ -286,11 +328,20 @@ interface SolarPhysicsClientOptions {
   liveData?: boolean;
 }
 
+function finiteNumericOption(value: number, name: string): number {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) {
+    throw new RangeError(`Solar physics ${name} must be finite`);
+  }
+  return parsed;
+}
+
 // Bounds apply to the render-v1 HTTP body, independently of optional HTTP gzip.
 const MAX_SOLAR_ENCODED_BYTES = 512 * 1024;
 const MAX_SOLAR_DECODED_BYTES = 2 * 1024 * 1024;
 
-async function readSolarJson(response: Response): Promise<unknown> {
+async function readSolarJson(response: Response, signal: AbortSignal): Promise<unknown> {
+  signal.throwIfAborted();
   const length = Number(response.headers?.get?.('Content-Length'));
   if (Number.isFinite(length) && length > MAX_SOLAR_DECODED_BYTES) {
     throw new Error('Solar physics response exceeds byte budget');
@@ -298,12 +349,18 @@ async function readSolarJson(response: Response): Promise<unknown> {
   // Synthetic Response doubles used by embedding callers may only expose json().
   if (!response.body) return response.json();
   const reader = response.body.getReader();
+  // Native fetch usually cancels its body on abort; own the reader as well so
+  // streamed embedding responses cannot retain a lock past this request.
+  const cancelRead = () => { void reader.cancel().catch(() => {}); };
+  signal.addEventListener('abort', cancelRead, { once: true });
   const decoder = new TextDecoder();
   let bytes = 0;
   let text = '';
   try {
     while (true) {
+      signal.throwIfAborted();
       const { done, value } = await reader.read();
+      signal.throwIfAborted();
       if (done) break;
       bytes += value.byteLength;
       if (bytes > MAX_SOLAR_DECODED_BYTES) {
@@ -319,6 +376,7 @@ async function readSolarJson(response: Response): Promise<unknown> {
     }
     return payload;
   } finally {
+    signal.removeEventListener('abort', cancelRead);
     reader.releaseLock();
   }
 }
@@ -391,10 +449,15 @@ export class SolarPhysicsClient {
   nextRefreshMs: number;
   latest: SolarPhysicsStatePayload | null;
   abortController: AbortController | null;
-  lastProbe: { verdict: HealthProbeVerdict; trigger: HealthProbeTrigger; atMs: number } | null;
+  lastProbe: { verdict: HealthProbeVerdict; trigger: HealthProbeTrigger; baseUrl: string; atMs: number } | null;
+  private requestContext: SolarPhysicsRequestContext | null;
+  private knownEpochRange: (SolarEpochRange & { baseUrl: string }) | null;
+  private epochRangeBlock: SolarPhysicsEpochRangeBlock | null;
+  private epochRangeEpisode: number;
   _reqId: number;
   disposed: boolean;
   private geometryVersion: string | null = null;
+  private geometryBaseUrl: string | null = null;
 
   constructor({
     baseUrl,
@@ -406,16 +469,16 @@ export class SolarPhysicsClient {
     liveData = true
   }: SolarPhysicsClientOptions) {
     this.baseUrl = baseUrl;
-    this.pollIntervalMs = clamp(Number(pollIntervalMs), 5_000, 300_000);
+    this.pollIntervalMs = clamp(finiteNumericOption(pollIntervalMs, 'pollIntervalMs'), 5_000, 300_000);
     // A shorter browser deadline would detach from work the backend is still
     // entitled to run. Keep the public option for compatibility but enforce
     // the cross-runtime ownership contract.
     this.timeoutMs = clamp(
-      Number(timeoutMs),
+      finiteNumericOption(timeoutMs, 'timeoutMs'),
       SOLAR_PHYSICS_REQUEST_TIMEOUT_MS,
       SOLAR_PHYSICS_REQUEST_TIMEOUT_MS
     );
-    this.maxFeatures = clamp(Number(maxFeatures), 8, SOLAR_PHYSICS_MAX_FEATURES);
+    this.maxFeatures = clamp(finiteNumericOption(maxFeatures, 'maxFeatures'), 8, SOLAR_PHYSICS_MAX_FEATURES);
     this.fidelity = `${fidelity ?? 'high'}`.trim().toLowerCase() || 'high';
     this.forcing = forcing ?? 'hybrid';
     this.liveData = Boolean(liveData);
@@ -431,6 +494,10 @@ export class SolarPhysicsClient {
     this.latest = null;
     this.abortController = null;
     this.lastProbe = null;
+    this.requestContext = null;
+    this.knownEpochRange = null;
+    this.epochRangeBlock = null;
+    this.epochRangeEpisode = 0;
     this._reqId = 0;
     this.disposed = false;
   }
@@ -451,14 +518,42 @@ export class SolarPhysicsClient {
       timeoutMs: this.timeoutMs,
       nextRefreshMs: this.nextRefreshMs,
       inFlight: this.inFlight,
-      disposed: this.disposed
+      disposed: this.disposed,
+      epochRangeBlocked: this.epochRangeBlock ? { ...this.epochRangeBlock } : null
     };
+  }
+
+  /** Read-only: the controller can honor transitions before its outer cadence gate. */
+  epochRangeReadiness(jd: number): SolarEpochRangeReadiness | null {
+    if (this.disposed || !this.knownEpochRange) return null;
+    return this.epochRangeReadinessFor(jd, this.baseUrl());
+  }
+
+  private epochRangeReadinessFor(jd: number, baseUrl: string): SolarEpochRangeReadiness {
+    const range = this.knownEpochRange;
+    if (!range) return { baseUrl, blocked: false, bypassCadence: false };
+    if (baseUrl !== range.baseUrl) {
+      return { baseUrl, blocked: false, bypassCadence: true };
+    }
+    const blocked = outsideEpochRange(jd, range);
+    return { baseUrl, blocked, bypassCadence: blocked !== (this.epochRangeBlock !== null) };
+  }
+
+  private blockKnownEpochRange(): void {
+    const range = this.knownEpochRange;
+    if (!range) return;
+    const previous = this.epochRangeBlock;
+    if (previous && previous.baseUrl === range.baseUrl
+      && previous.minJdTdb === range.minJdTdb && previous.maxJdTdb === range.maxJdTdb) return;
+    this.epochRangeBlock = { ...range, atMs: Date.now(), episode: ++this.epochRangeEpisode };
   }
 
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
     this._reqId += 1;
+    this.requestContext?.lifetime.abort();
+    this.requestContext = null;
     if (this.abortController) {
       this.abortController.abort();
       this.abortController = null;
@@ -466,14 +561,16 @@ export class SolarPhysicsClient {
     this.inFlight = false;
   }
 
-  async maybeRefresh(jd: number, force = false): Promise<boolean> {
+  async maybeRefresh(jd: number, force = false, preparedRange?: SolarEpochRangeReadiness | null): Promise<boolean> {
     const nowMs = Date.now();
 
     if (this.disposed) return false;
+    const entryReqId = this._reqId;
 
     if (this.inFlight) {
       if (force) {
         // If forced, abort the current in-flight request and proceed
+        this.requestContext?.lifetime.abort();
         this.abortController?.abort();
         this.inFlight = false;
       } else {
@@ -481,7 +578,21 @@ export class SolarPhysicsClient {
       }
     }
 
-    if (!force && nowMs < this.nextRefreshMs) return false;
+    // Carry only the captured base across the outer gate; admission uses the
+    // current tuple and epoch, never a previously prepared decision.
+    const prepared = preparedRange ?? this.epochRangeReadiness(jd);
+    if (this.disposed || this._reqId !== entryReqId) return false;
+    const rangeReadiness = prepared ? this.epochRangeReadinessFor(jd, prepared.baseUrl) : null;
+    if (rangeReadiness && rangeReadiness.baseUrl !== this.knownEpochRange?.baseUrl) {
+      this.knownEpochRange = null;
+      this.epochRangeBlock = null;
+    }
+    if (rangeReadiness?.blocked && !force) {
+      this.blockKnownEpochRange();
+      return false;
+    }
+    if (!force && !rangeReadiness?.bypassCadence && nowMs < this.nextRefreshMs) return false;
+    if (rangeReadiness && !rangeReadiness.blocked) this.epochRangeBlock = null;
 
     this.inFlight = true;
     this._reqId++;
@@ -495,32 +606,77 @@ export class SolarPhysicsClient {
       live_data: this.liveData ? 'true' : 'false',
       delivery: 'render-v1'
     });
-    if (this.geometryVersion) query.set('geometry_version', this.geometryVersion);
-    const url = `${this.baseUrl()}/solar/physics?${query.toString()}`;
+    const baseUrl = rangeReadiness?.baseUrl ?? this.baseUrl();
+    const requestGeometryVersion = this.geometryBaseUrl === baseUrl ? this.geometryVersion : null;
+    if (requestGeometryVersion) query.set('geometry_version', requestGeometryVersion);
+    const url = `${baseUrl}/solar/physics?${query.toString()}`;
 
     let timeoutHandle: ReturnType<typeof setTimeout> | null = null;
     let timedOut = false;
     const controller = new AbortController();
+    const lifetime = new AbortController();
     this.abortController = controller;
     const ownsRequest = (): boolean =>
       !this.disposed &&
+      !lifetime.signal.aborted &&
       this._reqId === currentReqId &&
       this.abortController === controller;
+    const context: SolarPhysicsRequestContext = { baseUrl, lifetime, ownsRequest };
+    this.requestContext = context;
+
+    const startMs = Date.now();
+    // Delivery duration is monotonic; wall-clock corrections still affect only status timestamps.
+    const deliveryDeadlineMs = performance.now() + this.timeoutMs;
+    const deliveryInterrupted = Symbol('delivery interrupted');
+    let stopDelivery!: () => void;
+    // Resolving the sentinel is safe even when no delivery await is currently attached.
+    const deliveryStopped = new Promise<typeof deliveryInterrupted>((resolve) => {
+      stopDelivery = () => resolve(deliveryInterrupted);
+    });
+    const expireDelivery = (): void => {
+      if (timedOut) return;
+      timedOut = true;
+      stopDelivery();
+      // Publish the deadline before abort can reject or even resolve a cooperative transport.
+      controller.abort();
+    };
+    const assertDeliveryActive = (): void => {
+      if (!ownsRequest()) throw deliveryInterrupted;
+      if (timedOut || performance.now() >= deliveryDeadlineMs) {
+        expireDelivery();
+        throw this.timeoutError();
+      }
+    };
+    const awaitDelivery = async <T>(operation: () => Promise<T>): Promise<T> => {
+      assertDeliveryActive();
+      try {
+        // Promise.race observes late fulfillment/rejection without a state-writing continuation.
+        const result = await Promise.race([operation(), deliveryStopped]);
+        assertDeliveryActive();
+        if (result === deliveryInterrupted) throw deliveryInterrupted;
+        return result;
+      } catch (error: unknown) {
+        // Cancellation/deadline also wins if the operation threw synchronously or on abort.
+        assertDeliveryActive();
+        throw error;
+      }
+    };
 
     try {
-      timeoutHandle = setTimeout(() => {
-        timedOut = true;
-        controller.abort();
-      }, this.timeoutMs);
-      const startMs = Date.now();
+      lifetime.signal.addEventListener('abort', stopDelivery, { once: true });
+      timeoutHandle = setTimeout(expireDelivery, this.timeoutMs);
       let response: Response;
       try {
-        response = await fetch(url, {
+        response = await awaitDelivery(() => fetch(url, {
           cache: 'no-store',
           signal: controller.signal
-        });
+        }));
       } catch (error: unknown) {
-        throw await this.classifyFetchError(error, timedOut, controller.signal);
+        if (!ownsRequest()) return false;
+        // Diagnosis has its own bounded budget; the delivery deadline must not govern it.
+        clearTimeout(timeoutHandle);
+        timeoutHandle = null;
+        throw await this.classifyFetchError(error, timedOut, controller.signal, context);
       }
 
       // If a new request started while we were awaiting, ignore this result
@@ -529,7 +685,13 @@ export class SolarPhysicsClient {
       if (!response.ok) {
         // A readable error reply proves the server is up and allows this origin.
         this.lastProbe = null;
-        const detail = await readErrorDetail(response);
+        const detail = await awaitDelivery(() => readErrorDetail(response));
+        if (timedOut) throw this.timeoutError();
+        if (response.status === 400 && detail.code === 'jd_out_of_range'
+          && detail.validJdRange && outsideEpochRange(jd, detail.validJdRange)) {
+          this.knownEpochRange = { ...detail.validJdRange, baseUrl };
+          this.blockKnownEpochRange();
+        }
         throw new SolarPhysicsRequestError(
           classifyHttpFailure(response.status, detail.code),
           `Solar physics request failed (${response.status})${detail.message ? `: ${detail.message}` : ''}`,
@@ -543,17 +705,27 @@ export class SolarPhysicsClient {
       }
       let payload: SolarPhysicsStatePayload;
       try {
-        const rawPayload = await readSolarJson(response);
-        if (!ownsRequest()) return false;
-        const delivery = materializeSolarDelivery(rawPayload, this.latest, this.geometryVersion);
+        const rawPayload = await awaitDelivery(() => readSolarJson(response, controller.signal));
+        const delivery = materializeSolarDelivery(rawPayload,
+          requestGeometryVersion ? this.latest : null, requestGeometryVersion);
         payload = validateSolarPhysicsPayload(delivery.payload, jd, this.forcing);
+        // Validation and materialization are synchronous, but may exceed the
+        // deadline or reenter delivery. Publish reusable geometry only if owned.
+        assertDeliveryActive();
         this.geometryVersion = delivery.version;
+        this.geometryBaseUrl = baseUrl;
       } catch (error: unknown) {
         if (!ownsRequest()) return false;
+        assertDeliveryActive();
         this.geometryVersion = null;
-        if (timedOut) throw this.timeoutError();
+        this.geometryBaseUrl = null;
         throw new SolarPhysicsRequestError('invalid-response', error instanceof Error ? error.message : String(error));
       }
+      if (this.knownEpochRange && outsideEpochRange(jd, this.knownEpochRange)) {
+        // A validated owned success disproves the remembered interval.
+        this.knownEpochRange = null;
+      }
+      this.epochRangeBlock = null;
       this.latest = payload;
       this.lastLatencyMs = Date.now() - startMs;
       this.lastSuccessMs = Date.now();
@@ -584,11 +756,13 @@ export class SolarPhysicsClient {
       );
       return false;
     } finally {
+      lifetime.signal.removeEventListener('abort', stopDelivery);
       if (timeoutHandle !== null) {
         clearTimeout(timeoutHandle);
       }
       if (ownsRequest()) {
         this.abortController = null;
+        this.requestContext = null;
         this.inFlight = false;
       }
     }
@@ -606,10 +780,11 @@ export class SolarPhysicsClient {
    * origin is also reported after a timeout, because the server still runs the whole computation
    * before the browser can refuse the reply.
    */
-  async classifyFetchError(error: unknown, timedOut: boolean, signal: AbortSignal): Promise<unknown> {
+  async classifyFetchError(error: unknown, timedOut: boolean, signal: AbortSignal, context: SolarPhysicsRequestContext): Promise<unknown> {
     if (!timedOut && !(error instanceof TypeError)) return error;
     if (signal.aborted && !timedOut) return error;
-    const verdict = await this.probeHealth(timedOut ? 'timeout' : 'type-error');
+    const verdict = await this.probeHealth(timedOut ? 'timeout' : 'type-error', context);
+    if (verdict === null) return error;
     if (timedOut) {
       return verdict === 'origin-refused' ? this.originRefusedError() : this.timeoutError();
     }
@@ -631,43 +806,63 @@ export class SolarPhysicsClient {
   }
 
   /**
-   * A verdict is reused only for the same kind of failure: a timeout means a connection was
-   * accepted, which contradicts an "unreachable" verdict taken while nothing was listening.
+   * A verdict is reused only for the same backend and kind of failure: a timeout means a
+   * connection was accepted, which contradicts an earlier "unreachable" verdict.
    */
-  async probeHealth(trigger: HealthProbeTrigger): Promise<HealthProbeVerdict> {
+  async probeHealth(trigger: HealthProbeTrigger, context: SolarPhysicsRequestContext): Promise<HealthProbeVerdict | null> {
+    if (!context.ownsRequest()) return null;
     const nowMs = Date.now();
     const reusable = this.lastProbe
       && this.lastProbe.trigger === trigger
+      && this.lastProbe.baseUrl === context.baseUrl
       && nowMs - this.lastProbe.atMs < HEALTH_PROBE_REUSE_MS;
     if (reusable && this.lastProbe) return this.lastProbe.verdict;
     let verdict: HealthProbeVerdict;
-    const cors = await this.fetchHealth('cors');
+    const cors = await this.fetchHealth('cors', context);
+    if (!context.ownsRequest() || cors === 'cancelled') return null;
     if (cors === 'ok') {
       verdict = 'origin-allowed';
     } else if (cors === 'timed-out') {
       verdict = 'inconclusive';
     } else {
-      const noCors = await this.fetchHealth('no-cors');
+      const noCors = await this.fetchHealth('no-cors', context);
+      if (!context.ownsRequest() || noCors === 'cancelled') return null;
       verdict = noCors === 'ok' ? 'origin-refused' : noCors === 'failed' ? 'unreachable' : 'inconclusive';
     }
-    this.lastProbe = { verdict, trigger, atMs: Date.now() };
+    this.lastProbe = { verdict, trigger, baseUrl: context.baseUrl, atMs: Date.now() };
     return verdict;
   }
 
-  async fetchHealth(mode: RequestMode): Promise<HealthProbeOutcome> {
-    const controller = new AbortController();
-    let timedOut = false;
-    const timeoutHandle = setTimeout(() => {
-      timedOut = true;
-      controller.abort();
-    }, HEALTH_PROBE_TIMEOUT_MS);
-    try {
-      await fetch(`${this.baseUrl()}/health`, { mode, cache: 'no-store', signal: controller.signal });
-      return 'ok';
-    } catch {
-      return timedOut ? 'timed-out' : 'failed';
-    } finally {
-      clearTimeout(timeoutHandle);
-    }
+  async fetchHealth(mode: RequestMode, context: SolarPhysicsRequestContext): Promise<HealthProbeOutcome> {
+    if (!context.ownsRequest()) return 'cancelled';
+    return new Promise<HealthProbeOutcome>((resolve) => {
+      const controller = new AbortController();
+      let settled = false;
+      const settle = (outcome: HealthProbeOutcome): void => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeoutHandle);
+        context.lifetime.signal.removeEventListener('abort', cancel);
+        resolve(outcome);
+        // Settle first so a cooperative abort rejection cannot replace the winning outcome.
+        if (outcome === 'timed-out' || outcome === 'cancelled') controller.abort();
+      };
+      const cancel = (): void => settle('cancelled');
+      const timeoutHandle = setTimeout(() => settle('timed-out'), HEALTH_PROBE_TIMEOUT_MS);
+      context.lifetime.signal.addEventListener('abort', cancel, { once: true });
+      if (!context.ownsRequest()) {
+        cancel();
+        return;
+      }
+      try {
+        // Both handlers remain attached if a foreign transport ignores timeout/retirement.
+        void fetch(`${context.baseUrl}/health`, { mode, cache: 'no-store', signal: controller.signal }).then(
+          () => settle('ok'),
+          () => settle('failed')
+        );
+      } catch {
+        settle('failed');
+      }
+    });
   }
 }

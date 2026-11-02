@@ -11,11 +11,16 @@ from __future__ import annotations
 import asyncio
 from collections.abc import Callable, Mapping
 from concurrent.futures import Future, ThreadPoolExecutor
+import ctypes
 import importlib
 import json
+import logging
 import math
 import multiprocessing
 from multiprocessing.connection import Connection
+import os
+import signal
+import sys
 import threading
 import time
 from typing import Any
@@ -103,6 +108,42 @@ def _encode_envelope(envelope: Mapping[str, Any]) -> bytes:
     ).encode("utf-8")
 
 
+def _arm_parent_death_guard() -> None:
+    """Contain Linux work after entry; non-Linux/bootstrap behavior is unchanged.
+
+    PDEATHSIG follows the creating *thread*. Our supervisor executor thread
+    owns the child through join/reap, including during shutdown. The kernel
+    signal also works while target native code holds the GIL.
+    """
+    if sys.platform != "linux":
+        return
+
+    # Spawn records the original owner and its sentinel before calling entry.
+    # getppid() alone could already identify an adopting process, not the owner.
+    parent = multiprocessing.parent_process()
+    expected_pid = getattr(parent, "pid", None)
+    if (type(expected_pid) is not int or expected_pid <= 0
+            or not callable(getattr(parent, "is_alive", None))):
+        # Direct calls in a main process must fail safely, never arm or _exit.
+        raise RuntimeError("worker parent identity unavailable")
+    if not parent.is_alive() or os.getppid() != expected_pid:
+        os._exit(125)
+
+    try:
+        prctl = ctypes.CDLL(None, use_errno=True).prctl
+        prctl.argtypes = [ctypes.c_int] + [ctypes.c_ulong] * 4
+        prctl.restype = ctypes.c_int
+        if prctl(1, signal.SIGKILL, 0, 0, 0) != 0:  # PR_SET_PDEATHSIG
+            raise OSError(ctypes.get_errno(), "worker parent guard unavailable")
+    except (AttributeError, OSError):
+        # Fail closed, using _child_entry's existing sanitized error envelope.
+        raise RuntimeError("worker parent guard unavailable") from None
+
+    # Registration is not retroactive. Close owner-death races before/during it.
+    if not parent.is_alive() or os.getppid() != expected_pid:
+        os._exit(125)
+
+
 def _child_entry(
     target_spec: str,
     payload: Any,
@@ -113,6 +154,7 @@ def _child_entry(
 
     try:
         try:
+            _arm_parent_death_guard()
             target = _resolve_target(target_spec)
             result = target(payload)
             try:
@@ -220,6 +262,7 @@ class SupervisedProcessRunner:
         self._closed = False
         self._executor_shutdown = False
         self._broken_reason: str | None = None
+        self._quarantine_reason: str | None = None
         self._next_job_id = 1
         self._in_flight = 0
         self._active_processes: dict[int, Any] = {}
@@ -260,6 +303,9 @@ class SupervisedProcessRunner:
         cancel_event = threading.Event()
         absolute_deadline = time.monotonic() + timeout
         with self._state_lock:
+            if (not self._closed and self._quarantined_jobs
+                    and self._broken_reason == self._quarantine_reason):
+                self._recover_exited_quarantine()
             if self._broken_reason is not None:
                 raise ProcessSupervisorBroken(self._broken_reason)
             if self._closed:
@@ -291,9 +337,36 @@ class SupervisedProcessRunner:
     async def run(self, payload: Any, *, timeout_seconds: float) -> Any:
         future = self.submit(payload, timeout_seconds=timeout_seconds)
         wrapped = asyncio.wrap_future(future)
+        detached = False
+        reported = False
+
+        def observe_completion(completed: asyncio.Future) -> None:
+            nonlocal reported
+            if completed.cancelled():
+                return
+            # The concurrent Future's admission callback cannot observe this
+            # separate asyncio wrapper after shield's owner has left.
+            error = completed.exception()
+            if not detached or reported or error is None or isinstance(error, ProcessCancelled):
+                return
+            reported = True
+            try:
+                # Never serialize private messages, paths or child tracebacks.
+                logging.getLogger("solar.operational").warning(json.dumps({
+                    "event": "detached_process_failed",
+                    "exception_type": type(error).__name__[:80],
+                    "pid": os.getpid(),
+                }, sort_keys=True))
+            except BaseException:
+                # A diagnostic handler must not replace the owner's original
+                # cancellation or become another unhandled loop exception.
+                pass
+
+        wrapped.add_done_callback(observe_completion)
         try:
             return await asyncio.shield(wrapped)
         except asyncio.CancelledError:
+            detached = True
             with self._state_lock:
                 cancel_event = self._cancel_events.get(future)
             # A queued concurrent Future can be cancelled before any
@@ -302,6 +375,10 @@ class SupervisedProcessRunner:
             future.cancel()
             if cancel_event is not None:
                 cancel_event.set()
+            # Completion may have been observed while still attached, then
+            # cancellation won before await resumed. Report that outcome once.
+            if wrapped.done():
+                observe_completion(wrapped)
             raise
 
     def shutdown(self) -> None:
@@ -352,6 +429,49 @@ class SupervisedProcessRunner:
                     f"{len(failures)} worker process(es) remain alive after shutdown"
                 ) from failures[0]
 
+    def _recover_exited_quarantine(self) -> None:
+        """Under state_lock, nonblockingly retire only finished, dead owners."""
+
+        for job_id in tuple(self._quarantined_jobs):
+            future = self._job_futures.get(job_id)
+            process = self._active_processes.get(job_id)
+            if (future is None or process is None
+                    or self._future_job_ids.get(future) != job_id
+                    or future not in self._cancel_events or not future.done()):
+                continue
+            # A done Future has left _execute's finally; its admission callback
+            # may still be pending. Never touch a process still owned by it.
+            if self._in_flight <= 0:
+                self._broken_reason = "process supervisor admission underflow"
+                return
+            try:
+                if process.is_alive():
+                    continue
+                process.join(0)
+                if process.is_alive() or process.exitcode is None:
+                    continue
+                # A failed close retains all ownership and the lease for retry.
+                process.close()
+            except BaseException:
+                continue
+
+            self._active_processes.pop(job_id)
+            self._quarantined_jobs.remove(job_id)
+            self._job_futures.pop(job_id)
+            self._future_job_ids.pop(future)
+            self._cancel_events.pop(future)
+            self._in_flight -= 1
+            try:
+                self._capacity.release()
+            except ValueError:
+                self._broken_reason = "process supervisor admission over-credit"
+                return
+
+        if (not self._quarantined_jobs
+                and self._broken_reason == self._quarantine_reason):
+            self._broken_reason = None
+            self._quarantine_reason = None
+
     def _release_admission(self, future: Future[Any]) -> None:
         exception: BaseException | None = None
         try:
@@ -363,10 +483,13 @@ class SupervisedProcessRunner:
         release_capacity = False
         with self._state_lock:
             job_id = self._future_job_ids.get(future)
+            if job_id is None:
+                # Recovery/shutdown already retired this exact admission.
+                return
             if isinstance(exception, ProcessReapFailed) or (
                 job_id is not None and job_id in self._quarantined_jobs
             ):
-                # Ownership is deliberately retained until a later shutdown
+                # Ownership is retained until a later admission or shutdown
                 # retry proves the child has exited and has been joined.
                 return
 
@@ -528,6 +651,7 @@ class SupervisedProcessRunner:
             self._quarantined_jobs.add(job_id)
             if self._broken_reason is None:
                 self._broken_reason = f"worker lifecycle control failed: {exc}"
+                self._quarantine_reason = self._broken_reason
 
     def _reap_or_quarantine(self, job_id: int, process: Any) -> None:
         try:

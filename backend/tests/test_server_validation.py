@@ -67,7 +67,7 @@ def test_health_does_not_advertise_high_fidelity_when_ephemeris_data_is_invalid(
     assert rebound_status["available"] is False
     assert rebound_status["fidelity"] is None
     assert rebound_status["initial_conditions"]["available"] is False
-    assert "invalid N-body initial conditions" in rebound_status["error"]
+    assert rebound_status["error"] == "REBOUND readiness check failed."
 
 
 def test_trajectory_plan_rejects_invalid_provider() -> None:

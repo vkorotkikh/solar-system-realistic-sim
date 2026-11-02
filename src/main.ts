@@ -20,6 +20,8 @@ import {
   Group,
   Line,
   LineBasicMaterial,
+  LineLoop,
+  Matrix4,
   Mesh,
   MeshBasicMaterial,
   MeshStandardMaterial,
@@ -54,7 +56,7 @@ import { applyMetricDisplayOffsets } from './frontend/features/superluminal-mode
 import { resolveAgnSelection, type AgnEventOptions } from './frontend/features/superluminal-modeling/agnShockwaveEngine';
 import { generatePlanetTexture } from './textures';
 import { updateSceneBodiesFromModel } from './frontend/app/bodyManager';
-import { createSimulationState } from './frontend/app/stateStore';
+import { createBodyIdResolver, createSimulationState } from './frontend/app/stateStore';
 import { PlanetQuadtree } from './frontend/features/planetary/quadtreeLOD';
 import { applyBodySpin } from './frontend/features/planetary/bodySpin';
 import { planetViewDistances } from './frontend/features/planetary/planetView';
@@ -210,6 +212,7 @@ if (showMoons) {
 }
 if (startup.signal.aborted || !recovery.available) return;
 const catalog = createSolarSystemCatalog({ moonEphemerides, moonsVisible: showMoons });
+const { isEarthMoonBody } = createBodyIdResolver(catalog);
 const modelWorkerCatalog: ModelWorkerCatalog = buildModelWorkerCatalog(catalog.bodies, {
   includeMoons: showMoons
 });
@@ -405,9 +408,10 @@ function createBodyNode(body: CatalogBody) {
   let geometry: SphereGeometry;
   let mesh;
 
-  if (['earth', 'moon', 'mars'].includes(body.id)) {
+  const visualId = isEarthMoonBody(body) ? 'moon' : body.id;
+  if (['earth', 'moon', 'mars'].includes(visualId)) {
     const radius = bodyBaseRadiusAu(body);
-    const quadtree = ownDisposable(new PlanetQuadtree(body.id, radius, camera));
+    const quadtree = ownDisposable(new PlanetQuadtree(body.id, radius, camera, visualId));
     mesh = quadtree.group;
     mesh.userData.isQuadtree = true;
     mesh.userData.quadtree = quadtree;
@@ -482,7 +486,7 @@ function createOrbitLine(body: CatalogBody) {
   const geo = ownDisposable(new BufferGeometry());
   geo.setAttribute('position', new Float32BufferAttribute(positions, 3));
   const col = body.type === 'moon' ? '#556' : '#4477aa';
-  const line = new Line(geo, ownDisposable(new LineBasicMaterial({ color: new Color(col), transparent: true, opacity: 0.35 })));
+  const line = new LineLoop(geo, ownDisposable(new LineBasicMaterial({ color: new Color(col), transparent: true, opacity: 0.35 })));
   line.userData.bodyId = body.id;
   line.userData.bodyType = body.type;
   line.userData.stateAvailable = true;
@@ -533,6 +537,11 @@ for (const body of catalog.bodies) {
 
 for (const body of catalog.bodies) {
   if (body.type === 'moon' && !showMoons) continue;
+  if (body.type === 'moon' && body.parentId) {
+    const node = bodyNodes.get(body.id);
+    const parentNode = bodyNodes.get(body.parentId);
+    if (node && parentNode) parentNode.add(node);
+  }
   createOrbitLine(body);
 }
 
@@ -651,7 +660,8 @@ function focusBody(bodyId: string, hardSnap = false) {
 function updateZoomStatus() {
   if (!dom.statusZoom) return;
   const dist = camera.position.distanceTo(controls.target);
-  dom.statusZoom.textContent = `Range · ${dist < 1 ? (dist * AU_KM).toFixed(0) + ' km' : dist.toFixed(2) + ' AU'}`;
+  const text = `Range · ${dist < 1 ? (dist * AU_KM).toFixed(0) + ' km' : dist.toFixed(2) + ' AU'}`;
+  if (dom.statusZoom.textContent !== text) dom.statusZoom.textContent = text;
 }
 
 type CameraMode = 'focus' | 'follow' | 'free';
@@ -1025,6 +1035,7 @@ const timeController = createTimeController({
   maxTimeScale: MAX_TIME_SCALE_DAYS_PER_SEC,
   currentJulianDate,
   formatJulianAsDate,
+  onTimeJump: () => sunCtrl.maybeRefreshPhysics(Date.now(), true),
   signal: startup.signal
 });
 timeController.bindUi();
@@ -1141,19 +1152,23 @@ const frameLifecycle = createFrameLifecycle({
     { name: 'solar-refresh', run: () => sunCtrl.maybeRefreshPhysics() },
     { name: 'follow', run: updateFollowTarget },
     { name: 'camera-actions', run: () => viewportCamera.applyPendingActions() },
-    ...[...bodyMeshes.entries()].filter(([, mesh]) => mesh.userData.isQuadtree).map(([bodyId, mesh]) => ({
-      name: `quadtree:${bodyId}`,
-      run: () => {
-        mesh.userData.quadtree.update();
-        const sunWorldPos = new Vector3(0, 0, 0);
-        const planetWorldPos = new Vector3();
-        mesh.getWorldPosition(planetWorldPos);
-        const sunDirWorld = sunWorldPos.sub(planetWorldPos).normalize();
-        const meshInverse = mesh.matrixWorld.clone().invert();
-        const sunLocalDir = sunDirWorld.transformDirection(meshInverse).normalize();
-        mesh.userData.quadtree.setLightDirection(sunLocalDir);
-      }
-    })),
+    ...[...bodyMeshes.entries()].filter(([, mesh]) => mesh.userData.isQuadtree).map(([bodyId, mesh]) => {
+      const sunWorldPos = new Vector3(0, 0, 0);
+      const planetWorldPos = new Vector3();
+      const meshInverse = new Matrix4();
+      return {
+        name: `quadtree:${bodyId}`,
+        run: () => {
+          mesh.userData.quadtree.update();
+          sunWorldPos.set(0, 0, 0);
+          mesh.getWorldPosition(planetWorldPos);
+          const sunDirWorld = sunWorldPos.sub(planetWorldPos).normalize();
+          meshInverse.copy(mesh.matrixWorld).invert();
+          const sunLocalDir = sunDirWorld.transformDirection(meshInverse).normalize();
+          mesh.userData.quadtree.setLightDirection(sunLocalDir);
+        }
+      };
+    }),
     { name: 'background', run: () => { backgroundStars.position.copy(camera.position); } },
     { name: 'controls', run: () => { controls.update(); } },
     { name: 'clip-planes', run: updateCameraClipPlanes },
@@ -1173,6 +1188,7 @@ try {
   syncAsteroidBeltInputs();
   await warmupRenderer(renderer, scene, camera, { signal: startup.signal });
   if (startup.signal.aborted || !recovery.available) return;
+  updateLabels();
   renderer.render(scene, camera);
   frameLifecycle.start();
 } catch (error) {

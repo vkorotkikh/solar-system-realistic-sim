@@ -10,6 +10,11 @@ from typing import Any, Dict, List, Optional
 MAX_MISSION_ASSIST_POOL_SIZE = 8
 MAX_MISSION_RISK_SAMPLES = 5_000
 MAX_MISSION_VEHICLE_STAGES = 12
+MIN_MISSION_PAYLOAD_MASS_KG = 1.0
+MAX_MISSION_RESERVE_FRACTION = 0.4
+MAX_MISSION_HANDLING_LOSS_FRACTION = 0.6
+MIN_MISSION_RISK_SAMPLES = 30
+MIN_MISSION_POWER_REQUIRED_KW_PER_KG_DAY = 1e-9
 
 
 def _as_str(value: Any, default: str) -> str:
@@ -27,6 +32,16 @@ def _as_float(value: Any, default: float) -> float:
     if not math.isfinite(parsed):
         raise ValueError("mission numeric values must be finite")
     return parsed
+
+
+def validate_mission_plant_cost(value: float) -> float:
+    """Validate an already converted plant cost without changing caller coercion."""
+    if not math.isfinite(value) or value < MIN_MISSION_POWER_REQUIRED_KW_PER_KG_DAY:
+        raise ValueError(
+            "power_required_kw_per_kg_day must be finite and >= "
+            f"{MIN_MISSION_POWER_REQUIRED_KW_PER_KG_DAY:g}"
+        )
+    return value
 
 
 def _as_int(value: Any, default: int) -> int:
@@ -202,6 +217,10 @@ def parse_mission_request(payload: Dict[str, Any]) -> MissionRequestSchema:
     if parking_altitude <= 0.0:
         raise ValueError("parking_altitude_km must be positive")
 
+    raw_seed = payload.get("risk_seed")
+    # Integer seeds must not round through float; legacy bool seeds stay plain 0/1.
+    risk_seed = int(raw_seed) if isinstance(raw_seed, int) else _as_int(raw_seed, 17)
+
     return MissionRequestSchema(
         from_id=from_id,
         target_id=target_id,
@@ -211,15 +230,15 @@ def parse_mission_request(payload: Dict[str, Any]) -> MissionRequestSchema:
         max_assists=max(0, min(3, _as_int(payload.get("max_assists"), 1))),
         assist_pool=_as_optional_str_list(payload.get("assist_pool")),
         ephemeris_provider=_as_str(payload.get("ephemeris_provider"), "auto").lower(),
-        payload_mass_kg=max(1.0, _as_float(payload.get("payload_mass_kg"), 6_500.0)),
+        payload_mass_kg=max(MIN_MISSION_PAYLOAD_MASS_KG, _as_float(payload.get("payload_mass_kg"), 6_500.0)),
         parking_altitude_km=parking_altitude,
-        reserve_fraction=max(0.0, min(0.4, _as_float(payload.get("reserve_fraction"), 0.06))),
-        handling_loss_fraction=max(0.0, min(0.6, _as_float(payload.get("handling_loss_fraction"), 0.04))),
+        reserve_fraction=max(0.0, min(MAX_MISSION_RESERVE_FRACTION, _as_float(payload.get("reserve_fraction"), 0.06))),
+        handling_loss_fraction=max(0.0, min(MAX_MISSION_HANDLING_LOSS_FRACTION, _as_float(payload.get("handling_loss_fraction"), 0.04))),
         risk_samples=max(
-            30,
+            MIN_MISSION_RISK_SAMPLES,
             min(MAX_MISSION_RISK_SAMPLES, _as_int(payload.get("risk_samples"), 240)),
         ),
-        risk_seed=_as_int(payload.get("risk_seed"), 17),
+        risk_seed=risk_seed,
         risk_failure_probability_threshold=max(
             0.0,
             min(1.0, _as_float(payload.get("risk_failure_probability_threshold"), 0.45)),
@@ -230,7 +249,9 @@ def parse_mission_request(payload: Dict[str, Any]) -> MissionRequestSchema:
         refining_yield=max(0.0, min(1.0, _as_float(payload.get("refining_yield"), 0.82))),
         storage_loss_rate_per_day=max(0.0, _as_float(payload.get("storage_loss_rate_per_day"), 0.0015)),
         available_power_kw=max(0.0, _as_float(payload.get("available_power_kw"), 320.0)),
-        power_required_kw_per_kg_day=max(1e-9, _as_float(payload.get("power_required_kw_per_kg_day"), 0.24)),
+        power_required_kw_per_kg_day=validate_mission_plant_cost(
+            _as_float(payload.get("power_required_kw_per_kg_day"), 0.24)
+        ),
         prograde=_as_bool(payload.get("prograde"), True),
         vehicle=_parse_vehicle(payload.get("vehicle")),
     )
@@ -240,8 +261,14 @@ __all__ = [
     "MAX_MISSION_ASSIST_POOL_SIZE",
     "MAX_MISSION_RISK_SAMPLES",
     "MAX_MISSION_VEHICLE_STAGES",
+    "MIN_MISSION_PAYLOAD_MASS_KG",
+    "MAX_MISSION_RESERVE_FRACTION",
+    "MAX_MISSION_HANDLING_LOSS_FRACTION",
+    "MIN_MISSION_RISK_SAMPLES",
+    "MIN_MISSION_POWER_REQUIRED_KW_PER_KG_DAY",
     "MissionRequestSchema",
     "StageSchema",
     "VehicleSchema",
     "parse_mission_request",
+    "validate_mission_plant_cost",
 ]

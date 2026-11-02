@@ -65,11 +65,12 @@ from pydantic import (
     StrictStr,
     field_validator,
 )
-from starlette.responses import JSONResponse
+from starlette.responses import JSONResponse, PlainTextResponse
 
 from solar_delivery import render_solar_response
 
 from benchmark import (
+    InvalidReportOutputPathError,
     MAX_REFERENCE_SCENARIOS,
     benchmark_against_references,
     generate_accuracy_report,
@@ -78,6 +79,7 @@ from http_ingress import (
     NetworkRequestLimits,
     NetworkRequestShapeMiddleware,
     NetworkSafeMethodBodyMiddleware,
+    bounded_cors_error_headers,
     scope_route_path,
 )
 from data.bodies import ALL_BODIES
@@ -92,9 +94,17 @@ from data.nearby_systems import (
     query_nearby_systems,
 )
 from mission import MissionPlannerAgent
+from mission.schemas import (
+    MAX_MISSION_HANDLING_LOSS_FRACTION,
+    MAX_MISSION_RESERVE_FRACTION,
+    MIN_MISSION_PAYLOAD_MASS_KG,
+    MIN_MISSION_POWER_REQUIRED_KW_PER_KG_DAY,
+    MIN_MISSION_RISK_SAMPLES,
+)
 from mission.ephemeris_service import (
     EphemerisBudgetExceeded,
     EphemerisCancelled,
+    EphemerisEpochUnsupported,
     EphemerisError,
     EphemerisProtocolError,
     EphemerisProviderUnavailable,
@@ -176,6 +186,8 @@ from trajectory.contracts import (
 from trajectory.lambert import (
     MIN_PORKCHOP_DEPARTURE_STEP_DAYS,
     MIN_PORKCHOP_TOF_STEP_DAYS,
+    estimate_porkchop_unique_states,
+    porkchop_grid_sample_count,
 )
 from trajectory.mga import (
     GLOBAL_BEAM_WIDTH,
@@ -210,6 +222,29 @@ app = FastAPI(
     version="0.1.0",
     lifespan=_app_lifespan,
 )
+
+
+class _RequestOwnerDisconnected(asyncio.CancelledError):
+    """Internal signal: the HTTP peer left while owned work was still running."""
+
+
+class _RequestOwnerDisconnectMiddleware:
+    """End confirmed HTTP disconnects without treating them as server failures."""
+
+    def __init__(self, app) -> None:
+        self.app = app
+
+    async def __call__(self, scope, receive, send) -> None:
+        if scope.get("type") != "http":
+            await self.app(scope, receive, send)
+            return
+        try:
+            await self.app(scope, receive, send)
+        except _RequestOwnerDisconnected:
+            # Owned-work helpers already observed http.disconnect and cancelled
+            # their waiter. There is no peer to receive an error response; real
+            # cancellation and unexpected failures still propagate unchanged.
+            return
 
 
 class _RequestBodyLimitMiddleware:
@@ -660,6 +695,10 @@ def _load_solar_security_config(
 
 SOLAR_SECURITY_CONFIG = _load_solar_security_config()
 SOLAR_CORS_ALLOWED_ORIGINS = list(SOLAR_SECURITY_CONFIG.cors_allowed_origins)
+# All HTTP response paths share this startup policy, independent of the
+# mutable list retained for legacy WebSocket defaults.
+_HTTP_CORS_ALLOWED_ORIGINS = tuple(SOLAR_CORS_ALLOWED_ORIGINS)
+_HTTP_CORS_ALLOWED_ORIGIN_SET = frozenset(_HTTP_CORS_ALLOWED_ORIGINS)
 NETWORK_PUBLIC_HTTP_ROUTES = frozenset(
     {
         ("GET", "/health/live"),
@@ -1353,6 +1392,20 @@ TRAJECTORY_INGRESS_PATHS = {
 }
 
 
+@app.exception_handler(Exception)
+async def _sanitized_unexpected_http_error(request: Request, _exc: Exception):
+    # ServerErrorMiddleware is outside user CORS/ingress middleware. It retains
+    # ownership of re-raising/logging the original error and will not send this
+    # replacement once a response has started.
+    headers = {"Cache-Control": "private, no-store"}
+    headers.update(bounded_cors_error_headers(
+        request.scope,
+        limits=NETWORK_REQUEST_LIMITS,
+        allowed_origins=_HTTP_CORS_ALLOWED_ORIGIN_SET,
+    ))
+    return PlainTextResponse("Internal Server Error", status_code=500, headers=headers)
+
+
 @app.exception_handler(RequestValidationError)
 async def _bounded_request_validation_error(
     request: Request,
@@ -1383,6 +1436,7 @@ async def _bounded_request_validation_error(
     )
 
 
+app.add_middleware(_RequestOwnerDisconnectMiddleware)
 app.add_middleware(
     _RequestBodyLimitMiddleware,
     max_body_bytes=TRAJECTORY_REQUEST_MAX_BODY_BYTES,
@@ -1403,16 +1457,17 @@ app.add_middleware(
 app.add_middleware(_NetworkAuthenticationMiddleware)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=SOLAR_CORS_ALLOWED_ORIGINS,
+    allow_origins=_HTTP_CORS_ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type", "X-API-Key"],
+    expose_headers=["Retry-After"],
 )
 app.add_middleware(
     NetworkRequestShapeMiddleware,
     enabled=lambda: SOLAR_SECURITY_CONFIG.profile == "network",
     limits=NETWORK_REQUEST_LIMITS,
-    cors_allowed_origins=frozenset(SOLAR_CORS_ALLOWED_ORIGINS),
+    cors_allowed_origins=_HTTP_CORS_ALLOWED_ORIGIN_SET,
 )
 
 _solar_physics_rate_locks: OrderedDict[str, deque[float]] = OrderedDict()
@@ -1475,10 +1530,35 @@ def _new_solar_physics_runner() -> SupervisedProcessRunner:
 _solar_physics_runner = _new_solar_physics_runner()
 
 
+_SolarPhysicsReadyKey = tuple[float, str, int, str, bool]
+
+
+@dataclass
+class _SolarPhysicsReadyCache:
+    """One runner generation; all mutations hold the lifecycle lock."""
+
+    runner: SupervisedProcessRunner
+    entries: OrderedDict[_SolarPhysicsReadyKey, bytes]
+    active: bool = True
+    stored_bytes: int = 0
+
+
+_solar_physics_ready_cache: _SolarPhysicsReadyCache | None = None
+
+
+def _retire_solar_physics_ready_cache() -> None:
+    """Caller holds the lifecycle lock; old cold tokens retain no ready bytes."""
+
+    if _solar_physics_ready_cache is not None:
+        _solar_physics_ready_cache.active = False
+        _solar_physics_ready_cache.entries.clear()
+        _solar_physics_ready_cache.stored_bytes = 0
+
+
 def _get_solar_physics_runner():
     """Return a live runner without replacing quarantined child ownership."""
 
-    global _solar_physics_runner
+    global _solar_physics_runner, _solar_physics_ready_cache
     with _solar_physics_runner_lifecycle_lock:
         runner = _solar_physics_runner
         if isinstance(runner, SupervisedProcessRunner):
@@ -1494,14 +1574,92 @@ def _get_solar_physics_runner():
                     )
                 runner = _new_solar_physics_runner()
                 _solar_physics_runner = runner
+            if (_solar_physics_ready_cache is None
+                    or _solar_physics_ready_cache.runner is not runner):
+                _retire_solar_physics_ready_cache()
+                _solar_physics_ready_cache = _SolarPhysicsReadyCache(runner, OrderedDict())
+        else:
+            # Alternative runners retain their existing uncached contract.
+            _retire_solar_physics_ready_cache()
+            _solar_physics_ready_cache = None
         return runner
+
+
+def _solar_physics_ready_healthy(cache: _SolarPhysicsReadyCache) -> bool:
+    """Lifecycle lock precedes the supervisor's lock-only health snapshot."""
+
+    if (not cache.active or cache is not _solar_physics_ready_cache
+            or cache.runner is not _solar_physics_runner):
+        return False
+    snapshot = cache.runner.snapshot()
+    return not (snapshot["closed"] or snapshot["broken"] or snapshot["quarantined_jobs"])
+
+
+def _lookup_solar_physics_ready(runner, key: _SolarPhysicsReadyKey):
+    with _solar_physics_runner_lifecycle_lock:
+        cache = _solar_physics_ready_cache
+        if cache is None or cache.runner is not runner or not _solar_physics_ready_healthy(cache):
+            return None, None
+        encoded = cache.entries.get(key)
+        if encoded is not None:
+            cache.entries.move_to_end(key)
+        return cache, encoded
+
+
+def _publish_solar_physics_ready(
+    cache: _SolarPhysicsReadyCache | None, key: _SolarPhysicsReadyKey, state,
+) -> None:
+    if cache is None or not isinstance(state, dict):
+        return
+    forcing_status = state.get("forcing_status")
+    pfss = state.get("pfss_field_lines")
+    if (state.get("effective_forcing") != "synthetic"
+            or state.get("live_data_enabled") is not False
+            or not isinstance(forcing_status, dict)
+            or forcing_status.get("effective") != "synthetic"
+            or forcing_status.get("runtime_eligible") is not False
+            or not isinstance(pfss, dict) or pfss.get("source") != "synthetic"):
+        return
+    # Only validated, reaped cold results reach here. Prepare a detached immutable
+    # representation without holding lifecycle/state locks; inability to cache
+    # must not turn a successful cold response into a new HTTP rejection.
+    try:
+        encoded = json.dumps(state, allow_nan=False, separators=(",", ":")).encode("utf-8")
+    except (TypeError, ValueError, OverflowError, RecursionError):
+        return
+    limit = SOLAR_PHYSICS_PROCESS_MAX_RESULT_BYTES
+    if len(encoded) > limit:
+        return
+    with _solar_physics_runner_lifecycle_lock:
+        if not _solar_physics_ready_healthy(cache):
+            return
+        previous = cache.entries.pop(key, None)
+        if previous is not None:
+            cache.stored_bytes -= len(previous)
+        cache.entries[key] = encoded
+        cache.stored_bytes += len(encoded)
+        # Three individually bounded entries also bound total serialized storage,
+        # not process RSS. Keep explicit accounting on replacement and eviction.
+        while len(cache.entries) > 3 or cache.stored_bytes > 3 * limit:
+            _, evicted = cache.entries.popitem(last=False)
+            cache.stored_bytes -= len(evicted)
 
 
 def _shutdown_solar_physics_runner() -> None:
     """Terminate and reap all solar children during FastAPI lifespan shutdown."""
 
+    global _solar_physics_ready_cache
     with _solar_physics_runner_lifecycle_lock:
         runner = _solar_physics_runner
+        _retire_solar_physics_ready_cache()
+        if isinstance(runner, SupervisedProcessRunner):
+            if (_solar_physics_ready_cache is None
+                    or _solar_physics_ready_cache.runner is not runner):
+                _solar_physics_ready_cache = _SolarPhysicsReadyCache(runner, OrderedDict(), active=False)
+            # Retain this inactive generation even while shutdown is waiting:
+            # lookup/getter must not rearm the same still-open runner.
+        else:
+            _solar_physics_ready_cache = None
     shutdown = getattr(runner, "shutdown", None)
     if callable(shutdown):
         shutdown()
@@ -2252,10 +2410,6 @@ async def _run_owned_thread(
         raise
 
 
-class _RequestOwnerDisconnected(asyncio.CancelledError):
-    """Internal signal: the HTTP peer left while owned work was still running."""
-
-
 async def _wait_for_request_disconnect(request: Request, *, poll_seconds: float = 0.05) -> None:
     while True:
         if await request.is_disconnected():
@@ -2415,7 +2569,7 @@ def _trajectory_http_exception(
 
 def _ephemeris_http_exception(exc: EphemerisError) -> HTTPException:
     status_code = 503
-    if isinstance(exc, EphemerisTargetUnsupported):
+    if isinstance(exc, (EphemerisTargetUnsupported, EphemerisEpochUnsupported)):
         status_code = 422
     elif isinstance(exc, EphemerisProtocolError):
         status_code = 502
@@ -2771,8 +2925,8 @@ def _enforce_porkchop_request_size(payload: TrajectoryPorkchopRequest) -> None:
             },
         )
 
-    departure_samples = int(departure_window / departure_step) + 1
-    tof_samples = int(tof_window / tof_step) + 1
+    departure_samples = porkchop_grid_sample_count(departure_window, departure_step)
+    tof_samples = porkchop_grid_sample_count(tof_window, tof_step)
     estimated_points = departure_samples * tof_samples
     if estimated_points > TRAJECTORY_PORKCHOP_MAX_GRID_POINTS:
         raise _trajectory_http_exception(
@@ -2788,12 +2942,16 @@ def _enforce_porkchop_request_size(payload: TrajectoryPorkchopRequest) -> None:
             },
         )
 
-    # Each cell can introduce one destination-arrival state, while every
-    # departure row introduces one source state. Reject a grid whose worst-case
-    # unique state count cannot fit the request-owned state-computation budget;
-    # otherwise an admitted scan can deterministically fail halfway through and
-    # discard already certified points.
-    estimated_unique_states = departure_samples + estimated_points
+    # Match the core cache-key domain, including shared arrival epochs, without
+    # constructing a provider or loosening the request-owned computation budget.
+    estimated_unique_states = estimate_porkchop_unique_states(
+        departure_start_jd=departure_start,
+        departure_step_days=departure_step,
+        departure_count=departure_samples,
+        tof_min_days=tof_min,
+        tof_step_days=tof_step,
+        tof_count=tof_samples,
+    )
     unique_state_limit = min(
         HARD_MAX_UNIQUE_EPHEMERIS_STATES,
         estimated_points * 2,
@@ -2856,7 +3014,7 @@ def _enforce_mission_plan_request_size(payload: MissionPlanRequest) -> None:
             },
         )
 
-    energy_kwh_per_kg = max(1e-9, float(payload.power_required_kw_per_kg_day))
+    energy_kwh_per_kg = max(MIN_MISSION_POWER_REQUIRED_KW_PER_KG_DAY, float(payload.power_required_kw_per_kg_day))
     effective_extraction_rate_kg_day = min(
         float(payload.extraction_rate_kg_day),
         float(payload.available_power_kw) / energy_kwh_per_kg,
@@ -3090,11 +3248,11 @@ class MissionPlanRequest(StrictRequestModel):
     max_assists: int = Field(default=1, ge=0, le=3)
     assist_pool: list[StrictStr] | None = None
     ephemeris_provider: StrictStr = "auto"
-    payload_mass_kg: FiniteFloat = Field(default=6_500.0, gt=0.0)
+    payload_mass_kg: FiniteFloat = Field(default=6_500.0, ge=MIN_MISSION_PAYLOAD_MASS_KG)
     parking_altitude_km: FiniteFloat = Field(default=200.0, gt=0.0)
-    reserve_fraction: FiniteFloat = Field(default=0.06, ge=0.0, le=1.0)
-    handling_loss_fraction: FiniteFloat = Field(default=0.04, ge=0.0, le=1.0)
-    risk_samples: int = Field(default=240, ge=1)
+    reserve_fraction: FiniteFloat = Field(default=0.06, ge=0.0, le=MAX_MISSION_RESERVE_FRACTION)
+    handling_loss_fraction: FiniteFloat = Field(default=0.04, ge=0.0, le=MAX_MISSION_HANDLING_LOSS_FRACTION)
+    risk_samples: int = Field(default=240, ge=MIN_MISSION_RISK_SAMPLES)
     risk_seed: int = 17
     risk_failure_probability_threshold: FiniteFloat = Field(default=0.45, ge=0.0, le=1.0)
     mining_days: FiniteFloat = Field(default=180.0, ge=0.0)
@@ -3103,7 +3261,7 @@ class MissionPlanRequest(StrictRequestModel):
     refining_yield: FiniteFloat = Field(default=0.82, ge=0.0, le=1.0)
     storage_loss_rate_per_day: FiniteFloat = Field(default=0.0015, ge=0.0)
     available_power_kw: FiniteFloat = Field(default=320.0, ge=0.0)
-    power_required_kw_per_kg_day: FiniteFloat = Field(default=0.24, gt=0.0)
+    power_required_kw_per_kg_day: FiniteFloat = Field(default=0.24, ge=MIN_MISSION_POWER_REQUIRED_KW_PER_KG_DAY)
     vehicle: MissionVehicleRequest | None = None
     prograde: StrictBool = True
 
@@ -3155,6 +3313,15 @@ class AccuracyReportRequest(StrictRequestModel):
 
 # ── Health / Info ─────────────────────────────────────────────────────────────
 
+def _public_artifact_metadata(metadata: Dict[str, Any], path_field: str) -> Dict[str, Any]:
+    """Copy known native artifact metadata without publishing its local directory."""
+    public = dict(metadata)
+    path = public.get(path_field)
+    if isinstance(path, (str, Path)):
+        public[path_field] = Path(path).name
+    return public
+
+
 @app.api_route("/health/live", methods=["GET", "HEAD"], include_in_schema=False)
 def health_liveness():
     """Constant-cost process liveness without engine construction or I/O."""
@@ -3164,7 +3331,12 @@ def health_liveness():
 
 @app.get("/health")
 def health():
-    rebound_status = _rebound_readiness()
+    rebound_status = dict(_rebound_readiness())
+    initial_conditions = rebound_status.get("initial_conditions")
+    if isinstance(initial_conditions, dict):
+        rebound_status["initial_conditions"] = _public_artifact_metadata(initial_conditions, "path")
+    if "error" in rebound_status and rebound_status["error"] != "REBOUND is not installed":
+        rebound_status["error"] = "REBOUND readiness check failed."
     tudatpy_ready = _tudatpy_available()
     return {
         "status": "ok",
@@ -3320,6 +3492,17 @@ async def solar_realtime_aia_tile(
     _reject_network_refresh_get(force_refresh)
     epoch_jd_tdb = _resolve_aia_time_query(jd_tdb, jd, jd_tdb1, jd_tdb2)
     _require_optional_solar_api_key(request)
+    try:
+        SolarRealtimeDataProvider._normalize_aia_image_id(image_id)
+    except SolarRealtimeFetchError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "invalid_image_id",
+                "message": "Invalid AIA image ID.",
+                "retryable": False,
+            },
+        ) from exc
     _enforce_solar_aia_tile_rate_limit(request)
 
     channel_key = channel.strip().lower()
@@ -3530,6 +3713,19 @@ async def solar_physics_state(
     geometry_version: Annotated[str | None, Query(pattern=r"^[0-9a-f]{64}$")] = None,
 ):
     _reject_network_refresh_get(force_data_refresh)
+    allowed_query_parameters = {
+        "jd_tdb", "jd", "fidelity", "max_features", "forcing", "live_data",
+        "force_data_refresh", "delivery", "geometry_version",
+    }
+    if any(name not in allowed_query_parameters for name in request.query_params):
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "unknown_query_parameters",
+                "message": "Unknown query parameters for /solar/physics.",
+                "retryable": False,
+            },
+        )
     epoch_jd = _resolve_jd_tdb_query(jd_tdb, jd, default_to_now=True)
     assert epoch_jd is not None
     if not (SOLAR_PHYSICS_JD_MIN <= epoch_jd <= SOLAR_PHYSICS_JD_MAX):
@@ -3543,6 +3739,10 @@ async def solar_physics_state(
                     "JDTDB (the corona model validity window)."
                 ),
                 "retryable": False,
+                "valid_jd_range": {
+                    "min_jd_tdb": SOLAR_PHYSICS_JD_MIN,
+                    "max_jd_tdb": SOLAR_PHYSICS_JD_MAX,
+                },
             },
         )
     _require_optional_solar_api_key(request)
@@ -3587,18 +3787,30 @@ async def solar_physics_state(
         )
 
     try:
-        state = await _run_request_owned_process(
-            request,
-            _get_solar_physics_runner(),
-            {
-                "epoch_jd_tdb": epoch_jd,
-                "fidelity": fidelity_key,
-                "max_features": safe_max_features,
-                "forcing": forcing_key,
-                "live_data": bool(live_data),
-            },
-            timeout_seconds=SOLAR_PHYSICS_COMPUTE_TIMEOUT_SECONDS,
-        )
+        runner = _get_solar_physics_runner()
+        ready_key = (epoch_jd, fidelity_key, safe_max_features, forcing_key, bool(live_data))
+        ready_owner, encoded = _lookup_solar_physics_ready(runner, ready_key)
+        if encoded is not None:
+            # Decode outside locks so neither caller mutations nor producer aliases
+            # can alter a later delivery. Only wall-time aliases are fresh on hits.
+            state = json.loads(encoded)
+            state["wall_epoch_jd_tdb"] = state["wall_epoch_jd"] = current_jd_tdb()
+        else:
+            state = await _run_request_owned_process(
+                request,
+                runner,
+                {
+                    "epoch_jd_tdb": epoch_jd,
+                    "fidelity": fidelity_key,
+                    "max_features": safe_max_features,
+                    "forcing": forcing_key,
+                    "live_data": bool(live_data),
+                },
+                timeout_seconds=SOLAR_PHYSICS_COMPUTE_TIMEOUT_SECONDS,
+            )
+            # Cache the full validated state; delivery and geometry reuse are
+            # request-specific and share the response path below with cache hits.
+            _publish_solar_physics_ready(ready_owner, ready_key, state)
     except ProcessSaturated as exc:
         raise HTTPException(
             status_code=503,
@@ -3617,6 +3829,7 @@ async def solar_physics_state(
                 "message": "Solar physics generation exceeded its hard deadline.",
                 "retryable": True,
             },
+            headers={"Retry-After": "2"},
         ) from exc
     except ProcessCrashed as exc:
         raise HTTPException(
@@ -3691,10 +3904,10 @@ def nearby_systems(limit: int = 354, max_distance_ly: float = 20.0):
         "total_available": len(all_rows),
         "limit": safe_limit,
         "max_distance_ly": safe_max_distance_ly,
-        "source": {
+        "source": _public_artifact_metadata({
             "catalog_path": str(CATALOG_PATH),
             "catalog_name": CATALOG_NAME,
-        },
+        }, "catalog_path"),
         "systems": rows,
     }
 
@@ -3708,10 +3921,10 @@ def nearby_system_detail(system_ref: str):
     aliases = nearby_system_aliases(system)
     return {
         "schema": NEARBY_SYSTEMS_SCHEMA,
-        "source": {
+        "source": _public_artifact_metadata({
             "catalog_path": str(CATALOG_PATH),
             "catalog_name": CATALOG_NAME,
-        },
+        }, "catalog_path"),
         "match": {
             "query": system_ref,
             "match_type": "sys_id" if system_ref.strip().isdigit() else "alias",
@@ -4394,7 +4607,7 @@ async def benchmark_accuracy(request: Request, ephemeris_provider: str = "auto")
     )
 
     try:
-        return await _run_request_owned_thread(
+        result = await _run_request_owned_thread(
             request,
             benchmark_against_references,
             ALL_BODIES,
@@ -4405,6 +4618,7 @@ async def benchmark_accuracy(request: Request, ephemeris_provider: str = "auto")
             timeout_seconds=BENCHMARK_COMPUTE_TIMEOUT_SECONDS,
             owner_context=planning_context,
         )
+        return _public_artifact_metadata(result, "referenceFile")
     except PlanningDeadlineExceeded as exc:
         raise _trajectory_http_exception(504, exc.code, str(exc), context=exc.context) from exc
     except PlanningBudgetExceeded as exc:
@@ -4465,7 +4679,14 @@ async def benchmark_accuracy_report(request: Request, payload: AccuracyReportReq
             owner_context=planning_context,
         )
         # Public paths are logical report names, not server filesystem layout.
-        return {**result, "reportPath": str(Path(BENCHMARK_REPORTS_DIR.name) / output_path.relative_to(BENCHMARK_REPORTS_DIR))}
+        public_result = {**result, "reportPath": str(Path(BENCHMARK_REPORTS_DIR.name) / output_path.relative_to(BENCHMARK_REPORTS_DIR))}
+        if isinstance(result.get("summary"), dict):
+            public_result["summary"] = _public_artifact_metadata(result["summary"], "referenceFile")
+        return public_result
+    except InvalidReportOutputPathError as exc:
+        raise _trajectory_http_exception(
+            400, "invalid_report_path", "The report output path is invalid.",
+        ) from exc
     except FileExistsError as exc:
         raise _trajectory_http_exception(
             409, "benchmark_report_exists",
@@ -5431,12 +5652,10 @@ async def simulation_websocket(websocket: WebSocket):
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(
-        "server:app",
+    from server_launcher import reexec_uvicorn
+
+    reexec_uvicorn(
         host=SOLAR_SECURITY_CONFIG.default_bind_host,
-        port=8042,
-        proxy_headers=False,
         reload=SOLAR_SECURITY_CONFIG.profile == "local",
         ws_max_size=WS_SIM_COMMAND_MAX_BYTES,
     )

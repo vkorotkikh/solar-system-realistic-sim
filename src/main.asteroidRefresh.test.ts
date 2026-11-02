@@ -6,11 +6,13 @@ import { describe, expect, it } from 'vitest';
 import { PlanetQuadtree } from './frontend/features/planetary/quadtreeLOD';
 import { createSolarSystemCatalog } from './sim/catalog';
 import { createRuntimeLifetime } from './frontend/app/runtimeLifetime';
+import { createBodyIdResolver } from './frontend/app/stateStore';
 
 // The replaced startup renderer no longer exists. Startup belt construction and
 // deferred scale are covered by startupBelt.test.ts; this executes main's owner.
 describe('main quadtree acquired-resource ownership', () => {
-  it.each([false, true])('retires the real quadtree after startup (later label failure=%s)', failLabel => {
+  it.each(['earth', 'moon-earth-moon'].flatMap(id => [false, true].map(failLabel => ({ id, failLabel }))))(
+    'retires $id quadtree after startup (later label failure=$failLabel)', ({ id, failLabel }) => {
     const source = ts.createSourceFile('main.ts', readFileSync(new URL('./main.ts', import.meta.url), 'utf8'), ts.ScriptTarget.ESNext, true);
     let declaration: ts.FunctionDeclaration | undefined;
     const visit = (node: ts.Node) => {
@@ -22,10 +24,13 @@ describe('main quadtree acquired-resource ownership', () => {
     const owner = createRuntimeLifetime();
     const trees: PlanetQuadtree[] = [];
     class TrackedQuadtree extends PlanetQuadtree {
-      constructor(...args: ConstructorParameters<typeof PlanetQuadtree>) { super(...args); trees.push(this); }
+      constructor(...args: ConstructorParameters<typeof PlanetQuadtree>) { super(...args); trees.push(this); visualIds.push(args[3] ?? args[0]); }
     }
-    const body = createSolarSystemCatalog().bodies.find(body => body.id === 'earth')!;
+    const catalog = createSolarSystemCatalog();
+    const body = catalog.bodies.find(body => body.id === id)!;
+    const visualIds: string[] = [];
     const bindings = {
+      isEarthMoonBody: createBodyIdResolver(catalog).isEarthMoonBody,
       Group, Vector3, BODY_LOCAL_SPIN_AXIS: new Vector3(0, 1, 0),
       PlanetQuadtree: TrackedQuadtree, camera: new PerspectiveCamera(),
       bodyBaseRadiusAu: () => body.displayRadiusAu,
@@ -44,6 +49,8 @@ describe('main quadtree acquired-resource ownership', () => {
       if (failLabel) expect(() => create(body)).toThrow('label allocation failed');
       else create(body);
       expect(trees).toHaveLength(1);
+      expect(trees[0].planetId).toBe(id);
+      expect(visualIds).toEqual([id === 'moon-earth-moon' ? 'moon' : id]);
       const tree = trees[0]; let materialDisposals = 0;
       tree.material.addEventListener('dispose', () => { materialDisposals++; });
       expect(tree.faces).toHaveLength(6);

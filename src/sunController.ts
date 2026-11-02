@@ -209,6 +209,7 @@ export function createSunController({
   let solarPhysicsBlendStartMs = 0;
   let solarPhysicsBlendDurationMs = 1_050;
   let solarPhysicsRefreshInFlight = false;
+  let solarPhysicsRefreshGeneration = 0;
   let solarPhysicsNextRefreshMs = 0;
   let solarDeliveryDisposed = false;
 
@@ -239,6 +240,7 @@ export function createSunController({
     const status = describeSolarDataStatus({
       lastSuccessMs: clientStatus.lastSuccessMs,
       lastFailure: clientStatus.lastFailure,
+      epochRangeBlocked: clientStatus.epochRangeBlocked,
       timeoutMs: clientStatus.timeoutMs,
       backendBaseUrl: backendBaseUrl(),
       pageOrigin: globalThis.location?.origin ?? '',
@@ -487,6 +489,7 @@ export function createSunController({
       },
       undefined,
       () => {
+        if (solarDeliveryDisposed) return;
         solarObservationTextureLoadInFlight = false;
         solarObservationFailedChannel = nextChannel;
         publishSolarDataStatus();
@@ -749,28 +752,36 @@ export function createSunController({
 
   function maybeRefreshPhysics(nowMs = Date.now(), force = false) {
     if (solarDeliveryDisposed) return;
+    const entryGeneration = solarPhysicsRefreshGeneration;
     // Realtime observation delivery has its own cadence, deadline, one-flight,
     // and LKG. Run it before the physics gates so imagery does not depend on a
     // successful or even idle `/solar/physics` request.
     maybeRefreshRealtime(nowMs, force);
     maybeRefreshObservationTexture(nowMs, force);
 
-    if (!solarPhysicsClient || solarPhysicsRefreshInFlight) return;
-    if (!force && nowMs < solarPhysicsNextRefreshMs) return;
+    // Observation revocation can synchronously notify a caller that forces a
+    // replacement or disposes delivery before this outer call resumes.
+    if (solarDeliveryDisposed || entryGeneration !== solarPhysicsRefreshGeneration) return;
+    if (!solarPhysicsClient || (solarPhysicsRefreshInFlight && !force)) return;
+    const requestJd = simState.julianDate;
+    const rangeReadiness = solarPhysicsClient.epochRangeReadiness(requestJd);
+    if (solarDeliveryDisposed || entryGeneration !== solarPhysicsRefreshGeneration) return;
+    if (!force && rangeReadiness?.blocked && !rangeReadiness.bypassCadence) return;
+    if (!force && !rangeReadiness?.bypassCadence && nowMs < solarPhysicsNextRefreshMs) return;
 
     solarPhysicsRefreshInFlight = true;
-    const requestJd = simState.julianDate;
+    const generation = ++solarPhysicsRefreshGeneration;
+    const ownsRefresh = () => !solarDeliveryDisposed && generation === solarPhysicsRefreshGeneration;
 
-    void solarPhysicsClient.maybeRefresh(requestJd, force)
+    void solarPhysicsClient.maybeRefresh(requestJd, force, rangeReadiness)
       .then((updated) => {
-        if (solarDeliveryDisposed) return;
+        if (!ownsRefresh()) return;
         const status = solarPhysicsClient.status();
         if (updated) {
           solarPhysicsState = solarPhysicsClient.latestState();
           const previousCmeFrame = solarLayerFrames.cme;
           solarLayerFrames = validatedSolarLayerFrames(solarPhysicsState);
           if (previousCmeFrame && !solarLayerFrames.cme) solarFlareManager?.dispose();
-          maybeRefreshObservationTexture(nowMs, force);
           const normalized = normalizeSolarFeatureSetFromState(solarPhysicsState, 480);
           if (!normalized) {
             solarPhysicsFeatureSetCurrent = null;
@@ -809,8 +820,12 @@ export function createSunController({
         solarPhysicsNextRefreshMs = Number.isFinite(clientNextRefreshMs)
           ? clientNextRefreshMs
           : Date.now() + SOLAR_PHYSICS_POLL_INTERVAL_MS;
+        // Finish applying the owned snapshot before a synchronous observation
+        // notification can retire it. No owner state may change afterward.
+        if (updated) maybeRefreshObservationTexture(nowMs, force);
       })
       .finally(() => {
+        if (!ownsRefresh()) return;
         solarPhysicsRefreshInFlight = false;
         publishSolarDataStatus();
       });
@@ -912,6 +927,8 @@ export function createSunController({
   function disposeSolarDelivery() {
     if (solarDeliveryDisposed) return;
     solarDeliveryDisposed = true;
+    solarPhysicsRefreshGeneration += 1;
+    solarPhysicsRefreshInFlight = false;
     solarPhysicsClient.dispose();
     solarRealtimeClient.dispose();
     revokeSolarObservationTexture();

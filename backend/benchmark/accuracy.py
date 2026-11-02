@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import errno
 import hashlib
 import json
 import math
@@ -27,6 +28,13 @@ MAX_REFERENCE_SCENARIOS = 64
 MAX_REFERENCE_ARTIFACT_BYTES = 2 * 1024 * 1024
 MAX_REFERENCE_ARTIFACT_TOTAL_BYTES = 16 * 1024 * 1024
 BENCHMARK_DEFAULT_TIMEOUT_SECONDS = 8.0
+
+
+class InvalidReportOutputPathError(ValueError):
+    """The native filesystem rejected an operation on the report output path."""
+
+    def __init__(self) -> None:
+        super().__init__("The report output path is invalid.")
 
 
 def _sha256_limited(path: Path, *, max_bytes: int) -> tuple[str, int]:
@@ -761,8 +769,13 @@ def generate_accuracy_report(
     # trust does not authorize silently replacing those files.
     # Check before benchmarking so a rejected call costs no work. Include
     # dangling symlinks, which Path.exists() alone deliberately ignores.
-    if not allow_overwrite and (path.exists() or path.is_symlink()):
-        raise FileExistsError(_OVERWRITE_REFUSED.format(path=path))
+    try:
+        if not allow_overwrite and (path.exists() or path.is_symlink()):
+            raise FileExistsError(_OVERWRITE_REFUSED.format(path=path))
+    except OSError as exc:
+        if exc.errno in (errno.ENAMETOOLONG, errno.EISDIR):
+            raise InvalidReportOutputPathError() from exc
+        raise
 
     context = planning_context or _new_benchmark_context()
     if type(context) is not PlanningContext:
@@ -778,17 +791,24 @@ def generate_accuracy_report(
     markdown = render_accuracy_report_markdown(summary)
 
     context.checkpoint()
-    path.parent.mkdir(parents=True, exist_ok=True)
-    if allow_overwrite:
-        path.write_text(markdown, encoding="utf-8")
-    else:
-        # Exclusive create closes the window between the check above and this
-        # write: O_EXCL refuses any pre-existing path, dangling symlinks included.
-        try:
-            with path.open("x", encoding="utf-8") as handle:
-                handle.write(markdown)
-        except FileExistsError as exc:
-            raise FileExistsError(_OVERWRITE_REFUSED.format(path=path)) from exc
+    # Classify only output operations: reference reads and rendering above can
+    # raise the same errno without making the caller's output path invalid.
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        if allow_overwrite:
+            path.write_text(markdown, encoding="utf-8")
+        else:
+            # Exclusive create closes the window between the check above and this
+            # write: O_EXCL refuses any pre-existing path, dangling symlinks included.
+            try:
+                with path.open("x", encoding="utf-8") as handle:
+                    handle.write(markdown)
+            except FileExistsError as exc:
+                raise FileExistsError(_OVERWRITE_REFUSED.format(path=path)) from exc
+    except OSError as exc:
+        if exc.errno in (errno.ENAMETOOLONG, errno.EISDIR):
+            raise InvalidReportOutputPathError() from exc
+        raise
 
     return {
         "summary": summary,
@@ -798,6 +818,7 @@ def generate_accuracy_report(
 
 __all__ = [
     "BENCHMARK_DEFAULT_TIMEOUT_SECONDS",
+    "InvalidReportOutputPathError",
     "MAX_REFERENCE_ARTIFACT_BYTES",
     "MAX_REFERENCE_ARTIFACT_TOTAL_BYTES",
     "MAX_REFERENCE_FILE_BYTES",

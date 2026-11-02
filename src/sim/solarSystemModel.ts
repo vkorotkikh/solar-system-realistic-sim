@@ -1,5 +1,6 @@
 import { Vector3 } from 'three';
 import { propagateKeplerOrbit, type KeplerOrbit } from './orbitMath';
+import { validateCatalogParentGraph } from './catalogParentGraph';
 
 export interface CatalogBody {
   id: string;
@@ -53,6 +54,7 @@ export class SolarSystemModel {
   private currentJd: number | null;
 
   constructor(catalog: SolarSystemCatalog) {
+    validateCatalogParentGraph(catalog.bodies);
     this.bodies = catalog.bodies;
     this.bodyById = new Map(this.bodies.map((body) => [body.id, body]));
     this.childrenById = new Map();
@@ -208,50 +210,79 @@ export class SolarSystemModel {
     julianDate: number,
     memo: Map<string, SampledBodyState> = new Map()
   ): SampledBodyState | null {
-    const memoKey = `${id}:${julianDate}`;
-    if (memo.has(memoKey)) {
-      return memo.get(memoKey) ?? null;
+    // Validate the entire current ancestry before any cached shortcut.
+    const ancestry: { lookupId: string; body: CatalogBody }[] = [];
+    const seen = new Set<string>();
+    let lookupId = id;
+    while (true) {
+      if (seen.has(lookupId)) return null;
+      seen.add(lookupId);
+      const body = this.bodyById.get(lookupId);
+      if (!body) return null;
+      ancestry.push({ lookupId, body });
+      if (!body.parentId) break;
+      lookupId = body.parentId;
     }
 
-    const body = this.bodyById.get(id);
-    if (!body) {
-      return null;
+    const requestedKey = `${id}:${julianDate}`;
+    if (memo.has(requestedKey)) {
+      return memo.get(requestedKey) ?? null;
     }
 
-    const sampled: SampledBodyState = {
-      position: new Vector3(),
-      velocity: new Vector3(),
-      relativePosition: new Vector3(),
-      relativeVelocity: new Vector3()
-    };
-
-    if (!body.orbit) {
-      sampled.position.set(0, 0, 0);
-      sampled.velocity.set(0, 0, 0);
-      sampled.relativePosition.set(0, 0, 0);
-      sampled.relativeVelocity.set(0, 0, 0);
-    } else {
-      const elapsedDays = julianDate - body.orbit.epochJd;
-      if (!propagateKeplerOrbit(
-        body.orbit,
-        elapsedDays,
-        sampled.relativePosition,
-        sampled.relativeVelocity
-      )) {
-        return null;
+    let neededCount = ancestry.length;
+    let parent: SampledBodyState | null = null;
+    for (let i = 0; i < ancestry.length; i += 1) {
+      const entry = ancestry[i];
+      const memoKey = `${entry.lookupId}:${julianDate}`;
+      if (memo.has(memoKey)) {
+        parent = memo.get(memoKey) ?? null;
+        if (!parent) return null;
+        neededCount = i;
+        break;
       }
-      sampled.position.copy(sampled.relativePosition);
-      sampled.velocity.copy(sampled.relativeVelocity);
+    }
+
+    const staged: [string, SampledBodyState][] = [];
+    for (let i = neededCount - 1; i >= 0; i -= 1) {
+      const { lookupId: currentId, body } = ancestry[i];
+      const sampled: SampledBodyState = {
+        position: new Vector3(),
+        velocity: new Vector3(),
+        relativePosition: new Vector3(),
+        relativeVelocity: new Vector3()
+      };
+
+      if (!body.orbit) {
+        sampled.position.set(0, 0, 0);
+        sampled.velocity.set(0, 0, 0);
+        sampled.relativePosition.set(0, 0, 0);
+        sampled.relativeVelocity.set(0, 0, 0);
+      } else {
+        const elapsedDays = julianDate - body.orbit.epochJd;
+        if (!propagateKeplerOrbit(
+          body.orbit,
+          elapsedDays,
+          sampled.relativePosition,
+          sampled.relativeVelocity
+        )) {
+          return null;
+        }
+        sampled.position.copy(sampled.relativePosition);
+        sampled.velocity.copy(sampled.relativeVelocity);
+      }
 
       if (body.parentId) {
-        const parent = this.sampleBodyStateAt(body.parentId, julianDate, memo);
         if (!parent) return null;
         sampled.position.add(parent.position);
         sampled.velocity.add(parent.velocity);
       }
+
+      staged.push([`${currentId}:${julianDate}`, sampled]);
+      parent = sampled;
     }
 
-    memo.set(memoKey, sampled);
-    return sampled;
+    // Do not expose partially computed ancestors if a required state is unavailable.
+    for (const [memoKey, sampled] of staged) memo.set(memoKey, sampled);
+    return parent;
   }
 }

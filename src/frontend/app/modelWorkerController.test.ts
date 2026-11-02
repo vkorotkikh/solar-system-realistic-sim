@@ -96,6 +96,30 @@ describe('orbital worker ownership and silence recovery', () => {
     controller.dispose();
   });
 
+  it.each([1, 2])('shares the restart bound after %i initialization timeouts and nonfinite replies', initializationTimeouts => {
+    const { controller, workers } = setup();
+    for (let index = 0; index < 3; index++) {
+      const worker = workers[index];
+      if (index < initializationTimeouts) {
+        vi.advanceTimersByTime(100);
+      } else {
+        worker.ready();
+        controller.tick(0.016);
+        worker.emit({ ...worker.state(), bodies: new Float64Array(6).fill(NaN) });
+      }
+      expect(controller.status).toBe('fallback');
+      expect(controller.latestState).toBe(null);
+      if (index < 2) vi.advanceTimersByTime((index + 1) * 10);
+    }
+    vi.runAllTimers();
+    expect(workers).toHaveLength(3);
+    expect(workers.every(worker => worker.terminate.mock.calls.length === 1)).toBe(true);
+    expect(workers.flatMap(worker => worker.messages).filter(message => message.type === 'tick')).toHaveLength(3 - initializationTimeouts);
+    expect(controller.ready).toBe(false);
+    expect(vi.getTimerCount()).toBe(0);
+    controller.dispose();
+  });
+
   it('handles constructor, post and message decoding errors without leaked timers', () => {
     vi.useFakeTimers();
     const controller = createModelWorkerController({ catalog: { bodies: [] }, getJulianDate: () => 2451545,

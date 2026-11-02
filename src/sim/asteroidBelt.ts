@@ -1,4 +1,5 @@
-import { J2000_JD } from '../constants';
+import { J2000_JD, MU_SUN_AU3_DAY2 } from '../constants';
+import { NAMED_ASTEROID_ORBITS } from '../data/namedAsteroidOrbits';
 import { solveKeplerFast } from './orbitMath';
 import type { KeplerOrbit } from './orbitMath';
 
@@ -31,20 +32,23 @@ export interface AsteroidBeltOptions {
 }
 
 // ── Named bodies ─────────────────────────────────────────────────────────────
-// The ~25 largest / most scientifically notable main-belt asteroids.
-// Orbital elements: J2000 ecliptic heliocentric, JPL HORIZONS.
+// Ten explicitly identified main-belt bodies, with source-backed elements shared
+// by the alternate frontend body definitions. This selection replaces anonymous
+// legacy rows that mixed incompatible elements; it does not infer their identities.
+// Diameters use the canonical backend body radii. Taxonomy is a coarse visual
+// family; albedo, color and irregularity remain approximate display metadata.
 
 export const NAMED_ASTEROIDS: readonly AsteroidDef[] = [
-  { orbit: { epochJd: J2000_JD, aAu: 2.7692, e: 0.0760, iDeg: 10.594, ascendingNodeDeg: 80.306, argPeriapsisDeg: 73.598, meanAnomalyDeg: 77.372, periodDays: 1681.6 }, taxonomy: AsteroidTaxonomy.C, diameterKm: 939.4, albedo: 0.09, color: 0x8a8a82, irregularity: 0.02 },
-  { orbit: { epochJd: J2000_JD, aAu: 2.3615, e: 0.0887, iDeg: 7.142, ascendingNodeDeg: 103.851, argPeriapsisDeg: 149.858, meanAnomalyDeg: 212.822, periodDays: 1325.8 }, taxonomy: AsteroidTaxonomy.S, diameterKm: 525.4, albedo: 0.42, color: 0xa09980, irregularity: 0.04 },
-  { orbit: { epochJd: J2000_JD, aAu: 2.7717, e: 0.2313, iDeg: 34.841, ascendingNodeDeg: 173.089, argPeriapsisDeg: 310.202, meanAnomalyDeg: 78.229, periodDays: 1686.0 }, taxonomy: AsteroidTaxonomy.C, diameterKm: 512.0, albedo: 0.10, color: 0x7a7a72, irregularity: 0.08 },
-  { orbit: { epochJd: J2000_JD, aAu: 3.1396, e: 0.1170, iDeg: 3.832, ascendingNodeDeg: 283.414, argPeriapsisDeg: 312.219, meanAnomalyDeg: 29.500, periodDays: 2032.0 }, taxonomy: AsteroidTaxonomy.C, diameterKm: 431.0, albedo: 0.07, color: 0x6e6e66, irregularity: 0.03 },
-  { orbit: { epochJd: J2000_JD, aAu: 2.9213, e: 0.1899, iDeg: 7.141, ascendingNodeDeg: 250.563, argPeriapsisDeg: 239.800, meanAnomalyDeg: 190.400, periodDays: 1823.7 }, taxonomy: AsteroidTaxonomy.S, diameterKm: 326.0, albedo: 0.28, color: 0xb09878, irregularity: 0.10 },
-  { orbit: { epochJd: J2000_JD, aAu: 3.0614, e: 0.1433, iDeg: 14.739, ascendingNodeDeg: 170.119, argPeriapsisDeg: 248.656, meanAnomalyDeg: 53.000, periodDays: 1956.1 }, taxonomy: AsteroidTaxonomy.C, diameterKm: 302.0, albedo: 0.07, color: 0x666660, irregularity: 0.06 },
-  { orbit: { epochJd: J2000_JD, aAu: 2.3867, e: 0.2294, iDeg: 12.978, ascendingNodeDeg: 169.854, argPeriapsisDeg: 157.424, meanAnomalyDeg: 269.700, periodDays: 1346.6 }, taxonomy: AsteroidTaxonomy.S, diameterKm: 268.0, albedo: 0.21, color: 0xb0a090, irregularity: 0.12 },
-  { orbit: { epochJd: J2000_JD, aAu: 2.6440, e: 0.0799, iDeg: 3.486, ascendingNodeDeg: 21.058, argPeriapsisDeg: 129.363, meanAnomalyDeg: 152.800, periodDays: 1570.3 }, taxonomy: AsteroidTaxonomy.C, diameterKm: 254.0, albedo: 0.06, color: 0x5e5e58, irregularity: 0.07 },
-  { orbit: { epochJd: J2000_JD, aAu: 3.1488, e: 0.1002, iDeg: 0.761, ascendingNodeDeg: 138.649, argPeriapsisDeg: 93.176, meanAnomalyDeg: 313.200, periodDays: 2040.0 }, taxonomy: AsteroidTaxonomy.C, diameterKm: 246.6, albedo: 0.06, color: 0x5c5c56, irregularity: 0.05 },
-  { orbit: { epochJd: J2000_JD, aAu: 2.4445, e: 0.1588, iDeg: 5.488, ascendingNodeDeg: 293.031, argPeriapsisDeg: 324.503, meanAnomalyDeg: 134.000, periodDays: 1395.4 }, taxonomy: AsteroidTaxonomy.M, diameterKm: 232.0, albedo: 0.17, color: 0x9a9a9a, irregularity: 0.09 },
+  { sourceId: '1', sourceName: 'Ceres', orbit: NAMED_ASTEROID_ORBITS.ceres, taxonomy: AsteroidTaxonomy.C, diameterKm: 939.4, albedo: 0.09, color: 0x8a8a82, irregularity: 0.02 },
+  { sourceId: '4', sourceName: 'Vesta', orbit: NAMED_ASTEROID_ORBITS.vesta, taxonomy: AsteroidTaxonomy.S, diameterKm: 525.4, albedo: 0.42, color: 0xa09980, irregularity: 0.04 },
+  { sourceId: '2', sourceName: 'Pallas', orbit: NAMED_ASTEROID_ORBITS.pallas, taxonomy: AsteroidTaxonomy.C, diameterKm: 512.0, albedo: 0.10, color: 0x7a7a72, irregularity: 0.08 },
+  { sourceId: '10', sourceName: 'Hygiea', orbit: NAMED_ASTEROID_ORBITS.hygiea, taxonomy: AsteroidTaxonomy.C, diameterKm: 434.0, albedo: 0.07, color: 0x6e6e66, irregularity: 0.03 },
+  { sourceId: '511', sourceName: 'Davida (511)', orbit: NAMED_ASTEROID_ORBITS.davida511, taxonomy: AsteroidTaxonomy.C, diameterKm: 326.0, albedo: 0.07, color: 0xb09878, irregularity: 0.10 },
+  { sourceId: '704', sourceName: 'Interamnia (704)', orbit: NAMED_ASTEROID_ORBITS.interamnia704, taxonomy: AsteroidTaxonomy.C, diameterKm: 332.0, albedo: 0.07, color: 0x666660, irregularity: 0.06 },
+  { sourceId: '7', sourceName: 'Iris (7)', orbit: NAMED_ASTEROID_ORBITS.iris7, taxonomy: AsteroidTaxonomy.S, diameterKm: 214.0, albedo: 0.21, color: 0xb0a090, irregularity: 0.12 },
+  { sourceId: '15', sourceName: 'Eunomia', orbit: NAMED_ASTEROID_ORBITS.eunomia, taxonomy: AsteroidTaxonomy.S, diameterKm: 254.0, albedo: 0.21, color: 0x5e5e58, irregularity: 0.07 },
+  { sourceId: '52', sourceName: 'Europa (52)', orbit: NAMED_ASTEROID_ORBITS.europa52, taxonomy: AsteroidTaxonomy.C, diameterKm: 312.0, albedo: 0.06, color: 0x5c5c56, irregularity: 0.05 },
+  { sourceId: '16', sourceName: 'Psyche', orbit: NAMED_ASTEROID_ORBITS.psyche, taxonomy: AsteroidTaxonomy.M, diameterKm: 222.0, albedo: 0.17, color: 0x9a9a9a, irregularity: 0.09 },
 ];
 
 // ── Distribution parameters ──────────────────────────────────────────────────
@@ -111,7 +115,7 @@ export function albedoForTaxonomy(tax: AsteroidTaxonomy, rand: () => number): nu
   }
 }
 
-// Cumulative size-frequency distribution N(>D) ∝ D^−2.5 (Bottke+ 2005)
+// Illustrative truncated diameter density p(D) ∝ D^-2.5 over 0.8–300 km; not a survey-calibrated population.
 function sampleDiameterKm(rand: () => number): number {
   const u = rand();
   const dMin = 0.8;
@@ -122,7 +126,7 @@ function sampleDiameterKm(rand: () => number): number {
 
 function sampleSemiMajorAu(rand: () => number): number {
   for (let attempt = 0; attempt < 40; attempt++) {
-    // Bimodal peak near 2.35 AU and 2.85 AU with overall smooth distribution
+    // Uniform trial across the belt; reject the fixed illustrative gap intervals.
     const t = rand();
     const aAu = BELT_INNER_AU + (BELT_OUTER_AU - BELT_INNER_AU) * t;
     if (!isInKirkwoodGap(aAu)) return aAu;
@@ -185,7 +189,7 @@ export function generateAsteroidBelt(
     const ascendingNodeDeg = rand() * 360;
     const argPeriapsisDeg = rand() * 360;
     const meanAnomalyDeg = rand() * 360;
-    const periodDays = 365.25 * Math.pow(aAu, 1.5);
+    const periodDays = 2 * Math.PI * Math.sqrt((aAu * aAu * aAu) / MU_SUN_AU3_DAY2);
 
     const taxonomy = taxonomyFromSemiMajor(aAu, rand());
     const diameterKm = sampleDiameterKm(rand);

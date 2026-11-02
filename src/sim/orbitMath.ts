@@ -52,6 +52,8 @@ export interface KeplerOrbit {
    * m_companion); the same holds for velocity.
    */
   barycentreCompanion?: { orbit: KeplerOrbit; massFraction: number };
+  /** Required parent-relative components, weighted by their fraction of the full system. */
+  barycentreCompanions?: readonly { orbit: KeplerOrbit | null; massFraction: number }[];
 }
 
 /**
@@ -463,6 +465,9 @@ export function propagateKeplerOrbit(
   outPosition: Vector3,
   outVelocity: Vector3 | null = null
 ): boolean {
+  if (orbit.barycentreCompanions !== undefined) {
+    return propagatePluralBarycentre(orbit, elapsedDays, outPosition, outVelocity);
+  }
   const companion = orbit.barycentreCompanion;
   if (!companion) return propagateOwnOrbit(orbit, elapsedDays, outPosition, outVelocity);
 
@@ -487,6 +492,74 @@ export function propagateKeplerOrbit(
     baryVelocity.y - k * companionVelocity.y,
     baryVelocity.z - k * companionVelocity.z
   );
+  return true;
+}
+
+const pluralBaryPosition = new Vector3();
+const pluralBaryVelocity = new Vector3();
+const pluralCompanionPosition = new Vector3();
+const pluralCompanionVelocity = new Vector3();
+
+function propagatePluralBarycentre(
+  orbit: KeplerOrbit,
+  elapsedDays: number,
+  outPosition: Vector3,
+  outVelocity: Vector3 | null
+): boolean {
+  const companions = orbit.barycentreCompanions;
+  if (!Array.isArray(companions) || orbit.barycentreCompanion !== undefined) {
+    throw new TypeError('Invalid plural barycentre metadata');
+  }
+  let totalFraction = 0;
+  let missing = companions.length === 0;
+  // Validate the complete list before sampling, even when an earlier slot is missing.
+  for (const companion of companions) {
+    if (!companion || typeof companion !== 'object' || Array.isArray(companion)
+      || !Number.isFinite(companion.massFraction)
+      || companion.massFraction < 0 || companion.massFraction >= 1) {
+      throw new TypeError('Invalid plural barycentre component');
+    }
+    totalFraction += companion.massFraction;
+    const leaf = companion.orbit;
+    if (leaf === null) {
+      missing = true;
+    } else if (!leaf || typeof leaf !== 'object' || Array.isArray(leaf)
+      || !Number.isFinite(leaf.aAu) || !Number.isFinite(leaf.periodDays) || !Number.isFinite(leaf.epochJd)
+      || leaf === orbit || leaf.barycentreCompanion !== undefined || leaf.barycentreCompanions !== undefined) {
+      throw new TypeError('Invalid plural barycentre orbit');
+    }
+  }
+  if (!Number.isFinite(totalFraction) || totalFraction >= 1) {
+    throw new TypeError('Invalid plural barycentre total fraction');
+  }
+  if (missing) return false;
+
+  // Leaf-only propagation cannot recurse into this shared scratch or the Earth scratch.
+  const wantVelocity = outVelocity !== null;
+  if (!propagateOwnOrbit(orbit, elapsedDays, pluralBaryPosition, wantVelocity ? pluralBaryVelocity : null)) {
+    return false;
+  }
+  let px = 0, py = 0, pz = 0;
+  let vx = 0, vy = 0, vz = 0;
+  for (const companion of companions) {
+    const leaf = companion.orbit!;
+    const companionElapsedDays = elapsedDays + orbit.epochJd - leaf.epochJd;
+    if (!propagateOwnOrbit(leaf, companionElapsedDays, pluralCompanionPosition, wantVelocity ? pluralCompanionVelocity : null)) {
+      return false;
+    }
+    const k = companion.massFraction;
+    px += k * pluralCompanionPosition.x;
+    py += k * pluralCompanionPosition.y;
+    pz += k * pluralCompanionPosition.z;
+    if (wantVelocity) {
+      vx += k * pluralCompanionVelocity.x;
+      vy += k * pluralCompanionVelocity.y;
+      vz += k * pluralCompanionVelocity.z;
+    }
+  }
+  // No caller output is touched until every required component has succeeded.
+  outPosition.set(pluralBaryPosition.x - px, pluralBaryPosition.y - py, pluralBaryPosition.z - pz);
+  outVelocity?.set(pluralBaryVelocity.x - vx, pluralBaryVelocity.y - vy, pluralBaryVelocity.z - vz);
   return true;
 }
 

@@ -7,6 +7,8 @@ import sys
 from dataclasses import asdict, dataclass
 from typing import Any, Dict, List, Optional, Sequence
 
+from .schemas import MAX_MISSION_RESERVE_FRACTION
+
 G0 = 9.80665
 
 
@@ -63,8 +65,11 @@ class VehicleService:
                 "error": "vehicle must define at least one stage with dry mass, propellant, and Isp",
             }
 
-        reserve_fraction = max(0.0, min(0.4, float(reserve_fraction)))
-        mass_kg = float(payload_mass_kg) + sum(s["dry_mass_kg"] + s["propellant_mass_kg"] for s in stages)
+        reserve_fraction = max(0.0, min(MAX_MISSION_RESERVE_FRACTION, float(reserve_fraction)))
+        carried_mass_kg = float(payload_mass_kg)
+        # Remaining fuel is an independent ledger: subtracting nearly all fuel
+        # from a huge initial/used total would erase small but real residuals.
+        remaining_propellant = [stage["propellant_mass_kg"] for stage in stages]
 
         burn_reports: List[Dict[str, Any]] = []
         current_stage_idx = 0
@@ -73,7 +78,7 @@ class VehicleService:
             cargo_kg = 0.0
             if cargo_added_kg is not None and burn_index < len(cargo_added_kg):
                 cargo_kg = max(0.0, float(cargo_added_kg[burn_index]))
-            mass_kg += cargo_kg
+            carried_mass_kg += cargo_kg
             burn_target_m_s = max(0.0, float(burn_km_s) * 1000.0)
             burn_remaining_m_s = burn_target_m_s
             burn_prop_used = 0.0
@@ -83,30 +88,65 @@ class VehicleService:
                 stage = stages[current_stage_idx]
                 burn_stage_names.append(stage["name"])
 
-                stage_prop_remaining = stage["propellant_mass_kg"] - stage["propellant_used_kg"]
+                stage_prop_remaining = remaining_propellant[current_stage_idx]
                 stage_reserve_mass = stage["propellant_mass_kg"] * reserve_fraction
                 stage_prop_usable = max(0.0, stage_prop_remaining - stage_reserve_mass)
                 if stage_prop_usable <= 1e-9:
-                    mass_kg -= stage["dry_mass_kg"] + max(0.0, stage_prop_remaining)
                     stage["jettisoned"] = True
                     current_stage_idx += 1
                     continue
 
                 isp = stage["isp_s"]
                 ve = isp * G0
-                m0 = mass_kg
-                m1_min = m0 - stage_prop_usable
-                if m1_min <= 0.0:
-                    m1_min = m0 * 0.1
-                dv_capacity = ve * math.log(max(1.0 + 1e-12, m0 / m1_min))
+                # Build the mass floor from components, not wet mass minus fuel.
+                # At 1e17 kg, even a positive 2 kg dry+payload floor is rounded
+                # away by that subtraction; inventing 10% of m0 is not physical.
+                m1_min = (
+                    carried_mass_kg
+                    + sum(s["dry_mass_kg"] for s in stages[current_stage_idx:])
+                    + sum(remaining_propellant[current_stage_idx + 1:])
+                    + stage_reserve_mass
+                )
+                fuel_ratio = stage_prop_usable / m1_min
+                log_mass_ratio = (
+                    math.log(stage_prop_usable) - math.log(m1_min)
+                    if math.isinf(fuel_ratio) and math.isfinite(stage_prop_usable)
+                    else math.log1p(fuel_ratio)
+                )
+                dv_capacity = ve * log_mass_ratio
 
                 if burn_remaining_m_s <= dv_capacity + 1e-9:
-                    prop_needed = m0 * (1.0 - math.exp(-burn_remaining_m_s / ve))
-                    prop_needed = min(prop_needed, stage_prop_usable)
+                    burn_log_ratio = burn_remaining_m_s / ve
+                    if burn_log_ratio <= math.log(2.0):
+                        # expm1 retains small burns that 1-exp(-x) rounds to zero.
+                        consumed_fraction = -math.expm1(-burn_log_ratio)
+                        prop_needed = min(
+                            m1_min * consumed_fraction + stage_prop_usable * consumed_fraction,
+                            stage_prop_usable,
+                        )
+                        remaining_propellant[current_stage_idx] = max(
+                            stage_reserve_mass, stage_prop_remaining - prop_needed
+                        )
+                    else:
+                        # Near exhaustion, calculate the small residual directly
+                        # from the remaining log mass ratio, not initial-used.
+                        remaining_log_ratio = max(0.0, log_mass_ratio - burn_log_ratio)
+                        if remaining_log_ratio <= math.log(2.0):
+                            fuel_after = m1_min * math.expm1(remaining_log_ratio)
+                        else:
+                            # Here the residual exceeds the mass floor, so this
+                            # difference is well conditioned and avoids exp(large).
+                            fuel_after = (
+                                stage_prop_usable * math.exp(-burn_log_ratio)
+                                + m1_min * math.expm1(-burn_log_ratio)
+                            )
+                        remaining_propellant[current_stage_idx] = min(
+                            stage_prop_remaining, stage_reserve_mass + fuel_after
+                        )
+                        prop_needed = stage_prop_remaining - remaining_propellant[current_stage_idx]
 
                     stage["propellant_used_kg"] += prop_needed
                     stage["delta_v_delivered_km_s"] += burn_remaining_m_s / 1000.0
-                    mass_kg -= prop_needed
                     burn_prop_used += prop_needed
                     burn_remaining_m_s = 0.0
                     break
@@ -114,12 +154,10 @@ class VehicleService:
                 # Drain the usable propellant from current stage and move on.
                 stage["propellant_used_kg"] += stage_prop_usable
                 stage["delta_v_delivered_km_s"] += dv_capacity / 1000.0
-                mass_kg -= stage_prop_usable
+                remaining_propellant[current_stage_idx] = stage_reserve_mass
                 burn_prop_used += stage_prop_usable
                 burn_remaining_m_s -= dv_capacity
 
-                remaining_prop_after_burn = stage["propellant_mass_kg"] - stage["propellant_used_kg"]
-                mass_kg -= stage["dry_mass_kg"] + max(0.0, remaining_prop_after_burn)
                 stage["jettisoned"] = True
                 current_stage_idx += 1
 
@@ -140,9 +178,10 @@ class VehicleService:
 
         total_propellant_initial = sum(stage.propellant_mass_kg for stage in vehicle.stages)
         total_propellant_used = sum(stage["propellant_used_kg"] for stage in stages)
-        onboard = sum(s["propellant_mass_kg"] - s["propellant_used_kg"] for s in stages if not s["jettisoned"])
+        onboard = sum(p for s, p in zip(stages, remaining_propellant) if not s["jettisoned"])
         protected = sum(s["propellant_mass_kg"] * reserve_fraction for s in stages if not s["jettisoned"])
-        discarded = sum(s["propellant_mass_kg"] - s["propellant_used_kg"] for s in stages if s["jettisoned"])
+        discarded = sum(p for s, p in zip(stages, remaining_propellant) if s["jettisoned"])
+        mass_kg = carried_mass_kg + onboard + sum(s["dry_mass_kg"] for s in stages if not s["jettisoned"])
 
         return {
             "feasible": feasible,

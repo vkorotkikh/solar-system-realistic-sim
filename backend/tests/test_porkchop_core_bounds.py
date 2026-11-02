@@ -1,13 +1,19 @@
 from __future__ import annotations
 
+import math
+
 import pytest
 
 from data.bodies import ALL_BODIES
 from mission.ephemeris_service import EphemerisService
 from trajectory import run_porkchop_scan
+from trajectory import lambert as lambert_module
+from trajectory import planner as planner_module
 from trajectory.budget import PlanningContext, PlanningLimits
+from trajectory.contracts import TrajectoryRequestRejected
 from trajectory.lambert import (
     LAMBERT_ROOT_TOLERANCE_DAYS,
+    TrajectoryInputError,
     scan_porkchop_window,
     validate_porkchop_request,
 )
@@ -78,7 +84,7 @@ def test_unique_state_estimator_matches_runtime_float_association() -> None:
     tof_min = 489.08731202849344
     tof_step = 8.251461970172945
 
-    with pytest.raises(ValueError, match="unique-state computation budget"):
+    with pytest.raises(TrajectoryInputError, match="unique-state computation budget") as caught:
         validate_porkchop_request(
             from_id="earth",
             to_id="mars",
@@ -89,6 +95,129 @@ def test_unique_state_estimator_matches_runtime_float_association() -> None:
             tof_max_days=tof_min + tof_step,
             tof_step_days=tof_step,
         )
+    assert caught.value.context == {
+        "estimatedGridPointCount": 1_736,
+        "estimatedUniqueEphemerisStates": 2_126,
+        "maximumUniqueEphemerisStates": 2_000,
+    }
+
+
+@pytest.mark.parametrize("span, step, count", [
+    (0.0, 5.0, 1),
+    (10.0, 5.0, 3),
+    (math.nextafter(95.0, -math.inf) - 80.0, 5.0, 4),
+    (15.0, math.nextafter(5.0, math.inf), 4),
+    (15.0, 5.0 + 1e-9, 3),
+    (math.nextafter(2_460_515.5, -math.inf) - 2_460_500.5, 5.0, 3),
+])
+def test_shared_porkchop_sample_count_preserves_core_epsilon(span, step, count) -> None:
+    assert lambert_module.porkchop_grid_sample_count(span, step) == count
+
+
+def test_shared_porkchop_state_estimator_counts_exact_body_epoch_keys() -> None:
+    assert lambert_module.estimate_porkchop_unique_states(
+        departure_start_jd=2_460_500.5, departure_step_days=5.0,
+        departure_count=100, tof_min_days=80.0, tof_step_days=5.0, tof_count=20,
+    ) == 219
+    # Overlapping epochs still belong to different departure/destination bodies.
+    assert lambert_module.estimate_porkchop_unique_states(
+        departure_start_jd=2_460_500.5, departure_step_days=5.0,
+        departure_count=3, tof_min_days=5.0, tof_step_days=5.0, tof_count=1,
+    ) == 6
+    # Regrouping arrival arithmetic would incorrectly report 1,754 states.
+    assert lambert_module.estimate_porkchop_unique_states(
+        departure_start_jd=2_450_104.0932780663,
+        departure_step_days=4.125730985086473, departure_count=868,
+        tof_min_days=489.08731202849344,
+        tof_step_days=8.251461970172945, tof_count=2,
+    ) == 2_126
+
+
+@pytest.mark.parametrize("axis", ["departure_count", "tof_count"])
+@pytest.mark.parametrize("count", [0, -1, True, 1.5, math.nan, math.inf, 2_001, 10**100])
+def test_shared_porkchop_estimator_rejects_invalid_counts_before_enumeration(
+    monkeypatch, axis, count,
+) -> None:
+    def forbidden_range(*_args):
+        raise AssertionError("unbounded estimator attempted enumeration")
+
+    monkeypatch.setattr(lambert_module, "range", forbidden_range, raising=False)
+    kwargs = {
+        "departure_start_jd": 2_460_500.5, "departure_step_days": 5.0,
+        "departure_count": 1, "tof_min_days": 80.0, "tof_step_days": 5.0, "tof_count": 1,
+    }
+    kwargs[axis] = count
+    with pytest.raises(ValueError):
+        lambert_module.estimate_porkchop_unique_states(**kwargs)
+
+
+def test_shared_porkchop_estimator_bounds_product_before_enumeration(monkeypatch) -> None:
+    def forbidden_range(*_args):
+        raise AssertionError("oversized estimator attempted enumeration")
+
+    monkeypatch.setattr(lambert_module, "range", forbidden_range, raising=False)
+    with pytest.raises(ValueError):
+        lambert_module.estimate_porkchop_unique_states(
+            departure_start_jd=2_460_500.5, departure_step_days=5.0,
+            departure_count=1_001, tof_min_days=80.0, tof_step_days=5.0, tof_count=2,
+        )
+
+
+@pytest.mark.parametrize("overrides", [
+    {"departure_end_jd": 2_460_450.5},
+    {"tof_max_days": 80.0},
+])
+def test_core_porkchop_keeps_single_sample_axis_supported(overrides) -> None:
+    validated = validate_porkchop_request(**{**_scan_kwargs(), **overrides})
+    assert validated["estimated_grid_points"] == 3
+
+
+@pytest.mark.parametrize("overrides, points, states", [
+    ({
+        "departure_start_jd": 2_460_000.5, "departure_end_jd": 2_461_000.0,
+        "departure_step_days": 0.5, "tof_min_days": 100.0,
+        "tof_max_days": 101.0, "tof_step_days": 5.0,
+    }, 2_000, 4_000),
+    ({
+        "departure_start_jd": 2_460_500.5, "departure_end_jd": 2_460_995.5,
+        "departure_step_days": 5.0, "tof_min_days": 80.0,
+        "tof_max_days": 176.9, "tof_step_days": 5.1,
+    }, 2_000, 2_100),
+    ({
+        "departure_start_jd": 2_450_104.0932780663,
+        "departure_end_jd": 2_450_104.0932780663 + 867 * 4.125730985086473,
+        "departure_step_days": 4.125730985086473,
+        "tof_min_days": 489.08731202849344,
+        "tof_max_days": 489.08731202849344 + 8.251461970172945,
+        "tof_step_days": 8.251461970172945,
+    }, 1_736, 2_126),
+], ids=["single-tof", "distinct-arrivals", "float-association"])
+def test_core_exact_state_overbudget_precedes_all_provider_access(
+    monkeypatch, overrides, points, states,
+) -> None:
+    def forbidden_session(*_args, **_kwargs):
+        raise AssertionError("overbudget request constructed an ephemeris session")
+
+    class UntouchedSession:
+        @property
+        def provider(self):
+            raise AssertionError("overbudget request inspected the provider")
+
+    monkeypatch.setattr(planner_module, "EphemerisService", forbidden_session)
+    kwargs = {**_scan_kwargs(), **overrides}
+    for invoke, error_type in (
+        (lambda: run_porkchop_scan(ALL_BODIES, **kwargs, ephemeris_provider="kepler"),
+         TrajectoryRequestRejected),
+        (lambda: scan_porkchop_window(UntouchedSession(), **kwargs), TrajectoryInputError),
+    ):
+        with pytest.raises(error_type) as caught:
+            invoke()
+        assert caught.value.code == "trajectory_complexity_limit"
+        assert caught.value.context == {
+            "estimatedGridPointCount": points,
+            "estimatedUniqueEphemerisStates": states,
+            "maximumUniqueEphemerisStates": 2_000,
+        }
 
 
 def test_low_level_porkchop_rejects_horizons_before_sampling(monkeypatch) -> None:

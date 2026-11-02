@@ -1,15 +1,13 @@
 /**
  * Gravitational Wave Spacetime Visualization — Phase 12 (Experimental)
  * 
- * EDUCATIONAL ONLY: Gravitational waves have NO measurable effect on solar system dynamics.
- * Peak strain from binary black hole mergers: h ~ 10⁻²¹
- * This stretches the Earth-Sun distance by ~0.15 femtometers (smaller than an atomic nucleus).
+ * EDUCATIONAL ONLY: This illustrative grid does not predict orbital-distance changes.
  * 
  * This module provides a hugely exaggerated visualization of GW spacetime distortion
  * for educational purposes only.
  * 
  * LIGO sensitivity band: 10-1000 Hz
- * Strain amplitude: h ~ 10⁻²¹ (amplified by 10¹⁸ for visualization)
+ * Display amplitude is illustrative, not physically calibrated.
  */
 
 import {
@@ -236,13 +234,10 @@ export function createGWVisualization(size = 10): GwVisualization {
         getInfoText() {
             return `Gravitational Wave Visualization (Educational)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Real strain amplitude: h ≈ 10⁻²¹
-Displayed amplification: ×10¹⁸
-Earth-Sun distance change: ~0.15 femtometers
-(smaller than an atomic nucleus)
+Display amplitude: illustrative, not physically calibrated.
 
 This visualization is HUGELY exaggerated for educational purposes.
-Real gravitational waves have zero measurable effect on solar system dynamics.
+This illustrative grid does not predict orbital-distance changes.
 
 Source: LIGO/Virgo Collaboration
 Detection band: 10-1000 Hz`;

@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
+import { createServer } from 'node:net';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const script = fileURLToPath(new URL('./verify-agn-frame-browser.mjs', import.meta.url));
@@ -19,7 +20,7 @@ afterEach(() => {
   for (const directory of temporaryDirectories.splice(0)) rmSync(directory, { recursive: true, force: true });
 });
 
-function captureBrowserEnvironment(graphicsEnvironment) {
+function captureBrowserEnvironment(graphicsEnvironment, preloadPath) {
   const directory = mkdtempSync(resolve(tmpdir(), 'agn-browser-environment-'));
   temporaryDirectories.push(directory);
   const capturePath = resolve(directory, 'environment.json');
@@ -44,13 +45,39 @@ function captureBrowserEnvironment(graphicsEnvironment) {
   for (const name of graphicsEnvironmentNames) delete env[name];
   Object.assign(env, graphicsEnvironment);
 
-  const result = spawnSync(process.execPath, [script], { cwd: root, env, encoding: 'utf8', timeout: 15_000 });
+  const result = spawnSync(process.execPath, [...(preloadPath ? ['--import', preloadPath] : []), script], { cwd: root, env, encoding: 'utf8', timeout: 15_000 });
   expect(result.status).not.toBe(0);
+  if (preloadPath) expect(`${result.stdout}\n${result.stderr}`).toContain('is in use, trying another one');
   expect(`${result.stdout}\n${result.stderr}`).toContain('browser launch intercepted');
   return JSON.parse(readFileSync(capturePath, 'utf8'));
 }
 
 describe('AGN frame browser child environment', () => {
+  it('allocates its own server when the initial port belongs to another process', async () => {
+    const occupied = createServer();
+    await new Promise((resolve, reject) => {
+      occupied.once('error', reject);
+      occupied.listen(0, '127.0.0.1', resolve);
+    });
+    try {
+      const address = occupied.address();
+      const directory = mkdtempSync(resolve(tmpdir(), 'agn-occupied-port-'));
+      temporaryDirectories.push(directory);
+      const preloadPath = resolve(directory, 'select-occupied-port.mjs');
+      writeFileSync(preloadPath, `
+        import crypto from 'node:crypto';
+        import { syncBuiltinESMExports } from 'node:module';
+        crypto.randomInt = () => ${address.port};
+        syncBuiltinESMExports();
+      `);
+      captureBrowserEnvironment({}, preloadPath);
+      expect(occupied.listening).toBe(true);
+      expect(occupied.address()).toEqual(address);
+    } finally {
+      await new Promise((resolve, reject) => occupied.close(error => error ? reject(error) : resolve()));
+    }
+  });
+
   it('preserves explicit caller graphics settings', () => {
     const callerEnvironment = {
       GALLIUM_DRIVER: 'operator-gallium',

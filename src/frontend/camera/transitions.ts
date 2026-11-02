@@ -39,6 +39,7 @@ export function createCameraTransitions({ camera, controls }: CreateCameraTransi
     durationSec = 1.2,
     onComplete: (() => void) | null = null
   ): void {
+    if (!Number.isFinite(durationSec)) throw new RangeError('Camera transition duration must be finite');
     state.active = true;
     state.elapsedSec = 0;
     state.durationSec = Math.max(0.05, durationSec);
@@ -52,6 +53,7 @@ export function createCameraTransitions({ camera, controls }: CreateCameraTransi
 
   function updateCameraTransition(deltaSeconds: number): void {
     if (!state.active) return;
+    if (!Number.isFinite(deltaSeconds)) throw new RangeError('Camera transition timestep must be finite');
     state.elapsedSec += Math.max(0, deltaSeconds);
     const normalized = Math.min(1, state.elapsedSec / state.durationSec);
     const eased = 1 - Math.pow(1 - normalized, 3);

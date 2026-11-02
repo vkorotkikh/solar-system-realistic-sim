@@ -9,7 +9,9 @@ import { Vector3 } from 'three';
 import { parseMoonEphemerisArtifact, propagateMoonEphemeris } from './moonEphemeris';
 
 const ROOT = fileURLToPath(new URL('../../', import.meta.url));
-const EVIDENCE = resolve(ROOT, process.env.SOLAR_MOON_REVIEW_EVIDENCE_DIR ?? 'artifacts/moon-source-independent-review');
+// Persistent review JSON is opt-in; ordinary unit runs leave retained evidence untouched.
+const EVIDENCE_OVERRIDE = process.env.SOLAR_MOON_REVIEW_EVIDENCE_DIR;
+const EVIDENCE = EVIDENCE_OVERRIDE ? resolve(ROOT, EVIDENCE_OVERRIDE) : null;
 const NATIVE_ORACLE = 'backend/tests/fixtures/daphnis_independent_spk_review_oracle.json';
 const AU_KM = 149597870.7;
 const DAY = 86400;
@@ -23,6 +25,7 @@ type BodyKey = keyof typeof artifacts;
 type NativeRow = { jdTdb: number; positionKm: number[]; velocityKmS: number[] };
 
 function record(name: string, data: unknown) {
+  if (EVIDENCE === null) return;
   mkdirSync(EVIDENCE, { recursive: true });
   writeFileSync(resolve(EVIDENCE, name), `${JSON.stringify(data, null, 2)}\n`);
 }

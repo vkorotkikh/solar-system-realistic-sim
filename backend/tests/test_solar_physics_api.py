@@ -751,7 +751,7 @@ def test_aia_tile_rejects_provider_identity_drift_instead_of_serving_wrong_image
         requested_ids.append(image_id)
         return {
             "channel": channel,
-            "image_id": "image-b",
+            "image_id": "124",
             "image_date": "2026-02-17 03:20:41",
             "tile_url": "https://example.invalid/image-b.png",
             "content": b"image-b",
@@ -763,16 +763,16 @@ def test_aia_tile_rejects_provider_identity_drift_instead_of_serving_wrong_image
 
     response = client.get(
         "/solar/realtime/aia-tile",
-        params={"channel": "aia_193", "image_id": "image-a"},
+        params={"channel": "aia_193", "image_id": "123"},
     )
 
-    assert requested_ids == ["image-a"]
+    assert requested_ids == ["123"]
     assert response.status_code == 409
     assert response.json()["detail"] == {
         "code": "aia_image_identity_mismatch",
         "message": "Requested AIA image is no longer the retained channel snapshot.",
-        "requested_image_id": "image-a",
-        "available_image_id": "image-b",
+        "requested_image_id": "123",
+        "available_image_id": "124",
         "retryable": True,
     }
 
@@ -1054,7 +1054,11 @@ def test_solar_physics_enforces_rate_limit(monkeypatch) -> None:
     assert second.headers.get("retry-after") is not None
 
 
-def test_solar_physics_times_out_with_short_budget(monkeypatch) -> None:
+def test_solar_physics_times_out_with_short_budget(monkeypatch, request) -> None:
+    # A deadline check owns a cold runner, not a prior test's ready result.
+    runner = server._new_solar_physics_runner()
+    request.addfinalizer(runner.shutdown)
+    monkeypatch.setattr(server, "_solar_physics_runner", runner)
     original_builder = server._build_solar_physics_state
 
     def delayed_state(*_args, **_kwargs):

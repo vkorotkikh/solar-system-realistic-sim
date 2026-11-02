@@ -80,3 +80,8 @@ before accepting or closing a historical hypothesis.
 | 46 | OPEN | Create a shared solar feature-state service to unify polling cadence, blending state, and render subscriptions. |
 
 Archived 2026-10-31: all prior entries preserved; no unresolved item deleted.
+
+The [October audit archive](agent-notes/archives/Development_Improvements.pre-cap-2026-10-24.md)
+and [consolidated audit](agent-notes/CONSOLIDATED_MARKDOWN_ISSUE_AUDIT_2026-10-24.md)
+preserve the later audit history. Their legacy catalog, Puck/radius, and browser-gate
+claims are historical; the current contracts and closure ledger take precedence.

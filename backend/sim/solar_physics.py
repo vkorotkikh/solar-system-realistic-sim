@@ -6,7 +6,7 @@ from functools import lru_cache
 from random import Random
 from typing import Any
 
-from .solar_time import current_jd_tdb
+from .solar_time import CARRINGTON_SIDEREAL_ROTATION_RATE_DEG_PER_DAY, current_jd_tdb
 from .solar_frames import synthetic_geometry_frame
 from .solar_active_regions import (
     ActiveRegionSeed, build_active_regions, differential_rotation_rad_day,
@@ -235,7 +235,7 @@ class SolarCoronaPhysicsModel:
         self.base_tube_count = max(64, int(base_tube_count))
         self.fidelity_levels = tuple(self.FIDELITY_POINT_COUNT.keys())
         self.default_fidelity = "operational"
-        self.model_name = "quasi_mhd_corona_v5"
+        self.model_name = "quasi_mhd_corona_v6"
         self.active_regions = self._build_active_regions()
         self.seeds = self._build_flux_tube_seeds()
         from sim.pfss_magnetogram import PFSSCache
@@ -322,8 +322,9 @@ class SolarCoronaPhysicsModel:
         return {
             "model": self.model_name,
             "description": (
-                "Backend-driven quasi-MHD solar corona model producing 3D eruptive structures "
-                "from rotating active regions with solar-cycle forcing."
+                "Deterministic, physically-inspired solar-corona synthesis producing parametric "
+                "3D eruptive structures from rotating active regions with solar-cycle forcing; "
+                "not a full MHD PDE solver."
             ),
             "fidelity_levels": list(self.fidelity_levels),
             "forcing_modes": list(self.FORCING_MODES),
@@ -700,12 +701,12 @@ class SolarCoronaPhysicsModel:
             "arc": arc,
         }
 
-    @staticmethod
-    def _synthetic_coronal_holes(activity: float, jd: float) -> dict[str, Any]:
+    def _synthetic_coronal_holes(self, activity: float, jd: float) -> dict[str, Any]:
         """Generate plausible synthetic coronal hole placements from activity.
 
         At solar minimum: large polar coronal holes dominate.
-        At solar maximum: polar holes shrink; stochastic equatorial holes appear.
+        At solar maximum: polar holes shrink; seeded equatorial holes appear.
+        Equatorial templates rotate rigidly from J2000; this is not observed tracking.
         """
         holes: list[dict[str, Any]] = []
         # Polar holes: always present, shrink at solar max
@@ -732,11 +733,13 @@ class SolarCoronaPhysicsModel:
 
         # Equatorial holes at high activity
         if activity > 0.35:
-            rng = Random(int(jd * 100) % 99991)
+            rng = Random(self.seed)
+            rotation_phase = math.radians(CARRINGTON_SIDEREAL_ROTATION_RATE_DEG_PER_DAY) * (jd - J2000_JD)
             eq_count = int(1 + activity * 3)
             for i in range(min(eq_count, 4)):
                 center_lat = math.radians(rng.uniform(-30, 30))
                 center_lon = math.radians(rng.uniform(-90, 90))
+                center_lon = (center_lon + rotation_phase + math.pi) % (2.0 * math.pi) - math.pi
                 extent_lat = math.radians(rng.uniform(8, 22) * activity)
                 extent_lon = math.radians(rng.uniform(12, 35) * activity)
                 area_frac = 0.01 + rng.random() * 0.04 * activity

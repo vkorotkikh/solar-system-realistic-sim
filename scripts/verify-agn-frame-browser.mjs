@@ -29,7 +29,9 @@ const browserEnvironment = { ...process.env };
 const { chromium } = await import(pathToFileURL(playwrightPath).href);
 const args = ['--no-sandbox', '--ignore-gpu-blocklist', '--use-gl=angle', '--use-angle=gl'];
 // Vite normalizes configured port=0 to 5173 rather than asking the OS for a port.
-const server = await createServer({ configFile: false, root, server: { host: '127.0.0.1', port: randomInt(20000, 60000), strictPort: true },
+// Let Vite bind the next free port if another local process owns the candidate.
+// We always navigate to this server's actual bound address, never an existing service.
+const server = await createServer({ configFile: false, root, server: { host: '127.0.0.1', port: randomInt(20000, 60000), strictPort: false },
   optimizeDeps: { entries: ['scripts/oracles/agn-frame.html'], include: ['three'] } });
 let browser;
 try {

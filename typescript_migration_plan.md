@@ -1,4 +1,33 @@
-# TypeScript Migration Plan
+# TypeScript Migration Plan (Archived February 2026 Snapshot)
+
+## Archive correction (2026-10-24)
+
+This is a historical migration record, not the current project checklist or a
+current validation report. The dated snapshot and original phase checkboxes are
+retained below; their completion statements describe the migration at that time.
+
+- The snapshot's `82` total does not follow from its listed `53` TypeScript
+  and `0` JavaScript files. Those two counts sum to `53`; the extra `29`
+  files are not identified in this record. Do not use `82` as a verified source
+  count or infer an undocumented file category to reconcile it.
+- The references to modules "with shim" describe intermediate migration steps,
+  not files that still exist. The named `catalog.js`, `planets.js`,
+  `textures.js` and `constants.js` shims are absent from the current source
+  tree, as are tracked `.js` files under `src`.
+- The final lint/build/parity checkbox remains unchecked because this record
+  does not establish that historical acceptance step. "Phases 1–4 complete"
+  below is limited to shim removal, not proof of final behavior parity. Later
+  test results do not retroactively complete that checkbox.
+
+For current scope and setup, see [README](README.md). For dated findings,
+verification results and remaining limitations, see the
+[consolidated issue audit](agent-notes/CONSOLIDATED_MARKDOWN_ISSUE_AUDIT_2026-10-24.md).
+Current commands are defined in [package.json](package.json): `npm run typecheck`
+checks source and tooling, `npm run test:types:ui` checks browser-test types,
+and `npm test` / `npm run build` run the unit suite / production build.
+These command references do not claim visual, physical or historical parity.
+
+## Original migration record
 
 ## Current state snapshot (2026-02-26)
 

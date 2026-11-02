@@ -1,4 +1,4 @@
-import { J2000_JD } from '../constants';
+import { J2000_JD, MU_SUN_AU3_DAY2 } from '../constants';
 import { solveKeplerFast } from './orbitMath';
 import type { KeplerOrbit } from './orbitMath';
 
@@ -382,7 +382,7 @@ export function generateKuiperBelt(
   for (let i = 0; i < remaining; i++) {
     const dynClass = sampleDynClass(rand);
     const { aAu, e, iDeg } = sampleOrbitForClass(dynClass, rand);
-    const periodDays = 365.25 * Math.pow(aAu, 1.5);
+    const periodDays = 2 * Math.PI * Math.sqrt((aAu * aAu * aAu) / MU_SUN_AU3_DAY2);
 
     const sc = surfaceColorFromClass(dynClass, rand);
     const diameterKm = sampleDiameterKm(rand);

@@ -7,7 +7,7 @@ import pytest
 
 from mission.mining_service import MiningService
 from mission.risk_service import RiskService
-from mission.vehicle_service import VehicleService, default_vehicle
+from mission.vehicle_service import StageDefinition, VehicleDefinition, VehicleService, default_vehicle
 
 VEHICLE = default_vehicle()
 SERVICE = VehicleService()
@@ -28,6 +28,91 @@ def test_return_burn_carries_the_mined_cargo() -> None:
     # Same delta-v with 5 t more on board costs ~19% more propellant (ignition mass 31.9 t vs
     # 26.9 t); before cargo entered the rocket equation it cost exactly the same.
     assert laden["burns"][1]["propellantUsedKg"] > empty["burns"][1]["propellantUsedKg"] * 1.15
+
+
+@pytest.mark.parametrize(
+    ("burns", "cargo", "expected_mass_kg"),
+    [
+        ([100.0], None, 173.0198189431324),
+        ([50.0, 50.0], None, 173.0198189431324),
+        ([50.0, 50.0], [0.0, 3.0], 173.01981906791934),
+    ],
+)
+def test_large_finite_stage_preserves_dry_mass_and_remaining_propellant(
+    burns, cargo, expected_mass_kg
+) -> None:
+    # Regression: MIS-033; found by /qa on 2026-10-24.
+    # Report: agent-notes/CONSOLIDATED_MARKDOWN_ISSUE_AUDIT_2026-10-24.md
+    # Independent 80-digit Decimal oracle: m1=(10**17+2)*exp(-100000/(300*9.80665)).
+    # Cargo case adds 3 kg between the two exponential mass-ratio operations.
+    vehicle = VehicleDefinition("large", [StageDefinition("stage", 1.0, 1e17, 300.0)])
+    result = SERVICE.evaluate_burn_budget(
+        vehicle, payload_mass_kg=1.0, burns_km_s=burns,
+        reserve_fraction=0.0, cargo_added_kg=cargo,
+    )
+
+    assert result["feasible"] is True
+    assert result["totalUnmetDeltaV_km_s"] == 0.0
+    assert result["finalMassKg"] == pytest.approx(expected_mass_kg, rel=1e-12)
+    inert_mass_kg = 2.0 + sum(cargo or [])
+    assert result["propellantOnboardKg"] == pytest.approx(expected_mass_kg - inert_mass_kg, rel=1e-12)
+    assert result["stageTelemetry"][0]["jettisoned"] is False
+
+
+def test_large_finite_exhausted_stage_has_analytic_capacity_and_nonnegative_mass() -> None:
+    # Same regression, exhaustion branch: ve*ln((10**17+2)/2) from an 80-digit oracle.
+    capacity_km_s = 113.12205958179984
+    vehicle = VehicleDefinition("large", [StageDefinition("stage", 1.0, 1e17, 300.0)])
+    result = SERVICE.evaluate_burn_budget(
+        vehicle, payload_mass_kg=1.0, burns_km_s=[120.0], reserve_fraction=0.0,
+    )
+
+    assert result["feasible"] is False
+    assert result["totalUnmetDeltaV_km_s"] == pytest.approx(120.0 - capacity_km_s, abs=1e-12)
+    assert result["stageTelemetry"][0]["delta_v_delivered_km_s"] == pytest.approx(capacity_km_s, abs=1e-12)
+    assert result["finalMassKg"] == 1.0  # Only the payload remains after jettison.
+    assert result["propellantOnboardKg"] == 0.0
+    assert result["propellantDiscardedKg"] == 0.0
+
+
+def test_large_stage_jettison_preserves_later_stage_mass() -> None:
+    # First-stage floor includes both the payload and the entire later stage.
+    vehicle = VehicleDefinition("large-staged", [
+        StageDefinition("booster", 1.0, 1e17, 300.0),
+        StageDefinition("orbiter", 1.0, 1_000.0, 300.0),
+    ])
+    result = SERVICE.evaluate_burn_budget(
+        vehicle, payload_mass_kg=1.0, burns_km_s=[100.0], reserve_fraction=0.0,
+    )
+
+    assert result["feasible"] is True
+    assert result["finalMassKg"] > 2.0
+    assert result["stageTelemetry"][0]["jettisoned"] is True
+    assert result["stageTelemetry"][1]["jettisoned"] is False
+    assert result["finalMassKg"] == pytest.approx(2.0 + result["propellantOnboardKg"], abs=1e-12)
+
+
+@pytest.mark.parametrize(
+    ("dry_kg", "payload_kg", "fuel_kg", "burn_km_s", "expected_mass_kg"),
+    [
+        (1e-300, 1e-300, 1e300, 3.0, 3.606972868589679e299),
+        (1e308, 1.0, 1e308, 1.0, 1.423675312681448e308),
+    ],
+)
+def test_finite_postburn_mass_does_not_overflow_intermediate_rocket_equation(
+    dry_kg, payload_kg, fuel_kg, burn_km_s, expected_mass_kg
+) -> None:
+    # MIS-033 boundary checks: finite results from 80-digit Decimal mass-ratio
+    # oracles even when the raw fuel/floor ratio or initial wet sum overflows.
+    vehicle = VehicleDefinition("large-ratio", [StageDefinition("stage", dry_kg, fuel_kg, 300.0)])
+    result = SERVICE.evaluate_burn_budget(
+        vehicle, payload_mass_kg=payload_kg, burns_km_s=[burn_km_s], reserve_fraction=0.0,
+    )
+
+    assert result["feasible"] is True
+    assert result["finalMassKg"] == pytest.approx(expected_mass_kg, rel=1e-12)
+    assert 0.0 < result["propellantOnboardKg"] < fuel_kg
+    assert math.isfinite(result["totalPropellantUsedKg"])
 
 
 def test_max_closable_cargo_is_the_largest_cargo_that_closes() -> None:
@@ -146,6 +231,95 @@ def test_return_propellant_is_not_subtracted_from_the_cargo_again() -> None:
     )
     assert closure["deliveredBeforePropellantKg"] == pytest.approx(9_000.0)
     assert closure["returnedPayloadKg"] == pytest.approx(8_000.0)  # capacity-limited, not 9000 - 7000
+
+
+@pytest.mark.parametrize("storable_kg, expected_kg", [(1000.0, 960.0), (800.0, 768.0)])
+def test_mis031_deliverable_cargo_omitted_default_uses_four_percent(
+    storable_kg: float, expected_kg: float
+) -> None:
+    # MIS-031: literal yields detect either helper's inconsistent 3% default.
+    # Report: agent-notes/CONSOLIDATED_MARKDOWN_ISSUE_AUDIT_2026-10-24.md
+    assert MiningService.deliverable_cargo_kg({"storablePayloadKg": storable_kg}) == expected_kg
+
+
+@pytest.mark.parametrize("storable_kg, expected_kg", [(1000.0, 960.0), (800.0, 768.0)])
+def test_mis031_return_closure_omitted_default_uses_four_percent(
+    storable_kg: float, expected_kg: float
+) -> None:
+    closure = MiningService().payload_return_closure(
+        {"storablePayloadKg": storable_kg},
+        outbound_propellant_kg=9000.0,
+        return_propellant_kg=7000.0,
+        return_capacity_kg=1000.0,
+    )
+    assert closure["returnedPayloadKg"] == expected_kg
+    assert closure["deliveredBeforePropellantKg"] == expected_kg
+    assert closure["handlingLossFraction"] == 0.04
+    assert closure["storablePayloadKg"] == storable_kg
+    assert closure["outboundPropellantKg"] == 9000.0
+    assert closure["returnPropellantKg"] == 7000.0
+    assert closure["returnCapacityKg"] == 1000.0
+
+
+@pytest.mark.parametrize(
+    "fraction, storable_kg, capacity_kg, delivered_kg, returned_kg",
+    [
+        (0.00, 1000.0, 1000.0, 1000.0, 1000.0),
+        (0.03, 1000.0, 1000.0, 970.0, 970.0),
+        (0.04, 1000.0, 1000.0, 960.0, 960.0),
+        (0.10, 1000.0, 1000.0, 900.0, 900.0),
+        (0.00, 1000.0, 800.0, 1000.0, 800.0),
+        (0.03, 1000.0, 800.0, 970.0, 800.0),
+        (0.04, 1000.0, 800.0, 960.0, 800.0),
+        (0.10, 1000.0, 800.0, 900.0, 800.0),
+        (0.00, 800.0, 1000.0, 800.0, 800.0),
+        (0.03, 800.0, 1000.0, 776.0, 776.0),
+        (0.04, 800.0, 1000.0, 768.0, 768.0),
+        (0.10, 800.0, 1000.0, 720.0, 720.0),
+    ],
+)
+def test_mis031_explicit_service_loss_storage_and_capacity_controls(
+    fraction: float, storable_kg: float, capacity_kg: float,
+    delivered_kg: float, returned_kg: float,
+) -> None:
+    mining = {"storablePayloadKg": storable_kg}
+    assert MiningService.deliverable_cargo_kg(mining, fraction) == delivered_kg
+    assert MiningService().payload_return_closure(
+        mining,
+        outbound_propellant_kg=9000.0,
+        return_propellant_kg=7000.0,
+        return_capacity_kg=capacity_kg,
+        handling_loss_fraction=fraction,
+    ) == {
+        "storablePayloadKg": storable_kg,
+        "handlingLossFraction": fraction,
+        "deliveredBeforePropellantKg": delivered_kg,
+        "outboundPropellantKg": 9000.0,
+        "returnPropellantKg": 7000.0,
+        "returnCapacityKg": capacity_kg,
+        "returnedPayloadKg": returned_kg,
+    }
+
+
+def test_mis031_omitted_loss_still_obeys_return_capacity_without_subtracting_fuel() -> None:
+    closure = MiningService().payload_return_closure(
+        {"storablePayloadKg": 1000.0},
+        outbound_propellant_kg=9000.0,
+        return_propellant_kg=7000.0,
+        return_capacity_kg=800.0,
+    )
+    assert closure["returnedPayloadKg"] == 800.0
+    assert closure["returnCapacityKg"] == 800.0
+
+
+def test_mis031_empty_mining_result_stays_zero_with_omitted_loss() -> None:
+    assert MiningService.deliverable_cargo_kg({}) == 0.0
+    closure = MiningService().payload_return_closure(
+        {}, outbound_propellant_kg=0.0, return_propellant_kg=0.0,
+        return_capacity_kg=1000.0,
+    )
+    assert closure["deliveredBeforePropellantKg"] == 0.0
+    assert closure["returnedPayloadKg"] == 0.0
 
 
 @pytest.mark.parametrize("uncertainty", [

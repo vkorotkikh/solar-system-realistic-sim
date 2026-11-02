@@ -28,6 +28,7 @@ interface CreateTimeControllerArgs {
   currentJulianDate: () => number;
   formatJulianAsDate: (julianDate: number) => string;
   plannerArrivalOffsetDays?: number;
+  onTimeJump?: () => void;
   signal?: AbortSignal;
 }
 
@@ -39,6 +40,7 @@ export function createTimeController({
   currentJulianDate,
   formatJulianAsDate,
   plannerArrivalOffsetDays = 240,
+  onTimeJump,
   signal
 }: CreateTimeControllerArgs): TimeController {
   function bindUi() {
@@ -50,6 +52,7 @@ export function createTimeController({
       if (dom.plannerArrivalDate) {
         dom.plannerArrivalDate.value = formatJulianAsDate(simState.julianDate + plannerArrivalOffsetDays);
       }
+      onTimeJump?.();
     }, { signal });
 
     if (dom.timeScale) {

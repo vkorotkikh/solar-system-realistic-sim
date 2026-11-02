@@ -39,3 +39,31 @@ describe('scene annotations at realistic and illustrative scales', () => {
     stars.geometry.dispose(); stars.material.dispose();
   });
 });
+
+describe('current label owner orientation and scale transitions', () => {
+  it.each([[0, -10, 0], [10, 6, 3], [-4, 8, -2], [0, 0, 10]])(
+    'keeps screen-up clearance after orbiting to (%s, %s, %s) and switching scale', (x, y, z) => {
+      const camera = new PerspectiveCamera(58, 1.5, 1e-9, 20000);
+      camera.up.set(0, 0, 1); camera.position.set(x, y, z); camera.lookAt(0, 0, 0); camera.updateMatrixWorld();
+      const parent = new Group(); parent.position.set(.2, -.1, .3); parent.rotation.set(.3, -.2, .5); parent.scale.set(2, 3, 4);
+      const sprite = new Sprite(new SpriteMaterial()); parent.add(sprite); parent.updateMatrixWorld(true);
+      const center = parent.getWorldPosition(new Vector3());
+      const screenCenter = center.clone().project(camera);
+      try {
+        for (const radius of [.2, .00001, .2, .00001]) {
+          expect(updateBodyLabel(sprite, center, radius, camera, 900)).toBe(true);
+          parent.updateMatrixWorld(true);
+          const screenLabel = sprite.getWorldPosition(new Vector3()).project(camera);
+          expect(screenLabel.x).toBeCloseTo(screenCenter.x, 10);
+          expect(screenLabel.y).toBeGreaterThan(screenCenter.y);
+          const worldOffset = sprite.getWorldPosition(new Vector3()).sub(center);
+          const screenUp = new Vector3(0, 1, 0).applyQuaternion(camera.quaternion);
+          expect(worldOffset.clone().normalize().dot(screenUp)).toBeCloseTo(1, 10);
+          expect(worldOffset.length()).toBeGreaterThan(radius);
+          const first = sprite.position.clone();
+          updateBodyLabel(sprite, center, radius, camera, 900);
+          expect(sprite.position.distanceTo(first)).toBeLessThan(1e-12);
+        }
+      } finally { sprite.material.dispose(); }
+    });
+});

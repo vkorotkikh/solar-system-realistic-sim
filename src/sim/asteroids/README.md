@@ -1,66 +1,69 @@
-# Ultra-Realistic Asteroid Belt Pipeline
+# Experimental Asteroid Instancing Pipeline
 
-This folder contains the code for a physically accurate, instanced 3D asteroid simulation. It replaces the original CPU-driven `THREE.Points` implementation with GPU-instanced meshes, realistic distributions, and custom shaders.
+This directory retains a procedural asteroid pipeline with instanced meshes and
+vertex-shader orbit calculations. It is not imported by the current page's
+`src/main.ts` or `src/frontend/features/asteroids/beltRenderer.ts`. Its generated
+populations, display materials and configured counts are not evidence of measured
+asteroid properties, scientific accuracy or achieved rendering performance.
 
-## Overview of Modules
+## Modules
 
-1. **`asteroidDistributions.ts`**
-   - Implements power-law size distributions.
-   - Maps Taxonomic classification (C, S, M, D) to semi-major axis curves.
-   - Generates realistic proper elements matching real asteroid families (Eos, Koronis, Themis, Flora).
-   - Simulates Kirkwood Resonances (clears the 3:1 and 5:2 gaps).
-   - Generates sub-populations: Jupiter Trojans (L4/L5), Hildas, and Near-Earth Asteroids (NEAs).
+- [`asteroidDistributions.ts`](asteroidDistributions.ts) samples power-law sizes,
+  semi-major-axis-dependent taxonomy choices, family-inspired element
+  distributions and attempts to exclude main-belt gap ranges. It also provides Hilda, Trojan
+  L4/L5 and near-Earth population samplers. These are procedural distributions,
+  not a resonance integrator or a measured catalog. `seedDistributionRng(seed)`
+  resets this module's generator; it does not seed the whole pipeline.
+- [`asteroidGeometry.ts`](asteroidGeometry.ts) creates deformed
+  `IcosahedronGeometry` instances, taxonomy/shape buckets and
+  `MeshStandardMaterial` display settings. It attaches orbital and spin
+  attributes and installs the vertex-shader patch.
+- [`asteroidPipeline.ts`](asteroidPipeline.ts) exports
+  `AsteroidSimulationPipeline`, which owns the generated group and buckets.
+  Initialization writes per-instance scale matrices, colors and orbital/spin
+  attributes. Subsequent `update(jd)` calls only set the shared time uniform.
+- [`asteroidShaders.ts`](asteroidShaders.ts) patches the standard material's
+  **vertex shader** through `onBeforeCompile`. It calculates Kepler positions
+  and visual spin from the packed attributes. It does not supply a custom
+  fragment shader or import `propagateKeplerOrbit` from `orbitMath.ts`.
 
-2. **`asteroidGeometry.ts`**
-   - Generates low-poly, deformed `IcosahedronGeometry` representations of asteroids (substituting 2D point sprites).
-   - Initializes `THREE.InstancedMesh` batches mapped to specific Taxonomic materials (with accurate PBR roughness/metalness).
-   - Reduces draw calls massively by clustering populations into geometric/material buckets.
+## Retained API
 
-3. **`asteroidPipeline.ts`**
-   - The central entrypoint class `AsteroidSimulationPipeline`.
-   - On `initialize()`, generates arrays of elements, sizes, colors, and random spin vectors for 100k+ objects.
-   - On `update(jd)`, propagates the orbits and updates the `InstancedMesh` instance matrices.
+`new AsteroidSimulationPipeline()` creates the group and shared uniforms.
+`await pipeline.initialize(sceneScaleAu)` populates and returns that group;
+the optional scale argument defaults to `1e8` and is used for orbit/display
+scaling. This API is not connected to the page's realistic-scale toggle.
 
-4. **`asteroidShaders.ts`**
-   - Custom WebGL vertex and fragment shaders for GPU-driven Kepler propagation.
-   - Enables the pipeline to scale beyond CPU-iterated instance matrices.
-   - Designed for Phase 6 GPU-compute scaling to 1.5M+ particles.
+The configured generation counts total **1,925,000** entries: 1,200,000
+main-belt, 100,000 Hilda, 300,000 Trojan L4, 300,000 Trojan L5 and 25,000
+near-Earth entries. Initialization performs CPU work and yields with a timer
+between chunks of at most 10,000 entries. These counts and yields are source
+configuration, not a throughput, capacity or UI-responsiveness guarantee.
 
-## Integration
+`pipeline.update(jd)` assigns `uTimeDays = jd - 2451545.0` (J2000). It does not
+iterate over instances, rewrite instance matrices or call the CPU orbit solver.
+The vertex-shader path is already installed during initialization; it is not a
+future replacement for a CPU per-instance update loop.
 
-The pipeline is consumed by the frontend belt renderer at `src/frontend/features/asteroids/beltRenderer.ts` and the main application entry point at `src/main.ts`.
+Geometry, bucket selection, spin and color variation still use `Math.random()`.
+Seeding the distribution helper alone does not make complete pipeline output
+reproducible. The class has no disposal or cancellation method; any experimental
+caller must account for resource and initialization ownership separately.
 
-### Importing the Pipeline
+## Current page path
 
-```typescript
-import { AsteroidSimulationPipeline } from './sim/asteroids/asteroidPipeline';
-```
+[`src/main.ts`](../../main.ts) instead builds the initial population with
+[`generateAsteroidBelt`](../asteroidBelt.ts), attempts the accepted
+[`Phase 1 catalog`](../phase1AsteroidCatalog.ts) load, and supplies the resulting
+population to
+[`createAsteroidBeltRenderer`](../../frontend/features/asteroids/beltRenderer.ts).
+That renderer has its own shader implementation and rebased elapsed-time inputs.
+The active `createFrameLifecycle` asteroid stage calls `setJulianDate`; it does
+not call `AsteroidSimulationPipeline.update`. Its planet-position/mass setters
+are compatibility no-ops, not planetary-perturbation integration.
 
-### Initialization
-
-```typescript
-const asteroidEngine = new AsteroidSimulationPipeline();
-asteroidEngine.initialize(simState.useRealisticScale ? 1.0 : 1.0).then(group => {
-  solarSystemGroup.add(group);
-});
-```
-
-### Animation Loop
-
-Hook into the simulation tick where the Julian Date is advanced (e.g. `animationLoop.ts`):
-
-```typescript
-function onSimulationTick(jd: number) {
-  if (dom.toggleAsteroids.checked) {
-    asteroidEngine.update(jd);
-  }
-}
-```
-
-## Orbit Math Dependency
-
-The pipeline imports `propagateKeplerOrbit` from `src/sim/orbitMath.ts` for Kepler equation solving and coordinate transforms.
-
-## Future Scaling (The 1.5 Million GPU Update)
-
-Currently, `asteroidPipeline.ts` updates instance matrices inside standard JS arrays. This is excellent for ~100k objects. To scale to the true 1.5 million targets, the plan involves replacing the `.update(jd)` logic with the custom WebGL shaders in `asteroidShaders.ts`, ensuring the CPU never iterates over the array after initialization.
+The page targets 50,000 displayed asteroids from at most 100,000 Phase 1 source
+rows, retaining the procedural fallback if the catalog cannot be accepted.
+Those page limits are separate from this experimental pipeline's configured
+population. No integration, shader, data, physical-model or performance change
+is implied by this documentation.

@@ -58,7 +58,13 @@ export class MoonTexturePipeline {
     return Boolean(this.sourceForBody(body));
   }
 
-  requestTexture(body: MoonBody, onReady: ((texture: Texture, source: CatalogEntry) => void) | null = null): Texture | null {
+  requestTexture(
+    body: MoonBody,
+    onReady: ((texture: Texture, source: CatalogEntry) => void) | null = null,
+    signal: AbortSignal | null = null
+  ): Texture | null {
+    if (signal?.aborted) return null;
+
     const source = this.sourceForBody(body);
     if (!source || !source.publicPath || !this.textureLoader) {
       return null;
@@ -101,9 +107,20 @@ export class MoonTexturePipeline {
     }
 
     if (typeof onReady === 'function') {
+      const release = () => {
+        onReady = null;
+        signal?.removeEventListener('abort', release);
+      };
+      signal?.addEventListener('abort', release, { once: true });
+      // Loader setup can synchronously retire this consumer before subscription.
+      if (signal?.aborted) release();
+
       this.inFlight.get(source.key)!.then((texture) => {
-        if (texture) {
-          onReady(texture, source);
+        const callback = signal?.aborted ? null : onReady;
+        // Release the captured callback and listener before calling user code.
+        release();
+        if (texture && callback) {
+          callback(texture, source);
         }
       });
     }

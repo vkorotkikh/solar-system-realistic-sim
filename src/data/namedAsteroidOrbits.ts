@@ -1,0 +1,111 @@
+import type { KeplerOrbit } from '../sim/orbitMath';
+
+// Geometric heliocentric osculating elements in the J2000 ecliptic frame.
+// The element epoch is JD 2461000.5 TDB, NOT the frame's J2000 reference epoch.
+// Extracted from the pinned B001 Horizons ELEMENTS responses in
+// backend/tests/fixtures/legacy_catalog_horizons_2461000.json, also used by
+// backend/data/bodies.py. asteroidBelt.epochs.test.ts checks every field against
+// those raw, hashed responses and positions against separate VECTORS queries.
+// These fixed two-body elements are a fallback, not a long-span ephemeris.
+export const NAMED_ASTEROID_ORBITS = {
+  ceres: {
+    epochJd: 2461000.5,
+    aAu: 2.765615652424292,
+    e: 0.07957631989738838,
+    iDeg: 10.58788658069705,
+    ascendingNodeDeg: 80.24963090674903,
+    argPeriapsisDeg: 73.29975510473098,
+    meanAnomalyDeg: 231.5397320170474,
+    periodDays: 1679.91057360617,
+  },
+  vesta: {
+    epochJd: 2461000.5,
+    aAu: 2.361541279165456,
+    e: 0.09016764489791473,
+    iDeg: 7.144060600546149,
+    ascendingNodeDeg: 103.7022980319606,
+    argPeriapsisDeg: 151.5371489239508,
+    meanAnomalyDeg: 26.80967219602383,
+    periodDays: 1325.536646218444,
+  },
+  pallas: {
+    epochJd: 2461000.5,
+    aAu: 2.769925825307559,
+    e: 0.2306429787541243,
+    iDeg: 34.92832687323397,
+    ascendingNodeDeg: 172.8885963559954,
+    argPeriapsisDeg: 310.9333840320756,
+    meanAnomalyDeg: 211.5297776544164,
+    periodDays: 1683.839278628533,
+  },
+  hygiea: {
+    epochJd: 2461000.5,
+    aAu: 3.147591335243193,
+    e: 0.1082238331913036,
+    iDeg: 3.832937410191631,
+    ascendingNodeDeg: 283.1216603252118,
+    argPeriapsisDeg: 312.605806215391,
+    meanAnomalyDeg: 216.6903205255017,
+    periodDays: 2039.698321601318,
+  },
+  davida511: {
+    epochJd: 2461000.5,
+    aAu: 3.163619116071193,
+    e: 0.1896284393464331,
+    iDeg: 15.95004792260898,
+    ascendingNodeDeg: 107.5554381967534,
+    argPeriapsisDeg: 336.6669463802493,
+    meanAnomalyDeg: 35.24757478087184,
+    periodDays: 2055.297592406713,
+  },
+  interamnia704: {
+    epochJd: 2461000.5,
+    aAu: 3.056218780675483,
+    e: 0.1552477966188531,
+    iDeg: 17.31546543724262,
+    ascendingNodeDeg: 280.1660768316948,
+    argPeriapsisDeg: 94.10694028636757,
+    meanAnomalyDeg: 184.2054147763347,
+    periodDays: 1951.529349488593,
+  },
+  iris7: {
+    epochJd: 2461000.5,
+    aAu: 2.386528966814124,
+    e: 0.2302133123912694,
+    iDeg: 5.518812912628205,
+    ascendingNodeDeg: 259.4946100358684,
+    argPeriapsisDeg: 145.4820251494423,
+    meanAnomalyDeg: 61.72501801418723,
+    periodDays: 1346.630640465544,
+  },
+  eunomia: {
+    epochJd: 2461000.5,
+    aAu: 2.642186114689977,
+    e: 0.1877813306492719,
+    iDeg: 11.76143490821194,
+    ascendingNodeDeg: 292.8812264895982,
+    argPeriapsisDeg: 98.50719962943015,
+    meanAnomalyDeg: 113.7257833524419,
+    periodDays: 1568.713145042133,
+  },
+  europa52: {
+    epochJd: 2461000.5,
+    aAu: 3.092193381158368,
+    e: 0.11200166005601,
+    iDeg: 7.480921961740955,
+    ascendingNodeDeg: 128.5790551016954,
+    argPeriapsisDeg: 342.9584259377477,
+    meanAnomalyDeg: 312.5276378122795,
+    periodDays: 1986.087582982361,
+  },
+  psyche: {
+    epochJd: 2461000.5,
+    aAu: 2.923314515911282,
+    e: 0.134346220058496,
+    iDeg: 3.097291661862712,
+    ascendingNodeDeg: 150.009877382143,
+    argPeriapsisDeg: 229.7534129725396,
+    meanAnomalyDeg: 40.63883753908776,
+    periodDays: 1825.62570283343,
+  },
+} satisfies Record<string, KeplerOrbit>;

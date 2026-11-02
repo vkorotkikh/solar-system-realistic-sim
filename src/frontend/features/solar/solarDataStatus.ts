@@ -1,7 +1,8 @@
 import {
   formatSeconds,
   type SolarPhysicsFailure,
-  type SolarPhysicsFailureKind
+  type SolarPhysicsFailureKind,
+  type SolarPhysicsEpochRangeBlock
 } from './solarPhysicsClient';
 
 /**
@@ -24,11 +25,14 @@ export interface SolarDataSourceStatus {
   remedy: string | null;
   /** When the refresh attempt this status reflects finished; tells repeated attempts from republishes. */
   observedAtMs: number;
+  /** Authoritative local range episodes bypass ordinary failure debounce only. */
+  immediateRangeAnnouncement?: boolean;
 }
 
 export interface SolarDataStatusInput {
   lastSuccessMs: number;
   lastFailure: SolarPhysicsFailure | null;
+  epochRangeBlocked?: SolarPhysicsEpochRangeBlock | null;
   timeoutMs: number;
   backendBaseUrl: string;
   pageOrigin: string;
@@ -155,6 +159,22 @@ function failureRemedy(family: keyof typeof FAMILY_ANNOUNCEMENTS, input: SolarDa
 
 export function describeSolarDataStatus(input: SolarDataStatusInput): SolarDataSourceStatus {
   const hasBackendState = input.lastSuccessMs > 0 && input.payload !== null;
+  const range = input.epochRangeBlocked;
+  if (range) {
+    return {
+      state: hasBackendState ? 'stale' : 'error',
+      text: hasBackendState
+        ? `Sun: backend state from ${formatUtcMinute(input.lastSuccessMs)} (simulation epoch outside solar model range)`
+        : 'Sun: procedural fallback (simulation epoch outside solar model range)',
+      announcementKey: `epoch-range:${range.baseUrl}:${range.minJdTdb}:${range.maxJdTdb}:${range.episode}`,
+      announcement: hasBackendState
+        ? 'Sun data: simulation epoch outside the solar model range. Showing the last backend state.'
+        : 'Sun data unavailable: simulation epoch outside the solar model range. Showing the procedural Sun.',
+      remedy: `Choose an epoch within [${range.minJdTdb}, ${range.maxJdTdb}] JDTDB, or force a refresh to recheck the backend range.`,
+      observedAtMs: range.atMs,
+      immediateRangeAnnouncement: true,
+    };
+  }
   if (input.lastFailure) {
     const reason = failureReason(input.lastFailure, input);
     const family = failureFamily(input.lastFailure.kind);
@@ -263,7 +283,7 @@ export class SolarDataAnnouncer {
     const recovering = status.announcementKey === 'backend'
       && this.announcedKey !== null
       && !this.announcedKey.startsWith('backend');
-    if (this.announcedKey !== null && !recovering) {
+    if (this.announcedKey !== null && !recovering && !status.immediateRangeAnnouncement) {
       if (this.pendingKey !== status.announcementKey) {
         this.pendingKey = status.announcementKey;
         this.pendingObservedAtMs = status.observedAtMs;
