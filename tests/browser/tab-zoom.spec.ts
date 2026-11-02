@@ -3,12 +3,15 @@ import { assertNativeTabZoom, captureNativeZoomScreenshot, createTabZoomSession,
 
 test.describe('native Chromium tab zoom', () => {
   test.skip(({ browserName }) => browserName !== 'chromium', 'Chrome tabs API is Chromium-specific, not Safari/Firefox zoom evidence');
-  test.setTimeout(90_000);
 
   // Catches fixed min-width regressions, lost responsive modality/focus, unreachable
   // clipped controls, and substituting viewport/CSS/pinch emulation for tab zoom.
   for (const factor of [2, 4]) {
     test(`${factor * 100}% genuine tab zoom preserves reflow and keyboard focus`, async ({ baseURL }, info) => {
+      // CI's software renderer spends ~45–47s capturing the two full-scene
+      // screenshots, in addition to startup and both native zoom transitions.
+      // Keep each readiness/assertion deadline; budget the complete scenario.
+      test.setTimeout(150_000);
       if (!baseURL) throw new Error('The browser gate requires a configured local baseURL');
       const session = await createTabZoomSession(info, new URL(baseURL).origin);
       const { page, context } = session;
