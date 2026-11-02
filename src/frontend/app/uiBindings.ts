@@ -17,22 +17,23 @@ interface ToggleElementLike extends ValueElementLike {
   checked: boolean;
 }
 
-interface UiDomBindings {
+/** Retained opt-in binder: feature toggles are optional; remote controls are an all-or-none capability. */
+export interface UiDomBindings {
   togglePlay: InteractiveElementLike;
   zoomSensitivity?: ValueElementLike | null;
-  toggleOrbits: ToggleElementLike;
-  toggleLabels: ToggleElementLike;
-  toggleLocators: ToggleElementLike;
-  toggleGravityVectors: ToggleElementLike;
-  toggleMoons: ToggleElementLike;
-  toggleAsteroids: ToggleElementLike;
-  toggleKuiper: ToggleElementLike;
-  toggleOort: ToggleElementLike;
-  toggleEnhancedMilky: ToggleElementLike;
-  toggleSurveyMilky: ToggleElementLike;
-  toggleNearbySystems: ToggleElementLike;
-  toggleEarthSatellites: ToggleElementLike;
-  toggleSatelliteJ2: ToggleElementLike;
+  toggleOrbits?: ToggleElementLike | null;
+  toggleLabels?: ToggleElementLike | null;
+  toggleLocators?: ToggleElementLike | null;
+  toggleGravityVectors?: ToggleElementLike | null;
+  toggleMoons?: ToggleElementLike | null;
+  toggleAsteroids?: ToggleElementLike | null;
+  toggleKuiper?: ToggleElementLike | null;
+  toggleOort?: ToggleElementLike | null;
+  toggleEnhancedMilky?: ToggleElementLike | null;
+  toggleSurveyMilky?: ToggleElementLike | null;
+  toggleNearbySystems?: ToggleElementLike | null;
+  toggleEarthSatellites?: ToggleElementLike | null;
+  toggleSatelliteJ2?: ToggleElementLike | null;
   bodySearch: ValueElementLike;
   starSystemList?: ValueElementLike | null;
   canvas: InteractiveElementLike;
@@ -42,9 +43,9 @@ interface UiDomBindings {
   clearFollow: InteractiveElementLike;
   statusFocus: { textContent: string | null };
   returnSolarSystem?: InteractiveElementLike | null;
-  simConnect: InteractiveElementLike;
-  simBackend: ValueElementLike;
-  simStatus: { textContent: string | null };
+  simConnect?: InteractiveElementLike | null;
+  simBackend?: ValueElementLike | null;
+  simStatus?: { textContent: string | null } | null;
   toggleRealisticScale?: ToggleElementLike | null;
 }
 
@@ -84,6 +85,36 @@ interface SetupUiBindingsArgs {
   handlers: UiBindingHandlers;
 }
 
+const requiredInteractiveKeys = ['togglePlay', 'bodySearch', 'canvas', 'bodyList',
+  'focusBody', 'followBody', 'clearFollow'] as const;
+const optionalInteractiveKeys = ['zoomSensitivity', 'toggleOrbits', 'toggleLabels', 'toggleLocators',
+  'toggleGravityVectors', 'toggleMoons', 'toggleAsteroids', 'toggleKuiper', 'toggleOort',
+  'toggleEnhancedMilky', 'toggleSurveyMilky', 'toggleNearbySystems', 'toggleEarthSatellites',
+  'toggleSatelliteJ2', 'starSystemList', 'returnSolarSystem', 'simConnect', 'simBackend', 'toggleRealisticScale'] as const;
+
+/** Validate the entire requested DOM capability set before listeners or controller effects. */
+export function validateUiBindings(dom: UiDomBindings, quickViewPresets: QuickViewPreset[]): void {
+  for (const key of requiredInteractiveKeys) {
+    if (typeof dom?.[key]?.addEventListener !== 'function') throw new Error(`UI bindings require ${key}`);
+  }
+  for (const key of optionalInteractiveKeys) {
+    if (dom[key] != null && typeof dom[key]?.addEventListener !== 'function') {
+      throw new Error(`UI bindings: invalid optional ${key}`);
+    }
+  }
+  if (!dom.statusFocus || !('textContent' in dom.statusFocus)) throw new Error('UI bindings require statusFocus');
+  const remote = [dom.simConnect, dom.simBackend, dom.simStatus].filter(value => value != null);
+  if (remote.length !== 0 && remote.length !== 3) {
+    throw new Error('UI bindings: remote simulation requires simConnect, simBackend and simStatus together');
+  }
+  if (dom.simStatus != null && !('textContent' in dom.simStatus)) throw new Error('UI bindings: invalid simStatus');
+  for (const preset of quickViewPresets) {
+    if (preset.element != null && typeof preset.element.addEventListener !== 'function') {
+      throw new Error('UI bindings: invalid quick-view element');
+    }
+  }
+}
+
 export function setupUiBindings({
   dom,
   simState,
@@ -91,6 +122,7 @@ export function setupUiBindings({
   quickViewPresets,
   handlers
 }: SetupUiBindingsArgs) {
+  validateUiBindings(dom, quickViewPresets);
   dom.togglePlay.addEventListener('click', () => {
     simState.paused = !simState.paused;
     dom.togglePlay.textContent = simState.paused ? 'Resume' : 'Pause';
@@ -133,7 +165,7 @@ export function setupUiBindings({
     dom.toggleEarthSatellites,
     dom.toggleSatelliteJ2
   ]) {
-    toggle.addEventListener('change', handlers.applyRenderVisibility);
+    toggle?.addEventListener('change', handlers.applyRenderVisibility);
   }
 
   dom.bodySearch.addEventListener('input', () => {
@@ -236,30 +268,34 @@ export function setupUiBindings({
     handlers.returnToSolarSystemView({ hardSnap: true });
   });
 
-  dom.simConnect.addEventListener('click', () => {
-    if (simState.serverConnected) {
-      handlers.disconnectSimulation();
-      simState.backend = 'local';
-      dom.simStatus.textContent = 'Local';
-    } else {
-      const backend = dom.simBackend.value;
-      if (backend === 'local') {
-        dom.simStatus.textContent = 'Local';
-        return;
+  const { simConnect, simBackend, simStatus } = dom;
+  if (simConnect && simBackend && simStatus) {
+    simConnect.addEventListener('click', () => {
+      if (simState.serverConnected) {
+        handlers.disconnectSimulation();
+        simState.backend = 'local';
+        simStatus.textContent = 'Local';
+      } else {
+        const backend = simBackend.value;
+        if (backend === 'local') {
+          simStatus.textContent = 'Local';
+          return;
+        }
+        simState.backend = backend;
+        simStatus.textContent = 'Connecting...';
+        handlers.connectSimulation(backend);
       }
-      simState.backend = backend;
-      dom.simStatus.textContent = 'Connecting...';
-      handlers.connectSimulation(backend);
-    }
-  });
+    });
 
-  dom.simBackend.addEventListener('change', () => {
-    if (dom.simBackend.value === 'local' && simState.serverConnected) {
-      handlers.disconnectSimulation();
-      simState.backend = 'local';
-      dom.simStatus.textContent = 'Local';
-    }
-  });
+    simBackend.addEventListener('change', () => {
+      if (simBackend.value === 'local' && simState.serverConnected) {
+        handlers.disconnectSimulation();
+        simState.backend = 'local';
+        simStatus.textContent = 'Local';
+      }
+    });
+
+  }
 
   if (dom.toggleRealisticScale) {
     const toggleRealisticScale = dom.toggleRealisticScale;

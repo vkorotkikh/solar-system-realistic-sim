@@ -2,8 +2,55 @@ import { describe, expect, it } from 'vitest';
 import { generateKuiperBelt, propagateBinaryKBOPositions, propagateKBOPositions } from '../../../sim/kuiperBelt';
 import { createKuiperBeltRenderer } from './beltRenderer';
 import { createKuiperBeltUpdater } from './kuiperBeltUpdater';
+import { Group } from 'three';
 
 describe('Kuiper buffer work (SCN-024)', () => {
+  it('exposes repeatable synthetic candidates without claiming resonance verification', () => {
+    const first = generateKuiperBelt(500, 137);
+    expect(generateKuiperBelt(500, 137)).toEqual(first);
+    expect(generateKuiperBelt(500, 138).kbos).not.toEqual(first.kbos);
+    expect(first.populationModel).toBe('synthetic_orbit_candidates_not_resonance_verified');
+    expect(first.seed).toBe(137);
+    for (const seed of [-1, NaN, Infinity, .2, 2 ** 32]) expect(() => generateKuiperBelt(500, seed)).toThrow('seed');
+  });
+
+  it('also suppresses work when an ancestor hides the whole population', () => {
+    const population = generateKuiperBelt(500);
+    const renderer = createKuiperBeltRenderer(population.kbos);
+    const group = new Group(); group.add(renderer.mesh, renderer.companionMesh!);
+    const updater = createKuiperBeltUpdater(population, renderer);
+    try {
+      group.visible = false;
+      expect(updater.update(2451545)).toBe(false);
+      expect(updater.getWorkStats().primaryPropagationPasses).toBe(0);
+      group.visible = true;
+      expect(updater.update(2451545)).toBe(true);
+    } finally { renderer.dispose(); }
+  });
+  it('does no hidden orbital work and applies the current JD once on reveal', () => {
+    const population = generateKuiperBelt(500);
+    const renderer = createKuiperBeltRenderer(population.kbos);
+    const updater = createKuiperBeltUpdater(population, renderer);
+    try {
+      updater.update(2451545);
+      const work = updater.getWorkStats();
+      const version = renderer.mesh.instanceMatrix.version;
+      renderer.setVisible(false);
+      for (let day = 1; day <= 600; day++) expect(updater.update(2451545 + day)).toBe(false);
+      expect(updater.getWorkStats()).toEqual(work);
+      expect(renderer.mesh.instanceMatrix.version).toBe(version);
+      renderer.setVisible(true);
+      expect(updater.update(2452145)).toBe(true);
+      expect(updater.update(2452145)).toBe(false);
+      expect(updater.getWorkStats().primaryPropagationPasses).toBe(2);
+      const reference = createKuiperBeltRenderer(population.kbos);
+      try {
+        createKuiperBeltUpdater(population, reference).update(2452145);
+        expect(renderer.mesh.instanceMatrix.array).toEqual(reference.mesh.instanceMatrix.array);
+        expect(renderer.companionMesh!.instanceMatrix.array).toEqual(reference.companionMesh!.instanceMatrix.array);
+      } finally { reference.dispose(); }
+    } finally { renderer.dispose(); }
+  });
   it('does zero propagation, matrix writes or upload requests for 600 paused frames, and responds to date changes', () => {
     const population = generateKuiperBelt(500);
     const renderer = createKuiperBeltRenderer(population.kbos);

@@ -17,8 +17,11 @@ PARENTS = {'Earth': '399', 'Mars': '499', 'Jupiter': '599', 'Saturn': '699',
 
 
 def test_oracle_accounts_for_every_catalog_moon_without_silent_omissions():
-    assert len(CATALOG) == 424
-    assert set(ORACLE['bodies']) == {str(m['id']) for m in CATALOG}
+    assert len(CATALOG) == 423
+    assert len(ORACLE['bodies']) == 424
+    assert ORACLE['bodies']['378']['states'] == ORACLE['bodies']['388']['states']
+    assert set(ORACLE['bodies']) == {str(m['id']) for m in CATALOG} | {'378'}
+    assert len({(m['planet'], m['iauCode']) for m in CATALOG}) == 423
     assert ORACLE['coverage_scope'] == 'provider_vectors_only_model_accuracy_not_certified'
 
 

@@ -24,8 +24,8 @@ export interface MoonShardEntry {
 export interface LazyMoonManifest {
   schemaVersion: 1;
   kind: 'moon-ephemeris-shards-v1';
-  catalogRecordCount: 424;
-  lazyRecordCount: 411;
+  catalogRecordCount: 423;
+  lazyRecordCount: 410;
   lazyModelCount: 410;
   records: Array<{ catalogId: number; key: string; name: string; parent: string; targetId: string; centerId: string; delivery: 'base' | 'lazy'; sourceQuality: unknown }>;
   bodies: Record<string, MoonShardEntry>;
@@ -78,9 +78,9 @@ function validateVectorOracle(body: GeneratedMoonChebyshevEphemeris, entry: Moon
 
 function validateManifest(value: unknown): LazyMoonManifest {
   if (!record(value) || value.schemaVersion !== 1 || value.kind !== 'moon-ephemeris-shards-v1' ||
-      value.catalogRecordCount !== 424 || value.lazyRecordCount !== 411 || value.lazyModelCount !== 410 ||
-      !Array.isArray(value.records) || value.records.length !== 424 || !record(value.bodies)) {
-    throw new Error('Invalid complete-424 lazy moon manifest');
+      value.catalogRecordCount !== 423 || value.lazyRecordCount !== 410 || value.lazyModelCount !== 410 ||
+      !Array.isArray(value.records) || value.records.length !== 423 || !record(value.bodies)) {
+    throw new Error('Invalid complete-423 lazy moon manifest');
   }
   const bodies = value.bodies;
   const aliases = new Map<string, CatalogMoon[]>();
@@ -114,7 +114,7 @@ function validateManifest(value: unknown): LazyMoonManifest {
         entry.catalogIds.length !== moons.length || entry.catalogIds.some((id, index) => id !== moons[index].id) ||
         moons.some(moon => entry.targetId !== String(moon.iauCode) || entry.centerId !== CENTERS[moon.planet]) ||
         entry.coverageStartJd !== START || entry.coverageEndJd !== END || !record(entry.accuracyLimits) ||
-        entry.accuracyLimits.positionKm !== cap || entry.accuracyLimits.velocityMPerS !== 10 ||
+        typeof entry.accuracyLimits.positionKm !== 'number' || !Number.isFinite(entry.accuracyLimits.positionKm) || entry.accuracyLimits.positionKm <= 0 || entry.accuracyLimits.positionKm > cap || entry.accuracyLimits.velocityMPerS !== 10 ||
         typeof entry.sourceEphemeris !== 'string' || entry.sourceEphemeris.length === 0 ||
         typeof entry.sourceQuality !== 'string' || entry.sourceQuality.length === 0) {
       throw new Error(`Invalid shard identity, domain, or fixed accuracy cap: ${key}`);

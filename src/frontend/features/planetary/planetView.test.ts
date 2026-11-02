@@ -7,7 +7,7 @@ describe.each(['earth', 'mars'])('%s camera scaling', (id) => {
   it('preserves angular framing and surface clearance in both radius modes', () => {
     const body = createSolarSystemCatalog().bodies.find((body) => body.id === id)!;
     const fractions: number[] = [];
-    for (const radius of [body.displayRadiusAu, body.realRadiusAu]) {
+    for (const radius of [body.displayRadiusAu, body.realRadiusAu!]) {
       const distances = planetViewDistances(radius);
       expect(distances.focus / radius).toBeCloseTo(20, 12);
       expect(distances.minimum / radius).toBeCloseTo(1.1, 12);

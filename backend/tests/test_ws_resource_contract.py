@@ -86,19 +86,43 @@ def test_rebound_checkpoint_storage_is_bounded() -> None:
     assert len(engine._checkpoints) == 3
 
 
-def test_rebound_seek_observes_cancellation_between_segments() -> None:
+@pytest.mark.parametrize("start_years,target_years", [(0.0, 30.0), (1.0, 0.0)])
+def test_rebound_seek_observes_cancellation_between_segments(start_years, target_years) -> None:
     engine = REBOUNDEngine()
     simulation = _CopyableSimulation(engine)
+    simulation.t = start_years
     engine.sim = simulation
     engine._stored_bodies = [{"id": "sun"}]
 
-    target_jd = J2000_JD + (30.0 * DAYS_PER_YEAR)
+    target_jd = J2000_JD + (target_years * DAYS_PER_YEAR)
     with pytest.raises(SeekCancelledError):
         engine.set_julian_date(target_jd)
 
-    assert simulation.integrate_history == [10.0]
-    assert simulation.t == 10.0
-    assert abs(simulation.t - 30.0) > SEEK_EPSILON_YEARS
+    assert len(simulation.integrate_history) == 1
+    assert abs(simulation.t - start_years) <= 0.1 + SEEK_EPSILON_YEARS
+    assert abs(simulation.t - target_years) > SEEK_EPSILON_YEARS
+
+
+def test_rebound_seek_subsegments_keep_sparse_checkpoint_copies() -> None:
+    engine = REBOUNDEngine(checkpoint_limit=2)
+    simulation = _CopyableSimulation()
+    engine.sim = simulation
+    engine._stored_bodies = [{"id": "sun"}]
+    copied_at = []
+    original_copy = engine._copy_simulation
+
+    def copy_at_boundary(source_sim=None):
+        copied_at.append(float(engine.sim.t))
+        return original_copy(source_sim)
+
+    engine._copy_simulation = copy_at_boundary
+    engine.set_julian_date(J2000_JD + 30 * DAYS_PER_YEAR)
+
+    assert simulation.t == pytest.approx(30.0)
+    times = [0.0, *simulation.integrate_history]
+    assert max(b - a for a, b in zip(times, times[1:])) <= 0.1 + SEEK_EPSILON_YEARS
+    assert copied_at == [10.0, 20.0, 30.0]
+    assert list(engine._checkpoints) == [2, 3]
 
 
 def test_runner_rejects_out_of_range_epoch_without_latching_runtime_error() -> None:

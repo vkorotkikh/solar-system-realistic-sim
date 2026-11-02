@@ -226,7 +226,9 @@ export const PLANETS = [
   }
 ];
 
-export const MAJOR_MOON_RADII_KM = {
+// Historical illustrative sizing values, not the source of physical measurements.
+// Physical radii and provenance are generated in moonPhysicalRadii.json.
+export const MOON_DISPLAY_RADIUS_ESTIMATES_KM = {
   Moon: 1_737.4,
   Phobos: 11.08,
   Deimos: 6.2,

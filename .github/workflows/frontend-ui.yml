@@ -7,7 +7,7 @@ on:
 jobs:
   ui:
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -18,7 +18,7 @@ jobs:
       - run: node -e "if(process.version !== 'v22.23.2') process.exit(1)" && test "$(npm --version)" = 10.9.8
       - run: npm ci
       - run: npm test
-      - run: npm run typecheck:ratchet && npm run typecheck:ui-delta && npm run test:types:ui
+      - run: npm run typecheck:ratchet && npm run typecheck:ui-delta && npm run test:types:ui && npm run typecheck:scripts
       - run: npm run build
       - run: npx playwright install --with-deps chromium
       - run: npm run verify:asteroid-gpu

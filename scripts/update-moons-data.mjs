@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 const SOURCE_URL = 'https://ssd.jpl.nasa.gov/sats/elem/';
 const EXPECTED_COLUMNS = 20;
-const EXPECTED_CATALOG_RECORDS = 424;
+const EXPECTED_CATALOG_RECORDS = 423;
 const ROOT_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DEFAULT_OUTPUT = path.join(ROOT_DIR, 'src', 'data', 'moons.json');
 const REQUIRED_STRING_FIELDS = [
@@ -24,7 +24,8 @@ const USAGE = `Usage: node scripts/update-moons-data.mjs [--dry-run] [--out <pat
 Fetches the JPL SSD satellite mean-elements table (${SOURCE_URL}) and writes
 the moon catalog. Without --out the tracked catalog src/data/moons.json is
 replaced. Writes are atomic and require the shipped count of
-${EXPECTED_CATALOG_RECORDS} records, valid record fields, and unique IDs.
+${EXPECTED_CATALOG_RECORDS} records, valid record fields, unique IDs and unique source identities.
+Duplicate source solutions select the newest element epoch; equal-epoch conflicts fail.
 
   --dry-run             fetch, validate, and report the record count; write nothing
   --out PATH            write to PATH instead of the tracked catalog
@@ -124,7 +125,26 @@ export function parseSatelliteTable(html) {
     // A matched but empty table must never replace the catalog with [].
     throw new Error('sat_elem table parsed to zero records; refusing to write');
   }
-  return records;
+  return canonicalMoonRecords(records);
+}
+
+export function canonicalMoonRecords(records) {
+  const byIdentity = new Map();
+  const epoch = (value) => {
+    const match = /^(\d{4})-(\d{2})-(\d{2})(\.\d+)?$/.exec(value);
+    if (!match) throw new Error(`Invalid source epoch ${value}`);
+    return Date.UTC(+match[1], +match[2] - 1, +match[3]) + Number(match[4] ?? 0) * 86400000;
+  };
+  for (const record of records) {
+    const key = `${record.planet}:${record.iauCode}`;
+    const previous = byIdentity.get(key);
+    if (!previous) { byIdentity.set(key, record); continue; }
+    if (record.name !== previous.name || epoch(record.epochTdb) === epoch(previous.epochTdb)) {
+      throw new Error(`Ambiguous duplicate moon source identity ${key}`);
+    }
+    if (epoch(record.epochTdb) > epoch(previous.epochTdb)) byIdentity.set(key, record);
+  }
+  return [...byIdentity.values()].sort((a, b) => a.id - b.id);
 }
 
 export function validateMoonCatalog(records, { allowCountChange = false } = {}) {
@@ -139,6 +159,7 @@ export function validateMoonCatalog(records, { allowCountChange = false } = {}) 
   }
 
   const ids = new Set();
+  const sourceIdentities = new Set();
   records.forEach((record, index) => {
     if (!record || typeof record !== 'object' || Array.isArray(record)) {
       throw new Error(`Moon record ${index} must be an object`);
@@ -156,6 +177,9 @@ export function validateMoonCatalog(records, { allowCountChange = false } = {}) 
         throw new Error(`Moon record ${index} field ${field} must be a nonempty string`);
       }
     }
+    const identity = `${record.planet}:${record.iauCode}`;
+    if (sourceIdentities.has(identity)) throw new Error(`Duplicate moon source identity ${identity}`);
+    sourceIdentities.add(identity);
     for (const field of REQUIRED_NUMBER_FIELDS) {
       if (typeof record[field] !== 'number' || !Number.isFinite(record[field])) {
         throw new Error(`Moon record ${index} field ${field} must be a finite number`);

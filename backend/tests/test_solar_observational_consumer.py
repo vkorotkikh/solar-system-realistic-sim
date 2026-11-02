@@ -20,7 +20,11 @@ def test_real_map_passes_the_complete_pfss_snapshot_contract(observed_snapshot):
             source_surface_radii=2.51, wsa_n_lat=2, wsa_n_lon=4),
     )
     assert result["geometry_frame"]["rendering_eligible"] is False
-    assert result["geometry_frame"]["frame"] == "UNRESOLVED_OBSERVED"
+    frame = result["geometry_frame"]
+    assert frame["frame"] == "GONG_ZQS_CARRINGTON_GRID_V1"
+    assert frame["reference_frame"] == "HELIOGRAPHIC_CARRINGTON"
+    assert frame["scene_adapter_status"] == "not_implemented"
+    assert frame["calibration_status"] == "provider_native_wcs_validated"
 
 
 @pytest.mark.parametrize("field_name,value", [

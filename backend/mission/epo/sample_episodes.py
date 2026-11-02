@@ -1,8 +1,39 @@
-"""Seeded episode families for EPO smoke-test loops."""
+"""Explicit smoke contracts and the original, opt-in mission stress families.
+
+The stress inputs retain their original success gates: budget-infeasible or
+search-inconclusive outcomes remain visible failures, rather than smoke passes.
+"""
 
 from __future__ import annotations
 
 from .config import EpisodeConfig, EpisodeFamily, EpisodeFamilyPolicy
+
+
+# Ideal impulsive, nuclear-thermal-style stages; modeled feasibility does not
+# certify finite thrust, structural design or a flight-ready mining mission.
+FEASIBLE_MISSION_PAYLOAD = dict(
+    from_id="earth", target_id="mars", return_id="earth", departure_jd=2460500.5,
+    objective="min_distance", max_assists=0, ephemeris_provider="kepler",
+    payload_mass_kg=100.0, mining_days=10.0, extraction_rate_kg_day=1.0,
+    storage_loss_rate_per_day=0.001, risk_samples=30,
+    risk_failure_probability_threshold=0.1, reserve_fraction=0.02,
+    vehicle={"name": "ideal-thermal-3stage", "stages": [
+        dict(name=f"stage-{index}", dry_mass_kg=1000.0, propellant_mass_kg=20000.0, isp_s=900.0)
+        for index in range(3)]},
+)
+
+SMOKE_EPISODE_FAMILIES = (EpisodeFamily(
+    name="contracts", description="One verified lossy-return mission and two explicit negative contracts",
+    policy=EpisodeFamilyPolicy(max_failure_probability=0.1),
+    episodes=(
+        EpisodeConfig("verified_lossy_return", "contracts", FEASIBLE_MISSION_PAYLOAD),
+        EpisodeConfig("empty_vehicle_cannot_close", "contracts",
+            {**FEASIBLE_MISSION_PAYLOAD, "payload_mass_kg": 1e10}, expected_outcome="vehicle_infeasible"),
+        EpisodeConfig("unsupported_parking_mass", "contracts",
+            {**FEASIBLE_MISSION_PAYLOAD, "target_id": "flora"}, expected_outcome="request_rejected",
+            expected_rejection_code="mission_propulsion_body_unsupported", expected_rejection_body_id="flora"),
+    ),
+),)
 
 
 def _make_family(
@@ -159,4 +190,4 @@ SAMPLE_EPISODE_FAMILIES: tuple[EpisodeFamily, ...] = (
 
 
 def with_verifier_policies() -> dict[str, EpisodeFamilyPolicy]:
-    return {family.name: family.policy for family in SAMPLE_EPISODE_FAMILIES}
+    return {family.name: family.policy for family in (*SMOKE_EPISODE_FAMILIES, *SAMPLE_EPISODE_FAMILIES)}

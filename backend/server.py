@@ -67,6 +67,8 @@ from pydantic import (
 )
 from starlette.responses import JSONResponse
 
+from solar_delivery import render_solar_response
+
 from benchmark import (
     MAX_REFERENCE_SCENARIOS,
     benchmark_against_references,
@@ -3524,6 +3526,8 @@ async def solar_physics_state(
     forcing: str = "synthetic",
     live_data: bool = False,
     force_data_refresh: bool = False,
+    delivery: str = "full",
+    geometry_version: Annotated[str | None, Query(pattern=r"^[0-9a-f]{64}$")] = None,
 ):
     _reject_network_refresh_get(force_data_refresh)
     epoch_jd = _resolve_jd_tdb_query(jd_tdb, jd, default_to_now=True)
@@ -3542,6 +3546,9 @@ async def solar_physics_state(
             },
         )
     _require_optional_solar_api_key(request)
+
+    if delivery not in {"full", "render-v1"}:
+        raise HTTPException(status_code=400, detail="Unsupported solar delivery version")
 
     fidelity_key = fidelity.strip().lower()
     if fidelity_key not in SOLAR_PHYSICS_MODEL.fidelity_levels:
@@ -3658,6 +3665,11 @@ async def solar_physics_state(
         ) from exc
     except ObservedSolarInputUnavailable as exc:
         raise _observed_solar_input_http_error(exc) from exc
+    if delivery == "render-v1":
+        return render_solar_response(
+            state, geometry_version=geometry_version,
+            accept_encoding=request.headers.get("accept-encoding", ""),
+        )
     return state
 
 

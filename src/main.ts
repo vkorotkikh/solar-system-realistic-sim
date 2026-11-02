@@ -7,7 +7,9 @@ import * as agnEngine from './frontend/features/superluminal-modeling/agnShockwa
 import { createExperimentController, engineSelectionResolver } from './frontend/app/experimentController';
 import { createRendererRecoverySurface } from './frontend/app/rendererRecovery';
 import { createRuntimeLifetime } from './frontend/app/runtimeLifetime';
-import { createFrameLifecycle, hasFiniteAvailableBodyState } from './frontend/app/frameLifecycle';
+import { createModelWorkerController } from './frontend/app/modelWorkerController';
+import { createBackgroundStars, updateBodyLabel } from './frontend/app/sceneAnnotations';
+import { createFrameLifecycle } from './frontend/app/frameLifecycle';
 import { applyViewportSizeOverride } from './frontend/app/sceneSetup';
 import { renderPixelRatio } from './frontend/app/runtimeConfig';
 import {
@@ -21,8 +23,6 @@ import {
   Mesh,
   MeshBasicMaterial,
   MeshStandardMaterial,
-  Points,
-  PointsMaterial,
   Raycaster,
   RepeatWrapping,
   SphereGeometry,
@@ -63,14 +63,8 @@ import {
   buildModelWorkerCatalog,
   type CatalogIndexContract,
   isValidModelWorkerAvailabilityArray,
-  isValidModelWorkerStateArray,
   MODEL_WORKER_RECORD_SIZE,
-  MODEL_WORKER_STATE_SCHEMA_VERSION,
-  type ModelWorkerCatalog,
-  type ModelWorkerInitMessage,
-  type ModelWorkerOutboundMessage,
-  type ModelWorkerStateMessage,
-  type ModelWorkerTickMessage
+  type ModelWorkerCatalog
 } from './workers/modelWorkerContract';
 import {
   createRuntimeUiConfig,
@@ -204,7 +198,7 @@ function ownDisposable<T extends { dispose(): void }>(value: T): T {
 }
 // ── Data & State ─────────────────────────────────────────────────────────────
 
-// Moon rendering is not currently exposed by the shipped UI. Keep those 424
+// Moon rendering is not currently exposed by the shipped UI. Keep those 423
 // catalog records available for provenance/search, but do not pretend to keep
 // hidden dynamical states current or spend a worker tick propagating them.
 const showMoons: boolean = false;
@@ -239,22 +233,24 @@ const modelWorkerWorldVx = new Float64Array(modelWorkerBodyCount);
 const modelWorkerWorldVy = new Float64Array(modelWorkerBodyCount);
 const modelWorkerWorldVz = new Float64Array(modelWorkerBodyCount);
 const modelWorkerPositionsDirty = new Uint8Array(modelWorkerBodyCount);
-let modelWorker: Worker | null = null;
-let retireModelWorker = () => {};
-let modelWorkerEnabled = false;
-let modelWorkerReady = false;
-let modelWorkerTickInFlight = false;
-let modelWorkerSequence = 0;
-let lastModelWorkerAcceptedSequence = -1;
+const modelWorkerController = ownDisposable(createModelWorkerController({
+  catalog: modelWorkerCatalog,
+  createWorker: () => new Worker(new URL('./workers/modelWorker.ts', import.meta.url), { type: 'module' }),
+  getJulianDate: () => simState.julianDate,
+  onStatus: (status, reason) => {
+    dom.canvas.dataset.orbitalWorker = status;
+    if (reason) console.warn('[modelWorker] local propagation active:', reason);
+  },
+}));
 let lastModelWorkerAppliedSequence = -1;
-let latestModelWorkerState: ModelWorkerStateMessage | null = null;
 const ASTEROID_BELT_TARGET_COUNT = 50_000;
 const ASTEROID_BELT_PHASE1_SOURCE_LIMIT = 100_000;
 
 const TWO_PI = Math.PI * 2;
 const BODY_LOCAL_SPIN_AXIS = new Vector3(0, 1, 0);
 function bodyBaseRadiusAu(body: CatalogBody) {
-  return simState.useRealisticScale ? body.realRadiusAu : body.displayRadiusAu;
+  // Unknown physical size retains an illustrative marker in either scale mode.
+  return simState.useRealisticScale ? (body.realRadiusAu ?? body.displayRadiusAu) : body.displayRadiusAu;
 }
 
 function computePlanetMuAu3Day2(massKg: number | null | undefined): number {
@@ -383,7 +379,6 @@ function createLabelSprite(text: string) {
   const tex = ownDisposable(new CanvasTexture(canvas));
   const mat = ownDisposable(new SpriteMaterial({ map: tex, transparent: true, depthWrite: false }));
   const sprite = new Sprite(mat);
-  sprite.scale.set(0.12, 0.03, 1);
   return sprite;
 }
 
@@ -458,7 +453,6 @@ function createBodyNode(body: CatalogBody) {
   const isMajor = body.isMajor || body.type === 'planet' || body.type === 'dwarf' || body.type === 'star';
   if (isMajor) {
     const label = createLabelSprite(body.name);
-    label.position.set(0, radius * 2.5 + 0.03, 0);
     node.add(label);
     labels.push({ bodyId: body.id, sprite: label });
   }
@@ -508,25 +502,24 @@ function createOrbitLine(body: CatalogBody) {
   return line;
 }
 
-// ── Background Stars ─────────────────────────────────────────────────────────
-
-function createBackgroundStars(count = 6000, radius = 15000) {
-  const positions = new Float32Array(count * 3);
-  for (let i = 0; i < count; i++) {
-    const theta = Math.random() * TWO_PI;
-    const u = Math.random() * 2 - 1;
-    const phi = Math.acos(u);
-    const r = radius;
-    positions[i * 3] = r * Math.sin(phi) * Math.cos(theta);
-    positions[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
-    positions[i * 3 + 2] = r * Math.cos(phi);
+const labelWorldPosition = new Vector3();
+function updateLabels() {
+  camera.updateMatrixWorld();
+  for (const { bodyId, sprite } of labels) {
+    const body = bodyById.get(bodyId);
+    const node = bodyNodes.get(bodyId);
+    if (!body || !node) continue;
+    node.getWorldPosition(labelWorldPosition);
+    sprite.visible = dom.toggleLabels.checked && updateBodyLabel(sprite, labelWorldPosition,
+      bodyBaseRadiusAu(body), camera, renderer.domElement.clientHeight);
   }
-  const geo = ownDisposable(new BufferGeometry());
-  geo.setAttribute('position', new Float32BufferAttribute(positions, 3));
-  return new Points(geo, ownDisposable(new PointsMaterial({ color: '#ffffff', size: 1.2, sizeAttenuation: false })));
 }
 
+// ── Background Stars ─────────────────────────────────────────────────────────
+
 const backgroundStars = createBackgroundStars();
+ownDisposable(backgroundStars.geometry);
+ownDisposable(backgroundStars.material);
 scene.add(backgroundStars);
 const surveyMilkySphere = { position: new Vector3() };
 
@@ -724,7 +717,7 @@ function updateBodyInfoPanel(bodyId: string) {
   dom.bodyInfo.dataset.bodyId = body.id;
   dom.bodyInfoName.textContent = body.name;
   dom.bodyInfoType.textContent = typeLabel;
-  dom.bodyInfoRadius.textContent = `${body.radiusKm.toLocaleString(undefined, {
+  dom.bodyInfoRadius.textContent = body.radiusKm === null ? 'Unknown' : `${body.radiusKm.toLocaleString(undefined, {
     minimumFractionDigits: body.radiusKm < 100 ? 1 : 0,
     maximumFractionDigits: 1
   })} km`;
@@ -797,149 +790,13 @@ function updateBodyRotations(julianDate: number) {
 
 // ── Scene Body Positions ─────────────────────────────────────────────────────
 
-function disableModelWorkerIntegration() {
-  retireModelWorker();
-  modelWorker = null;
-  modelWorkerEnabled = false;
-  modelWorkerReady = false;
-  modelWorkerTickInFlight = false;
-  latestModelWorkerState = null;
-}
-
-function initializeModelWorker() {
-  if (!('Worker' in window)) {
-    return;
-  }
-  if (modelWorker) {
-    return;
-  }
-
-  try {
-    modelWorker = new Worker(new URL('./workers/modelWorker.ts', import.meta.url), { type: 'module' });
-  } catch (error) {
-    console.warn('[modelWorker] unavailable:', error);
-    return;
-  }
-
-  const worker = modelWorker;
-  retireModelWorker = startup.defer(() => {
-    worker.onmessage = null;
-    worker.onerror = null;
-    worker.terminate();
-  });
-  startup.defer(() => {
-    modelWorker = null;
-    modelWorkerEnabled = false;
-    modelWorkerReady = false;
-    modelWorkerTickInFlight = false;
-    latestModelWorkerState = null;
-  });
-  if (startup.signal.aborted || !recovery.available) return;
-  modelWorker.onmessage = (event: MessageEvent<ModelWorkerOutboundMessage>) => {
-    if (startup.signal.aborted || modelWorker !== worker) return;
-    const message = event.data;
-    if (!message || typeof message !== 'object') return;
-
-    if (message.type === 'ready') {
-      if (
-        message.schemaVersion !== MODEL_WORKER_STATE_SCHEMA_VERSION
-        || message.bodyCount !== modelWorkerBodyCount
-      ) {
-        console.warn('[modelWorker] incompatible ready contract');
-        disableModelWorkerIntegration();
-        return;
-      }
-      modelWorkerReady = true;
-      return;
-    }
-
-    if (message.type === 'state') {
-      const stateMessage = message;
-      const sequence = Number(stateMessage.sequence);
-      modelWorkerTickInFlight = false;
-      if (
-        stateMessage.schemaVersion !== MODEL_WORKER_STATE_SCHEMA_VERSION
-        || !Number.isInteger(sequence)
-        || sequence <= lastModelWorkerAcceptedSequence
-        || !Number.isFinite(stateMessage.tickJd)
-        || !isValidModelWorkerStateArray(stateMessage.bodies, modelWorkerBodyCount)
-        || !isValidModelWorkerAvailabilityArray(
-          stateMessage.availability,
-          modelWorkerBodyCount
-        )
-      ) {
-        console.warn('[modelWorker] rejected malformed or stale state payload');
-        return;
-      }
-
-      if (!hasFiniteAvailableBodyState(stateMessage.bodies, stateMessage.availability)) {
-        console.warn('[modelWorker] quarantined nonfinite available state');
-        disableModelWorkerIntegration();
-        return;
-      }
-
-      lastModelWorkerAcceptedSequence = sequence;
-
-      latestModelWorkerState = {
-        type: 'state',
-        schemaVersion: MODEL_WORKER_STATE_SCHEMA_VERSION,
-        sequence,
-        bodies: stateMessage.bodies,
-        availability: stateMessage.availability,
-        tickJd: Number(stateMessage.tickJd),
-        profilerMs: Number.isFinite(stateMessage.profilerMs) ? stateMessage.profilerMs : undefined
-      };
-    }
-  };
-
-  modelWorker.onerror = (event) => {
-    if (startup.signal.aborted || modelWorker !== worker) return;
-    const errorMessage = event.message || 'unknown worker error';
-    console.warn('[modelWorker] stopped:', errorMessage);
-    disableModelWorkerIntegration();
-  };
-
-  const initMessage: ModelWorkerInitMessage = {
-    type: 'init',
-    catalog: modelWorkerCatalog,
-    simStartJd: simState.julianDate,
-    sequence: ++modelWorkerSequence
-  };
-
-  modelWorker.postMessage(initMessage);
-  modelWorkerEnabled = true;
-}
-
 function updateModelLocally(deltaSeconds: number) {
   model.update(simState.julianDate);
 }
 
-function dispatchModelWorkerTick(deltaSeconds: number) {
-  if (!modelWorker || !modelWorkerEnabled || !modelWorkerReady || modelWorkerTickInFlight) return;
-
-  const tickMessage: ModelWorkerTickMessage = {
-    type: 'tick',
-    simState: {
-      julianDate: simState.julianDate,
-      stepMs: deltaSeconds * 1000
-    },
-    sequence: ++modelWorkerSequence
-  };
-
-  try {
-    modelWorker.postMessage(tickMessage);
-    modelWorkerTickInFlight = true;
-  } catch (error) {
-    modelWorkerTickInFlight = false;
-    console.warn('[modelWorker] tick failed:', error);
-    disableModelWorkerIntegration();
-  }
-}
-
 function applyLatestWorkerSnapshot() {
-  if (!latestModelWorkerState || !modelWorkerReady) return false;
-
-  const message = latestModelWorkerState;
+  const message = modelWorkerController.latestState;
+  if (!message || !modelWorkerController.ready) return false;
   if (message.sequence <= lastModelWorkerAppliedSequence) return false;
 
   // Never let a delayed worker response freeze or rewind the scene. At most
@@ -1054,15 +911,15 @@ function applyLatestWorkerSnapshot() {
 function updateModelState(deltaSeconds: number) {
   let snapshotApplied = false;
 
-  if (modelWorkerEnabled && modelWorker && modelWorkerReady) {
+  if (modelWorkerController.ready) {
     try {
-      dispatchModelWorkerTick(deltaSeconds);
-      if (latestModelWorkerState) {
+      modelWorkerController.tick(deltaSeconds);
+      if (modelWorkerController.latestState) {
         snapshotApplied = applyLatestWorkerSnapshot();
       }
     } catch (error) {
       console.warn('[modelWorker] falling back after snapshot failure:', error);
-      disableModelWorkerIntegration();
+      modelWorkerController.fail('snapshot application failed');
     }
   }
 
@@ -1076,7 +933,7 @@ function updateModelState(deltaSeconds: number) {
 }
 
 function updateSceneBodiesFromWorkerSnapshot() {
-  if (!modelWorkerEnabled || !latestModelWorkerState) return false;
+  if (!modelWorkerController.ready || !modelWorkerController.latestState) return false;
   return applyLatestWorkerSnapshot();
 }
 
@@ -1097,7 +954,7 @@ function applyModelSceneAndStateFallback() {
 }
 
 function updateSceneBodies() {
-  if (modelWorkerEnabled && modelWorkerReady && latestModelWorkerState) {
+  if (modelWorkerController.ready && modelWorkerController.latestState) {
     updateSceneBodiesFromWorkerSnapshot();
   } else {
     applyModelSceneAndStateFallback();
@@ -1248,7 +1105,7 @@ const experiment = ownDisposable(createExperimentController({ dom, sun: sunCtrl,
 
 refillBodyList();
 model.update(simState.julianDate);
-initializeModelWorker();
+if ('Worker' in window) modelWorkerController.start();
 updateSceneBodies();
 if (simState.useRealisticScale) applyScaleMode();
 focusBody('sun', true);
@@ -1300,6 +1157,7 @@ const frameLifecycle = createFrameLifecycle({
     { name: 'background', run: () => { backgroundStars.position.copy(camera.position); } },
     { name: 'controls', run: () => { controls.update(); } },
     { name: 'clip-planes', run: updateCameraClipPlanes },
+    { name: 'labels', run: updateLabels },
     { name: 'render', run: () => renderer.render(scene, camera) },
     { name: 'hud', run: () => timeController.updateHud() },
     { name: 'body-info', run: ({ timestamp }) => refreshBodyInfoDistance(timestamp) },

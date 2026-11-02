@@ -1,0 +1,92 @@
+[WebServer] (node:85359) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 55 tests using 1 worker
+
+(node:85385) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Skipping host requirements validation logic because `PLAYWRIGHT_SKIP_VALIDATE_HOST_REQUIREMENTS` env variable is set.
+  ✘   1 [webkit] › tests/browser/accessibility-audit.spec.ts:59:3 › rendered accessibility rule contracts › desktop controls and expanded camera tools (30.1s)
+(node:86245) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Skipping host requirements validation logic because `PLAYWRIGHT_SKIP_VALIDATE_HOST_REQUIREMENTS` env variable is set.
+  ✘   2 [webkit] › tests/browser/accessibility-audit.spec.ts:70:3 › rendered accessibility rule contracts › mobile drawer closed exposes expanded camera tools (28.9s)
+
+
+  1) [webkit] › tests/browser/accessibility-audit.spec.ts:59:3 › rendered accessibility rule contracts › desktop controls and expanded camera tools 
+
+    Test timeout of 30000ms exceeded.
+
+    Error: page.goto: Test timeout of 30000ms exceeded.
+    Call log:
+      - navigating to "http://127.0.0.1:4190/", waiting until "load"
+
+
+       at helpers.ts:7
+
+       5 |     contentType: 'application/javascript', body: "import '/tests/browser/fixtures/ui-shell.ts'",
+       6 |   }));
+    >  7 |   await page.goto('/');
+         |              ^
+       8 |   await page.waitForFunction(() => Boolean(window.__uiFixture));
+       9 | }
+      10 |
+        at loadShell (/home/nomad/ai/projects/worktrees/solar-close-partials-20261031/tests/browser/helpers.ts:7:14)
+        at loadAuditShell (/home/nomad/ai/projects/worktrees/solar-close-partials-20261031/tests/browser/accessibility-audit.spec.ts:8:3)
+        at /home/nomad/ai/projects/worktrees/solar-close-partials-20261031/tests/browser/accessibility-audit.spec.ts:61:5
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/4190/accessibility-audit-render-a5a08-s-and-expanded-camera-tools-webkit/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/4190/accessibility-audit-render-a5a08-s-and-expanded-camera-tools-webkit/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/4190/accessibility-audit-render-a5a08-s-and-expanded-camera-tools-webkit/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/4190/accessibility-audit-render-a5a08-s-and-expanded-camera-tools-webkit/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) [webkit] › tests/browser/accessibility-audit.spec.ts:70:3 › rendered accessibility rule contracts › mobile drawer closed exposes expanded camera tools 
+
+    Test was interrupted.
+
+    Error: page.goto: Test ended.
+    Call log:
+      - navigating to "http://127.0.0.1:4190/", waiting until "load"
+
+
+       at helpers.ts:7
+
+       5 |     contentType: 'application/javascript', body: "import '/tests/browser/fixtures/ui-shell.ts'",
+       6 |   }));
+    >  7 |   await page.goto('/');
+         |              ^
+       8 |   await page.waitForFunction(() => Boolean(window.__uiFixture));
+       9 | }
+      10 |
+        at loadShell (/home/nomad/ai/projects/worktrees/solar-close-partials-20261031/tests/browser/helpers.ts:7:14)
+        at loadAuditShell (/home/nomad/ai/projects/worktrees/solar-close-partials-20261031/tests/browser/accessibility-audit.spec.ts:8:3)
+        at /home/nomad/ai/projects/worktrees/solar-close-partials-20261031/tests/browser/accessibility-audit.spec.ts:72:5
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/4190/accessibility-audit-render-21101-poses-expanded-camera-tools-webkit/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/4190/accessibility-audit-render-21101-poses-expanded-camera-tools-webkit/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/4190/accessibility-audit-render-21101-poses-expanded-camera-tools-webkit/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/4190/accessibility-audit-render-21101-poses-expanded-camera-tools-webkit/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    [webkit] › tests/browser/accessibility-audit.spec.ts:59:3 › rendered accessibility rule contracts › desktop controls and expanded camera tools 
+  1 interrupted
+    [webkit] › tests/browser/accessibility-audit.spec.ts:70:3 › rendered accessibility rule contracts › mobile drawer closed exposes expanded camera tools 
+  53 did not run

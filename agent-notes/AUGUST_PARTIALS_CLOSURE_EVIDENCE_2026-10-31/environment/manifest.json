@@ -1,0 +1,253 @@
+{
+  "source": "Configured Ubuntu Noble APT package metadata; SHA256 verified before extraction",
+  "packages": [
+    {
+      "package": "libabsl20220623t64",
+      "version": "20220623.1-3.1ubuntu3.2",
+      "sha256": "dec97687bc3bc4edbd1c26bc9182f7584e3ff1c36a9bb7ce80211951e5a5893d",
+      "filename": "pool/main/a/abseil/libabsl20220623t64_20220623.1-3.1ubuntu3.2_amd64.deb",
+      "local_file": "/home/nomad/.cache/solar-webkit-noble-20261101/debs/libabsl20220623t64_20220623.1-3.1ubuntu3.2_amd64.deb",
+      "reused_from": "/home/nomad/ai/projects/worktrees/solar-remediation-20261014-accessibility/artifacts/accessibility/webkit-local/debs/libabsl20220623t64_20220623.1-3.1ubuntu3.2_amd64.deb"
+    },
+    {
+      "package": "libavif16",
+      "version": "1.0.4-1ubuntu3",
+      "sha256": "b295a9954a4b756af05ff381d9808f3c0c582a111b7e4c7678cfe13de9ae8818",
+      "filename": "pool/universe/liba/libavif/libavif16_1.0.4-1ubuntu3_amd64.deb",
+      "local_file": "/home/nomad/.cache/solar-webkit-noble-20261101/debs/libavif16_1.0.4-1ubuntu3_amd64.deb",
+      "reused_from": "/home/nomad/ai/projects/worktrees/solar-remediation-20261014-accessibility/artifacts/accessibility/webkit-local/debs/libavif16_1.0.4-1ubuntu3_amd64.deb"
+    },
+    {
+      "package": "libcairo-script-interpreter2",
+      "version": "1.18.0-3build1",
+      "sha256": "e104466e7d816672a711db42746af528d210197231f12e3c712c06ac9a79b214",
+      "filename": "pool/main/c/cairo/libcairo-script-interpreter2_1.18.0-3build1_amd64.deb",
+      "local_file": "/home/nomad/.cache/solar-webkit-noble-20261101/debs/libcairo-script-interpreter2_1.18.0-3build1_amd64.deb",
+      "reused_from": null
+    },
+    {
+      "package": "libdav1d7",
+      "version": "1.4.1-1build1",
+      "sha256": "7246303bd3ed4b99a2fb98e6199950ceb2520e7572265aefa0a6e44352adb3f0",
+      "filename": "pool/universe/d/dav1d/libdav1d7_1.4.1-1build1_amd64.deb",
+      "local_file": "/home/nomad/.cache/solar-webkit-noble-20261101/debs/libdav1d7_1.4.1-1build1_amd64.deb",
+      "reused_from": "/home/nomad/ai/projects/worktrees/solar-remediation-20261014-accessibility/artifacts/accessibility/webkit-local/debs/libdav1d7_1.4.1-1build1_amd64.deb"
+    },
+    {
+      "package": "libenchant-2-2",
+      "version": "2.3.3-2build2",
+      "sha256": "4faecb5cee57ff00649b3ea4d83c072d9da2670797b7d2854708ff60cef17426",
+      "filename": "pool/main/e/enchant-2/libenchant-2-2_2.3.3-2build2_amd64.deb",
+      "local_file": "/home/nomad/.cache/solar-webkit-noble-20261101/debs/libenchant-2-2_2.3.3-2build2_amd64.deb",
+      "reused_from": "/home/nomad/ai/projects/worktrees/solar-remediation-20261014-accessibility/artifacts/accessibility/webkit-local/debs/libenchant-2-2_2.3.3-2build2_amd64.deb"
+    },
+    {
+      "package": "libevdev2",
+      "version": "1.13.1+dfsg-1build1",
+      "sha256": "a14b1ea7b3220a063458590734920879cec8431b4fc5160eb0f044dfb8d76515",
+      "filename": "pool/main/libe/libevdev/libevdev2_1.13.1+dfsg-1build1_amd64.deb",
+      "local_file": "/home/nomad/.cache/solar-webkit-noble-20261101/debs/libevdev2_1.13.1+dfsg-1build1_amd64.deb",
+      "reused_from": "/home/nomad/ai/projects/worktrees/solar-remediation-20261014-accessibility/artifacts/accessibility/webkit-local/debs/libevdev2_1.13.1+dfsg-1build1_amd64.deb"
+    },
+    {
+      "package": "libevent-2.1-7t64",
+      "version": "2.1.12-stable-9ubuntu2.2",
+      "sha256": "083ced6efb23476cb4de4e441b741af02db5653e67fa7fcd6cf7e5f7b78f6101",
+      "filename": "pool/main/libe/libevent/libevent-2.1-7t64_2.1.12-stable-9ubuntu2.2_amd64.deb",
+      "local_file": "/home/nomad/.cache/solar-webkit-noble-20261101/debs/libevent-2.1-7t64_2.1.12-stable-9ubuntu2.2_amd64.deb",
+      "reused_from": "/home/nomad/ai/projects/worktrees/solar-remediation-20261014-accessibility/artifacts/accessibility/webkit-local/debs/libevent-2.1-7t64_2.1.12-stable-9ubuntu2.2_amd64.deb"
+    },
+    {
+      "package": "libflite1",
+      "version": "2.2-6build3",
+      "sha256": "367f1d0da5cd38759a0515eafc27aa133b2d7bf99308cac34831df0212e96b75",
+      "filename": "pool/universe/f/flite/libflite1_2.2-6build3_amd64.deb",
+      "local_file": "/home/nomad/.cache/solar-webkit-noble-20261101/debs/libflite1_2.2-6build3_amd64.deb",
+      "reused_from": "/home/nomad/ai/projects/worktrees/solar-remediation-20261014-accessibility/artifacts/accessibility/webkit-local/debs/libflite1_2.2-6build3_amd64.deb"
+    },
+    {
+      "package": "libgav1-1",
+      "version": "0.18.0-1build3",
+      "sha256": "428f353f449e6b15cdcf5823215416e36adcfba75fe9f0fedc1cd132d68e6b3f",
+      "filename": "pool/universe/libg/libgav1/libgav1-1_0.18.0-1build3_amd64.deb",
+      "local_file": "/home/nomad/.cache/solar-webkit-noble-20261101/debs/libgav1-1_0.18.0-1build3_amd64.deb",
+      "reused_from": "/home/nomad/ai/projects/worktrees/solar-remediation-20261014-accessibility/artifacts/accessibility/webkit-local/debs/libgav1-1_0.18.0-1build3_amd64.deb"
+    },
+    {
+      "package": "libgles2",
+      "version": "1.7.0-1build1",
+      "sha256": "9dec2d79a2eebb80522f7cce77995f7a8ded22f0e3916f13353d066c62f97fac",
+      "filename": "pool/main/libg/libglvnd/libgles2_1.7.0-1build1_amd64.deb",
+      "local_file": "/home/nomad/.cache/solar-webkit-noble-20261101/debs/libgles2_1.7.0-1build1_amd64.deb",
+      "reused_from": "/home/nomad/ai/projects/worktrees/solar-remediation-20261014-delivery/artifacts/delivery/webkit/debs/libgles2_1.7.0-1build1_amd64.deb"
+    },
+    {
+      "package": "libgraphene-1.0-0",
+      "version": "1.10.8-3build2",
+      "sha256": "5276c4173bff30bd2a368cce30639227089512aad85fc4af87c284456bafe8ff",
+      "filename": "pool/main/g/graphene/libgraphene-1.0-0_1.10.8-3build2_amd64.deb",
+      "local_file": "/home/nomad/.cache/solar-webkit-noble-20261101/debs/libgraphene-1.0-0_1.10.8-3build2_amd64.deb",
+      "reused_from": null
+    },
+    {
+      "package": "libgstreamer-gl1.0-0",
+      "version": "1.24.2-1ubuntu0.5",
+      "sha256": "fb87a72e431d2c57c35b0b2bd4189bb6a6e771788c3ba389a9e3623886486b22",
+      "filename": "pool/main/g/gst-plugins-base1.0/libgstreamer-gl1.0-0_1.24.2-1ubuntu0.5_amd64.deb",
+      "local_file": "/home/nomad/.cache/solar-webkit-noble-20261101/debs/libgstreamer-gl1.0-0_1.24.2-1ubuntu0.5_amd64.deb",
+      "reused_from": "/home/nomad/ai/projects/worktrees/solar-remediation-20261014-accessibility/artifacts/accessibility/webkit-local/debs/libgstreamer-gl1.0-0_1.24.2-1ubuntu0.5_amd64.deb"
+    },
+    {
+      "package": "libgstreamer-plugins-bad1.0-0",
+      "version": "1.24.2-1ubuntu4",
+      "sha256": "6e8da41c0cbb2070f3477cf02360c2ce2eb55e825ba09e12b4270b3254e04f45",
+      "filename": "pool/universe/g/gst-plugins-bad1.0/libgstreamer-plugins-bad1.0-0_1.24.2-1ubuntu4_amd64.deb",
+      "local_file": "/home/nomad/.cache/solar-webkit-noble-20261101/debs/libgstreamer-plugins-bad1.0-0_1.24.2-1ubuntu4_amd64.deb",
+      "reused_from": "/home/nomad/ai/projects/worktrees/solar-remediation-20261014-accessibility/artifacts/accessibility/webkit-local/debs/libgstreamer-plugins-bad1.0-0_1.24.2-1ubuntu4_amd64.deb"
+    },
+    {
+      "package": "libgstreamer-plugins-base1.0-0",
+      "version": "1.24.2-1ubuntu0.5",
+      "sha256": "3c5826eee14cb5077c7e53707fbe86cc0882c787ffe79b330cad636c0009473d",
+      "filename": "pool/main/g/gst-plugins-base1.0/libgstreamer-plugins-base1.0-0_1.24.2-1ubuntu0.5_amd64.deb",
+      "local_file": "/home/nomad/.cache/solar-webkit-noble-20261101/debs/libgstreamer-plugins-base1.0-0_1.24.2-1ubuntu0.5_amd64.deb",
+      "reused_from": "/home/nomad/ai/projects/worktrees/solar-remediation-20261014-accessibility/artifacts/accessibility/webkit-local/debs/libgstreamer-plugins-base1.0-0_1.24.2-1ubuntu0.5_amd64.deb"
+    },
+    {
+      "package": "libgtk-4-1",
+      "version": "4.14.5+ds-0ubuntu0.10",
+      "sha256": "2361861e33d34a26f3d6c4906935fd9e6241eb44ff30564cb493b5671111a24f",
+      "filename": "pool/main/g/gtk4/libgtk-4-1_4.14.5+ds-0ubuntu0.10_amd64.deb",
+      "local_file": "/home/nomad/.cache/solar-webkit-noble-20261101/debs/libgtk-4-1_4.14.5+ds-0ubuntu0.10_amd64.deb",
+      "reused_from": null
+    },
+    {
+      "package": "libgudev-1.0-0",
+      "version": "1:238-5ubuntu1",
+      "sha256": "8bdd42c584a8d18759df2311b126dc679d438e9780038743b792cf5315f248dc",
+      "filename": "pool/main/libg/libgudev/libgudev-1.0-0_238-5ubuntu1_amd64.deb",
+      "local_file": "/home/nomad/.cache/solar-webkit-noble-20261101/debs/libgudev-1.0-0_1%3a238-5ubuntu1_amd64.deb",
+      "reused_from": "/home/nomad/ai/projects/worktrees/solar-remediation-20261014-accessibility/artifacts/accessibility/webkit-local/debs/libgudev-1.0-0_1%3a238-5ubuntu1_amd64.deb"
+    },
+    {
+      "package": "libharfbuzz-icu0",
+      "version": "8.3.0-2build2",
+      "sha256": "9098670758e60b190d7edf367ad57e954bfc1b2a616def3f4e281062e036a843",
+      "filename": "pool/main/h/harfbuzz/libharfbuzz-icu0_8.3.0-2build2_amd64.deb",
+      "local_file": "/home/nomad/.cache/solar-webkit-noble-20261101/debs/libharfbuzz-icu0_8.3.0-2build2_amd64.deb",
+      "reused_from": "/home/nomad/ai/projects/worktrees/solar-remediation-20261014-accessibility/artifacts/accessibility/webkit-local/debs/libharfbuzz-icu0_8.3.0-2build2_amd64.deb"
+    },
+    {
+      "package": "libhyphen0",
+      "version": "2.8.8-7build3",
+      "sha256": "b508d3a5da168ddb2ae6e79ea0521ba64cd121285db0ece438d0bd56ba628556",
+      "filename": "pool/main/h/hyphen/libhyphen0_2.8.8-7build3_amd64.deb",
+      "local_file": "/home/nomad/.cache/solar-webkit-noble-20261101/debs/libhyphen0_2.8.8-7build3_amd64.deb",
+      "reused_from": "/home/nomad/ai/projects/worktrees/solar-remediation-20261014-accessibility/artifacts/accessibility/webkit-local/debs/libhyphen0_2.8.8-7build3_amd64.deb"
+    },
+    {
+      "package": "libmanette-0.2-0",
+      "version": "0.2.7-1build2",
+      "sha256": "8fbb67e94abf563c01398ad7458df1a6824f19a0b4337f67d61c0889771805db",
+      "filename": "pool/main/libm/libmanette/libmanette-0.2-0_0.2.7-1build2_amd64.deb",
+      "local_file": "/home/nomad/.cache/solar-webkit-noble-20261101/debs/libmanette-0.2-0_0.2.7-1build2_amd64.deb",
+      "reused_from": "/home/nomad/ai/projects/worktrees/solar-remediation-20261014-accessibility/artifacts/accessibility/webkit-local/debs/libmanette-0.2-0_0.2.7-1build2_amd64.deb"
+    },
+    {
+      "package": "libopus0",
+      "version": "1.4-1build1",
+      "sha256": "6d8da32a832e655c9603543b47a0bc90c6f60bdee0c00fe7499bd50acad566cf",
+      "filename": "pool/main/o/opus/libopus0_1.4-1build1_amd64.deb",
+      "local_file": "/home/nomad/.cache/solar-webkit-noble-20261101/debs/libopus0_1.4-1build1_amd64.deb",
+      "reused_from": "/home/nomad/ai/projects/worktrees/solar-remediation-20261014-accessibility/artifacts/accessibility/webkit-local/debs/libopus0_1.4-1build1_amd64.deb"
+    },
+    {
+      "package": "liborc-0.4-0t64",
+      "version": "1:0.4.38-1ubuntu0.1",
+      "sha256": "a546ca6e237748693596ba469e84a2e0581bc39113abc62b718931df00a4c682",
+      "filename": "pool/main/o/orc/liborc-0.4-0t64_0.4.38-1ubuntu0.1_amd64.deb",
+      "local_file": "/home/nomad/.cache/solar-webkit-noble-20261101/debs/liborc-0.4-0t64_1%3a0.4.38-1ubuntu0.1_amd64.deb",
+      "reused_from": "/home/nomad/ai/projects/worktrees/solar-remediation-20261014-accessibility/artifacts/accessibility/webkit-local/debs/liborc-0.4-0t64_1%3a0.4.38-1ubuntu0.1_amd64.deb"
+    },
+    {
+      "package": "librav1e0",
+      "version": "0.7.1-2",
+      "sha256": "be10d7e2dc028d9d7791997a8710b7a9a3147151613750f0f08963fbe9ac993c",
+      "filename": "pool/universe/r/rust-rav1e/librav1e0_0.7.1-2_amd64.deb",
+      "local_file": "/home/nomad/.cache/solar-webkit-noble-20261101/debs/librav1e0_0.7.1-2_amd64.deb",
+      "reused_from": "/home/nomad/ai/projects/worktrees/solar-remediation-20261014-accessibility/artifacts/accessibility/webkit-local/debs/librav1e0_0.7.1-2_amd64.deb"
+    },
+    {
+      "package": "libsecret-1-0",
+      "version": "0.21.4-1build3",
+      "sha256": "7d7263ffc92c33042328f99c93433a846e8d9e549876dab18ba18606e6541ecd",
+      "filename": "pool/main/libs/libsecret/libsecret-1-0_0.21.4-1build3_amd64.deb",
+      "local_file": "/home/nomad/.cache/solar-webkit-noble-20261101/debs/libsecret-1-0_0.21.4-1build3_amd64.deb",
+      "reused_from": null
+    },
+    {
+      "package": "libsoup-3.0-0",
+      "version": "3.4.4-5ubuntu0.9",
+      "sha256": "cd6bab2b426b0c81b0f7856df11f3633df118df33517378049545ff440751fcc",
+      "filename": "pool/main/libs/libsoup3/libsoup-3.0-0_3.4.4-5ubuntu0.9_amd64.deb",
+      "local_file": "/home/nomad/.cache/solar-webkit-noble-20261101/debs/libsoup-3.0-0_3.4.4-5ubuntu0.9_amd64.deb",
+      "reused_from": null
+    },
+    {
+      "package": "libsvtav1enc1d1",
+      "version": "1.7.0+dfsg-2build1",
+      "sha256": "bac5f768bff928e85cecb39da8e37276a579639ef884692b089ed2de6c1cd2ad",
+      "filename": "pool/universe/s/svt-av1/libsvtav1enc1d1_1.7.0+dfsg-2build1_amd64.deb",
+      "local_file": "/home/nomad/.cache/solar-webkit-noble-20261101/debs/libsvtav1enc1d1_1.7.0+dfsg-2build1_amd64.deb",
+      "reused_from": "/home/nomad/ai/projects/worktrees/solar-remediation-20261014-accessibility/artifacts/accessibility/webkit-local/debs/libsvtav1enc1d1_1.7.0+dfsg-2build1_amd64.deb"
+    },
+    {
+      "package": "libwayland-server0",
+      "version": "1.22.0-2.1build1",
+      "sha256": "edbfa4b6857691ae922cc768a753fab230eee9e956aa2ce4f2eaa8d9ad777dca",
+      "filename": "pool/main/w/wayland/libwayland-server0_1.22.0-2.1build1_amd64.deb",
+      "local_file": "/home/nomad/.cache/solar-webkit-noble-20261101/debs/libwayland-server0_1.22.0-2.1build1_amd64.deb",
+      "reused_from": "/home/nomad/ai/projects/worktrees/solar-remediation-20261014-accessibility/artifacts/accessibility/webkit-local/debs/libwayland-server0_1.22.0-2.1build1_amd64.deb"
+    },
+    {
+      "package": "libwebpdemux2",
+      "version": "1.3.2-0.4build3",
+      "sha256": "15e98f127e1fdbf0889cf4b2f5604b60a6da0b988f20bf34731c9a2307d490d6",
+      "filename": "pool/main/libw/libwebp/libwebpdemux2_1.3.2-0.4build3_amd64.deb",
+      "local_file": "/home/nomad/.cache/solar-webkit-noble-20261101/debs/libwebpdemux2_1.3.2-0.4build3_amd64.deb",
+      "reused_from": "/home/nomad/ai/projects/worktrees/solar-remediation-20261014-accessibility/artifacts/accessibility/webkit-local/debs/libwebpdemux2_1.3.2-0.4build3_amd64.deb"
+    },
+    {
+      "package": "libwebpmux3",
+      "version": "1.3.2-0.4build3",
+      "sha256": "0dd0f2de0fbbda7239209332ddfe512f4383d0489dd3f9fb25398f58c1621724",
+      "filename": "pool/main/libw/libwebp/libwebpmux3_1.3.2-0.4build3_amd64.deb",
+      "local_file": "/home/nomad/.cache/solar-webkit-noble-20261101/debs/libwebpmux3_1.3.2-0.4build3_amd64.deb",
+      "reused_from": "/home/nomad/ai/projects/worktrees/solar-remediation-20261014-accessibility/artifacts/accessibility/webkit-local/debs/libwebpmux3_1.3.2-0.4build3_amd64.deb"
+    },
+    {
+      "package": "libx264-164",
+      "version": "2:0.164.3108+git31e19f9-1",
+      "sha256": "7a410be6797c32357a2b7f0cc68ee14ae0e3b652bb17d16cdc941e4d830c7842",
+      "filename": "pool/universe/x/x264/libx264-164_0.164.3108+git31e19f9-1_amd64.deb",
+      "local_file": "/home/nomad/.cache/solar-webkit-noble-20261101/debs/libx264-164_2%3a0.164.3108+git31e19f9-1_amd64.deb",
+      "reused_from": null
+    },
+    {
+      "package": "libxslt1.1",
+      "version": "1.1.39-0exp1ubuntu0.24.04.3",
+      "sha256": "e716daf96ea2526cab92e5cc4708739d5f2f4b89fb76782dfda7f49283eeeb40",
+      "filename": "pool/main/libx/libxslt/libxslt1.1_1.1.39-0exp1ubuntu0.24.04.3_amd64.deb",
+      "local_file": "/home/nomad/.cache/solar-webkit-noble-20261101/debs/libxslt1.1_1.1.39-0exp1ubuntu0.24.04.3_amd64.deb",
+      "reused_from": "/home/nomad/ai/projects/worktrees/solar-remediation-20261014-accessibility/artifacts/accessibility/webkit-local/debs/libxslt1.1_1.1.39-0exp1ubuntu0.24.04.3_amd64.deb"
+    },
+    {
+      "package": "libyuv0",
+      "version": "0.0~git202401110.af6ac82-1",
+      "sha256": "88bd472e50a7e45469e31f8e0ba232b4d8ed30322f5badb285c58cc1ba0d2176",
+      "filename": "pool/universe/liby/libyuv/libyuv0_0.0~git202401110.af6ac82-1_amd64.deb",
+      "local_file": "/home/nomad/.cache/solar-webkit-noble-20261101/debs/libyuv0_0.0~git202401110.af6ac82-1_amd64.deb",
+      "reused_from": "/home/nomad/ai/projects/worktrees/solar-remediation-20261014-accessibility/artifacts/accessibility/webkit-local/debs/libyuv0_0.0~git202401110.af6ac82-1_amd64.deb"
+    }
+  ]
+}

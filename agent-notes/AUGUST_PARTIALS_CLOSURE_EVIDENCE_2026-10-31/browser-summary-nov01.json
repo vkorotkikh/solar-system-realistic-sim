@@ -1,0 +1,244 @@
+{
+  "implementation_commit": "a1977f828aea76a2828869823ccb7eae86b00aec",
+  "source_report": "browser-qualified-matrix-nov01.json",
+  "source_sha256": "76acfd5628e262802d4d62b00471743b8badfb3f1750fb6863f61cce373905f4",
+  "exit_code": 0,
+  "stats": {
+    "startTime": "2026-11-01T05:55:40.406Z",
+    "duration": 831365.569,
+    "expected": 136,
+    "skipped": 34,
+    "unexpected": 0,
+    "flaky": 0
+  },
+  "projects": {
+    "chromium": {
+      "expected": 57
+    },
+    "firefox": {
+      "expected": 38,
+      "skipped": 17
+    },
+    "webkit": {
+      "expected": 38,
+      "skipped": 17
+    },
+    "chromium-tab-zoom": {
+      "expected": 3
+    }
+  },
+  "skip_reasons": {
+    "WebGL2 assembled-material regression": 2,
+    "Chromium frame/worker gate": 8,
+    "Actual WebGL startup ownership": 10,
+    "Actual WebGL startup ownership regression": 8,
+    "Chrome tabs API is Chromium-specific, not Safari/Firefox zoom evidence": 6
+  },
+  "attachments": [
+    {
+      "project": "chromium",
+      "test": "desktop controls and expanded camera tools",
+      "name": "axe-desktop-expanded",
+      "contentType": "application/json"
+    },
+    {
+      "project": "chromium",
+      "test": "mobile drawer closed exposes expanded camera tools",
+      "name": "axe-mobile-closed",
+      "contentType": "application/json"
+    },
+    {
+      "project": "chromium",
+      "test": "mobile drawer open exposes all control disclosures",
+      "name": "axe-mobile-open",
+      "contentType": "application/json"
+    },
+    {
+      "project": "chromium",
+      "test": "desktop-recovery exposes the recovery surface",
+      "name": "axe-desktop-recovery",
+      "contentType": "application/json"
+    },
+    {
+      "project": "chromium",
+      "test": "mobile-closed-recovery exposes the recovery surface",
+      "name": "axe-mobile-closed-recovery",
+      "contentType": "application/json"
+    },
+    {
+      "project": "firefox",
+      "test": "desktop controls and expanded camera tools",
+      "name": "axe-desktop-expanded",
+      "contentType": "application/json"
+    },
+    {
+      "project": "firefox",
+      "test": "mobile drawer closed exposes expanded camera tools",
+      "name": "axe-mobile-closed",
+      "contentType": "application/json"
+    },
+    {
+      "project": "firefox",
+      "test": "mobile drawer open exposes all control disclosures",
+      "name": "axe-mobile-open",
+      "contentType": "application/json"
+    },
+    {
+      "project": "firefox",
+      "test": "desktop-recovery exposes the recovery surface",
+      "name": "axe-desktop-recovery",
+      "contentType": "application/json"
+    },
+    {
+      "project": "firefox",
+      "test": "mobile-closed-recovery exposes the recovery surface",
+      "name": "axe-mobile-closed-recovery",
+      "contentType": "application/json"
+    },
+    {
+      "project": "webkit",
+      "test": "desktop controls and expanded camera tools",
+      "name": "axe-desktop-expanded",
+      "contentType": "application/json"
+    },
+    {
+      "project": "webkit",
+      "test": "mobile drawer closed exposes expanded camera tools",
+      "name": "axe-mobile-closed",
+      "contentType": "application/json"
+    },
+    {
+      "project": "webkit",
+      "test": "mobile drawer open exposes all control disclosures",
+      "name": "axe-mobile-open",
+      "contentType": "application/json"
+    },
+    {
+      "project": "webkit",
+      "test": "desktop-recovery exposes the recovery surface",
+      "name": "axe-desktop-recovery",
+      "contentType": "application/json"
+    },
+    {
+      "project": "webkit",
+      "test": "mobile-closed-recovery exposes the recovery surface",
+      "name": "axe-mobile-closed-recovery",
+      "contentType": "application/json"
+    },
+    {
+      "project": "chromium",
+      "test": "decorative stars remain visible with close-focus clip planes and behind bodies",
+      "name": "star-clip-pixel-counts",
+      "contentType": "application/json"
+    },
+    {
+      "project": "chromium",
+      "test": "actual app recovers a silently terminated orbital worker",
+      "name": "silent-worker-recovery",
+      "contentType": "application/json"
+    },
+    {
+      "project": "chromium",
+      "test": "actual app composes camera, drawer, search and experiment with a nondefault backend origin",
+      "name": "webgl-renderer",
+      "contentType": "application/json"
+    },
+    {
+      "project": "chromium",
+      "test": "actual main links the assembled asteroid material with production antialiasing",
+      "name": "production-asteroid-program",
+      "contentType": "application/json"
+    },
+    {
+      "project": "chromium",
+      "test": "a foreground timestamp stall cannot create an unbounded local simulation jump",
+      "name": "foreground-frame-gap",
+      "contentType": "application/json"
+    },
+    {
+      "project": "chromium",
+      "test": "native hidden-tab resume discards hidden elapsed time",
+      "name": "native-hidden-tab",
+      "contentType": "application/json"
+    },
+    {
+      "project": "chromium",
+      "test": "SCN-049 captured REBOUND/WHFast client rejects stale Kuiper (versioned) while retaining body updates",
+      "name": "scn049-native-browser-trace.json",
+      "contentType": "application/json"
+    },
+    {
+      "project": "chromium",
+      "test": "SCN-049 captured REBOUND/WHFast client rejects stale Kuiper (legacy) while retaining body updates",
+      "name": "scn049-native-browser-trace.json",
+      "contentType": "application/json"
+    },
+    {
+      "project": "firefox",
+      "test": "SCN-049 captured REBOUND/WHFast client rejects stale Kuiper (versioned) while retaining body updates",
+      "name": "scn049-native-browser-trace.json",
+      "contentType": "application/json"
+    },
+    {
+      "project": "firefox",
+      "test": "SCN-049 captured REBOUND/WHFast client rejects stale Kuiper (legacy) while retaining body updates",
+      "name": "scn049-native-browser-trace.json",
+      "contentType": "application/json"
+    },
+    {
+      "project": "webkit",
+      "test": "SCN-049 captured REBOUND/WHFast client rejects stale Kuiper (versioned) while retaining body updates",
+      "name": "scn049-native-browser-trace.json",
+      "contentType": "application/json"
+    },
+    {
+      "project": "webkit",
+      "test": "SCN-049 captured REBOUND/WHFast client rejects stale Kuiper (legacy) while retaining body updates",
+      "name": "scn049-native-browser-trace.json",
+      "contentType": "application/json"
+    },
+    {
+      "project": "chromium",
+      "test": "one source-selected full scene uses the latest scale and retires its quadtree owners on unload",
+      "name": "startup-ownership",
+      "contentType": "application/json"
+    },
+    {
+      "project": "chromium-tab-zoom",
+      "test": "200% genuine tab zoom preserves reflow and keyboard focus",
+      "name": "native-zoom-200-dialog",
+      "contentType": "image/png"
+    },
+    {
+      "project": "chromium-tab-zoom",
+      "test": "200% genuine tab zoom preserves reflow and keyboard focus",
+      "name": "native-zoom-200-viewport",
+      "contentType": "image/png"
+    },
+    {
+      "project": "chromium-tab-zoom",
+      "test": "200% genuine tab zoom preserves reflow and keyboard focus",
+      "name": "native-tab-zoom",
+      "contentType": "application/json"
+    },
+    {
+      "project": "chromium-tab-zoom",
+      "test": "400% genuine tab zoom preserves reflow and keyboard focus",
+      "name": "native-zoom-400-dialog",
+      "contentType": "image/png"
+    },
+    {
+      "project": "chromium-tab-zoom",
+      "test": "400% genuine tab zoom preserves reflow and keyboard focus",
+      "name": "native-zoom-400-viewport",
+      "contentType": "image/png"
+    },
+    {
+      "project": "chromium-tab-zoom",
+      "test": "400% genuine tab zoom preserves reflow and keyboard focus",
+      "name": "native-tab-zoom",
+      "contentType": "application/json"
+    }
+  ],
+  "qualification": "170 selected tests across four unchanged project definitions. FRAME_NATIVE_VISIBILITY=1. Exact WebKit-only launcher override and dependency provenance archived in environment/. No global host validation skip flag. Chromium-only skips in Firefox/WebKit are not passes."
+}

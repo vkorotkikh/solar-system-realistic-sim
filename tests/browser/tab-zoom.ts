@@ -31,6 +31,17 @@ export function zoomMetrics(page: Page) {
 
 type Metrics = Awaited<ReturnType<typeof zoomMetrics>>;
 
+export async function waitForNativeZoomFrame(page: Page, dpr: number) {
+  const ready = await page.waitForFunction((expectedDpr) => new Promise<boolean>((resolve) => {
+    const onFrame = () => {
+      if (Math.abs(devicePixelRatio - expectedDpr) < 1e-6) resolve(true);
+      else requestAnimationFrame(onFrame);
+    };
+    requestAnimationFrame(onFrame);
+  }), dpr, { timeout: 30_000 });
+  await ready.dispose();
+}
+
 export async function captureNativeZoomScreenshot(page: Page, info: TestInfo, name: string) {
   // Playwright's viewport-derived screenshot clip can crop a genuinely zoomed
   // native window. Capture the browser surface without changing device metrics.
@@ -92,11 +103,22 @@ export async function createTabZoomSession(info: TestInfo, origin: string) {
       context,
       page: context.pages()[0] ?? await context.newPage(),
       getZoom: async (page: Page) => worker.evaluate((id) => chrome.tabs.getZoom(id), await tabId(page)),
-      setZoom: async (page: Page, factor: number) => worker.evaluate(async ({ id, factor }) => {
-        await chrome.tabs.setZoomSettings(id, { mode: 'automatic', scope: 'per-tab' });
-        await chrome.tabs.setZoom(id, factor);
-        return { factor: await chrome.tabs.getZoom(id), settings: await chrome.tabs.getZoomSettings(id) };
-      }, { id: await tabId(page), factor }),
+      setZoom: async (page: Page, factor: number) => {
+        const id = await tabId(page);
+        const previousZoom = await worker.evaluate((id) => chrome.tabs.getZoom(id), id);
+        const previousDpr = await page.evaluate(() => devicePixelRatio);
+        const zoom = await worker.evaluate(async ({ id, factor }) => {
+          await chrome.tabs.setZoomSettings(id, { mode: 'automatic', scope: 'per-tab' });
+          await chrome.tabs.setZoom(id, factor);
+          return { factor: await chrome.tabs.getZoom(id), settings: await chrome.tabs.getZoomSettings(id) };
+        }, { id, factor });
+        // The tabs API acknowledges before Chromium delivers resize events and
+        // renders the new layout. Reading innerWidth alone can see the new zoom
+        // while the previous frame is still blocked on software WebGL work.
+        // Await a native frame at the new DPR, independently of panel behavior.
+        await waitForNativeZoomFrame(page, previousDpr * factor / previousZoom);
+        return zoom;
+      },
       close: async () => {
         try { await context.close(); }
         finally { await rm(profile, { recursive: true, force: true }); }

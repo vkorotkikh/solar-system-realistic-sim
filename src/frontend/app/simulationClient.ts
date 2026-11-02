@@ -31,6 +31,7 @@ export interface ServerStateUpdateMessage {
 
 interface ConnectedMessage {
   type: 'connected';
+  jd?: number;
   protocol_version?: number;
   kuiper_subscription_version?: number;
   kuiper_activation_error_version?: number;
@@ -45,7 +46,14 @@ interface ErrorMessage {
   kuiper_subscription_id?: string;
 }
 
-type IncomingMessage = ServerStateUpdateMessage | ConnectedMessage | ErrorMessage;
+/** Retained server orbital-elements contract: AU, degrees and period in days. */
+export interface ServerOrbitalElementsMessage {
+  type: 'orbital_elements';
+  body_id: string;
+  elements: { a: number; e: number; inc: number; Omega: number; omega: number; M: number; f?: number; P?: number };
+}
+
+type IncomingMessage = ServerStateUpdateMessage | ConnectedMessage | ErrorMessage | ServerOrbitalElementsMessage;
 
 interface Vector3Like {
   x: number;
@@ -105,6 +113,9 @@ function decodeMessage(data: string): IncomingMessage {
       throw new Error('Invalid WebSocket state_update: expected finite epoch and 3D positions');
     }
   } else if (message.type === 'connected') {
+    if (message.jd !== undefined && (typeof message.jd !== 'number' || !Number.isFinite(message.jd))) {
+      throw new Error('Invalid WebSocket connected epoch');
+    }
     // The v1 fields remain optional for legacy servers, but provided fields must
     // match the supported contract. Do not configure an incompatible session.
     if (message.protocol_version !== undefined && message.protocol_version !== WS_PROTOCOL_VERSION) {
@@ -120,6 +131,15 @@ function decodeMessage(data: string): IncomingMessage {
     if (message.warnings !== undefined && (!Array.isArray(message.warnings)
       || !message.warnings.every(warning => typeof warning === 'string'))) {
       throw new Error('Invalid WebSocket connected warnings');
+    }
+  } else if (message.type === 'orbital_elements') {
+    const elements = message.elements;
+    if (typeof message.body_id !== 'string' || !message.body_id.trim() || !isRecord(elements)
+      || !['a', 'e', 'inc', 'Omega', 'omega', 'M'].every(key =>
+        typeof elements[key] === 'number' && Number.isFinite(elements[key]))
+      || !['f', 'P'].every(key => elements[key] === undefined
+        || (typeof elements[key] === 'number' && Number.isFinite(elements[key])))) {
+      throw new Error('Invalid WebSocket orbital_elements');
     }
   } else if (message.type === 'error') {
     if ((message.code !== undefined && typeof message.code !== 'string')
@@ -143,6 +163,7 @@ export class SimulationClient {
   private ws: WebSocket | null;
 
   private socketGeneration = 0;
+  private epochOperationGeneration = 0;
 
   private connected: boolean;
 
@@ -159,6 +180,15 @@ export class SimulationClient {
   private status: SimulationClientStatus;
 
   latestState: ServerStateUpdateMessage | null;
+
+  /** Last confirmed server epoch, never an optimistic seek target. */
+  latestJulianDate: number | null = null;
+
+  latestOrbitalElements: ServerOrbitalElementsMessage | null = null;
+
+  onJulianDate: ((jd: number) => void) | null = null;
+
+  onOrbitalElements: ((message: ServerOrbitalElementsMessage) => void) | null = null;
 
   latestKuiper: number[][] | null;
 
@@ -286,8 +316,18 @@ export class SimulationClient {
         return;
       }
       if (msg.type === 'state_update') this.reconnectAttempt = 0;
-      this.markFresh();
-      if (this.ws !== socket) return;
+      const epochOperationGeneration = this.epochOperationGeneration;
+      const firstReady = msg.type === 'connected' && !this.serverReady;
+      // Commit transport readiness and incoming caches before any observers.
+      // An observer may immediately seek, disconnect or replace this session.
+      if (msg.type === 'connected' && firstReady) {
+        this.kuiperSubscriptionSupported = msg.kuiper_subscription_version === 1;
+        this.kuiperActivationErrorsCorrelated = msg.kuiper_activation_error_version === 1;
+        this.serverReady = true;
+      }
+      if (msg.type === 'orbital_elements') {
+        this.latestOrbitalElements = msg;
+      }
       if (msg.type === 'state_update') {
         this.latestState = msg;
         // The backend emits Kuiper only every fifth frame. Omission preserves
@@ -298,12 +338,24 @@ export class SimulationClient {
           this.latestKuiperSnapshot = Array.isArray(msg.kuiper) ? { positions: msg.kuiper } : msg.kuiper;
           this.latestKuiper = this.latestKuiperSnapshot?.positions ?? null;
         }
+      }
+      if (msg.type !== 'orbital_elements' && msg.jd !== undefined) this.latestJulianDate = msg.jd;
+      this.markFresh();
+      if (this.ws !== socket) return;
+      if (msg.type === 'orbital_elements') {
+        if (epochOperationGeneration === this.epochOperationGeneration) {
+          this.notifyObserver(() => this.onOrbitalElements?.(msg));
+        }
         return;
       }
+      if (msg.jd !== undefined && epochOperationGeneration === this.epochOperationGeneration) {
+        this.notifyObserver(() => this.onJulianDate?.(msg.jd!));
+        if (this.ws !== socket) return;
+      }
+      if (msg.type === 'state_update') return;
       this.handleConnectedMessage(msg);
       if (this.ws !== socket) return;
-      if (!this.serverReady) {
-        this.serverReady = true;
+      if (firstReady) {
         this.notifyObserver(() => this.onServerReady?.(this));
         if (this.ws === socket) this.replayKuiperRequest();
       }
@@ -323,11 +375,6 @@ export class SimulationClient {
 
   private handleConnectedMessage(message: ConnectedMessage): void {
     const socket = this.ws;
-    if (!this.serverReady) {
-      const subscriptionVersion = message.kuiper_subscription_version;
-      this.kuiperSubscriptionSupported = subscriptionVersion === 1;
-      this.kuiperActivationErrorsCorrelated = message.kuiper_activation_error_version === 1;
-    }
     if (Array.isArray(message.warnings)) {
       for (const warning of message.warnings) {
         if (typeof warning === 'string' && this.onProtocolWarning) {
@@ -398,6 +445,8 @@ export class SimulationClient {
     this.staleTimerId = window.setTimeout(() => {
       if (this.ws === socket && this.connected) {
         this.latestState = null;
+        this.latestJulianDate = null;
+        this.latestOrbitalElements = null;
         this.latestKuiper = null;
         this.latestKuiperSnapshot = null;
         this.setStatus('stale');
@@ -434,6 +483,8 @@ export class SimulationClient {
     this.kuiperActivationErrorsCorrelated = false;
     this.kuiperSubscriptionId = null;
     this.latestState = null;
+    this.latestJulianDate = null;
+    this.latestOrbitalElements = null;
     this.latestKuiper = null;
     this.latestKuiperSnapshot = null;
     this.kuiperActive = false;
@@ -507,6 +558,25 @@ export class SimulationClient {
       }
     }
     return false;
+  }
+
+  /** Explicit TDB seek; false means invalid input or no ready transport. No offline replay. */
+  setJulianDate(jd: number): boolean {
+    if (!Number.isFinite(jd) || !this.serverReady) return false;
+    if (!this.send({ type: 'set_julian_date', jd, jd_time_scale: 'TDB' })) return false;
+    this.epochOperationGeneration++;
+    // Cached positions/elements belong to the previous epoch. A subsequent
+    // server message supplies the confirmed epoch; send is not a seek ack.
+    this.latestState = null;
+    this.latestKuiper = null;
+    this.latestKuiperSnapshot = null;
+    this.latestOrbitalElements = null;
+    return true;
+  }
+
+  requestOrbitalElements(bodyId: string): boolean {
+    if (typeof bodyId !== 'string' || !bodyId.trim() || !this.serverReady) return false;
+    return this.send({ type: 'get_orbital_elements', body_id: bodyId });
   }
 
   activateKuiper(center: Vector3Like, spread: number): void {

@@ -85,10 +85,11 @@ def _exchange_directories(staged: Path, destination: Path) -> None:
         raise OSError(error, os.strerror(error), str(destination))
 
 
-def publish_directory(destination: Path, artifacts: dict[str, bytes]) -> None:
+def publish_directory(destination: Path, artifacts: dict[str, bytes], *, preserve_existing: bool = True) -> None:
     """Stage an entire generation, then atomically publish all of its artifacts.
 
-Existing unrelated files are preserved. Unsupported exchange filesystems fail
+Existing unrelated files are preserved unless preserve_existing=False declares
+a complete replacement generation. Unsupported exchange filesystems fail
 closed. A reader opening files across the switch must still check their hash.
 """
     destination = Path(destination).absolute()
@@ -100,7 +101,7 @@ closed. A reader opening files across the switch must still check their hash.
     destination.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(dir=destination.parent, prefix=f".{destination.name}.stage-") as temporary:
         staged = Path(temporary) / "generation"
-        if destination.exists():
+        if destination.exists() and preserve_existing:
             shutil.copytree(destination, staged, symlinks=True)
         else:
             staged.mkdir()

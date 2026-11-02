@@ -20,10 +20,12 @@ import {
   Sprite,
   SpriteMaterial,
   Texture,
+  Vector3,
   Vector4
 } from 'three';
 import { AU_KM } from '../../../constants';
 import { SOLAR_RADIUS_AU, coronalToDisplay } from './solarDisplayScale';
+import { SOLAR_ROTATION_COEFFICIENTS_DEG_DAY, SOLAR_ROTATION_REFERENCE } from './solarRotation';
 import { clampUnit, solarFeatureEntryBrightness, sampleSolarFeatureEntryPoint } from './solarFeatureBlending';
 import type { SolarFeatureBlendView, SolarPhysicsStateLike } from './solarFeatureBlending';
 
@@ -53,6 +55,7 @@ void main() {
 
 export const SUN_SURFACE_FRAGMENT_SHADER = `
 uniform float time;
+uniform vec3 rotationCoefficientsDegDay;
 uniform float activity;
 uniform sampler2D baseMap;
 uniform sampler2D observationMap;
@@ -124,13 +127,13 @@ vec3 neckellLimbDarkRGB(float mu) {
   return vec3(ldR, ldG, ldB);
 }
 
-// ─── Phase A3: Snodgrass Differential Rotation ───────────────────────────────
-// Snodgrass (1983): omega(lat) = 14.44 - 2.87*sin^2(lat) - 0.36*sin^4(lat)  [deg/day]
+// Snodgrass & Ulrich (1990), Table 1 Doppler residuals; DOI 10.1086/168467.
+// The sidereal coefficient shape matches the synthetic backend; time is decorative.
 float snodgrassRotationOffset(float latRad, float timeDays) {
   float sinLat = sin(latRad);
   float sin2 = sinLat * sinLat;
   float sin4 = sin2 * sin2;
-  float degPerDay = 14.44 - 2.87 * sin2 - 0.36 * sin4;
+  float degPerDay = dot(rotationCoefficientsDegDay, vec3(1.0, sin2, sin4));
   return radians(degPerDay * timeDays);  // total longitude offset in radians
 }
 
@@ -255,9 +258,8 @@ void main() {
   
   // ─── Phase A3: Differential Rotation UV ────────────────────────────────────
   // time uniform = timeSec * 0.4 (see updateSunMaterialUniforms).
-  // Solar synodic rotation: ~27 days. In the simulation 1 display-second ≈ some sim-days.
-  // We use a small perceptual scale so the differential pattern is visible without racing.
-  // 0.00012 keeps equator completing one rotation in ~8300 display-time-units (~23h at 0.4x)
+  // 0.00012 is a perceptual factor, not elapsed physical days or a synodic rate.
+  // Its input is the bounded pause/reverse/reduced-motion-aware decorative clock.
   float lonOffset = snodgrassRotationOffset(vLatitude, time * 0.00012);
   vec2 uvRotated = vUv + vec2(lonOffset / (2.0 * 3.14159265), 0.0);
   
@@ -594,6 +596,7 @@ export function createSunSurfaceMaterial(sunMap: Texture | null | undefined): Sh
     fragmentShader: SUN_SURFACE_FRAGMENT_SHADER,
     uniforms: {
       time: { value: 0 },
+      rotationCoefficientsDegDay: { value: new Vector3(...SOLAR_ROTATION_COEFFICIENTS_DEG_DAY) },
       activity: { value: 0.55 },
       baseMap: { value: sunMap },
       observationMap: { value: sunMap },
@@ -618,6 +621,9 @@ export function createSunSurfaceMaterial(sunMap: Texture | null | undefined): Sh
     }
   });
   material.toneMapped = false;
+  material.userData.rotationProfile = {
+    reference: SOLAR_ROTATION_REFERENCE, coefficientFrame: 'sidereal', displayClock: 'decorative'
+  };
   return material;
 }
 
@@ -1018,8 +1024,13 @@ export function createSunCoronaShell(
   });
   const mesh = new Mesh(geometry, material);
   mesh.userData.bodyId = 'sun-corona';
-  // Expanded to ~4 solar radii for physical K-corona radial falloff
+  // Four displayed Sun radii bound an illustrative glow, including in realistic
+  // scale. This radial falloff is not a measured coronal edge or emissivity.
   mesh.userData.surfaceScale = 4.0;
+  mesh.userData.displayScope = {
+    kind: 'illustrative_corona_glow', radiusUnits: 'display_sun_radius',
+    outerRadius: 4, physicalRadiusCalibrated: false
+  };
   return mesh;
 }
 
@@ -1294,6 +1305,10 @@ export function createSunEruptionLayer(sunDisplayRadius: number): Points {
 
   const points = new Points(geometry, material);
   points.userData.bodyId = 'sun-eruptions';
+  points.userData.displayScope = {
+    kind: 'illustrative_eruption_streams', clock: 'decorative_time_lapse',
+    physicalVelocityCalibrated: false
+  };
   points.userData.sunBursts = {
     burstCount,
     positions,

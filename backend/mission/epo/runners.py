@@ -32,11 +32,7 @@ class EpisodeRunner:
         try:
             result = self.planner.plan(episode.mission_payload.copy())
         except TrajectoryRequestRejected as exc:
-            return EpisodeRunRecord(
-                episode_id=episode.episode_id, family=episode.family, status="request_rejected",
-                mission_score=None, verifier_passed=False, reasons=[exc.code],
-                timing_ms=(time.perf_counter() - start) * 1000,
-            )
+            result = {"status": "request_rejected", "error": {"code": exc.code, "context": exc.context}}
         except Exception as exc:  # pragma: no cover - planner runtime safety net
             return EpisodeRunRecord(
                 episode_id=episode.episode_id,
@@ -47,9 +43,14 @@ class EpisodeRunner:
                 reasons=["planner_exception"],
                 timing_ms=(time.perf_counter() - start) * 1000,
                 error=str(exc),
+                expected_outcome=episode.expected_outcome,
             )
 
         is_verified, reasons, verifier_metrics = self.verifier.verify(episode, result)
+        if isinstance(result, dict) and result.get("status") == "request_rejected" and not is_verified:
+            error = result.get("error")
+            code = error.get("code") if isinstance(error, dict) else None
+            reasons.insert(0, code if isinstance(code, str) and code else "invalid_request_rejection")
         mission_score = verifier_metrics.get("mission_score")
         if mission_score is None:
             mission_score_float = None
@@ -65,7 +66,8 @@ class EpisodeRunner:
             verifier_passed=is_verified,
             reasons=reasons,
             timing_ms=(time.perf_counter() - start) * 1000,
-            decision_payload=result,
+            decision_payload=result if isinstance(result, dict) else None,
+            expected_outcome=episode.expected_outcome,
         )
 
     def run_family(self, family: EpisodeFamily) -> EpisodeFamilyMetrics:

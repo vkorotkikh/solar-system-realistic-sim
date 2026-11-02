@@ -1,0 +1,131 @@
+{
+  "retiredAt": "2026-10-31",
+  "reason": "No references in current src/scripts/index.html; unsupported provenance. Removed from current tree, recoverable from Git history.",
+  "files": [
+    {
+      "path": "src/assets/textures/earth_clouds_2048.jpg",
+      "bytes": 965676,
+      "sha256": "fffd7f68d41b37274822150e54a6ef605af1d3ec35624d9f628c3b896bfa42ed"
+    },
+    {
+      "path": "src/assets/textures/earth_day_4096.jpg",
+      "bytes": 473093,
+      "sha256": "cd7712d3e891425d9948ea5ac18d3bb1e7e834ea038188587897e689a7b35d0f"
+    },
+    {
+      "path": "src/assets/textures/earth_normal_2048.jpg",
+      "bytes": 336774,
+      "sha256": "3fc43e9639c34e8223c4a871e3bdf5b2d52ee79f7e89ce3f28cba45d4cac031a"
+    },
+    {
+      "path": "src/assets/textures/earth_topobathy_4096.jpg",
+      "bytes": 939458,
+      "sha256": "ba0d25f05080acf378241a00bf6a96ed9b5d03d13f6018c3c59baf98ff6627a8"
+    },
+    {
+      "path": "src/assets/textures/earth_topobathy_8192.jpg",
+      "bytes": 3118845,
+      "sha256": "dc26b816037021601eeea972c59e264a37fd41cd4062381fdb4d9dc9a6230348"
+    },
+    {
+      "path": "src/assets/textures/earth_watermask_2048.jpg",
+      "bytes": 223421,
+      "sha256": "2df48906732d7a458b2d0a7cdec51a829262307c6bdee4cfdf079a4dd7c71c69"
+    },
+    {
+      "path": "src/assets/textures/jupiter_day_2048.jpg",
+      "bytes": 498976,
+      "sha256": "b0f04d005350252636b0e3396fc592548cbd9e9126b269d32d5c6abd4b0e4f2b"
+    },
+    {
+      "path": "src/assets/textures/mars_albedo_usgs_2048.jpg",
+      "bytes": 438940,
+      "sha256": "f3e147027f4ccadc900f9c80bd7f1d9a68cf6e0b6b8a6adb836f9284df2c9ae9"
+    },
+    {
+      "path": "src/assets/textures/mars_albedo_usgs_4096.jpg",
+      "bytes": 1659283,
+      "sha256": "63b6afa8db88e00f4ee9c66650e15cd73ab225bacb7b45da14081b1282f49542"
+    },
+    {
+      "path": "src/assets/textures/mars_day_2048.jpg",
+      "bytes": 750547,
+      "sha256": "2d187f3e77a98eaa8cea5f4cc722f633c122ef170b9e94ace6b5fb6cbc3f8e01"
+    },
+    {
+      "path": "src/assets/textures/mars_relief_mola_2048.png",
+      "bytes": 1967723,
+      "sha256": "7f6a59eca6fbc1ddfb8fe4a23813bab85b62135939deb743de88f84899601c93"
+    },
+    {
+      "path": "src/assets/textures/mars_relief_mola_4096.png",
+      "bytes": 8105194,
+      "sha256": "1c1dd41321780ba93591e08c1f2ae70f4f8653656bee75ad999ae5313930994a"
+    },
+    {
+      "path": "src/assets/textures/mercury_day_2048.jpg",
+      "bytes": 872555,
+      "sha256": "5a5c80607f643496bac9a631e71957def35ed788895f18b678ac849c2b38e48a"
+    },
+    {
+      "path": "src/assets/textures/milky_way_2mass_equirect_2048.jpg",
+      "bytes": 588382,
+      "sha256": "b44654962764b30cbe50d3d0d8ed7e8c6b61f7270096309aaa3b425faa365e68"
+    },
+    {
+      "path": "src/assets/textures/milky_way_2mass_equirect_4096.jpg",
+      "bytes": 4457949,
+      "sha256": "fa245ad68109cef04177e4ea29bba3b2bacc6bb0064cd0d24ee54c701a05f2ac"
+    },
+    {
+      "path": "src/assets/textures/moon_1024.jpg",
+      "bytes": 238093,
+      "sha256": "fcb0f1f5548e6e18d40063dd55c6aacd3daedf2407b181dab85b61e22bf9fe57"
+    },
+    {
+      "path": "src/assets/textures/moon_albedo_lroc_1024.jpg",
+      "bytes": 92067,
+      "sha256": "d903b256d3d0e5d47991be5a85716378b0b0063d221892b3648361757999c3cb"
+    },
+    {
+      "path": "src/assets/textures/moon_albedo_lroc_8192.jpg",
+      "bytes": 9431450,
+      "sha256": "9fbcf2dbb42137dc8c31fd13a050a2d3014ef048d35b5f16f579b83b66f7f3dc"
+    },
+    {
+      "path": "src/assets/textures/moon_relief_ldem16_5760.png",
+      "bytes": 3611817,
+      "sha256": "35e07425ce6ce6f92c07e81dbabe0d8abeba844de7d068a131605bef86e3e113"
+    },
+    {
+      "path": "src/assets/textures/moon_relief_lola_1024.jpg",
+      "bytes": 153245,
+      "sha256": "7488bb4512d84c89b21bc6364ada09161cdb72f68f3e6472532a278ff25760e4"
+    },
+    {
+      "path": "src/assets/textures/neptune_day_2048.jpg",
+      "bytes": 241580,
+      "sha256": "cb42ea82709741d28b0af44d8b283cbc6dbd0c521a7f0e1e1e010ade00977df6"
+    },
+    {
+      "path": "src/assets/textures/saturn_day_2048.jpg",
+      "bytes": 199916,
+      "sha256": "54a900ca9bf7ab62e70f862852759abdf342e6d6436a95a2fe9ebdb6bcd3bbac"
+    },
+    {
+      "path": "src/assets/textures/uranus_day_2048.jpg",
+      "bytes": 77751,
+      "sha256": "d15239d46f82d3ea13d2b260b5b29b2a382f42f2916dae0694d0387b1204a09d"
+    },
+    {
+      "path": "src/assets/textures/venus_atmosphere_2048.jpg",
+      "bytes": 229696,
+      "sha256": "225012ad4911730605c4e189ca2a3bf674fce50cc48aab4102b936b47d6991ac"
+    },
+    {
+      "path": "src/assets/textures/venus_day_2048.jpg",
+      "bytes": 885075,
+      "sha256": "dbe5db1c794a8ab4cbf7dd6bf193540c400fc833ce1e6cc399318aa68026278b"
+    }
+  ]
+}
