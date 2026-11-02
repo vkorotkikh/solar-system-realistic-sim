@@ -299,11 +299,13 @@ Retained day maps and cloud/satellite modules are not assembled by this entry. T
 
 ### Solar model
 
-The Sun combines procedural rendering and synthetic solar-state models inspired by published solar literature. Supported layers include limb darkening, blackbody color, granulation, chromosphere, corona, prominences, flares/CMEs, magnetic-field geometry and a Parker-spiral visualization, subject to their runtime admission gates. These descriptions do not certify calibrated physical accuracy for every layer.
+The Sun combines procedural rendering and synthetic solar-state models inspired by published solar literature. Supported layers include limb darkening, blackbody color, granulation, chromosphere, corona, prominences, flares/CMEs, magnetic-field geometry and a Parker-spiral visualization with a solar-wind outflow, subject to their runtime admission gates. These descriptions do not certify calibrated physical accuracy for every layer.
 
 Solar forcing is currently synthetic. `hybrid` falls back with `disabled_unvalidated`; `data_driven` is rejected with HTTP 503 (`solar_observed_input_unavailable`). Realtime feeds supply context/source metadata. The AIA proxy supplies raw viewport imagery that is not eligible for Sun-surface rendering. The channel selector does not bypass the validated surface/forcing contracts or enable observation-texture blending.
 
 See [solar eruption modeling and rendering](docs/solar-eruption-modeling.md) for the particle architecture, the repaired square-sprite defect, and the remaining physical-model improvement strategy.
+
+The solar-wind outflow uses illustrative Parker-curve tracers from the source surface, not physical bulk-wind trajectories; near Earth, bulk wind flows [approximately radially](https://www.nasa.gov/solar-system/nasas-parker-solar-probe-sheds-new-light-on-the-sun/). The nearest of the backend's six spiral arms (WSA-inspired where available, otherwise the empirical coronal-hole split) sets each particle's current outward rate and tint: amber for slow wind, cyan-blue for fast. Each particle retains its Parker curvature until it wraps, avoiding jumps on backend polls. It appears only when backend spiral geometry is admitted. Motion follows the decorative clock rather than simulated time, and latitude structure beyond the arms' sector speeds is not modeled. Rendered evidence: [agent-notes/SOLAR_WIND_VISUAL_2026-10-31_EVIDENCE](agent-notes/SOLAR_WIND_VISUAL_2026-10-31_EVIDENCE/README.md).
 
 ### SMBH shockwave modeling
 

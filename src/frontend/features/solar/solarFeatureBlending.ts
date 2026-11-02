@@ -55,7 +55,9 @@ export interface SolarPhysicsStateLike {
   } | null;
   activity_index?: unknown;
   epoch_jd?: unknown;
-  heliosphere?: { parker_spiral?: { lines?: unknown } | null } | null;
+  heliosphere?: {
+    parker_spiral?: { lines?: unknown; omega_sun_rad_day?: unknown; source_surface_radii?: unknown } | null;
+  } | null;
 }
 
 export function clampUnit(value: number): number {

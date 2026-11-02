@@ -23,6 +23,7 @@ import {
   Vector3,
   Vector4
 } from 'three';
+import { AU_KM } from '../../../constants';
 import { SOLAR_RADIUS_AU, coronalToDisplay } from './solarDisplayScale';
 import { SOLAR_ROTATION_COEFFICIENTS_DEG_DAY, SOLAR_ROTATION_REFERENCE } from './solarRotation';
 import { clampUnit, solarFeatureEntryBrightness, sampleSolarFeatureEntryPoint } from './solarFeatureBlending';
@@ -1677,6 +1678,151 @@ export function updateSunParkerSpiralFromPhysicsState(
   for (let i = spiralLines.length; i < sunParkerSpiralGroup.children.length; i += 1) {
     sunParkerSpiralGroup.children[i].visible = false;
   }
+}
+
+// Decorative seconds a 400 km/s particle takes to cross the filled range; faster
+// backend wind crosses proportionally sooner.
+const SOLAR_WIND_CROSSING_SEC_AT_400_KMS = 14;
+const KMS_TO_AU_PER_DAY = 86_400 / AU_KM;
+
+/**
+ * Illustrative tracers on Parker curves, not physical bulk-wind trajectories.
+ * Source longitudes/latitudes stay fixed. The nearest backend arm sets the current
+ * outward rate and tint, while each particle retains its omega / v curvature until
+ * wrapping so backend polls cannot move an in-flight particle sideways.
+ */
+export function createSolarWindLayer(count = 4000, streamlines = 48): Points {
+  const positions = new Float32Array(count * 3);
+  const colors = new Float32Array(count * 3);
+  const lons = new Float32Array(count);
+  const sinLats = new Float32Array(count);
+  // Keep CPU flight state at JS precision so a frozen frame reproduces the same XYZ.
+  const progress = new Float64Array(count);
+  const curvatures = new Float64Array(count).fill(NaN);
+  const lineLons = Array.from({ length: streamlines }, () => Math.random() * TWO_PI);
+  const lineSinLats = Array.from({ length: streamlines }, () => Math.random() * 2 - 1);
+  for (let i = 0; i < count; i += 1) {
+    // Particles share their streamline with a little scatter, so a stream has width.
+    const line = i % streamlines;
+    lons[i] = lineLons[line] + (Math.random() - 0.5) * 0.03;
+    sinLats[i] = Math.max(-1, Math.min(1, lineSinLats[line] + (Math.random() - 0.5) * 0.03));
+    progress[i] = Math.random();
+  }
+
+  const geometry = new BufferGeometry();
+  geometry.setAttribute('position', new BufferAttribute(positions, 3));
+  geometry.setAttribute('color', new BufferAttribute(colors, 3));
+  const material = new PointsMaterial({
+    alphaMap: createSoftDiscAlphaMap(),
+    vertexColors: true,
+    // Constant screen size: the filled range reaches past the camera, and perspective
+    // sizing would balloon the particles that pass close to it.
+    size: 2.5,
+    sizeAttenuation: false,
+    transparent: true,
+    opacity: 0.55,
+    blending: AdditiveBlending,
+    depthWrite: false
+  });
+
+  const points = new Points(geometry, material);
+  points.userData.bodyId = 'sun-solar-wind';
+  points.userData.solarWind = {
+    count, positions, colors, lons, sinLats, progress, curvatures, lastTimeSec: null as number | null
+  };
+  // Positions span up to 3 AU and move every frame.
+  points.frustumCulled = false;
+  points.renderOrder = 5;
+  points.visible = false;
+  return points;
+}
+
+export function updateSolarWindLayer(
+  solarWindLayer: Points | null | undefined,
+  physicsState: SolarPhysicsStateLike | null | undefined,
+  sunRadiusAu: number,
+  timeSec = 0,
+  camera: Camera | null = null
+) {
+  const wind = solarWindLayer?.userData?.solarWind;
+  if (!solarWindLayer || !wind) return;
+  const spiral = physicsState?.heliosphere?.parker_spiral;
+  const arms: Array<{ lon: number; kms: number }> = [];
+  for (const line of Array.isArray(spiral?.lines) ? spiral.lines : []) {
+    const start = Array.isArray(line?.arc) ? line.arc[0] : null;
+    const x = Number(start?.[0]);
+    const y = Number(start?.[1]);
+    const kms = Number(line?.wind_speed_kms);
+    if (Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(kms) && kms > 0) {
+      arms.push({ lon: Math.atan2(y, x), kms });
+    }
+  }
+  solarWindLayer.visible = arms.length > 0;
+  if (!arms.length) {
+    // Readmission resumes the existing flight without consuming hidden time.
+    wind.lastTimeSec = null;
+    return;
+  }
+
+  const omegaRaw = Number(spiral?.omega_sun_rad_day);
+  const omegaRadDay = Number.isFinite(omegaRaw) ? omegaRaw : TWO_PI / 25.38;
+  const sourceRaw = Number(spiral?.source_surface_radii);
+  const sourceAu = (Number.isFinite(sourceRaw) && sourceRaw > 1 ? sourceRaw : 2.5) * SOLAR_RADIUS_AU;
+  // Start outside the displayed (possibly enlarged) Sun, like the spiral lines (D3),
+  // and fill about one and a half camera distances, up to the backend's 3 AU extent.
+  const innerAu = Math.max(sourceAu, sunRadiusAu * 1.05);
+  const cameraDistanceAu = camera?.position
+    ? Math.hypot(Number(camera.position.x) || 0, Number(camera.position.y) || 0, Number(camera.position.z) || 0)
+    : 1;
+  const outerAu = Math.max(innerAu * 2, Math.min(3, cameraDistanceAu * 1.5));
+  // Advance by the clock's step, never by absolute time, so a speed change from a
+  // backend poll alters the rate without moving any particle.
+  const dt = wind.lastTimeSec === null ? 0 : Math.max(0, timeSec - wind.lastTimeSec);
+  wind.lastTimeSec = timeSec;
+  const armCos = arms.map(arm => Math.cos(arm.lon));
+  const armSin = arms.map(arm => Math.sin(arm.lon));
+
+  for (let i = 0; i < wind.count; i += 1) {
+    const lon0 = wind.lons[i];
+    const cos0 = Math.cos(lon0);
+    const sin0 = Math.sin(lon0);
+    let arm = arms[0];
+    let best = -Infinity;
+    for (let a = 0; a < arms.length; a += 1) {
+      const alignment = cos0 * armCos[a] + sin0 * armSin[a];
+      if (alignment > best) {
+        best = alignment;
+        arm = arms[a];
+      }
+    }
+    const advancedProgress = wind.progress[i] + (dt * arm.kms) / (400 * SOLAR_WIND_CROSSING_SEC_AT_400_KMS);
+    if (Number.isNaN(wind.curvatures[i]) || advancedProgress >= 1) {
+      // Adopt the latest Parker curve only at initialization or a new flight.
+      wind.curvatures[i] = omegaRadDay / (arm.kms * KMS_TO_AU_PER_DAY);
+    }
+    const progress = advancedProgress % 1;
+    wind.progress[i] = progress;
+    const rAu = innerAu + (outerAu - innerAu) * progress;
+    const lon = lon0 - wind.curvatures[i] * (rAu - sourceAu);
+    const sinLat = wind.sinLats[i];
+    const cosLat = Math.sqrt(Math.max(0, 1 - sinLat * sinLat));
+    const base = i * 3;
+    wind.positions[base] = rAu * cosLat * Math.cos(lon);
+    wind.positions[base + 1] = rAu * cosLat * Math.sin(lon);
+    wind.positions[base + 2] = rAu * sinLat;
+    // Fade in leaving the source and out toward the edge of the filled range. Slow
+    // wind is amber and fast wind cyan-blue (tinted apart from the white starfield),
+    // on the spiral lines' 300-860 km/s scale.
+    const fade = Math.max(0, Math.min(1, progress / 0.1, (1 - progress) / 0.3));
+    const fast = clampUnit((arm.kms - 300) / 560);
+    wind.colors[base] = fade * (1 - 0.5 * fast);
+    wind.colors[base + 1] = fade * (0.72 + 0.03 * fast);
+    wind.colors[base + 2] = fade * (0.45 + 0.55 * fast);
+  }
+
+  const geometry = solarWindLayer.geometry;
+  geometry.getAttribute('position').needsUpdate = true;
+  geometry.getAttribute('color').needsUpdate = true;
 }
 
 export function updateSunEruptionLayerFromBlendView({

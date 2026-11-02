@@ -38,6 +38,8 @@ import {
   updateSunCoronalLoopsFromBlendView as updateSunCoronalLoopsFromBlendViewImpl,
   clearSunParkerSpiralLines as clearSunParkerSpiralLinesImpl,
   updateSunParkerSpiralFromPhysicsState as updateSunParkerSpiralFromPhysicsStateImpl,
+  createSolarWindLayer,
+  updateSolarWindLayer,
   updateSunEruptionLayerFromBlendView,
   setSunObservationTexture,
   updateSunMaterialUniforms,
@@ -194,6 +196,7 @@ export function createSunController({
   let sunMagneticFieldSignature: string | null = null;
   let sunCoronalLoopGroup: Group | null = null;
   let sunParkerSpiralGroup: Group | null = null;
+  let sunSolarWindLayer: Points | null = null;
   let sunTransitionRegionMesh: Mesh<BufferGeometry, ShaderMaterial> | null = null;
 
   let gwDisplayer: GwDisplayer | null = null;
@@ -573,6 +576,11 @@ export function createSunController({
     updateSunParkerSpiralFromPhysicsStateImpl(
       sunParkerSpiralGroup, geometryStateFor('parker'), sunRadiusAu, 6, 120, 0, camera
     );
+
+    // Outflow along the same backend spiral arms, in the same frozen frame.
+    sunSolarWindLayer = createSolarWindLayer();
+    node.add(sunSolarWindLayer);
+    applySolarGeometryFrame(sunSolarWindLayer, { inputFrame: 'SOLAR_EQUATORIAL_J2000', jdTdb: simState.julianDate });
     updateSurfaceFrame(simState.julianDate);
 
     // Agn Shockwave Engine
@@ -698,6 +706,7 @@ export function createSunController({
 
     updateSunCoronalLoopsFromBlendViewImpl(sunCoronalLoopGroup, geometryBlendView, sunRadiusAu, 144, timeSec, activeObservationChannel);
     updateSunParkerSpiralFromPhysicsStateImpl(sunParkerSpiralGroup, geometryStateFor('parker'), sunRadiusAu, 6, 120, timeSec, camera);
+    updateSolarWindLayer(sunSolarWindLayer, geometryStateFor('parker'), sunRadiusAu, timeSec, camera);
 
     const glowPulse = 1 + Math.sin(timeSec * 1.7) * 0.035 + effectiveActivity * 0.045;
     setSunGlowScaleImpl(sunGlowSprite, sunRadiusAu, glowPulse);
@@ -925,9 +934,11 @@ export function createSunController({
       sunTransitionRegionMesh.removeFromParent();
       sunTransitionRegionMesh = null;
     }
-    // Generated per eruption layer, so owned here; material disposal leaves maps alone.
-    (sunEruptionLayer?.material as PointsMaterial | undefined)?.alphaMap?.dispose();
-    for (const layer of [sunEruptionLayer, sunChromosphereLayer]) {
+    // Generated per particle layer, so owned here; material disposal leaves maps alone.
+    for (const layer of [sunEruptionLayer, sunSolarWindLayer]) {
+      (layer?.material as PointsMaterial | undefined)?.alphaMap?.dispose();
+    }
+    for (const layer of [sunEruptionLayer, sunSolarWindLayer, sunChromosphereLayer]) {
       if (!layer) continue;
       layer.geometry.dispose();
       const materials = Array.isArray(layer.material) ? layer.material : [layer.material];
@@ -935,6 +946,7 @@ export function createSunController({
       layer.removeFromParent();
     }
     sunEruptionLayer = null;
+    sunSolarWindLayer = null;
     sunChromosphereLayer = null;
 
     disposeMagneticFieldGroup(sunMagneticFieldGroup);
