@@ -17,19 +17,19 @@ Local main was synchronized to that remote commit. Its earlier local-only routin
 | `fix/close-august-partials-20261031` | `69ccd781e4b4b1f768a2f593910685b42f322109` | Included by ancestry |
 | `fix/horizons-coverage-refusal-on-v2` | `a04cb64c7bfc53126985b69ae9c9c6aa83566373` | Distinct integration under review |
 | `fix/markdown-audit-20261024` | `da91221fcca3cb068b07544df5823e8e719c419c` | Distinct integration under review |
-| `fix/partials-apis-20261031` | `58ee0e14c070511b825803e2fad0f4bdbad75add` | Every branch-only patch equivalent; ancestry reconciliation pending |
-| `fix/partials-backend-20261031` | `197bd6948a2bdcb26166fa685beeabc2de011d3b` | Every branch-only patch equivalent; ancestry reconciliation pending |
-| `fix/partials-catalog-20261031` | `359cb577caf19b71fb7f3fd819f1c88ea146ee92` | Every branch-only patch equivalent; ancestry reconciliation pending |
-| `fix/partials-solar-20261031` | `97b514ed110eff3d89ab6df0ccd955b951eb6cc0` | Every branch-only patch equivalent; ancestry reconciliation pending |
+| `fix/partials-apis-20261031` | `58ee0e14c070511b825803e2fad0f4bdbad75add` | Equivalent patches confirmed; ancestry now reconciled on audit integration |
+| `fix/partials-backend-20261031` | `197bd6948a2bdcb26166fa685beeabc2de011d3b` | Equivalent patches confirmed; ancestry now reconciled on audit integration |
+| `fix/partials-catalog-20261031` | `359cb577caf19b71fb7f3fd819f1c88ea146ee92` | Equivalent patches confirmed; ancestry now reconciled on audit integration |
+| `fix/partials-solar-20261031` | `97b514ed110eff3d89ab6df0ccd955b951eb6cc0` | Equivalent patches confirmed; ancestry now reconciled on audit integration |
 | `fix/remediation-completion-20261030` | `fda20ab6c34cc66dc28cb2cecb50eda52831bac3` | Included by ancestry |
 | `fix/scn-041-scn-049-closure` | `faa0e8dcaf1fd95318020683a77e9edefad3957b` | Included by ancestry |
 | `fix/scn005-final-acceptance-20261028` | `bb29d4be393c9dedca7049fc9b83511ed955be40` | Included by ancestry |
-| `fix/scn005-startup-20261017` | `cce5263173f6a35f9ab7f1ec7b48626f4b66fac4` | Every branch-only patch equivalent; ancestry reconciliation pending |
+| `fix/scn005-startup-20261017` | `cce5263173f6a35f9ab7f1ec7b48626f4b66fac4` | Equivalent patches confirmed; ancestry now reconciled on audit integration |
 | `fix/scn030-scn031-browser-gate-20261027` | `bb29d4be393c9dedca7049fc9b83511ed955be40` | Included by ancestry |
-| `fix/scn042-rendering-20261017` | `047d067937d4d8c9197e38cd679c2404fffa7994` | Every branch-only patch equivalent; ancestry reconciliation pending |
+| `fix/scn042-rendering-20261017` | `047d067937d4d8c9197e38cd679c2404fffa7994` | Equivalent patches confirmed; ancestry now reconciled on audit integration |
 | `fix/solar-eruption-visuals` | `69ccd781e4b4b1f768a2f593910685b42f322109` | Included by ancestry |
 
-Four partial branches produce clean, content-identical merges with current main. The older startup and rendering branches conflict only where later changes supersede their already-equivalent patches. Their reconciliation must retain current source, strengthened browser gates, and dated evidence.
+All six patch-equivalent branches are now ancestors of the audit integration. Every history merge was checked to retain an identical tree. Conflicts were confined to later strengthened satellite guards, cancellation/cache ownership, retirement/integrity tests, startup ownership, and historical-note policy; those current contracts were preserved. No older implementation was restored.
 
 ## Audit integration contracts
 
@@ -48,6 +48,10 @@ Four partial branches produce clean, content-identical merges with current main.
 - Strict source, broad-script and native-Node asteroid-script types, UI fixture types, zero-error ratchet and production build passed.
 - Chromium: 66 passed, one existing native-display skip, two action-stability timeouts during unrelated host CPU stress. Both failed cases passed unchanged after the stress ended (42.6 s). All 68 applicable cases have passed; a fresh combined GitHub run remains required before merge.
 - All 23 scientific manifest input hashes match. The committed-source mutation gate and remaining browser projects are pending.
-- Independent backend and runtime/solar merge reviews found no concrete Important/Critical regressions. Tooling review remains pending.
+- Independent backend and runtime/solar merge reviews found no concrete Important/Critical regressions. Independent tooling review passed 57 focused checks and identified one stale documentation example; the maintained diagnostic commands are now documented correctly.
 
 PR [#24](https://github.com/vkorotkikh/solar-system-realistic-sim/pull/24) carries solar-wind integration head `a8019b2`. Its full suite passed 1,773 cases (two existing skips), source types/build passed, and independent review found no findings. GitHub acceptance is still running.
+
+## Subsequent integration
+
+The Horizons branch was merged while preserving strict signature/version validation before coverage classification. Its exception documentation and three service-level regressions were retained; both Horizons suites passed **81 cases**. The six equivalent history merges added no content changes. Main at `c842196c` is an ancestor of the integration.

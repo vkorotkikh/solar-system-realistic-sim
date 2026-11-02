@@ -23,15 +23,17 @@ Browser regression tests use `UI_TEST_PORT` (default 4175), start their own stri
 
 ## Retained browser diagnostic commands
 
-The three compatibility commands use the repository's declared Playwright CLI and Chromium configuration, not Puppeteer or an already-running development server:
+The maintained diagnostic CLI uses the repository's declared Playwright runner and Chromium configuration. It starts its own server:
 
 | Command | Fixed diagnostic |
 | --- | --- |
-| `node testWarp.js` | Select the H29 warp-wave preset and hypothesis, trigger it, and watch for errors for 10 seconds. |
-| `node testRealisticScale.mjs` | Open Display, capture normal and realistic scale at 1280×800, and record raw 20×20 center-pixel diagnostics. |
-| `node get_errors.mjs` | Capture the running application at 1920×1080 after a three-second observation window. |
+| `node scripts/run-browser-diagnostic.mjs warp` | Select the H29 warp-wave preset and hypothesis, trigger it, and watch for errors for 10 seconds. |
+| `node scripts/run-browser-diagnostic.mjs scale` | Open Display, capture normal and realistic scale at 1280×800, and record raw 20×20 center-pixel diagnostics. |
+| `node scripts/run-browser-diagnostic.mjs debug` | Capture the running application at 1920×1080 after a three-second observation window. |
 
-Each accepts only `--help` (or `-h`), `--list`, or an optional `--output EXISTING_PARENT` for a run. Help/list do not resolve browser tooling or start a server. Relative output parents are resolved from the caller's working directory. A run always creates and announces a fresh child directory, under the chosen existing parent or the system temporary directory; the parent is never given to Playwright as its disposable output directory. Artifacts are retained there for inspection. The launcher does not install packages or browsers and does not forward arbitrary Playwright arguments. Install the declared dependencies and Chromium beforehand using the browser setup above. `UI_TEST_PORT` and `PLAYWRIGHT_BROWSERS_PATH` are inherited unchanged; choose an unused strict port.
+The former root `testWarp.js` and `testRealisticScale.mjs` scratch entrypoints remain retired. `get_errors.mjs` is a compatibility wrapper for the maintained `debug` scenario.
+
+Each scenario accepts only `--help` (or `-h`), `--list`, or an optional `--output EXISTING_PARENT` for a run. Help/list do not resolve browser tooling or start a server. Relative output parents are resolved from the caller's working directory. A run always creates and announces a fresh child directory, under the chosen existing parent or the system temporary directory; the parent is never given to Playwright as its disposable output directory. Artifacts are retained there for inspection. The launcher does not install packages or browsers and does not forward arbitrary Playwright arguments. Install the declared dependencies and Chromium beforehand using the browser setup above. `UI_TEST_PORT` and `PLAYWRIGHT_BROWSERS_PATH` are inherited unchanged; choose an unused strict port.
 
 These scenarios load the actual application and local assets. Only the known external font stylesheet and solar endpoint responses use narrow synthetic fixtures; the fixtures explicitly deliver no observed solar data. Unexpected external requests, failed navigation, missing controls, `console.error`, and uncaught page errors fail the run. The H29 sequence, screenshots, and raw center statistics are diagnostics, not visual, GPU, physical-accuracy, or live-provider acceptance. The scale screenshots include the opened Display disclosure; there is no pixel baseline or accuracy threshold.
 
