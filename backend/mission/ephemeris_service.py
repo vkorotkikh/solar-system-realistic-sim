@@ -160,6 +160,12 @@ class EphemerisTargetUnsupported(EphemerisError):
 
 
 class EphemerisEpochUnsupported(EphemerisError):
+    """The provider has no ephemeris for this target at the requested epoch.
+
+    Caller-input refusal scoped to one request: it must never open the
+    process-wide provider outage circuit.
+    """
+
     default_code = "ephemeris_epoch_unsupported"
     default_retryable = False
 
