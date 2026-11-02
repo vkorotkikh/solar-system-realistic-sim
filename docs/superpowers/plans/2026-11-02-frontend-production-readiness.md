@@ -49,7 +49,7 @@ The routing-only commit `fd14543` was created above product `519c894`. During di
 
 | Original finding | Current source/test evidence | Disposition for this iteration |
 |---|---|---|
-| 1. Reflow | `src/style.css` removes the body minimum and supplies narrow/short flow; `reflow.spec.ts` and genuine `tab-zoom.spec.ts` exist | Preserve; add built-app narrow-content reachability; retain manual OS text-size check |
+| 1. Reflow | `src/style.css` removes the body minimum and supplies narrow/short flow; existing fixture and genuine tab-zoom tests exist; compiled execution exposed the default scene's conflicting inline height cap | Fix the reproduced scene-sizing conflict; verify built-app narrow-content reachability; retain manual OS text-size check |
 | 2. Camera keyboard/tap input | `viewportCameraController.ts`, production Z-up setup and ten native buttons; unit, scene-setup and browser tests exist | Preserve; prove built-app key/tap response without fixture state |
 | 3. Live output | `timeController.ts` equality guards; `explorerController.ts` count deduplication; `explorer.spec.ts` mutation checks | Preserve; include built-app zero-result and same-count selection flow; speech still needs AT |
 | 4. Modal drawer | `panelController.ts` owns focus, isolation, Tab and Escape; synchronous transition tests exist | Preserve; prove real composition after bundling; virtual navigation remains manual |
@@ -73,7 +73,7 @@ Roles are responsibilities, not invented assignees. Missing release owners and d
 
 ## Engineering review and decision record
 
-**Scope:** retain all eight outcomes. Eight repository paths are planned, zero new runtime services/classes. This is one reviewable branch/PR candidate with multiple commits; no stacked-PR dependency. The existing architecture is retained, so there is no smaller runtime arrangement to select.
+**Scope:** retain all eight outcomes. Ten repository paths are included after the Task 3 runtime discovery below, zero new runtime services/classes. This is one reviewable branch/PR candidate with multiple commits; no stacked-PR dependency. The existing architecture is retained, so there is no smaller runtime arrangement to select.
 
 **Architecture:** [CRITICAL, confidence 10/10] compiled-artifact coverage is missing: the configured server runs Vite's source transform, not preview. Task 2 adds the missing boundary using existing Playwright/Vite [Layer 1]. No deployment server is introduced. Vite preview is only a local acceptance server, not the proposed production host.
 
@@ -104,6 +104,8 @@ Pinned source + lock + Node/npm
 
 Coverage classes: existing behavior tests cover all eight original mechanisms; final-source passing execution is not assumed. New compiled tests protect packaging/routing, real controller composition and recovery. Backend services are deliberately unavailable in deterministic local acceptance; these tests do not establish live-provider accuracy, backend integration, speech, touch-device behavior or production performance.
 
+**Task 3 runtime discovery:** The compiled 195x422 journey reproduced clipped camera controls despite the fixture reflow coverage: `sceneSetup.applyViewportSizeOverride()` unconditionally writes `max-height: 100vh`, even without a height override. That inline cap defeats the short/narrow CSS page flow and compresses the camera disclosure. Task 3 therefore includes a narrow sizing fix with a failing unit regression and the compiled reachability test; explicitly requested viewport dimensions retain their intended bounds. This is an execution finding, not a claim that source inspection alone established complete reflow.
+
 ### Failure modes and test value
 
 | Case | Observable protection / credible regression | Why new / evidence limit |
@@ -124,6 +126,8 @@ Reuse `tests/browser/webgl-cleanup.ts` only for its existing real-app teardown. 
 | `playwright.production.config.ts` (new) | Isolated strict-port compiled preview and Chromium project | 2 |
 | `tsconfig.ui-tests.json` | Include new config and production tests in strict checking | 2 |
 | `tests/production/frontend.spec.ts` (new) | Real compiled-app acceptance, evidence attachments and cleanup | 2, then 3 |
+| `src/frontend/app/sceneSetup.ts` | Remove the default inline height cap that defeats narrow page flow; retain explicit overrides | 3, reproduced regression |
+| `src/frontend/app/sceneSetup.test.ts` | Default and explicit viewport-sizing regression | 3 |
 | `scripts/frontendProductionGate.test.mjs` (new) | Execute production config and validate its boundaries | 2 |
 | `scripts/ci/tests/test_r3_r4_workflow.py` | Parse frontend workflow and verify blocking artifact-gate semantics with already pinned PyYAML | 4 |
 | `.github/workflows/frontend-ui.yml` | Separate blocking compiled-artifact job, retained artifacts | 4 |
