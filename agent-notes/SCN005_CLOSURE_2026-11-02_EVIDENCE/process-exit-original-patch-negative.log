@@ -1,0 +1,97 @@
+FF                                                                       [100%]
+=================================== FAILURES ===================================
+___________ test_shutdown_cancels_child_already_finishing_its_result ___________
+
+tmp_path = PosixPath('/tmp/pytest-of-nomad/pytest-3380/test_shutdown_cancels_child_al0')
+
+    def test_shutdown_cancels_child_already_finishing_its_result(tmp_path: Path) -> None:
+        from sim.process_supervisor import ProcessCancelled, SupervisedProcessRunner
+
+        runner = SupervisedProcessRunner(TARGET, max_workers=1, max_queue=0)
+        exit_started = tmp_path / "shutdown-exit.pid"
+        try:
+            future = runner.submit(
+                {"operation": "echo_then_slow_exit", "exit_delay_seconds": 30,
+                 "exit_started_path": str(exit_started), "result": _result()},
+                timeout_seconds=5.0,
+            )
+            child_pid = _wait_for_pid(exit_started)
+            shutdown_started = time.monotonic()
+            runner.shutdown()
+>           assert time.monotonic() - shutdown_started < 2.0
+E           assert (129442.740137808 - 129437.854681044) < 2.0
+E            +  where 129442.740137808 = <built-in function monotonic>()
+E            +    where <built-in function monotonic> = time.monotonic
+
+backend/tests/test_solar_process_supervisor.py:242: AssertionError
+___ test_async_cancellation_after_result_reaps_without_waiting_for_deadline ____
+
+tmp_path = PosixPath('/tmp/pytest-of-nomad/pytest-3380/test_async_cancellation_after_0')
+
+    def test_async_cancellation_after_result_reaps_without_waiting_for_deadline(tmp_path: Path) -> None:
+        from sim.process_supervisor import SupervisedProcessRunner
+
+        async def scenario() -> None:
+            runner = SupervisedProcessRunner(TARGET, max_workers=1, max_queue=0)
+            exit_started = tmp_path / "cancel-exit.pid"
+            try:
+                task = asyncio.create_task(runner.run(
+                    {"operation": "echo_then_slow_exit", "exit_delay_seconds": 30,
+                     "exit_started_path": str(exit_started), "result": _result()},
+                    timeout_seconds=5.0,
+                ))
+                child_pid = await asyncio.to_thread(_wait_for_pid, exit_started)
+                task.cancel()
+                with pytest.raises(asyncio.CancelledError):
+                    await task
+                reap_deadline = time.monotonic() + 2.0
+                while runner.snapshot()["in_flight"] and time.monotonic() < reap_deadline:
+                    await asyncio.sleep(0.01)
+                assert not _pid_exists(child_pid)
+                assert runner.snapshot()["active_processes"] == 0
+                assert runner.snapshot()["in_flight"] == 0
+            finally:
+                runner.shutdown()
+
+>       asyncio.run(scenario())
+
+backend/tests/test_solar_process_supervisor.py:277:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+/home/nomad/.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+/home/nomad/.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/nomad/.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+    async def scenario() -> None:
+        runner = SupervisedProcessRunner(TARGET, max_workers=1, max_queue=0)
+        exit_started = tmp_path / "cancel-exit.pid"
+        try:
+            task = asyncio.create_task(runner.run(
+                {"operation": "echo_then_slow_exit", "exit_delay_seconds": 30,
+                 "exit_started_path": str(exit_started), "result": _result()},
+                timeout_seconds=5.0,
+            ))
+            child_pid = await asyncio.to_thread(_wait_for_pid, exit_started)
+            task.cancel()
+            with pytest.raises(asyncio.CancelledError):
+                await task
+            reap_deadline = time.monotonic() + 2.0
+            while runner.snapshot()["in_flight"] and time.monotonic() < reap_deadline:
+                await asyncio.sleep(0.01)
+>           assert not _pid_exists(child_pid)
+E           assert not True
+E            +  where True = _pid_exists(2257021)
+
+backend/tests/test_solar_process_supervisor.py:271: AssertionError
+------------------------------ Captured log call -------------------------------
+WARNING  solar.operational:process_supervisor.py:355 {"event": "detached_process_failed", "exception_type": "ProcessTimedOut", "pid": 2256406}
+=========================== short test summary info ============================
+FAILED backend/tests/test_solar_process_supervisor.py::test_shutdown_cancels_child_already_finishing_its_result
+FAILED backend/tests/test_solar_process_supervisor.py::test_async_cancellation_after_result_reaps_without_waiting_for_deadline
+2 failed, 44 deselected in 10.17s
