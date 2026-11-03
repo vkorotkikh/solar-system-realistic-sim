@@ -2,8 +2,6 @@ import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Locator, type Page, type Response, type TestInfo } from '@playwright/test';
 import { retireWebGlPage } from '../browser/webgl-cleanup';
 
-// Cover software-GPU context creation as well as application initialization.
-test.describe.configure({ timeout: 90_000 });
 test.afterEach(async ({ page }) => { await retireWebGlPage(page); });
 
 const isBackend = (url: URL) => /^\/(?:solar\/(?:physics|realtime)|health)$/.test(url.pathname)
