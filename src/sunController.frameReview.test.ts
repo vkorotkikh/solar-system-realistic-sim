@@ -201,6 +201,19 @@ describe('snapshots blend over a fixed 1.5 s (H2.9)', () => {
     frames(f, 7);
     expect(f.blend().blendAlpha).toBeCloseTo(0.450074, 5);
   });
+
+  it('eases activity to a new backend value instead of jumping', async () => {
+    const f = await fixture();
+    frames(f, 15);
+    const next = atEpoch(payload(), f.state.julianDate);
+    next.activity_index = 0.9;
+    await f.refresh(next);
+    frames(f, 7);
+    // From the captured 0.446361 toward 0.9, smoothstep(0.7 / 1.5) = 0.450074 of the way.
+    expect(f.material.uniforms.activity.value).toBeCloseTo(0.446361 + (0.9 - 0.446361) * 0.450074, 5);
+    frames(f, 8);
+    expect(f.material.uniforms.activity.value).toBe(0.9);
+  });
 });
 
 describe('field lines are rebuilt only when the drawn field changes (H2.8)', () => {

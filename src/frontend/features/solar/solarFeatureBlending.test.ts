@@ -3,6 +3,7 @@ import {
   buildSolarFeatureBlendView,
   materializeSolarFeatureSetFromBlendView,
   sampleSolarFeatureEntryPoint,
+  SolarEase,
   type SolarArcPoint,
   type SolarFeature,
   type SolarFeatureBlendEntry,
@@ -169,5 +170,40 @@ describe('coronal-loop spherical cross-fade (B066)', () => {
       expect(radius(point)).toBeCloseTo(1, 12);
       expect(Math.atan2(point[1], point[0])).toBeCloseTo(Math.PI / 3, 12);
     }
+  });
+});
+
+describe('SolarEase (H2.9)', () => {
+  it('shows the first target directly when nothing was shown before', () => {
+    const ease = new SolarEase();
+    ease.restart(0);
+    expect(ease.step(0.7, 10, 1_500)).toBe(0.7);
+  });
+
+  it('eases from the shown value to the new target, then follows a moving target', () => {
+    const ease = new SolarEase();
+    ease.step(0.2, 0, 1_500);
+    ease.restart(1_000);
+    // Halfway through a smoothstep is exactly halfway.
+    expect(ease.step(0.8, 1_750, 1_500)).toBeCloseTo(0.5, 12);
+    expect(ease.step(0.9, 2_500, 1_500)).toBe(0.9);
+    expect(ease.step(0.95, 2_600, 1_500)).toBe(0.95);
+  });
+
+  it('restarts from the value shown mid-ease', () => {
+    const ease = new SolarEase();
+    ease.step(0, 0, 1_000);
+    ease.restart(0);
+    expect(ease.step(1, 500, 1_000)).toBeCloseTo(0.5, 12);
+    ease.restart(500);
+    expect(ease.step(0, 1_000, 1_000)).toBeCloseTo(0.25, 12);
+  });
+
+  it('skips an ease when asked and does not resume it later', () => {
+    const ease = new SolarEase();
+    ease.step(0.2, 0, 1_500);
+    ease.restart(0);
+    expect(ease.step(0.8, 0, 1_500, true)).toBe(0.8);
+    expect(ease.step(0.8, 100, 1_500)).toBe(0.8);
   });
 });

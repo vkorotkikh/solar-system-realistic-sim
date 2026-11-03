@@ -58,6 +58,7 @@ import {
   normalizeSolarFeatureSetFromState as normalizeSolarFeatureSetFromStateImpl,
   buildSolarFeatureBlendView as buildSolarFeatureBlendViewImpl,
   materializeSolarFeatureSetFromBlendView as materializeSolarFeatureSetFromBlendViewImpl,
+  SolarEase,
   type SolarFeatureBlendView,
   type SolarFeatureSet
 } from './frontend/features/solar/solarFeatureBlending';
@@ -226,6 +227,10 @@ export function createSunController({
   let lastTimeSec: number | null = null;
   let lastJulianDate: number | null = null;
   let decorativeTimeSec = 0;
+  // Restarted when a snapshot is applied or an image is bound or revoked (H2.9).
+  const activityEase = new SolarEase();
+  const observationBlendEase = new SolarEase();
+  const observationEmissionEase = new SolarEase();
 
   const solarPhysicsClient = new SolarPhysicsClient({
     baseUrl: backendBaseUrl,
@@ -317,6 +322,8 @@ export function createSunController({
 
   function applySunObservationTextureToMaterials() {
     setSunObservationTexture({ sunSurfaceMaterial, observationTexture: solarObservationTexture });
+    observationBlendEase.restart(decorativeTimeSec * 1000);
+    observationEmissionEase.restart(decorativeTimeSec * 1000);
   }
 
   function revokeSolarObservationTexture() {
@@ -646,11 +653,14 @@ export function createSunController({
     const timeSec = decorativeTimeSec;
     const fallbackActivity = fallbackSolarActivityFromJulianDate(julianDate);
     const solarBlendView = buildSolarFeatureBlendView(480);
-    const activity = clampUnit(
+    // Snapshot and image changes ease in on the same decorative clock as the feature blend.
+    const blendNowMs = decorativeTimeSec * 1000;
+    const skipBlend = decorativeMotionSuppressed();
+    const activity = activityEase.step(clampUnit(
       finiteOrNull(solarPhysicsState?.activity_index)
         ?? finiteOrNull(solarBlendView?.activityIndex)
         ?? fallbackActivity
-    );
+    ), blendNowMs, SOLAR_BLEND_MS, skipBlend);
     const observationState = getRenderableObservationState(Date.now());
     const observationSelection = pickAiaObservationChannel(
       observationState,
@@ -677,6 +687,8 @@ export function createSunController({
         spatialUseEligible: observationTextureUsable
       }
     );
+    const observationBlend = observationBlendEase.step(observationControls.observationBlend, blendNowMs, SOLAR_BLEND_MS, skipBlend);
+    const observationEmission = observationEmissionEase.step(observationControls.observationEmission, blendNowMs, SOLAR_BLEND_MS, skipBlend);
     const effectiveActivity = clampUnit(activity);
     const sunRadiusAu = getSunRadiusAu();
     const geometryBlendView = solarLayerFrames.loops ? solarBlendView : null;
@@ -688,8 +700,8 @@ export function createSunController({
       sunCoronaMaterial,
       timeSec,
       activity: effectiveActivity,
-      observationBlend: observationControls.observationBlend,
-      observationEmission: observationControls.observationEmission,
+      observationBlend,
+      observationEmission,
       coronaHue: observationControls.coronaHue ?? undefined,
       sunDisplayRadius: sunRadiusAu,
       activeChannel: activeObservationChannel ?? undefined,
@@ -733,8 +745,8 @@ export function createSunController({
 
     updateChromosphereLayer(sunChromosphereLayer, timeSec, effectiveActivity, {
       activeChannel: activeObservationChannel ?? undefined,
-      observationBlend: observationControls.observationBlend,
-      observationEmission: observationControls.observationEmission,
+      observationBlend,
+      observationEmission,
       observedConfidence: observationControls.observedConfidence,
       observedFreshness: observationControls.observedFreshness
     });
@@ -784,6 +796,7 @@ export function createSunController({
         const status = solarPhysicsClient.status();
         if (updated) {
           solarPhysicsState = solarPhysicsClient.latestState();
+          activityEase.restart(decorativeTimeSec * 1000);
           const previousCmeFrame = solarLayerFrames.cme;
           solarLayerFrames = validatedSolarLayerFrames(solarPhysicsState);
           if (previousCmeFrame && !solarLayerFrames.cme) solarFlareManager?.dispose();
