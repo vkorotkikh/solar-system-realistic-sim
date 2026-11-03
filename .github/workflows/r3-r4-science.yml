@@ -91,6 +91,7 @@ jobs:
       PYTHONHASHSEED: "0"
       OMP_NUM_THREADS: "1"
       OPENBLAS_NUM_THREADS: "1"
+      OPENBLAS_CORETYPE: Nehalem
       MKL_NUM_THREADS: "1"
       NUMEXPR_NUM_THREADS: "1"
       TZ: UTC
@@ -111,13 +112,16 @@ jobs:
       - name: Install the locked backend test environment
         run: python -m pip install -r ci/backend-test-requirements.txt
 
+      - name: Verify the numerical runtime guard rejects invalid profiles
+        run: python -m pytest --noconftest -q scripts/ci/tests/test_catalog_numerical_profile.py
+
       - name: Record the numerical runtime
-        run: python -c 'import numpy as np; np.show_config(); np.show_runtime()'
+        run: python scripts/ci/catalog_numerical_profile.py --require-core Nehalem
 
       - name: Check catalog byte reproducibility before the full suite
         run: python -m pytest -q scripts/test_moon_repairs.py::test_real_extension_rebuild_is_byte_identical_without_network
 
-      - name: Verify baseline CPU dispatch produces identical bytes
+      - name: Verify baseline NumPy dispatch produces identical bytes with the pinned BLAS kernel
         run: python -m pytest -q scripts/test_moon_repairs.py::test_real_extension_rebuild_is_byte_identical_without_network
         env:
           NPY_DISABLE_CPU_FEATURES: X86_V4

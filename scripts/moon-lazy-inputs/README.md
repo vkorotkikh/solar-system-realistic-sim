@@ -21,7 +21,7 @@ and test inputs only. Nothing under this directory is imported by browser code.
 No scientific limit is changed: every promoted record uses at most
 `min(500 km, 0.001 * catalog aKm)` and `10 m/s`, including any stricter retained
 per-body cap. The original lazy-model publication preserved the four original
-models and nine previously shipped repairs byte-for-byte. The later scalar-angle
+models and nine previously shipped repairs byte-for-byte. The later numerical-runtime
 rebuild regenerates the six-moon repair extension and the lazy generation, so
 that historical byte-preservation comparison does not describe the new outputs.
 Interpolation agreement with a captured JPL solution is not an observational
@@ -29,24 +29,29 @@ uncertainty claim.
 
 ## Rebuild and check
 
-Use Python 3.12.13, NumPy 2.5.2 and the complete pinned
-`ci/backend-test-requirements.txt`, with the declared single-thread settings:
+Use Linux x86-64 with glibc 2.39, Python 3.12.13, NumPy 2.5.2 and the complete
+pinned `ci/backend-test-requirements.txt`. Set the NumPy wheel's OpenBLAS 0.3.34
+kernel and single-thread settings before Python starts:
 
 ```sh
 export PYTHONHASHSEED=0 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1
 export MKL_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1 TZ=UTC
+export OPENBLAS_CORETYPE=Nehalem
+uv run --python 3.12.13 --with-requirements ci/backend-test-requirements.txt \
+  python scripts/ci/catalog_numerical_profile.py --require-core Nehalem
 uv run --python 3.12.13 --with-requirements ci/backend-test-requirements.txt \
   python scripts/generate_moon_lazy_ephemerides.py --offline --check
 ```
 
 The shared reconstruction evaluates node and periapsis angles using scalar
 `math.atan2`, avoiding the observed CPU-dispatch rounding difference in NumPy
-`arctan2`. The pinned stack's native and `NPY_DISABLE_CPU_FEATURES=X86_V4`
-configurations retain strict byte-equality gates; CI runs both on the six-moon
-extension before its full suites. Other platforms or libm versions require
-separate reproducibility checks.
+`arctan2`. The fixed and checked Nehalem BLAS kernel prevents the observed
+least-squares differences between CPU kernels. CI requires that active kernel
+and one thread, then runs strict six-moon byte-equality gates with native NumPy
+dispatch and `NPY_DISABLE_CPU_FEATURES=X86_V4` before its full suites. Other
+platforms, native library builds or libm versions require separate verification.
 
-The scalar-angle rebuild retains these immutable source archives, source hashes
+The numerical-runtime rebuild retains these immutable source archives, source hashes
 and qualified historical timestamps. Generated shard bytes receive matching
 SHA-256 filenames and updated index metadata. The rebuilt six-moon extension's
 reviewed base hash must also be recorded before publishing the lazy generation;

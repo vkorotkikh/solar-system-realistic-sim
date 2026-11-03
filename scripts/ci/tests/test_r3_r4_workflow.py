@@ -106,7 +106,13 @@ def test_backend_job_uses_pinned_python_and_runs_the_full_suite():
     assert [step.get("env", {}) for step in preflight_steps] == [{}, {"NPY_DISABLE_CPU_FEATURES": "X86_V4"}]
     assert all(steps.index(step) < runs.index("python -m pytest -q backend/tests") for step in preflight_steps)
     assert all("if" not in step for step in preflight_steps)
-    assert "np.show_config(); np.show_runtime()" in commands
+    assert job["env"]["OPENBLAS_CORETYPE"] == "Nehalem"
+    assert job["env"]["OPENBLAS_NUM_THREADS"] == "1"
+    profile = "python scripts/ci/catalog_numerical_profile.py --require-core Nehalem"
+    profile_index = _command_index(steps, profile)
+    guard_tests = "python -m pytest --noconftest -q scripts/ci/tests/test_catalog_numerical_profile.py"
+    assert _command_index(steps, guard_tests) < profile_index
+    assert profile_index < runs.index(preflight)
     assert all(not step.get("continue-on-error", False) for step in steps)
 
 

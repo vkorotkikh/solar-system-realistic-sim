@@ -48,13 +48,18 @@ missing data and rejects changed source bytes before parsing.
 
 ## Current fitted-model rebuild contract
 
-Use Python 3.12.13, NumPy 2.5.2 and the complete environment pinned in
-`ci/backend-test-requirements.txt`. Rebuild the six-moon extension before the
+Use Linux x86-64 with glibc 2.39, Python 3.12.13, NumPy 2.5.2 and the complete
+environment pinned in `ci/backend-test-requirements.txt`. Fix the NumPy wheel's
+OpenBLAS 0.3.34 kernel to Nehalem before Python starts, and verify the active
+kernel and single-thread setting. Rebuild the six-moon extension before the
 lazy generation, whose manifest records its reviewed base-artifact hash:
 
 ```sh
 export PYTHONHASHSEED=0 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1
 export MKL_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1 TZ=UTC
+export OPENBLAS_CORETYPE=Nehalem
+uv run --python 3.12.13 --with-requirements ci/backend-test-requirements.txt \
+  python scripts/ci/catalog_numerical_profile.py --require-core Nehalem
 uv run --python 3.12.13 --with-requirements ci/backend-test-requirements.txt \
   python scripts/generate_moon_repairs.py --offline --write
 # Review extension bytes, then update its BASE_HASHES entry in
@@ -69,13 +74,16 @@ uv run --python 3.12.13 --with-requirements ci/backend-test-requirements.txt \
 
 The shared reconstruction evaluates node and periapsis angles with scalar
 `math.atan2`. This avoids the observed rounding difference between NumPy
-`arctan2` CPU-dispatch paths. CI runs the strict six-moon byte-equality preflight
-with native dispatch and with `NPY_DISABLE_CPU_FEATURES=X86_V4` before the full
-backend and catalog suites. The reproducibility claim is scoped to this pinned
-stack and tested dispatch configurations; arbitrary platforms and libm versions
-need separate verification.
+`arctan2` CPU-dispatch paths. The fixed BLAS kernel prevents the observed
+least-squares differences between CPU kernels, even with identical input
+matrices. CI checks the actual selected kernel and thread count before running
+the strict six-moon byte-equality preflight with native NumPy dispatch and with
+`NPY_DISABLE_CPU_FEATURES=X86_V4`; both use Nehalem BLAS. The full backend and
+catalog suites follow. The reproducibility claim is scoped to this pinned
+stack; other platforms, native library builds and libm versions need separate
+verification. The runtime profile records the loaded native-library hashes.
 
-The scalar-angle rebuild regenerates the six-moon extension and the 410-shard
+The numerical-runtime rebuild regenerates the six-moon extension and the 410-shard
 lazy generation from the same immutable provider inputs. Changed lazy shards
 receive new SHA-256 filenames; the extension hash and dependent manifest/base
 references are refreshed. Review the corresponding generated-byte entries in the
@@ -90,6 +98,6 @@ qualification described above.
 In the earlier Puck identity migration, only Puck's shard and index/input recipe
 metadata changed: 409 unrelated lazy shards and all five base artifacts were
 byte-identical to that migration's baseline. That comparison describes the
-identity migration, not the later scalar-angle rebuild. Puck still uses the
+identity migration, not the later numerical-runtime rebuild. Puck still uses the
 stricter published position cap of 86.004 km; the newer row's 86.007 km ceiling
 does not widen it.

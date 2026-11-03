@@ -425,12 +425,16 @@ New pins are added to that directory only by
 are not yet pinned, using `curl`. It is a separate, explicit maintenance step.
 
 The six-moon extension and 410 lazy models reproduce offline from committed
-source pins with Python 3.12.13, NumPy 2.5.2 and the remaining packages pinned in
-`ci/backend-test-requirements.txt`:
+source pins on Linux x86-64 with glibc 2.39, Python 3.12.13, NumPy 2.5.2 and the
+remaining packages pinned in `ci/backend-test-requirements.txt`. The NumPy wheel's
+OpenBLAS 0.3.34 kernel is fixed to Nehalem before Python starts:
 
 ```bash
 export PYTHONHASHSEED=0 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1
 export MKL_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1 TZ=UTC
+export OPENBLAS_CORETYPE=Nehalem
+uv run --python 3.12.13 --with-requirements ci/backend-test-requirements.txt \
+  python scripts/ci/catalog_numerical_profile.py --require-core Nehalem
 uv run --python 3.12.13 --with-requirements ci/backend-test-requirements.txt \
   python scripts/generate_moon_repairs.py --offline --check
 uv run --python 3.12.13 --with-requirements ci/backend-test-requirements.txt \
@@ -439,12 +443,14 @@ uv run --python 3.12.13 --with-requirements ci/backend-test-requirements.txt \
 
 Their shared reconstruction uses scalar `math.atan2` for both node and
 periapsis angles, avoiding the observed NumPy `arctan2` CPU-dispatch rounding
-difference. CI retains strict byte-equality preflights with native dispatch and
-with `NPY_DISABLE_CPU_FEATURES=X86_V4`. This claim covers the supported pinned
-stack and tested dispatch configurations; other platforms or libm implementations
+difference. Pinning and checking the active BLAS kernel also prevents the
+observed least-squares differences between CPU kernels. CI retains strict
+byte-equality preflights with native NumPy dispatch and with
+`NPY_DISABLE_CPU_FEATURES=X86_V4`, both using Nehalem BLAS. This claim covers this
+pinned stack; other platforms, native library builds or libm implementations
 require separate verification.
 
-The scalar-angle rebuild refreshes generated extension/shard bytes and their
+The numerical-runtime rebuild refreshes generated extension/shard bytes and their
 SHA-256 filenames or manifest references using the same immutable source pins,
 original timestamp qualifications and accuracy caps. Exact byte comparison and
 all held-out, endpoint and independent-vector gates remain required. See the
