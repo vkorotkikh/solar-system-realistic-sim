@@ -79,6 +79,7 @@ import {
 } from './frontend/features/solar/solarObservationTexture';
 import {
   describeSolarDataStatus,
+  solarStateLagLabelDays,
   type SolarDataSourceStatus
 } from './frontend/features/solar/solarDataStatus';
 
@@ -214,6 +215,11 @@ export function createSunController({
   let agnEngine: AgnEngine | null = null;
 
   let solarPhysicsState: SolarPhysicsStatePayload | null = null;
+  /** Epoch of the backend state the stale-state policy removed, for the chip (H2.7). */
+  let clearedSolarEpochJdTdb: number | null = null;
+  /** Layer frames of a removed state whose loops and eruptions are still fading out. */
+  let fadingSolarLayerFrames: SolarLayerFrames = {};
+  let publishedLagLabelDays: number | null = null;
   let solarPhysicsFeatureSetCurrent: SolarFeatureSet | null = null;
   let solarPhysicsFeatureSetTarget: SolarFeatureSet | null = null;
   let solarPhysicsBlendStartMs = 0;
@@ -251,9 +257,12 @@ export function createSunController({
   const solarRealtimeClient = new SolarRealtimeClient({
     baseUrl: backendBaseUrl
   });
+  const solarPhysicsPollSec = solarPhysicsClient.status().pollIntervalMs / 1000;
 
   function publishSolarDataStatus() {
     const clientStatus = solarPhysicsClient.status();
+    const stateLagDays = solarStateLagDays();
+    publishedLagLabelDays = solarStateLagLabelDays(stateLagDays);
     const status = describeSolarDataStatus({
       lastSuccessMs: clientStatus.lastSuccessMs,
       lastFailure: clientStatus.lastFailure,
@@ -264,7 +273,9 @@ export function createSunController({
       payload: solarPhysicsState,
       geometryFromBackend: Object.keys(solarLayerFrames).length > 0,
       displayedImageChannel: solarObservationTexture ? solarObservationTextureChannel : null,
-      failedImageChannel: solarObservationFailedChannel
+      failedImageChannel: solarObservationFailedChannel,
+      stateLagDays,
+      clearedEpochJdTdb: clearedSolarEpochJdTdb
     });
     onSolarDataStatus?.(status);
   }
@@ -668,6 +679,8 @@ export function createSunController({
     lastJulianDate = julianDate;
     decorativeTimeSec += dtSec;
     const timeSec = decorativeTimeSec;
+    if (solarPhysicsState && solarStateExpired(Date.now())) clearSolarPhysicsState();
+    if (solarStateLagLabelDays(solarStateLagDays()) !== publishedLagLabelDays) publishSolarDataStatus();
     const fallbackActivity = fallbackSolarActivityFromJulianDate(julianDate);
     const solarBlendView = buildSolarFeatureBlendView(480);
     // Snapshot and image changes ease in on the same decorative clock as the feature blend.
@@ -708,7 +721,8 @@ export function createSunController({
     const observationEmission = observationEmissionEase.step(observationControls.observationEmission, blendNowMs, SOLAR_BLEND_MS, skipBlend);
     const effectiveActivity = clampUnit(activity);
     const sunRadiusAu = getSunRadiusAu();
-    const geometryBlendView = solarLayerFrames.loops ? solarBlendView : null;
+    // A cleared state's loops and eruptions keep drawing while they fade out (H2.7).
+    const geometryBlendView = (solarLayerFrames.loops ?? fadingSolarLayerFrames.loops) ? solarBlendView : null;
     const spotState = solarFeaturesInSurfaceFrame(geometryStateFor('spots'), solarLayerFrames.spots);
     const cmeState = solarFeaturesInSurfaceFrame(geometryStateFor('cme'), solarLayerFrames.cme);
 
@@ -758,7 +772,7 @@ export function createSunController({
 
     updateSunEruptionLayerFromBlendView({
       sunEruptionLayer,
-      blendView: solarLayerFrames.cme ? solarBlendView : null,
+      blendView: (solarLayerFrames.cme ?? fadingSolarLayerFrames.cme) ? solarBlendView : null,
       sunRadiusAu,
       timeSec,
       activity: effectiveActivity
@@ -786,6 +800,79 @@ export function createSunController({
     if (warpDisplayer && warpDisplayer.mesh.visible) {
       warpDisplayer.update(dtSec);
     }
+  }
+
+  function emptySolarFeatureSet(): SolarFeatureSet {
+    return { features: [], featureById: new Map(), activityIndex: null, epochJd: simState.julianDate };
+  }
+
+  /** Blend loops and eruptions from what is drawn now to `next` (H2.9). */
+  function blendFeatureSetsTo(next: SolarFeatureSet) {
+    if (solarPhysicsFeatureSetTarget) {
+      const inFlightBlend = buildSolarFeatureBlendView(220);
+      const blendedSnapshot = materializeSolarFeatureSetFromBlendView(inFlightBlend);
+      solarPhysicsFeatureSetCurrent = blendedSnapshot ?? solarPhysicsFeatureSetTarget;
+      solarPhysicsFeatureSetTarget = null;
+    }
+    // The first arrival fades in from nothing, like later ones cross-fade.
+    solarPhysicsFeatureSetCurrent ??= emptySolarFeatureSet();
+    solarPhysicsFeatureSetTarget = next;
+    solarPhysicsBlendStartMs = decorativeTimeSec * 1000;
+  }
+
+  function applySolarPhysicsState(next: SolarPhysicsStatePayload) {
+    solarPhysicsState = next;
+    clearedSolarEpochJdTdb = null;
+    fadingSolarLayerFrames = {};
+    blendSnapshotFromShown();
+    const previousCmeFrame = solarLayerFrames.cme;
+    solarLayerFrames = validatedSolarLayerFrames(solarPhysicsState);
+    if (previousCmeFrame && !solarLayerFrames.cme) solarFlareManager?.dispose();
+    const normalized = normalizeSolarFeatureSetFromState(solarPhysicsState, 480);
+    if (normalized) {
+      blendFeatureSetsTo(normalized);
+    } else {
+      solarPhysicsFeatureSetCurrent = null;
+      solarPhysicsFeatureSetTarget = null;
+    }
+    // Rebuilds only when the drawn field changed (see buildMagneticFieldSignature).
+    rebuildMagneticFieldLines(false, solarPhysicsState.activity_index);
+  }
+
+  /**
+   * Simulated days a backend state may lag the clock before it is cleared (H2.7): two polls'
+   * worth at the current rate, so a running clock never loses the state between polls, and
+   * at least 30 days.
+   */
+  function solarStateLagLimitDays() {
+    const rate = simState.paused === true ? 0 : Math.abs(Number(simState.timeScaleDaysPerSec) || 0);
+    return Math.max(30, 2 * rate * solarPhysicsPollSec);
+  }
+
+  function solarStateLagDays(state = solarPhysicsState) {
+    return state ? Math.abs(simState.julianDate - state.epoch_jd_tdb) : null;
+  }
+
+  /** Too old for the clock, or no longer refreshed: five failures in a row or five minutes without success. */
+  function solarStateExpired(nowMs: number) {
+    const status = solarPhysicsClient.status();
+    return (solarStateLagDays() ?? 0) > solarStateLagLimitDays()
+      || status.consecutiveFailures >= 5
+      || nowMs - status.lastSuccessMs > 300_000;
+  }
+
+  /** Fade the backend state out and draw the procedural Sun until a usable snapshot arrives (H2.7). */
+  function clearSolarPhysicsState() {
+    if (!solarPhysicsState) return;
+    clearedSolarEpochJdTdb = solarPhysicsState.epoch_jd_tdb;
+    blendSnapshotFromShown();
+    if (solarPhysicsFeatureSetCurrent) blendFeatureSetsTo(emptySolarFeatureSet());
+    fadingSolarLayerFrames = solarLayerFrames;
+    if (solarLayerFrames.cme) solarFlareManager?.dispose();
+    solarPhysicsState = null;
+    solarLayerFrames = {};
+    rebuildMagneticFieldLines(false, fallbackSolarActivityFromJulianDate(simState.julianDate));
+    publishSolarDataStatus();
   }
 
   function maybeRefreshPhysics(nowMs = Date.now(), force = false) {
@@ -816,32 +903,14 @@ export function createSunController({
         if (!ownsRefresh()) return;
         const status = solarPhysicsClient.status();
         if (updated) {
-          solarPhysicsState = solarPhysicsClient.latestState();
-          blendSnapshotFromShown();
-          const previousCmeFrame = solarLayerFrames.cme;
-          solarLayerFrames = validatedSolarLayerFrames(solarPhysicsState);
-          if (previousCmeFrame && !solarLayerFrames.cme) solarFlareManager?.dispose();
-          const normalized = normalizeSolarFeatureSetFromState(solarPhysicsState, 480);
-          if (!normalized) {
-            solarPhysicsFeatureSetCurrent = null;
-            solarPhysicsFeatureSetTarget = null;
+          const arriving = solarPhysicsClient.latestState();
+          // A snapshot already too old for the clock when it arrives is not drawn (H2.7).
+          if (arriving && (solarStateLagDays(arriving) ?? 0) <= solarStateLagLimitDays()) {
+            applySolarPhysicsState(arriving);
+          } else {
+            clearSolarPhysicsState();
+            clearedSolarEpochJdTdb = arriving?.epoch_jd_tdb ?? clearedSolarEpochJdTdb;
           }
-          if (normalized) {
-            if (solarPhysicsFeatureSetTarget) {
-              const inFlightBlend = buildSolarFeatureBlendView(220);
-              const blendedSnapshot = materializeSolarFeatureSetFromBlendView(inFlightBlend);
-              solarPhysicsFeatureSetCurrent = blendedSnapshot ?? solarPhysicsFeatureSetTarget;
-              solarPhysicsFeatureSetTarget = null;
-            }
-            // The first arrival fades in from nothing, like later ones cross-fade (H2.9).
-            solarPhysicsFeatureSetCurrent ??= {
-              features: [], featureById: new Map(), activityIndex: null, epochJd: simState.julianDate
-            };
-            solarPhysicsFeatureSetTarget = normalized;
-            solarPhysicsBlendStartMs = decorativeTimeSec * 1000;
-          }
-          // Rebuilds only when the drawn field changed (see buildMagneticFieldSignature).
-          rebuildMagneticFieldLines(false, solarPhysicsState?.activity_index);
         }
         const clientNextRefreshMs = Number(status['nextRefreshMs']);
         solarPhysicsNextRefreshMs = Number.isFinite(clientNextRefreshMs)

@@ -311,7 +311,8 @@ describe('solar physics wrapper request ownership', () => {
       fieldAtNotification = f.controller.magneticFieldGroup?.userData.activity;
       publishedAtNotification = f.publications.length;
       if (action === 'dispose') f.controller.disposeSolarDelivery();
-      else { f.simState.julianDate += 100; f.refresh(); }
+      // Within a paused clock's 30-day lag limit (H2.7), so A stays drawn once B fails.
+      else { f.simState.julianDate += 20; f.refresh(); }
     };
     const accepted = structuredClone(capturedPhysics); accepted.activity_index = 0.9;
     accepted.corona.features[0].arc[0] = [1, 0, 0]; accepted.pfss_field_lines.lines[0].arc[0] = [1, 0, 0];

@@ -1,3 +1,4 @@
+import { formatJulianAsDate } from '../../../constants';
 import {
   formatSeconds,
   type SolarPhysicsFailure,
@@ -7,7 +8,8 @@ import {
 
 /**
  * Where the Sun on screen currently gets its state from.
- * - connecting: no backend answer yet; the browser's procedural model is drawn.
+ * - connecting: no usable backend answer yet (none so far, or the last one was too old for the
+ *   simulation clock); the browser's procedural model is drawn.
  * - backend: the latest backend solar model state is drawn.
  * - stale: an earlier backend state is still drawn, but refreshing it is failing.
  * - error: the backend has never answered; only the procedural model is drawn.
@@ -47,6 +49,10 @@ export interface SolarDataStatusInput {
   displayedImageChannel: string | null;
   /** Channel of the most recent image load that failed, cleared by a successful load. */
   failedImageChannel: string | null;
+  /** Simulated days between the drawn backend state's epoch and the clock (H2.7). */
+  stateLagDays?: number | null;
+  /** Epoch of the backend state the stale-state policy removed from the Sun (H2.7). */
+  clearedEpochJdTdb?: number | null;
 }
 
 interface SolarDataStatusElement {
@@ -61,6 +67,16 @@ const URL_PATTERN = /https?:\/\/[^\s)]+/g;
 
 function formatUtcMinute(ms: number): string {
   return `${new Date(ms).toISOString().slice(11, 16)} UTC`;
+}
+
+/** Lag shown on the chip, to two significant digits; null within a day (D5). */
+export function solarStateLagLabelDays(lagDays: number | null | undefined): number | null {
+  return typeof lagDays === 'number' && lagDays > 1 ? Number(lagDays.toPrecision(2)) : null;
+}
+
+function describeLag(input: SolarDataStatusInput): string {
+  const label = solarStateLagLabelDays(input.stateLagDays);
+  return label === null ? '' : ` · time-lapse: state lags ${label} d`;
 }
 
 function failureReason(failure: SolarPhysicsFailure, input: SolarDataStatusInput): string {
@@ -175,6 +191,9 @@ export function describeSolarDataStatus(input: SolarDataStatusInput): SolarDataS
       immediateRangeAnnouncement: true,
     };
   }
+  const cleared = !hasBackendState && typeof input.clearedEpochJdTdb === 'number'
+    ? `last backend state was for ${formatJulianAsDate(input.clearedEpochJdTdb)}`
+    : null;
   if (input.lastFailure) {
     const reason = failureReason(input.lastFailure, input);
     const family = failureFamily(input.lastFailure.kind);
@@ -183,7 +202,7 @@ export function describeSolarDataStatus(input: SolarDataStatusInput): SolarDataS
     if (hasBackendState) {
       return {
         state: 'stale',
-        text: `Sun: backend state from ${formatUtcMinute(input.lastSuccessMs)} (refresh failing: ${reason})`,
+        text: `Sun: backend state from ${formatUtcMinute(input.lastSuccessMs)} (refresh failing: ${reason})${describeLag(input)}`,
         announcementKey: 'stale',
         announcement: 'Sun data: backend updates failing, showing the last backend state.',
         remedy,
@@ -192,7 +211,7 @@ export function describeSolarDataStatus(input: SolarDataStatusInput): SolarDataS
     }
     return {
       state: 'error',
-      text: `Sun: procedural fallback (${reason})`,
+      text: `Sun: procedural fallback (${cleared ? `${cleared}; refresh failing: ` : ''}${reason})`,
       announcementKey: `error:${family}`,
       announcement: `Sun data unavailable: ${FAMILY_ANNOUNCEMENTS[family]}. Showing the procedural Sun.`,
       remedy,
@@ -205,11 +224,21 @@ export function describeSolarDataStatus(input: SolarDataStatusInput): SolarDataS
       state: 'backend',
       text: `Sun: ${input.geometryFromBackend ? 'backend solar model' : 'backend activity, procedural features'}`
         + ` (${describeForcing(input.payload)}${describeObservationImage(input)})`
-        + ` · updated ${formatUtcMinute(input.lastSuccessMs)}`,
+        + `${describeLag(input)} · updated ${formatUtcMinute(input.lastSuccessMs)}`,
       announcementKey: imageUnavailable ? 'backend:image-unavailable' : 'backend',
       announcement: imageUnavailable
         ? 'Sun data: backend solar model connected; AIA image unavailable.'
         : 'Sun data: backend solar model connected.',
+      remedy: null,
+      observedAtMs: input.lastSuccessMs,
+    };
+  }
+  if (cleared) {
+    return {
+      state: 'connecting',
+      text: `Sun: procedural fallback (${cleared})`,
+      announcementKey: 'cleared',
+      announcement: 'Sun data: the simulation clock moved past the backend state. Showing the procedural Sun.',
       remedy: null,
       observedAtMs: input.lastSuccessMs,
     };
