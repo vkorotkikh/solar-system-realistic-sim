@@ -471,6 +471,15 @@ describe('a backend state is labelled with its lag, then cleared when too old (H
     expect(shownEpoch(f)).toBe(2451552);
   });
 
+  it('keeps the backend state when the speed slider stops the clock at 0 d/s', async () => {
+    const f = await fixture();
+    f.state.timeScaleDaysPerSec = 4;
+    for (let i = 0; i < 100; i += 1) f.tick(0.4); // 10 s at 4 d/s: the state lags 40 d
+    f.state.timeScaleDaysPerSec = 0;
+    f.tick(0, 0.016);
+    expect(shownEpoch(f)).toBe(2451552);
+  });
+
   it('asks for the current epoch at once when a lower rate clears the state', async () => {
     const f = await fixture();
     f.state.timeScaleDaysPerSec = 120;

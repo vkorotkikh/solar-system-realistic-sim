@@ -223,6 +223,7 @@ export function createSunController({
   let fadingSolarLayerFrames: SolarLayerFrames = {};
   let publishedLagLabelDays: number | null = null;
   let lastStatusPublishMs = Number.NEGATIVE_INFINITY;
+  let lagLimitRateDaysPerSec = 0;
   /** A state was dropped for lagging the clock: the next refresh tick asks for the current epoch. */
   let currentSolarStateWanted = false;
   let solarPhysicsFeatureSetCurrent: SolarFeatureSet | null = null;
@@ -882,12 +883,14 @@ export function createSunController({
 
   /**
    * Simulated days a backend state may lag the clock before it is cleared (H2.7): the replacement
-   * gap at the current rate, so a running clock never loses the state between polls or through one
-   * failed poll, and at least 30 days. Pausing freezes the lag, so the set rate still applies.
+   * gap at the running rate, so a running clock never loses the state between polls or through one
+   * failed poll, and at least 30 days. Pausing or stopping the clock at 0 d/s freezes the lag, so
+   * the last running rate still applies.
    */
   function solarStateLagLimitDays() {
     const rate = Math.abs(Number(simState.timeScaleDaysPerSec) || 0);
-    return Math.max(30, rate * solarReplacementGapSec);
+    if (rate > 0) lagLimitRateDaysPerSec = rate;
+    return Math.max(30, lagLimitRateDaysPerSec * solarReplacementGapSec);
   }
 
   function solarStateLagDays(state = solarPhysicsState) {
