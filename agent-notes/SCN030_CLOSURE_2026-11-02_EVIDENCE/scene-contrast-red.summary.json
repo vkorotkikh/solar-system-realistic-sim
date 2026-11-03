@@ -1,0 +1,80 @@
+{
+  "record_type": "NORMALIZED_PLAYWRIGHT_REPORT",
+  "raw_report": "scene-contrast-red.json.gz",
+  "raw_uncompressed_sha256": "126438c26142b2757d9ca57c6abc41b3d8c6e74f3db73d847ed7feb387364b3c",
+  "stats": {
+    "startTime": "2026-11-02T17:22:19.269Z",
+    "duration": 16241.279999999999,
+    "expected": 0,
+    "skipped": 0,
+    "unexpected": 1,
+    "flaky": 0
+  },
+  "cases": [
+    {
+      "title": "actual rendered desktop and mobile text retains contrast over any scene",
+      "project": "chromium",
+      "status": "failed",
+      "duration_ms": 14901,
+      "errors": [
+        "Error: desktop .frame-indicator: text contrast across any RGB scene backdrop\n\nexpect(received).toBeGreaterThanOrEqual(expected)\n\nExpected: >= 4.5\nReceived:    2.811527363741577\n\n  42 |   for (const bound of bounds) {\n  43 |     expect(bound.backgroundImage, `${bound.selector}: no unmeasured image layer`).toBe('none');\n> 44 |     expect(bound.conservativeContrast, `${state} ${bound.selector}: text contrast across any RGB scene backdrop`).toBeGreaterThanOrEqual(4.5);\n     |                                                                                                                   ^\n  45 |   }\n  46 | }\n  47 |\n    at captureContrast (/home/nomad/ai/projects/worktrees/solar-scn030-closure-20261102/tests/browser/scene-text-contrast.spec.ts:44:115)\n    at /home/nomad/ai/projects/worktrees/solar-scn030-closure-20261102/tests/browser/scene-text-contrast.spec.ts:62:3"
+      ],
+      "attachments": [
+        {
+          "name": "scene-contrast-desktop",
+          "data": [
+            {
+              "selector": ".frame-indicator",
+              "foreground": "rgb(166, 179, 182)",
+              "background": "rgba(7, 11, 14, 0.64)",
+              "backgroundImage": "none",
+              "conservativeContrast": 2.811527363741577
+            },
+            {
+              "selector": ".interaction-hint",
+              "foreground": "rgba(209, 218, 218, 0.72)",
+              "background": "rgba(7, 11, 14, 0.58)",
+              "backgroundImage": "none",
+              "conservativeContrast": 1.8031641753907275
+            },
+            {
+              "selector": "#status-focus",
+              "foreground": "rgb(221, 229, 227)",
+              "background": "rgb(7, 12, 15)",
+              "backgroundImage": "none",
+              "conservativeContrast": 15.340238892772325
+            },
+            {
+              "selector": "#status-bodies",
+              "foreground": "rgb(221, 229, 227)",
+              "background": "rgb(7, 12, 15)",
+              "backgroundImage": "none",
+              "conservativeContrast": 15.340238892772325
+            },
+            {
+              "selector": "#status-zoom",
+              "foreground": "rgb(221, 229, 227)",
+              "background": "rgb(7, 12, 15)",
+              "backgroundImage": "none",
+              "conservativeContrast": 15.340238892772325
+            },
+            {
+              "selector": "#status-catalog",
+              "foreground": "rgb(221, 229, 227)",
+              "background": "rgb(7, 12, 15)",
+              "backgroundImage": "none",
+              "conservativeContrast": 15.340238892772325
+            },
+            {
+              "selector": "#status-solar",
+              "foreground": "rgb(221, 229, 227)",
+              "background": "rgb(7, 12, 15)",
+              "backgroundImage": "none",
+              "conservativeContrast": 15.340238892772325
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

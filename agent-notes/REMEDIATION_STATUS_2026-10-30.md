@@ -93,16 +93,18 @@ profiles are retained; no source patch or startup-budget change is claimed.
 
 ## Eight remaining partial items
 
+**2026-11-02 focused implementation:** [Current four-issue report](FOUR_ISSUE_IMPLEMENTATION_2026-11-02.md) supersedes the four selected rows below on the local integration branch. Other rows retain their dated scope. No new parent closure or deployed acceptance is claimed.
+
 **2026-10-31 documentation follow-up:** The dedicated [solar-eruption architecture and implementation strategy](../docs/solar-eruption-modeling.md) records the screenshot defect, current motion/material pipeline, proposed repair and remaining physical-model requirements. The visual repair is still proposed; SCN-042 remains open.
 
 **2026-10-31 repair:** The square-sprite defect is repaired on `fix/solar-eruption-visuals` (soft-disc alpha map, smaller and denser particles, per-particle restart fade, texture disposal), with [rendered real-GPU evidence](SOLAR_ERUPTION_VISUALS_2026-10-31_EVIDENCE/README.md). Physical transport/emission and the rest of SCN-042 remain open.
 
 | Item | Completed here | Still required |
 |---|---|---|
-| SCN-005 | Single source-selected construction; catalog budget; cleanup; cold DEV/PREVIEW; current actual-scene observations. | Startup performance investigation continues. Quiet submission1859.8/1920.3ms; observed GPU completion6504.3/6887.1ms DEV/PREVIEW. Pause119/114ms and paused keyboard zoom3/4ms afterward. These are host-bound observations, not compositor timestamps or an invented new budget. |
-| SCN-030 | Browser controls/zoom/recovery and three-engine rule audits; named group defects corrected. | Real NVDA, VoiceOver, OS text resizing, physical touch and gradient-contrast review. |
-| SCN-035 | Owner code policy and exact static distribution inventory recorded. | Per-product permissions/release notices, Deimos permission or replacement, SILSO distribution disposition and remaining rights review. |
-| SCN-041 | Numerical/mutation gates and guarded retained-map admission. | Real-map degree 90 still fails the unchanged conditioning limit; lower-degree provider-feature gates also fail. Independent application speed,1AU propagation and broader observed/frame calibration remain absent. |
+| SCN-005 | Completed-result/slow-exit repair preserves cancellation and deadlines; planetary shader specialization improves measured median first GPU completion 32.2% DEV / 34.3% PREVIEW. | Candidate completion 5.1–5.9s remains host-bound; universal usable-scene/compositor startup acceptance remains open. See November 2 report/evidence. |
+| SCN-030 | Scene contrast/layout fixes; 51 three-engine accessibility/reflow passes; actual-renderer checks; 19-case manual-record validator and operator checklist. | Actual NVDA, VoiceOver, OS text resizing and physical touch: 18 required manual cases pending. Automated contrast evidence and its bounded axe disposition are recorded. |
+| SCN-035 | Permission-required code policy, noncommercial SILSO disposition and Deimos removal implemented. Exact 426-public-file + 12-local-input gate packages six notices/registers. | 43 product records retain explicit rights-review requirements; broader release/export scope remains separate. The old Deimos/SILSO owner-choice wording is stale and superseded. |
+| SCN-041 | Numerical guards retained; independent sampling diagnosis, exact contributor-list provenance and matched external-speed comparison tooling added. | Real-map degree 90 conditioning and feature gates still fail; application speed/1-AU propagation calibration remains unmet. External-model residuals are not application validation. |
 | SCN-042 | Alpha/upload/bounds repairs and actual-main diagnostic frame gate. | Broader artistic-layer/camera/epoch acceptance. The user-observed square eruption particles are untextured illustrative point sprites; realistic scale changes dimensions, not observational fidelity. |
 | SCN-047 | Local code/type/build/science/browser/delivery lanes and blocking workflow configuration. | Remaining manual, rights, startup, broad science/render/capacity, architecture and deployed acceptance; actual remote required-check configuration is not certified. |
 | SCN-048 | Leap-boundary policy, precise input/cache and typed provider errors. | Deployed TLS/auth/proxy evidence and remaining provider/frame calibration. Owner knows no target; public GitHub metadata advertises no homepage/Pages/deployment records. External hosting elsewhere was not excluded. |

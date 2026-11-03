@@ -18,6 +18,16 @@ arrays or an unsolicited reuse fail closed, retain the previous state and cause
 the next poll to request complete geometry. New client instances start without
 a hash. Complete responses from older servers remain supported.
 
+Geometry is a function of the requested epoch, so a hash can match only when
+the next request is for a byte-identical epoch. Reuse therefore applies to
+repeated requests at the same epoch, such as a paused simulation or a retry; it
+does not apply during normal playback. Measured over real HTTP at
+`fidelity=high&max_features=180`, one second of simulated time already changes
+all three arrays (corona features, PFSS lines and Parker lines). While the
+simulation plays, every poll sends complete geometry, about **262 KB gzip**; a
+same-epoch poll with reuse is about 2.8 KB. This transport does not quantize
+epochs or send deltas, which would be a separate design decision.
+
 HTTP gzip is negotiated through `Accept-Encoding`; no custom browser header or
 CORS preflight is needed. The server caps a render response at **512 KiB encoded**
 and **2 MiB decoded**. Without gzip the same encoded cap applies to plain JSON.
@@ -30,11 +40,13 @@ the decoded cap.
 
 At the default cadence this bounds two successful response bodies per minute at
 **1 MiB encoded**, excluding HTTP/TLS overhead, realtime observations and explicit
-forced refreshes. Identical geometry polls have a separate **16 KiB acceptance
-budget** in the native HTTP test. This is a delivery bound, not a provider latency
-or compute-speed promise: geometry is still computed and authenticated through
-the existing request-owned worker before hashing. A future computation cache
-would need its own cancellation and freshness proof.
+forced refreshes. Because every playing poll carries complete geometry, this is
+the bound that applies during playback. Same-epoch polls with reuse (a paused
+simulation) have a separate **16 KiB acceptance budget** in the native HTTP
+test; it is not a playback figure. This is a delivery bound, not a provider
+latency or compute-speed promise: geometry is still computed and authenticated
+through the existing request-owned worker before hashing. A future computation
+cache would need its own cancellation and freshness proof.
 
 Keeping the client's last accepted response does not keep it on screen indefinitely.
 The renderer clears its backend state when the absolute simulation/snapshot epoch

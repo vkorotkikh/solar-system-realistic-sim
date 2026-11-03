@@ -88,7 +88,7 @@ for (const realistic of [false, true]) {
       const mesh = runtime.bodyMeshes.get(moon.id);
       expect(mesh.userData.isQuadtree).toBe(true);
       const tree = mesh.userData.quadtree;
-      expect(tree.material.uniforms.uPlanetType.value).toBe(1);
+      expect(tree.material.defines.PLANET_TYPE).toBe(1);
       const radius = realistic ? moon.realRadiusAu : moon.displayRadiusAu;
       expect(tree.baseRadius).toBe(radius);
       expect(tree.material.uniforms.uDisplacementScale.value).toBeCloseTo(radius * 0.04, 15);
@@ -118,7 +118,7 @@ for (const [id, type, relief] of [['earth', 0, 0.02], ['mars', 2, 0.06]]) {
     withScene({showMoons: true}, runtime => {
       const mesh = runtime.bodyMeshes.get(id), tree = mesh.userData.quadtree;
       expect(mesh.userData.isQuadtree).toBe(true);
-      expect(tree.material.uniforms.uPlanetType.value).toBe(type);
+      expect(tree.material.defines.PLANET_TYPE).toBe(type);
       expect(tree.baseRadius).toBe(byId(id).displayRadiusAu);
       expect(tree.material.uniforms.uDisplacementScale.value).toBeCloseTo(tree.baseRadius * relief, 15);
       expect(tree.group.children).toHaveLength(6);

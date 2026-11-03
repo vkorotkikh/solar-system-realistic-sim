@@ -1,0 +1,217 @@
+{
+  "date": "2026-11-02",
+  "branch": "fix/scn-four-closure-20261102",
+  "applicationSourceCommit": "359598a818ec45fa22e6d6a822d7aea0a5e0a0ec",
+  "evidenceHeadBeforeFinalReport": "e4f6d77a7a561cf329cdc672ba9f682006b799dc",
+  "environment": {
+    "node": "22.23.2",
+    "npm": "10.9.8",
+    "python": "3.12.13",
+    "dependencies": "Existing package-lock.json and exact CI Python requirements",
+    "hardwareBrowser": "RTX 5090 / ANGLE GL / WSL D3D12; headed Chromium"
+  },
+  "checks": {
+    "backend": {
+      "exitCode": 0,
+      "passed": 5788,
+      "skipped": 13,
+      "failures": 0,
+      "command": "uv run --python 3.12.13 --with-requirements ci/backend-test-requirements.txt python -m pytest -q backend/tests --junitxml=<evidence>/backend.xml",
+      "note": "Backend source tree is unchanged between test start f72b7c0 and final application source359598a."
+    },
+    "frontend": {
+      "exitCode": 0,
+      "passed": 3025,
+      "skipped": 2,
+      "failures": 0,
+      "command": "Node22.23.2 node_modules/vitest/vitest.mjs run --reporter=default --reporter=json --outputFile=<evidence>/frontend.json"
+    },
+    "sourceAndScriptsTypes": {
+      "exitCode": 0,
+      "command": "npm run typecheck"
+    },
+    "browserTypes": {
+      "exitCode": 0,
+      "command": "npm run test:types:ui"
+    },
+    "build": {
+      "exitCode": 0,
+      "command": "npm run build",
+      "warning": "Existing >500kB chunk warning retained."
+    },
+    "distribution": {
+      "publicAssetsVerified": 426,
+      "packagedLegalFiles": [
+        "DISTRIBUTION-FILES.json",
+        "DISTRIBUTION-POLICY.md",
+        "DISTRIBUTION-SOURCES.json",
+        "LICENSE.txt",
+        "NOTICE.md",
+        "THREE-LICENSE.txt"
+      ],
+      "failures": [],
+      "scope": "Built public copies and both source/file registers; generated JS/CSS inspected separately by build/tests, not rights clearance."
+    },
+    "science": {
+      "exitCode": 0,
+      "baseline": {
+        "collected": 11,
+        "passed": 11
+      },
+      "mutantsKilled": 8,
+      "command": "uv run --python 3.12.13 --with-requirements ci/r3-r4-requirements.txt python scripts/ci/verify_r3_r4.py --repo . --manifest ci/r3-r4-science-verification.json --artifacts <evidence>/science all"
+    },
+    "runnerContracts": {
+      "exitCode": 0,
+      "passed": 21,
+      "command": "python -m pytest --noconftest -q scripts/ci/tests/test_verify_r3_r4_runner.py scripts/ci/tests/test_r3_r4_workflow.py"
+    },
+    "integratedSceneContrast": {
+      "exitCode": 0,
+      "stats": {
+        "startTime": "2026-11-02T17:39:32.319Z",
+        "duration": 7792.947,
+        "expected": 1,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "collectedFile": "tests/browser/scene-text-contrast.spec.ts",
+      "note": "Initial selector also named nonexistent solar-startup.spec.ts and asteroid-gpu.spec.ts; they collected no cases. The following startup command uses the actual files and verifies14 cases."
+    },
+    "integratedStartup": {
+      "exitCode": 0,
+      "stats": {
+        "startTime": "2026-11-02T17:40:09.624Z",
+        "duration": 28871.817,
+        "expected": 14,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "command": "UI_TEST_PORT=4196 UI_HARDWARE_WEBGL=1 Node22.23.2 node_modules/playwright/cli.js test tests/browser/startup-warmup.spec.ts tests/browser/asteroid-shader.spec.ts tests/browser/startup-ownership.spec.ts --project=chromium --reporter=json"
+    }
+  },
+  "archivedRawReports": [
+    {
+      "path": "frontend.json.gz",
+      "originalBytes": 1015078,
+      "originalSha256": "7db9a94a1a20f7446a3ad62aa176a20bdc405007581659ee1a2b5ef55834d611",
+      "compressedSha256": "c70d4a8bd4973dbc214213d7f86aa9b0b4c16a2e7f5ba2a04f5a49ba8b3aca81"
+    },
+    {
+      "path": "backend.xml.gz",
+      "originalBytes": 933828,
+      "originalSha256": "2d3d454cb9bb393bd1363c4f52c3a2689f2d8c2d1d2437682fc2a84f535c56db",
+      "compressedSha256": "b471a35facb956c021026f8626c84b2109cd1a4c869b6030b8387db192fbfc64"
+    },
+    {
+      "path": "browser.json.gz",
+      "originalBytes": 856669,
+      "originalSha256": "efc63bb2d65dc88ef2a1c701bda42d4139de088b5622543cfe60bab42b676863",
+      "compressedSha256": "1b5b3269a7b8224e59627d250207dd0ed2531eecd83d95e6f5ca084ff1998312"
+    }
+  ],
+  "changedImplementationSourceHashes": [
+    {
+      "path": "backend/sim/process_supervisor.py",
+      "sha256": "25bb62637a5b433cbca03c06d977177e5f1dee6172dfd2be4b0039ba3ae8366e"
+    },
+    {
+      "path": "backend/tests/fixtures/process_worker_targets.py",
+      "sha256": "d70321ac309dd487811e0b289c49718adeb29cd66aeda0ba1e41474b9386f8e5"
+    },
+    {
+      "path": "backend/tests/solar_sampling_diagnostic.py",
+      "sha256": "47b272b8f3ff6268fd6233670a113f17f828c3f8e790224c1e3e79346bd42936"
+    },
+    {
+      "path": "backend/tests/solar_wind_comparison.py",
+      "sha256": "eba7f843265567c2ca84363334d29db7b1d12e7117407b244da5fb5208a4be25"
+    },
+    {
+      "path": "backend/tests/test_solar_process_supervisor.py",
+      "sha256": "0f09f7f8ef81086873fb79c0312145932a1cdc46c594d71ed4a906a5fc155750"
+    },
+    {
+      "path": "backend/tests/test_solar_sampling_diagnostic.py",
+      "sha256": "90fcce0d1784f4161cf9b2fd3f902567973a227f26c208d71693f3c9daf3e1ba"
+    },
+    {
+      "path": "backend/tests/test_solar_wind_comparison.py",
+      "sha256": "a265820e72d59fe02a34953cd2c332ad09e377641896b835999b554661be8304"
+    },
+    {
+      "path": "index.html",
+      "sha256": "da5f863af5c8cf1035853c8ece29c0affbbf8dc6b4df2d8a095d6f17a5d5f85e"
+    },
+    {
+      "path": "package.json",
+      "sha256": "459f5bc2b6240f66509a7e6ffe3556ec9ad8ec074e1735fe9b75854c92d1f979"
+    },
+    {
+      "path": "scripts/distribution-inventory.mjs",
+      "sha256": "601f6099342533365d8e20239a1d1bddafede86517179b960c54e4728e5aa2e5"
+    },
+    {
+      "path": "scripts/distribution-inventory.test.mjs",
+      "sha256": "c611d908112118bb95c54e3d05d1d83af0cbb9a4af0c261c871e4e9bb786b0eb"
+    },
+    {
+      "path": "scripts/moon-visual-identity.test.mjs",
+      "sha256": "19b8dd9cea7b62d5d9fc41d93b234f5c0189b0d74ebaf4fa6657536d19d9d8a9"
+    },
+    {
+      "path": "scripts/planetShaderGeometry.test.mjs",
+      "sha256": "865f6669621a158de6089e9d524d99f9a2d9bfdb6a5b117550b166faae67e52a"
+    },
+    {
+      "path": "scripts/prepare-distribution.mjs",
+      "sha256": "2ecf35f622a7fc2e167d8d0aca13f8eed4bc3a0373668c463faa7aa56e35bfe6"
+    },
+    {
+      "path": "scripts/prepare-distribution.test.mjs",
+      "sha256": "41d4beead392a96a9ec6d4f008846310900d6b3fe47fe70cb43f499f6194ad8c"
+    },
+    {
+      "path": "scripts/validate-accessibility-evidence.mjs",
+      "sha256": "0481fbfb6523518dfbdffac16170c33687e939f8e5bc82aec65ed3659fa8c3ec"
+    },
+    {
+      "path": "scripts/validate-accessibility-evidence.test.mjs",
+      "sha256": "38781321d1db8f006c78179dba667614aa018393f550495935e24ed5ae9f9361"
+    },
+    {
+      "path": "src/frontend/features/planetary/planetShaders.ts",
+      "sha256": "f8a8a5e6593167142807ac09923183c6af441e64584c92c5cb1ba15c10b81262"
+    },
+    {
+      "path": "src/style.css",
+      "sha256": "3db1298b3008b813c2ee5e0d58d72e7a2aafad8df77b216f395bc2b635b0a31d"
+    },
+    {
+      "path": "tests/browser/accessibility-audit.spec.ts",
+      "sha256": "e2f3dba9e0968ca02ec45db0285b11c2d5f6f594d43f3de28c14c2814db152e3"
+    },
+    {
+      "path": "tests/browser/accessibility.spec.ts",
+      "sha256": "4e753dd9671d56d214ee124dd675af1dd93496c7eb9642983024cc792d92ea16"
+    },
+    {
+      "path": "tests/browser/contrast-review.ts",
+      "sha256": "3ae8eb425d84314230b224e4ef22e716d07c0bd34121316b2dbaa19c424e0d87"
+    },
+    {
+      "path": "tests/browser/scene-text-contrast.spec.ts",
+      "sha256": "061e83d93367c2a3b046450b8221bbc0cebe9c8ed281abf900d6b647ff6db22e"
+    }
+  ],
+  "limitations": [
+    "Four requested parent issues remain PARTIAL; see issue-status.json.",
+    "Manual-device outcomes remain NOT_RUN. No observations inferred from browser emulation.",
+    "Provenance hashes are not rights grants.",
+    "Scientific external-model comparisons are not application calibration.",
+    "No remote CI/deployment acceptance asserted."
+  ],
+  "readableEvidenceNormalization": "readable-evidence-normalization.json"
+}

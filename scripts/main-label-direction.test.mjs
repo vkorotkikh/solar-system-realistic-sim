@@ -192,7 +192,10 @@ function labelMetrics(sprite, node, camera, radius, viewportHeight) {
   const up = new THREE.Vector3(0, 1, 0).applyQuaternion(camera.quaternion);
   const top = center.clone().addScaledVector(up, sprite.scale.y / 2).project(camera);
   const bottom = center.clone().addScaledVector(up, -sprite.scale.y / 2).project(camera);
-  const bodyTop = node.getWorldPosition(new THREE.Vector3()).addScaledVector(up, radius).project(camera);
+  // The gap is measured from the sphere's limb, d*tan(asin(r/d)) in the centre's depth plane, not from r.
+  const bodyCenter = node.getWorldPosition(new THREE.Vector3());
+  const depth = -bodyCenter.clone().applyMatrix4(camera.matrixWorldInverse).z;
+  const bodyTop = bodyCenter.addScaledVector(up, depth * Math.tan(Math.asin(radius / depth))).project(camera);
   return { pixelHeight: (top.y - bottom.y) * viewportHeight / 2,
     gapPixels: (bottom.y - bodyTop.y) * viewportHeight / 2,
     aspect: sprite.scale.x / sprite.scale.y };

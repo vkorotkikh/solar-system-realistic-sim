@@ -1,0 +1,27 @@
+{
+  "ready": false,
+  "status": "NOT_RUN",
+  "scope": "record completeness only; human observations are not independently verified",
+  "errors": [],
+  "pending": [
+    "nvda_chrome/desktop_discovery",
+    "nvda_chrome/mobile_drawer_closed",
+    "nvda_chrome/mobile_drawer_open",
+    "nvda_chrome/search_and_announcements",
+    "nvda_chrome/real_app_recovery",
+    "nvda_chrome/native_zoom_and_text",
+    "nvda_chrome/axe_incomplete_review",
+    "voiceover_safari_macos/desktop_discovery",
+    "voiceover_safari_macos/mobile_drawer_closed",
+    "voiceover_safari_macos/mobile_drawer_open",
+    "voiceover_safari_macos/search_and_announcements",
+    "voiceover_safari_macos/real_app_recovery",
+    "voiceover_safari_macos/native_zoom_and_text",
+    "voiceover_safari_macos/axe_incomplete_review",
+    "physical_touch/mobile_drawer_closed",
+    "physical_touch/mobile_drawer_open",
+    "physical_touch/real_app_recovery",
+    "physical_touch/physical_touch"
+  ],
+  "failures": []
+}

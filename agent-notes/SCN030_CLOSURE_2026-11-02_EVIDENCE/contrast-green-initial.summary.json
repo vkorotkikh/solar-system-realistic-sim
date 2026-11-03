@@ -1,0 +1,384 @@
+{
+  "record_type": "NORMALIZED_PLAYWRIGHT_REPORT",
+  "raw_report": "contrast-green-initial.json.gz",
+  "raw_uncompressed_sha256": "804283b3afe33aea85f217aadf21e0f11c8087e7e6f4bc917661108013368861",
+  "stats": {
+    "startTime": "2026-11-02T17:22:00.432Z",
+    "duration": 8257.396999999999,
+    "expected": 3,
+    "skipped": 0,
+    "unexpected": 2,
+    "flaky": 0
+  },
+  "cases": [
+    {
+      "title": "desktop controls and expanded camera tools",
+      "project": "chromium",
+      "status": "passed",
+      "duration_ms": 1895,
+      "errors": [],
+      "attachments": [
+        {
+          "name": "axe-desktop-expanded",
+          "data": {
+            "state": "desktop-expanded",
+            "project": "chromium",
+            "browserVersion": "156.0.8078.4",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scope": "full document; production HTML/CSS with existing controller fixture",
+            "testEngine": {
+              "name": "axe-core",
+              "version": "4.11.1"
+            },
+            "passes": [
+              "aria-allowed-attr",
+              "aria-conditional-attr",
+              "aria-deprecated-role",
+              "aria-hidden-body",
+              "aria-hidden-focus",
+              "aria-prohibited-attr",
+              "aria-required-attr",
+              "aria-roles",
+              "aria-valid-attr-value",
+              "aria-valid-attr",
+              "autocomplete-valid",
+              "avoid-inline-spacing",
+              "button-name",
+              "color-contrast",
+              "definition-list",
+              "dlitem",
+              "document-title",
+              "duplicate-id-aria",
+              "form-field-multiple-labels",
+              "html-has-lang",
+              "html-lang-valid",
+              "label",
+              "meta-viewport",
+              "nested-interactive",
+              "scrollable-region-focusable",
+              "select-name",
+              "summary-name",
+              "target-size"
+            ],
+            "violations": [],
+            "incomplete": []
+          }
+        }
+      ]
+    },
+    {
+      "title": "mobile drawer closed exposes expanded camera tools",
+      "project": "chromium",
+      "status": "passed",
+      "duration_ms": 919,
+      "errors": [],
+      "attachments": [
+        {
+          "name": "axe-mobile-closed",
+          "data": {
+            "state": "mobile-closed",
+            "project": "chromium",
+            "browserVersion": "156.0.8078.4",
+            "viewport": {
+              "width": 390,
+              "height": 844
+            },
+            "scope": "full document; production HTML/CSS with existing controller fixture",
+            "testEngine": {
+              "name": "axe-core",
+              "version": "4.11.1"
+            },
+            "passes": [
+              "aria-allowed-attr",
+              "aria-conditional-attr",
+              "aria-deprecated-role",
+              "aria-hidden-body",
+              "aria-hidden-focus",
+              "aria-prohibited-attr",
+              "aria-required-attr",
+              "aria-roles",
+              "aria-valid-attr-value",
+              "aria-valid-attr",
+              "avoid-inline-spacing",
+              "button-name",
+              "color-contrast",
+              "document-title",
+              "duplicate-id-aria",
+              "html-has-lang",
+              "html-lang-valid",
+              "meta-viewport",
+              "nested-interactive",
+              "summary-name",
+              "target-size"
+            ],
+            "violations": [],
+            "incomplete": []
+          }
+        }
+      ]
+    },
+    {
+      "title": "mobile drawer open exposes all control disclosures",
+      "project": "chromium",
+      "status": "failed",
+      "duration_ms": 1261,
+      "errors": [
+        "Error: mobile-open: text backgrounds must permit deterministic contrast evaluation\n\nexpect(received).toEqual(expected) // deep equality\n\n- Expected  -  1\n+ Received  + 49\n\n- Array []\n+ Array [\n+   Object {\n+     \"description\": \"Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds\",\n+     \"help\": \"Elements must meet minimum color contrast ratio thresholds\",\n+     \"helpUrl\": \"https://dequeuniversity.com/rules/axe/4.11/color-contrast?application=playwright\",\n+     \"id\": \"color-contrast\",\n+     \"impact\": \"serious\",\n+     \"nodes\": Array [\n+       Object {\n+         \"all\": Array [],\n+         \"any\": Array [\n+           Object {\n+             \"data\": Object {\n+               \"contrastRatio\": 0,\n+               \"expectedContrastRatio\": \"4.5:1\",\n+               \"fontSize\": \"9.4pt (12.48px)\",\n+               \"fontWeight\": \"normal\",\n+               \"messageKey\": \"elmPartiallyObscuring\",\n+             },\n+             \"id\": \"color-contrast\",\n+             \"impact\": \"serious\",\n+             \"message\": \"Element's background color could not be determined because it partially overlaps other elements\",\n+             \"relatedNodes\": Array [],\n+           },\n+         ],\n+         \"failureSummary\": \"Fix any of the following:\n+   Element's background color could not be determined because it partially overlaps other elements\",\n+         \"html\": \"<p class=\\\"subtitle\\\">Real-time heliocentric model and solar observation workspace.</p>\",\n+         \"impact\": \"serious\",\n+         \"none\": Array [],\n+         \"target\": Array [\n+           \".subtitle\",\n+         ],\n+       },\n+     ],\n+     \"tags\": Array [\n+       \"cat.color\",\n+       \"wcag2aa\",\n+       \"wcag143\",\n+       \"TTv5\",\n+       \"TT13.c\",\n+       \"EN-301-549\",\n+       \"EN-9.1.4.3\",\n+       \"ACT\",\n+       \"RGAAv4\",\n+       \"RGAA-3.2.1\",\n+     ],\n+   },\n+ ]\n\n  54 |     `${state}: named groups must expose a role that supports their accessible label`).toEqual([]);\n  55 |   expect(results.incomplete.filter(rule => rule.id === 'color-contrast'),\n> 56 |     `${state}: text backgrounds must permit deterministic contrast evaluation`).toEqual([]);\n     |                                                                                 ^\n  57 |   // Other incomplete results still require disposition; this is not a manual AT pass.\n  58 | }\n  59 |\n    at auditDocument (/home/nomad/ai/projects/worktrees/solar-scn030-closure-20261102/tests/browser/accessibility-audit.spec.ts:56:81)\n    at /home/nomad/ai/projects/worktrees/solar-scn030-closure-20261102/tests/browser/accessibility-audit.spec.ts:89:5"
+      ],
+      "attachments": [
+        {
+          "name": "axe-mobile-open",
+          "data": {
+            "state": "mobile-open",
+            "project": "chromium",
+            "browserVersion": "156.0.8078.4",
+            "viewport": {
+              "width": 390,
+              "height": 844
+            },
+            "scope": "full document; production HTML/CSS with existing controller fixture",
+            "testEngine": {
+              "name": "axe-core",
+              "version": "4.11.1"
+            },
+            "passes": [
+              "aria-allowed-attr",
+              "aria-conditional-attr",
+              "aria-deprecated-role",
+              "aria-hidden-body",
+              "aria-hidden-focus",
+              "aria-prohibited-attr",
+              "aria-required-attr",
+              "aria-roles",
+              "aria-valid-attr-value",
+              "aria-valid-attr",
+              "autocomplete-valid",
+              "button-name",
+              "color-contrast",
+              "definition-list",
+              "dlitem",
+              "document-title",
+              "duplicate-id-aria",
+              "form-field-multiple-labels",
+              "html-has-lang",
+              "html-lang-valid",
+              "label",
+              "meta-viewport",
+              "nested-interactive",
+              "scrollable-region-focusable",
+              "select-name",
+              "summary-name",
+              "target-size"
+            ],
+            "violations": [],
+            "incomplete": [
+              {
+                "id": "color-contrast",
+                "impact": "serious",
+                "tags": [
+                  "cat.color",
+                  "wcag2aa",
+                  "wcag143",
+                  "TTv5",
+                  "TT13.c",
+                  "EN-301-549",
+                  "EN-9.1.4.3",
+                  "ACT",
+                  "RGAAv4",
+                  "RGAA-3.2.1"
+                ],
+                "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+                "help": "Elements must meet minimum color contrast ratio thresholds",
+                "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/color-contrast?application=playwright",
+                "nodes": [
+                  {
+                    "any": [
+                      {
+                        "id": "color-contrast",
+                        "data": {
+                          "contrastRatio": 0,
+                          "fontSize": "9.4pt (12.48px)",
+                          "fontWeight": "normal",
+                          "messageKey": "elmPartiallyObscuring",
+                          "expectedContrastRatio": "4.5:1"
+                        },
+                        "relatedNodes": [],
+                        "impact": "serious",
+                        "message": "Element's background color could not be determined because it partially overlaps other elements"
+                      }
+                    ],
+                    "all": [],
+                    "none": [],
+                    "impact": "serious",
+                    "html": "<p class=\"subtitle\">Real-time heliocentric model and solar observation workspace.</p>",
+                    "target": [
+                      ".subtitle"
+                    ],
+                    "failureSummary": "Fix any of the following:\n  Element's background color could not be determined because it partially overlaps other elements"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "title": "desktop-recovery exposes the recovery surface",
+      "project": "chromium",
+      "status": "passed",
+      "duration_ms": 1766,
+      "errors": [],
+      "attachments": [
+        {
+          "name": "axe-desktop-recovery",
+          "data": {
+            "state": "desktop-recovery",
+            "project": "chromium",
+            "browserVersion": "156.0.8078.4",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scope": "full document; production HTML/CSS with existing controller fixture",
+            "testEngine": {
+              "name": "axe-core",
+              "version": "4.11.1"
+            },
+            "passes": [
+              "aria-allowed-attr",
+              "aria-conditional-attr",
+              "aria-deprecated-role",
+              "aria-hidden-body",
+              "aria-hidden-focus",
+              "aria-prohibited-attr",
+              "aria-required-attr",
+              "aria-roles",
+              "aria-valid-attr-value",
+              "aria-valid-attr",
+              "button-name",
+              "color-contrast",
+              "definition-list",
+              "dlitem",
+              "document-title",
+              "duplicate-id-aria",
+              "form-field-multiple-labels",
+              "html-has-lang",
+              "html-lang-valid",
+              "label",
+              "meta-viewport",
+              "nested-interactive",
+              "scrollable-region-focusable",
+              "select-name",
+              "summary-name",
+              "target-size"
+            ],
+            "violations": [],
+            "incomplete": []
+          }
+        }
+      ]
+    },
+    {
+      "title": "mobile-closed-recovery exposes the recovery surface",
+      "project": "chromium",
+      "status": "failed",
+      "duration_ms": 900,
+      "errors": [
+        "Error: mobile-closed-recovery: text backgrounds must permit deterministic contrast evaluation\n\nexpect(received).toEqual(expected) // deep equality\n\n- Expected  -  1\n+ Received  + 49\n\n- Array []\n+ Array [\n+   Object {\n+     \"description\": \"Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds\",\n+     \"help\": \"Elements must meet minimum color contrast ratio thresholds\",\n+     \"helpUrl\": \"https://dequeuniversity.com/rules/axe/4.11/color-contrast?application=playwright\",\n+     \"id\": \"color-contrast\",\n+     \"impact\": \"serious\",\n+     \"nodes\": Array [\n+       Object {\n+         \"all\": Array [],\n+         \"any\": Array [\n+           Object {\n+             \"data\": Object {\n+               \"contrastRatio\": 0,\n+               \"expectedContrastRatio\": \"4.5:1\",\n+               \"fontSize\": \"7.9pt (10.56px)\",\n+               \"fontWeight\": \"normal\",\n+               \"messageKey\": \"bgOverlap\",\n+             },\n+             \"id\": \"color-contrast\",\n+             \"impact\": \"serious\",\n+             \"message\": \"Element's background color could not be determined because it is overlapped by another element\",\n+             \"relatedNodes\": Array [],\n+           },\n+         ],\n+         \"failureSummary\": \"Fix any of the following:\n+   Element's background color could not be determined because it is overlapped by another element\",\n+         \"html\": \"<span class=\\\"pointer-hint\\\">Drag to orbit \u00b7 Scroll to zoom \u00b7 Double-click to follow a body</span>\",\n+         \"impact\": \"serious\",\n+         \"none\": Array [],\n+         \"target\": Array [\n+           \".pointer-hint\",\n+         ],\n+       },\n+     ],\n+     \"tags\": Array [\n+       \"cat.color\",\n+       \"wcag2aa\",\n+       \"wcag143\",\n+       \"TTv5\",\n+       \"TT13.c\",\n+       \"EN-301-549\",\n+       \"EN-9.1.4.3\",\n+       \"ACT\",\n+       \"RGAAv4\",\n+       \"RGAA-3.2.1\",\n+     ],\n+   },\n+ ]\n\n  54 |     `${state}: named groups must expose a role that supports their accessible label`).toEqual([]);\n  55 |   expect(results.incomplete.filter(rule => rule.id === 'color-contrast'),\n> 56 |     `${state}: text backgrounds must permit deterministic contrast evaluation`).toEqual([]);\n     |                                                                                 ^\n  57 |   // Other incomplete results still require disposition; this is not a manual AT pass.\n  58 | }\n  59 |\n    at auditDocument (/home/nomad/ai/projects/worktrees/solar-scn030-closure-20261102/tests/browser/accessibility-audit.spec.ts:56:81)\n    at /home/nomad/ai/projects/worktrees/solar-scn030-closure-20261102/tests/browser/accessibility-audit.spec.ts:111:7"
+      ],
+      "attachments": [
+        {
+          "name": "axe-mobile-closed-recovery",
+          "data": {
+            "state": "mobile-closed-recovery",
+            "project": "chromium",
+            "browserVersion": "156.0.8078.4",
+            "viewport": {
+              "width": 390,
+              "height": 844
+            },
+            "scope": "full document; production HTML/CSS with existing controller fixture",
+            "testEngine": {
+              "name": "axe-core",
+              "version": "4.11.1"
+            },
+            "passes": [
+              "aria-allowed-attr",
+              "aria-conditional-attr",
+              "aria-deprecated-role",
+              "aria-hidden-body",
+              "aria-hidden-focus",
+              "aria-prohibited-attr",
+              "aria-required-attr",
+              "aria-roles",
+              "aria-valid-attr-value",
+              "aria-valid-attr",
+              "button-name",
+              "color-contrast",
+              "document-title",
+              "duplicate-id-aria",
+              "html-has-lang",
+              "html-lang-valid",
+              "meta-viewport",
+              "nested-interactive",
+              "target-size"
+            ],
+            "violations": [],
+            "incomplete": [
+              {
+                "id": "color-contrast",
+                "impact": "serious",
+                "tags": [
+                  "cat.color",
+                  "wcag2aa",
+                  "wcag143",
+                  "TTv5",
+                  "TT13.c",
+                  "EN-301-549",
+                  "EN-9.1.4.3",
+                  "ACT",
+                  "RGAAv4",
+                  "RGAA-3.2.1"
+                ],
+                "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+                "help": "Elements must meet minimum color contrast ratio thresholds",
+                "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/color-contrast?application=playwright",
+                "nodes": [
+                  {
+                    "any": [
+                      {
+                        "id": "color-contrast",
+                        "data": {
+                          "contrastRatio": 0,
+                          "fontSize": "7.9pt (10.56px)",
+                          "fontWeight": "normal",
+                          "messageKey": "bgOverlap",
+                          "expectedContrastRatio": "4.5:1"
+                        },
+                        "relatedNodes": [],
+                        "impact": "serious",
+                        "message": "Element's background color could not be determined because it is overlapped by another element"
+                      }
+                    ],
+                    "all": [],
+                    "none": [],
+                    "impact": "serious",
+                    "html": "<span class=\"pointer-hint\">Drag to orbit \u00b7 Scroll to zoom \u00b7 Double-click to follow a body</span>",
+                    "target": [
+                      ".pointer-hint"
+                    ],
+                    "failureSummary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -167,10 +167,10 @@ test('fetch failure preserves existing fallback and diagnostic', async () => {
 
 // Literal fixed-width public TLE shape. These tests certify record retention,
 // not SGP4 accuracy: the retained model uses mean Kepler elements and optional J2.
-const line1 = '1 25544U 98067A   24001.50000000  .00000000  00000-0  00000-0 0  9990';
-const line2 = '2 25544  51.6400 120.0000 0005000  80.0000  40.0000 15.50000000123450';
+const line1 = '1 25544U 98067A   24001.50000000  .00000000  00000-0  00000-0 0  9992';
+const line2 = '2 25544  51.6400 120.0000 0005000  80.0000  40.0000 15.50000000123454';
 const parse = (text: string) => parseTleBlock(text, 'stations', PRIMARY_MODELS.earth);
-const geo1 = '1 99999U 98067A   24001.50000000  .00000000  00000-0  00000-0 0  9990';
+const geo1 = '1 99999U 98067A   24001.50000000  .00000000  00000-0  00000-0 0  9997';
 const geo2 = '2 99999   0.0100  20.0000 0001000  10.0000  30.0000  1.00270000123450';
 afterEach(() => vi.unstubAllGlobals());
 
@@ -213,4 +213,109 @@ test('merged feeds deduplicate the same NORAD identity across named and unnamed 
   expect(result.records.map(record => record.id)).toEqual(['sat-norad-23455', 'sat-norad-23456']);
   expect(result.records.map(record => record.anomaly)).toEqual([10, 20]);
   expect(result.records[0].name).toBe('Satellite 1');
+});
+
+// F-029 validation: a TLE line is exactly 69 columns with a mod-10 checksum, and the epoch day lies in
+// [1, days in year + 1). The pre-fix parser accepted a 12-column line 1 as epoch day 0 (JD 2451543.5).
+const goodPair = tle(0);
+const withEpoch = (pair: string, epoch: string) => {
+  const [first, second] = pair.split('\n');
+  return [withChecksum(replace(first, 18, 32, epoch)), second].join('\n');
+};
+
+test('control: a correctly checksummed 69-column pair parses', () => {
+  expect(parse(goodPair)).toHaveLength(1);
+});
+
+it.each([[1, 0], [2, 1]])('rejects a wrong checksum digit on line %i and keeps the next pair', (_number, index) => {
+  const lines = goodPair.split('\n');
+  lines[index] = lines[index].slice(0, 68) + (Number(lines[index][68]) + 1) % 10;
+  expect(parse(`${lines.join('\n')}\n${tle(1)}`).map(satellite => satellite.id)).toEqual(['sat-norad-23456']);
+});
+
+it.each([
+  ['line 1 cut to 12 columns', 0, (line: string) => line.slice(0, 12)],
+  ['line 1 without its checksum column', 0, (line: string) => line.slice(0, 68)],
+  ['line 1 with an extra column', 0, (line: string) => `${line}0`],
+  ['line 2 cut to 60 columns', 1, (line: string) => line.slice(0, 60)],
+  ['line 2 with an extra column', 1, (line: string) => `${line}0`]
+])('rejects %s', (_label, index, damage) => {
+  const lines = goodPair.split('\n');
+  lines[index] = damage(lines[index]);
+  expect(parse(lines.join('\n'))).toEqual([]);
+});
+
+it.each([
+  ['24000.00000000', false], ['24000.99999999', false],
+  ['24001.00000000', true], ['25365.99999999', true],
+  ['25366.00000000', false], ['25366.50000000', false],
+  ['24366.50000000', true], ['24366.99999999', true],
+  ['24367.00000000', false], ['24999.00000000', false]
+])('epoch %s is accepted: %s', (epoch, accepted) => {
+  expect(parse(withEpoch(goodPair, epoch))).toHaveLength(accepted ? 1 : 0);
+});
+
+test('keeps the two-digit epoch year pivot: 57 is 1957 and 56 is 2056', () => {
+  const epochJd = (year: string) => parse(withEpoch(goodPair, `${year}001.00000000`))[0].epochJd;
+  expect(epochJd('57')).toBeCloseTo(2435839.5, 2);
+  expect(epochJd('56')).toBeCloseTo(2471998.5, 2);
+});
+
+// F-029 identity: a duplicate id keeps the newer epoch (the first record on a tie), and a catalog name
+// the ASCII slug cannot carry still gets its own stable id instead of colliding on "sat-".
+const olderRecord = `Older\n${withEpoch(tle(0), '20001.50000000')}`;
+const newerRecord = `Newer\n${withEpoch(tle(0), '24001.50000000')}`;
+
+it.each([
+  ['older feed first', { first: olderRecord, second: newerRecord }],
+  ['newer feed first', { first: newerRecord, second: olderRecord }]
+])('keeps the newer epoch for a duplicate NORAD id: %s', async (_label, feeds) => {
+  const result = await load(feeds);
+  expect(result.records.map(record => [record.id, record.name])).toEqual([['sat-norad-23455', 'Newer']]);
+});
+
+test('the newer duplicate takes the older record\'s place in feed order', async () => {
+  const result = await load({ first: `${olderRecord}\n${tle(1)}`, second: newerRecord });
+  expect(result.records.map(record => [record.id, record.name]))
+    .toEqual([['sat-norad-23455', 'Newer'], ['sat-norad-23456', 'Satellite 2']]);
+});
+
+async function initialized(options: NonNullable<ConstructorParameters<typeof OrbitalSatelliteSystem>[0]>) {
+  const system = new OrbitalSatelliteSystem({ useWorkerPropagation: false, showOrbits: false, maxOrbitLines: 1, ...options });
+  await system.initialize();
+  return system;
+}
+
+function release(system: OrbitalSatelliteSystem) {
+  system.group.traverse(object => {
+    const drawable = object as Object3D & { geometry?: BufferGeometry; material?: Material | Material[] };
+    drawable.geometry?.dispose();
+    for (const material of [drawable.material].flat()) material?.dispose();
+  });
+  system.markerGeometry.dispose();
+  system.group.clear();
+}
+
+it.each([[2460000.5, 'Catalog'], [2440000.5, 'Satellite 1']])(
+  'compares a catalog entry that reuses a TLE id by epoch: catalog epoch %s keeps %s', async (epochJd, kept) => {
+    vi.stubGlobal('fetch', async () => new Response(tle(0)));
+    const system = await initialized({ primaryId: 'moon', tleSources: { feed: '/feed' },
+      catalogSatellites: [{ id: 'sat-norad-23455', name: 'Catalog', epochJd, aKm: 3000, meanMotionRevDay: 10 }] });
+    try { expect(system.satellites.map(satellite => satellite.name)).toEqual([kept]); } finally { release(system); }
+  });
+
+test('keeps catalog satellites whose names have no ASCII slug under distinct, stable ids', async () => {
+  const names = ['Метеор-М', 'Ресурс-П', 'Метеор-М №2', 'Ресурс-П №2', 'ISS (ZARYA)', 'GPS BIIR-2'];
+  const idsByName = async (order: string[]) => {
+    const system = await initialized({ primaryId: 'moon',
+      catalogSatellites: order.map(name => ({ name, aKm: 3000, meanMotionRevDay: 10 })) });
+    try { return Object.fromEntries(system.satellites.map(satellite => [satellite.name, satellite.id])); } finally { release(system); }
+  };
+  const forward = await idsByName(names);
+  expect(Object.keys(forward).sort()).toEqual([...names].sort());
+  expect(new Set(Object.values(forward)).size).toBe(names.length);
+  expect(Object.values(forward).every(id => /^sat-[a-z0-9]+(-[a-z0-9]+)*$/.test(id))).toBe(true);
+  expect(forward['ISS (ZARYA)']).toBe('sat-iss-zarya');
+  expect(forward['GPS BIIR-2']).toBe('sat-gps-biir-2');
+  expect(await idsByName([...names].reverse())).toEqual(forward);
 });

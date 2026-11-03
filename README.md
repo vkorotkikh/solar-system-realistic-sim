@@ -162,7 +162,10 @@ curl http://127.0.0.1:8042/solar/realtime
 ## Project Structure
 
 Inventory of active and retained modules; this is not a live wiring diagram.
-Not every module or asset below is imported by the shipped entry.
+Not every module or asset below is imported by the shipped entry: entries marked
+"(retained, not wired)" are not reachable from `src/main.ts` or
+`src/workers/modelWorker.ts`. [ADR 0006](docs/adr/0006-runtime-composition-and-retained-apis.md)
+records the runtime owners.
 
 ```
 ├── src/
@@ -174,8 +177,8 @@ Not every module or asset below is imported by the shipped entry.
 │   ├── data/
 │   │   ├── planets.ts                         # Planet orbital elements + metadata
 │   │   ├── moons.json                         # 423 unique moons (JPL SSD)
-│   │   ├── moonEphemerisChebyshev.json         # Validated Horizons fits for corrected moons
-│   │   ├── stars_catalog.json                 # Background star catalog
+│   │   ├── moonEphemerisChebyshev.json        # Validated Horizons fits for corrected moons (opt-in loader; not loaded by the shipped page)
+│   │   ├── stars_catalog.json                 # Background star catalog (retained, not wired)
 │   │   ├── asteroidCatalogLoader.ts           # Phase 1 asteroid data loader
 │   │   ├── asteroidCatalogBinaryFormat.md     # Binary catalog format specification
 │   ├── sim/
@@ -186,49 +189,53 @@ Not every module or asset below is imported by the shipped entry.
 │   │   ├── catalog.ts                         # Body catalog utilities
 │   │   ├── asteroidBelt.ts                    # Asteroid belt element generation
 │   │   ├── kuiperBelt.ts                      # Kuiper belt + binary KBO pipeline
-│   │   ├── phase1AsteroidCatalog.ts           # Phase 1 real-data asteroid catalog
-│   │   └── asteroids/                         # Asteroid pipeline + shaders
-│   │       ├── asteroidDistributions.ts       #   Size/taxonomy/family distributions
-│   │       ├── asteroidGeometry.ts            #   Instanced mesh generation
-│   │       ├── asteroidPipeline.ts            #   Central simulation pipeline
-│   │       └── asteroidShaders.ts             #   Asteroid vertex-shader patch
+│   │   └── phase1AsteroidCatalog.ts           # Phase 1 real-data asteroid catalog
 │   ├── frontend/
 │   │   ├── app/
 │   │   │   ├── sceneSetup.ts                  # Three.js scene, renderer, lights
 │   │   │   ├── bodyManager.ts                 # Celestial body lifecycle
-│   │   │   ├── animationLoop.ts               # Render + simulation tick loop
-│   │   │   ├── cameraController.ts            # Focus, follow, clip-plane logic
+│   │   │   ├── runtimeLifetime.ts             # Disposal: every acquired resource has one retirement path
+│   │   │   ├── rendererRecovery.ts            # Renderer loss: stops simulation work, DOM recovery stays usable
+│   │   │   ├── frameLifecycle.ts              # One animation-frame owner; hidden pages cancel frames
+│   │   │   ├── modelWorkerController.ts       # Orbital worker transport: readiness, exact replies, deadlines, restarts
+│   │   │   ├── viewportCameraController.ts    # Keyboard and button orbit, pan and zoom for the camera
+│   │   │   ├── sceneAnnotations.ts            # Screen-size labels and decorative stars
+│   │   │   ├── panelController.ts             # Simulation-controls panel open/close, mobile modal and focus handling
+│   │   │   ├── explorerController.ts          # Explorer body search with focus and follow actions
+│   │   │   ├── experimentController.ts        # AGN / H29 experiment selectors, status text and trigger
+│   │   │   ├── animationLoop.ts               # Render + simulation tick loop (retained, not wired)
+│   │   │   ├── cameraController.ts            # Focus, follow, clip-plane logic (retained, not wired)
 │   │   │   ├── textureManager.ts              # Texture load, cache, fallback
 │   │   │   ├── stateStore.ts                  # Application state
-│   │   │   ├── inputHandler.ts                # Keyboard / mouse / touch
+│   │   │   ├── inputHandler.ts                # Keyboard / mouse / touch (retained, not wired)
 │   │   │   ├── timeController.ts              # Simulation clock controls
-│   │   │   ├── labelSystem.ts                 # Camera-relative 3D label rendering
-│   │   │   ├── simulationClient.ts            # Backend WebSocket client
-│   │   │   ├── plannerController.ts           # Trajectory planner UI bridge
-│   │   │   ├── routeRenderer.ts               # Transfer-arc visualization
-│   │   │   ├── uiBindings.ts                  # DOM ↔ state bindings
-│   │   │   ├── localSystemRenderer.ts         # Local solar system renderer
-│   │   │   └── nearbySystemsRenderer.ts       # Nearby star systems renderer
+│   │   │   ├── labelSystem.ts                 # Camera-relative 3D label rendering (retained, not wired)
+│   │   │   ├── simulationClient.ts            # Backend WebSocket client (retained, not wired)
+│   │   │   ├── plannerController.ts           # Trajectory planner UI bridge (retained, not wired)
+│   │   │   ├── routeRenderer.ts               # Transfer-arc visualization (retained, not wired)
+│   │   │   ├── uiBindings.ts                  # DOM ↔ state bindings (retained, not wired)
+│   │   │   ├── localSystemRenderer.ts         # Local solar system renderer (retained, not wired)
+│   │   │   └── nearbySystemsRenderer.ts       # Nearby star systems renderer (retained, not wired)
 │   │   ├── camera/
-│   │   │   └── transitions.ts                 # Smooth camera transitions
+│   │   │   └── transitions.ts                 # Smooth camera transitions (retained, not wired)
 │   │   ├── features/
 │   │   │   ├── asteroids/
 │   │   │   │   └── beltRenderer.ts            # Instanced asteroid belt renderer
-│   │   │   ├── planetary/                     # Clouds, terrain, satellites, moon textures,
-│   │   │   │   │                              #   visual profiles
-│   │   │   ├── solar/                         # Sun visuals, flares, magnetics, corona,
-│   │   │   │   │                              #   prominences, wind, GW visualization,
-│   │   │   │   │                              #   observation textures, feature blending,
-│   │   │   │   │                              #   solar physics client
+│   │   │   ├── planetary/                     # Planet views, shaders, quadtree terrain and spin;
+│   │   │   │   │                              #   cloud, satellite, moon-texture and terrain-synthesis
+│   │   │   │   │                              #   modules are retained, not wired
+│   │   │   ├── solar/                         # Sun visuals, flares, magnetics, corona, GW visualization,
+│   │   │   │   │                              #   observation textures, feature blending, solar physics client;
+│   │   │   │   │                              #   solarProminences.ts and solarWind.ts are retained, not wired
 │   │   │   ├── superluminal-modeling/         # SMBH/AGN shockwave engine,
 │   │   │   │   │                              #   propagation, warp slipstream visuals
 │   │   │   └── trajectory/                    # Local patched-conic planner
-│   │   │       ├── index.ts                   #   Trajectory feature exports
-│   │   │       └── localPlanner.ts            #   Local trajectory computation
+│   │   │       ├── index.ts                   #   Trajectory feature exports (retained, not wired)
+│   │   │       └── localPlanner.ts            #   Local trajectory computation (retained, not wired)
 │   │   └── rendering/
-│   │       ├── milkyWay.ts                    # Milky Way background layer
-│   │       ├── orbitRenderer.ts               # Orbit-line drawing
-│   │       └── lodManager.ts                  # Level-of-detail management
+│   │       ├── milkyWay.ts                    # Milky Way background layer (retained, not wired)
+│   │       ├── orbitRenderer.ts               # Orbit-line drawing (retained, not wired)
+│   │       └── lodManager.ts                  # Level-of-detail management (retained, not wired)
 │   ├── workers/
 │   │   ├── modelWorker.ts                     # Off-thread body propagation (shipped entry sends planets only)
 │   │   └── modelWorkerContract.ts             # Worker message contract (Float64 transport)
@@ -292,11 +299,11 @@ Search and focus the major bodies rendered by the page. A catalog entry or retai
 ### Planet visuals
 
 - **Earth and Mars**: procedural quadtree surfaces with distance-based detail
-- **Moon assets (dormant)**: albedo + relief maps and LOD code are present, but the shipped entry does not load or render them
+- **Moon assets (dormant)**: eight USGS-hosted per-moon maps and the moon-texture modules are present, but the shipped entry does not load or render them
 - **Other planets and Pluto**: colored sphere materials
 - Axial tilt and spin use the rendered bodies' orientation metadata
 
-Retained day maps and cloud/satellite modules are not assembled by this entry. The page also has no Saturn-ring or oblate-body assembly. Repository assets and alternative renderers are not a claim that the page displays them.
+Retained cloud and satellite modules are not assembled by this entry. The page also has no Saturn-ring or oblate-body assembly. Repository assets and alternative renderers are not a claim that the page displays them.
 
 ### Solar model
 
@@ -346,6 +353,7 @@ The backend provides direct-transfer and multi-leg gravity-assist planning, incl
 
 - `POST /mission/plan` orchestrates TrajectoryAgent, MiningAgent, LogisticsAgent, and VerifierAgent
 - Includes explainability logs, payload-return closure, and Monte Carlo risk envelopes
+- Stock-aware risk samples cap the mined stock at the departure manifest, then apply transit survival to that cargo when reporting delivered-yield envelopes.
 
 ### Benchmark API
 
@@ -403,13 +411,18 @@ Refresh moon data:
 npm run update:moons
 ```
 
-Regenerate or independently re-check the fitted moon ephemeris (uses the JPL Horizons API and an
-external temporary response cache):
+Regenerate or independently re-check the fitted moon ephemeris. Both commands read the committed,
+hash-checked JPL Horizons responses in `scripts/source-snapshots/catalogs/` and make no network
+requests:
 
 ```bash
 npm run generate:moon-ephemeris
 npm run verify:moon-ephemeris
 ```
+
+New pins are added to that directory only by
+`python scripts/capture_catalog_sources.py --kind moons`, which fetches the Horizons responses that
+are not yet pinned, using `curl`. It is a separate, explicit maintenance step.
 
 The additional lazy models reproduce offline from committed source pins on the
 pinned Python/NumPy stack:

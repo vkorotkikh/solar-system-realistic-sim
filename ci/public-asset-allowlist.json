@@ -1,0 +1,9 @@
+{
+  "description": "Files under public/ that no hash-pinning manifest covers. scripts/prepare-distribution.mjs fails the build on any other file there: moon textures are pinned by moon_texture_attribution.json, lazy moon shards by moon-ephemerides/manifest.json, and the Phase 1 asteroid binary by its .meta.json. Add a file only after reviewing its source and licence (docs/distribution-policy.md), and update its hash when a reviewed edit changes it.",
+  "files": {
+    "data/asteroid-phase1/sample_top_10.json": "ecde5df226491332db1bb2562123482526a5bd4045586dd14c7374cb8c78f079",
+    "solar-systems/manifests/alpha-centauri.json": "111c7b2b150a4518583ebdddc124cda7a06487fa15344f71df4c3bfdd56571c7",
+    "solar-systems/manifests/barnards-star.json": "7ff2c2b87662d3092da53714168ca8f56faaffac01ff5b7fc162c2b4e4591c57",
+    "solar-systems/manifests/sirius.json": "bc3c064cfd6c18fcea390585f00041fefdede7b708e56ea533dc15f911d86b03"
+  }
+}

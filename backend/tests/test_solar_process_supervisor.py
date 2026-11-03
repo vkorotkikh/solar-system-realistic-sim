@@ -206,6 +206,7 @@ def test_result_received_before_deadline_survives_teardown_past_it(tmp_path: Pat
     runner = SupervisedProcessRunner(TARGET, max_workers=1, max_queue=0)
     started = tmp_path / "lingering.pid"
     hard_timeout_seconds = 5.0
+    admitted_at = time.monotonic()
     try:
         future = runner.submit(
             {
@@ -220,11 +221,64 @@ def test_result_received_before_deadline_survives_teardown_past_it(tmp_path: Pat
         # The 30 s teardown is cut off at the deadline, not waited out.
         result = future.result(timeout=hard_timeout_seconds + 2.0)
         assert result["value"] == "teardown overran"
+        assert time.monotonic() - admitted_at >= hard_timeout_seconds
         assert not _pid_exists(child_pid)
         assert runner.snapshot()["active_processes"] == 0
         assert runner.snapshot()["in_flight"] == 0
     finally:
         runner.shutdown()
+
+
+def test_shutdown_cancels_child_already_finishing_its_result(tmp_path: Path) -> None:
+    from sim.process_supervisor import ProcessCancelled, SupervisedProcessRunner
+
+    runner = SupervisedProcessRunner(TARGET, max_workers=1, max_queue=0)
+    exit_started = tmp_path / "shutdown-exit.pid"
+    try:
+        future = runner.submit(
+            {"operation": "echo_then_slow_exit", "exit_delay_seconds": 30,
+             "exit_started_path": str(exit_started), "result": _result()},
+            timeout_seconds=5.0,
+        )
+        child_pid = _wait_for_pid(exit_started)
+        shutdown_started = time.monotonic()
+        runner.shutdown()
+        assert time.monotonic() - shutdown_started < 2.0
+        with pytest.raises(ProcessCancelled):
+            future.result()
+        assert not _pid_exists(child_pid)
+        assert runner.snapshot()["active_processes"] == 0
+        assert runner.snapshot()["in_flight"] == 0
+    finally:
+        runner.shutdown()
+
+
+def test_async_cancellation_after_result_reaps_without_waiting_for_deadline(tmp_path: Path) -> None:
+    from sim.process_supervisor import SupervisedProcessRunner
+
+    async def scenario() -> None:
+        runner = SupervisedProcessRunner(TARGET, max_workers=1, max_queue=0)
+        exit_started = tmp_path / "cancel-exit.pid"
+        try:
+            task = asyncio.create_task(runner.run(
+                {"operation": "echo_then_slow_exit", "exit_delay_seconds": 30,
+                 "exit_started_path": str(exit_started), "result": _result()},
+                timeout_seconds=5.0,
+            ))
+            child_pid = await asyncio.to_thread(_wait_for_pid, exit_started)
+            task.cancel()
+            with pytest.raises(asyncio.CancelledError):
+                await task
+            reap_deadline = time.monotonic() + 2.0
+            while runner.snapshot()["in_flight"] and time.monotonic() < reap_deadline:
+                await asyncio.sleep(0.01)
+            assert not _pid_exists(child_pid)
+            assert runner.snapshot()["active_processes"] == 0
+            assert runner.snapshot()["in_flight"] == 0
+        finally:
+            runner.shutdown()
+
+    asyncio.run(scenario())
 
 
 def test_child_crash_reaps_and_recovers_without_permit_overcredit() -> None:

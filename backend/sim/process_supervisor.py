@@ -580,13 +580,26 @@ class SupervisedProcessRunner:
                             "worker result exceeded or broke the wire contract"
                         ) from exc
 
-                    # The result arrived in time, so a slow teardown of
-                    # numpy/scipy/astropy on a loaded host must not discard it.
-                    # Wait for a clean exit until the deadline, then reap.
-                    process.join(max(0.0, absolute_deadline - time.monotonic()))
-                    if process.is_alive():
-                        self._reap_or_quarantine(job_id, process)
-                    elif process.exitcode != 0:
+                    # A result received in time survives slow interpreter
+                    # teardown. Wait only until the original deadline, while
+                    # still observing owner cancellation, then reap the child.
+                    reaped_after_result = False
+                    while True:
+                        if cancel_event.is_set():
+                            self._reap_or_quarantine(job_id, process)
+                            raise ProcessCancelled("process job cancelled by its owner")
+                        exit_remaining = absolute_deadline - time.monotonic()
+                        if exit_remaining <= 0:
+                            if process.is_alive():
+                                self._reap_or_quarantine(job_id, process)
+                                reaped_after_result = True
+                            break
+                        process.join(min(_POLL_SECONDS, exit_remaining))
+                        if not process.is_alive():
+                            break
+                    # A signal from our deadline reap must not be mistaken for
+                    # a worker crash; spontaneous nonzero exits still fail.
+                    if not reaped_after_result and process.exitcode != 0:
                         raise ProcessCrashed(process.exitcode)
                     return self._decode_result(encoded, payload)
 

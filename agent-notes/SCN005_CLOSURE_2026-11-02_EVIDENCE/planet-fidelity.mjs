@@ -1,0 +1,4 @@
+import {chromium} from '@playwright/test';import {writeFile} from 'node:fs/promises';
+const [label='fidelity',query='']=process.argv.slice(2),dir=new URL('.',import.meta.url).pathname;
+const browser=await chromium.launch({channel:'chromium',headless:false,args:['--no-sandbox','--ignore-gpu-blocklist','--use-gl=angle','--use-angle=gl']});
+try{const page=await browser.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));await page.goto('http://127.0.0.1:5445/agent-notes/SCN005_CLOSURE_2026-11-02_EVIDENCE/planet-fidelity.html'+query);const report=await page.evaluate(()=>window.fidelity);report.errors=errors;await writeFile(`${dir}/${label}.json`,JSON.stringify(report,null,2)+'\n');console.log(JSON.stringify(report,null,2));if(errors.length||report.cases.some(c=>c.maxChannelDifference!==0))process.exitCode=1;}finally{await browser.close();}

@@ -10,6 +10,8 @@ import { createMutableVec3, propagateAroundPrimary } from '../src/frontend/featu
 // Bounded interpolation plus explicit boolean J2 admission; long spans use CPU propagation.
 const JD = 0;
 const INTERPOLATION_SPAN = 1 / 256; // Fastest fixture orbit is one day.
+// Eccentric records sweep faster at periapsis, so their limit is shorter than the circular 1/256 day.
+const ECCENTRIC_SPAN = INTERPOLATION_SPAN / 2;
 const RADIUS_AU = 7000 / AU_KM;
 const circular = { id: 'owned-circle', name: 'Owned circular probe', category: 'synthetic',
   epochJd: JD, aKm: 7000, e: 0, iDeg: 0, ascendingNodeDeg: 0,
@@ -231,7 +233,7 @@ for (const [label, provenance, current] of [
   ['old true setting', true, false], ['old false setting', false, true],
 ]) test(`matching epoch rejects unproven or mismatched J2: ${label}`, () => withOwner({ record: inclined, useJ2: current }, f => {
   const jd = JD + .5;
-  f.deliver(controlledProvenance(f.packet(jd, jd + INTERPOLATION_SPAN, current), provenance));
+  f.deliver(controlledProvenance(f.packet(jd, jd + ECCENTRIC_SPAN, current), provenance));
   const before = state(f.system);
   const accepted = f.system.applyWorkerSnapshot(jd);
   assert.deepEqual(state(f.system), before);
@@ -243,7 +245,7 @@ for (const [label, provenance, current] of [
 
 for (const oldSetting of [false, true]) test(`delayed reply cannot cross a J2 toggle: ${oldSetting} to ${!oldSetting}`, () => withOwner({ record: inclined, useJ2: oldSetting, instanced: !oldSetting }, f => {
   const jd = JD + .5;
-  const pending = controlledProvenance(f.packet(jd, jd + INTERPOLATION_SPAN, oldSetting), oldSetting);
+  const pending = controlledProvenance(f.packet(jd, jd + ECCENTRIC_SPAN, oldSetting), oldSetting);
   const oldCoordinates = direct(f.system, jd, oldSetting).map(Math.fround);
   const newCoordinates = direct(f.system, jd, !oldSetting).map(Math.fround);
   assert.notDeepEqual(oldCoordinates, newCoordinates, 'The fixture must expose J2 away from its epoch');
@@ -256,7 +258,7 @@ for (const oldSetting of [false, true]) test(`delayed reply cannot cross a J2 to
   f.system.workerBusy = true;
   f.system.update(jd);
   assertPublished(f.system, direct(f.system, jd));
-  const current = controlledProvenance(f.packet(jd, jd + INTERPOLATION_SPAN, !oldSetting), !oldSetting);
+  const current = controlledProvenance(f.packet(jd, jd + ECCENTRIC_SPAN, !oldSetting), !oldSetting);
   f.deliver(current);
   assert.equal(f.system.applyWorkerSnapshot(jd), true);
   assertPublished(f.system, [...current.positions0]);

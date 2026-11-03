@@ -1,0 +1,115 @@
+{
+  "archive": "raw-whitespace-captures.tar.gz",
+  "archiveSha256": "6d0621c86b2cd07cfe5dfddbaf1a01b800ac690720ec40cbaa636e665e63c7d3",
+  "policy": "Exact raw bytes archived; readable copies only strip line-end whitespace/extra blank EOF lines. Test outcomes/content are unchanged.",
+  "files": [
+    {
+      "path": "agent-notes/FOUR_ISSUE_IMPLEMENTATION_2026-11-02_EVIDENCE/science/mutant-corrupt-source-surface-factor.xml",
+      "originalBytes": 3720,
+      "originalSha256": "8dd8c7a9e008097f13836df6c15602830cfcc61640850167c7a24623a8aa0f1c",
+      "readableSha256": "b9efcedacc5fb261abafede84d816dbeea9160a369cd50901a807e860b7f2e62"
+    },
+    {
+      "path": "agent-notes/FOUR_ISSUE_IMPLEMENTATION_2026-11-02_EVIDENCE/science/mutant-extra-m-normalization.xml",
+      "originalBytes": 2277,
+      "originalSha256": "48bff8a27ca3743b4b20d1d5d83fdbe99cc61b61ef808c72f85ae83c739f95c3",
+      "readableSha256": "75f53bd5a89187c62a1a4f040eee294befaa273feb9bee1d182d862a6a7a3fd2"
+    },
+    {
+      "path": "agent-notes/FOUR_ISSUE_IMPLEMENTATION_2026-11-02_EVIDENCE/science/mutant-old-legendre-recurrence.xml",
+      "originalBytes": 3616,
+      "originalSha256": "12b4dd359a8c833e803b7b6f3e2ff88177ade3b935b813cac172fd8d45f04c33",
+      "readableSha256": "be1b6f1631da3e3cff1a892deaa15ddd3a3014ad3ea8ec2fbdbc89a4a9d3f019"
+    },
+    {
+      "path": "agent-notes/FOUR_ISSUE_IMPLEMENTATION_2026-11-02_EVIDENCE/science/mutant-reject-exact-scaled-flux-limit.xml",
+      "originalBytes": 3831,
+      "originalSha256": "0afdfbdcfd063fb410903643c288abbca88447ea591134634d6e9fc9dfa07921",
+      "readableSha256": "3d81a8c944946621a667e4b94b1bac664b0d92579878c004a936612ccd4e4bcf"
+    },
+    {
+      "path": "agent-notes/FOUR_ISSUE_IMPLEMENTATION_2026-11-02_EVIDENCE/science/mutant-uniform-theta-area-weights.xml",
+      "originalBytes": 2124,
+      "originalSha256": "b3baff0a2870954409be94ef5c9be00cb587023398a372852041ebf7b5199a9f",
+      "readableSha256": "e1f946df8f8587970a5f9746278c05c2858f9369b6628b7e96f4e404c3a3760a"
+    },
+    {
+      "path": "agent-notes/FOUR_ISSUE_IMPLEMENTATION_2026-11-02_EVIDENCE/science/mutant-wsa-vector-magnitude-expansion.xml",
+      "originalBytes": 2102,
+      "originalSha256": "ba438c4c39c03e03c55b785166e9e428b5e53c7670e2b22bfc2fef348da682cb",
+      "readableSha256": "5619d0e2998f7390453a485ee39531ec78bcd610fdd8137c4ce0674785568897"
+    },
+    {
+      "path": "agent-notes/FOUR_ISSUE_IMPLEMENTATION_2026-11-02_EVIDENCE/typecheck.txt",
+      "originalBytes": 283,
+      "originalSha256": "9ff3cad2130c0424ed29129e4e8ee5cbef7bc5f3a55edf51f92aab5728641a35",
+      "readableSha256": "f430de85e547b8ff6ec59252d0bf805061e4e6b9a0dc8396802194c134693d9c"
+    },
+    {
+      "path": "agent-notes/FOUR_ISSUE_IMPLEMENTATION_2026-11-02_EVIDENCE/ui-types.txt",
+      "originalBytes": 92,
+      "originalSha256": "04c92101552782f57a08c27f4c0d7791e584dcbf1b3fff8ec74913ea5c1257bd",
+      "readableSha256": "b4b05e7f133fd3d4bd2938aae074b087ec4b197c237f2b17888a1e0bd836fee1"
+    },
+    {
+      "path": "agent-notes/SCN030_CLOSURE_2026-11-02_EVIDENCE/generator-pinned-node.log",
+      "originalBytes": 226,
+      "originalSha256": "4bb10dd155a727a80ddf63f5d881236e9b0cdccaaa4fa108704186d0b9dd56be",
+      "readableSha256": "5e42c73f40dd10159166825357682b8e402902566bcef5ef865aabf09d1ae5ff"
+    },
+    {
+      "path": "agent-notes/SCN030_CLOSURE_2026-11-02_EVIDENCE/manual-failure-record-red.log",
+      "originalBytes": 1266,
+      "originalSha256": "be625b6abf4b5d89dab4c2ce8974c6eb3eef96477e9deca956139a40c9d4df8d",
+      "readableSha256": "0e90c35df7e9f6e6f643e620334e6c1e1193ff6bc913fa7d85963439937d1e22"
+    },
+    {
+      "path": "agent-notes/SCN030_CLOSURE_2026-11-02_EVIDENCE/manual-partial-record-red.log",
+      "originalBytes": 2071,
+      "originalSha256": "9f4c055b1f32d8bf7c9248fc475d746e2616787319cfbbe1a9d8782ace8b5803",
+      "readableSha256": "a1187a6cad241dcb114b74aa304a29a4fca4e656787cb10715680abfc9e1b27e"
+    },
+    {
+      "path": "agent-notes/SCN030_CLOSURE_2026-11-02_EVIDENCE/manual-review-red.log",
+      "originalBytes": 2385,
+      "originalSha256": "db40e8d4d2a46878a846d1fa25ce6c97e4a0ac8a7cd90dfa068f93cdf0dd623f",
+      "readableSha256": "a5e268a30797317f56ae794f570203ffb7173436c725b50b921f3a0a875c2d73"
+    },
+    {
+      "path": "agent-notes/SCN030_CLOSURE_2026-11-02_EVIDENCE/manual-validator-green.log",
+      "originalBytes": 213,
+      "originalSha256": "4d152ee4839623a517803b3dae143afedcc93cf668e6b76d5ce26ee749ada1d6",
+      "readableSha256": "17f8fa018fbd3356bd65f8636a27b83bbed67d542369cdd561c459d2f58efa6c"
+    },
+    {
+      "path": "agent-notes/SCN030_CLOSURE_2026-11-02_EVIDENCE/manual-validator-red.log",
+      "originalBytes": 5390,
+      "originalSha256": "daa7ed6339097da8d110db5a207e821b172fee48a9ddd679fe0c93feebd12e18",
+      "readableSha256": "9bb78188c9890ad8a1ac7709e70920727480f393e5d5b53851903b09128edce7"
+    },
+    {
+      "path": "agent-notes/SCN030_CLOSURE_2026-11-02_EVIDENCE/unit-suite.log",
+      "originalBytes": 7815,
+      "originalSha256": "7fa8f799c449d403fe39a289f6d4e8048a6b9bcfa40b838246269a2c8bac0e8e",
+      "readableSha256": "c6373dc04a30cbf50a8602887203d9ce7cc3d72eb85ede222a1a8166d8ed68df"
+    },
+    {
+      "path": "agent-notes/SCN035_CLOSURE_2026-11-02_EVIDENCE/red-build-boundary.txt",
+      "originalBytes": 1152,
+      "originalSha256": "4a4543ef18a3443119e18294452f1f3b3bde682acd50d68bd231478c7e050302",
+      "readableSha256": "7776bc63c0a7e242325d510bbcd7201cd77ee0603eed715aa2677df63f4c7883"
+    },
+    {
+      "path": "agent-notes/SCN035_CLOSURE_2026-11-02_EVIDENCE/red-omitted-input.txt",
+      "originalBytes": 1033,
+      "originalSha256": "1608f31e465296bed73d6273e2344f36d623519bb1aeb4f502f9635f2bb0558f",
+      "readableSha256": "8f8634aa166384440da3bf75fc097cd65d7f7f8e0ad77b78fca402298a87ca1e"
+    },
+    {
+      "path": "agent-notes/SCN035_CLOSURE_2026-11-02_EVIDENCE/targeted-tests.txt",
+      "originalBytes": 222,
+      "originalSha256": "7544e326a59d20c59b7478d5272a572fc73a912513020e83f5b61829cf116499",
+      "readableSha256": "60a81838a7be7c572d23b0273070d68ae8fce8c772166979c08e18a608730317"
+    }
+  ]
+}

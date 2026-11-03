@@ -1,6 +1,6 @@
 # Manual accessibility protocol; all outcomes NOT_RUN
 
-This is a future test protocol, not an execution report. No deployed URL, AT device inventory, speech recording or physical-touch result is known. Use [`manual evidence template`](../agent-notes/ACCESSIBILITY_MANUAL_EVIDENCE_TEMPLATE_2026-10-30.json) to record the actual revision, local or authorized deployed URL, environment, operator and per-case outcome. Keep an unavailable platform NOT_RUN with its reason.
+This is a future test protocol, not an execution report. Windows + NVDA availability was confirmed on 2026-11-02; browser/version details and observed results remain pending. No deployed URL, speech recording or physical-touch result is known. Use [`manual evidence template`](../agent-notes/ACCESSIBILITY_MANUAL_EVIDENCE_TEMPLATE_2026-10-30.json) to record the actual revision, local or authorized deployed URL, environment, operator and per-case outcome. Keep an unavailable platform NOT_RUN with its reason.
 
 ## Environments and evidence
 
@@ -42,3 +42,47 @@ PASS requires actual successful execution with traceable observations. FAIL requ
 Keep fixture evidence, actual-app behavior, native-browser zoom, manual speech and physical-device evidence distinct. A zero-violation axe attachment with unresolved incomplete results is only an automated result. W3C explains that evaluation tools require human assessment to cover the remaining barriers. [W3C evaluation tools](https://www.w3.org/WAI/test-evaluate/tools/).
 
 No manual acceptance or deployed-site certification is asserted by this document.
+
+## Operator handoff and record validation
+
+Use the exact integrated revision that will be reviewed. Start the local UI using the repository's supported setup (`npm ci`, then `npm run dev -- --host 0.0.0.0`); record `git rev-parse HEAD` and the actual URL printed by Vite. A phone/tablet on the same network needs the host computer's reachable network address, not its own `localhost`. Keep this temporary test server on a trusted local network. Backend-unavailable fallback is a valid separately recorded state; running the backend is necessary to assess its live-data state.
+
+Copy the JSON template to a new evidence directory. First fill each lane's `device_available` (true/false), `availability_notes`, `hardware`, `device_class` (desktop/laptop/phone/tablet), and OS/browser/AT versions. Availability alone does not change a test outcome. `environment_kind` is `physical` only for an actual device/AT session; a browser automation emulator is not a physical session. Leave unavailable lanes NOT_RUN with a reason.
+
+For each available lane, this is the short execution checklist; the numbered cases above define the detailed expected results:
+
+1. **Discover and operate:** at desktop layout, Tab and AT-navigation through title, Time, Display, Navigation, Explorer, and Cataclysmic Events. Open disclosures; operate Pause, a checkbox, speed slider and a select. Record names/roles/current values and visible focus.
+2. **Drawer and camera:** use a narrow window or actual phone/tablet. With the drawer closed, reach Camera controls and operate Orbit, Pan and Zoom buttons. Open Controls, traverse forward/backward through the drawer, reach its final experiment action, then close. Record dialog announcement, background isolation and returned focus. On physical touch repeat portrait and landscape, including first/last native-picker entries and ordinary scrolling.
+3. **Search:** enter Earth, then Sun, then a nonexistent name; clear with Escape. Record actual speech, count changes, no-results guidance, selection recovery and any repeated idle announcements.
+4. **Recovery:** in a disposable local session, use browser developer tools (or the physical device's remote inspector) to run `document.querySelector('#space-canvas').getContext('webgl2').getExtension('WEBGL_lose_context').loseContext()`. Record if the extension is unavailable instead of reporting a pass. Repeat with the drawer closed/open; close the modal to reach Reload visualization. Activate Reload and record its actual result.
+5. **Zoom and text:** use browser-native zoom at 100%, 200%, and 400%, then actual OS text-size/accessibility settings. Record values, browser zoom indicator, viewport, screenshots, reachable final controls, clipping and focus. CSS font changes and viewport emulation do not fill the OS-text row.
+6. **Visual review:** inspect focus rings, disabled controls and native picker popup on the actual device. Link current automated contrast attachments plus screenshots and observations for any remaining audit incomplete items. Record all deviations as FAIL.
+
+For an executed case set `outcome` to PASS or FAIL only after recording `actions`, `expected_observation`, `actual_observation`, `focus_destination`, and existing `evidence_paths` relative to the JSON file. AT lanes also require observed `spoken_output`; a DOM/accessibility-tree dump cannot replace speech. Use `record_type: "MANUAL_ACCESSIBILITY_EVIDENCE"`, fill commit, URL, timestamp and operator, and record native zoom values as `[100, 200, 400]` after testing them. `text_scaling` describes the actual OS setting and observation. Do not edit the blank template into a claimed completed result.
+
+A lane stays NOT_RUN while required cases remain pending, becomes FAIL for an observed failure, and becomes PASS only when its applicable required cases pass. Desktop AT lanes require cases 1–6 and 8; the physical-touch lane requires closed/open drawer, recovery, and physical-touch cases. The optional iOS VoiceOver lane does not block the required three lanes unless it is explicitly included. A case outside a lane's applicability stays NOT_RUN with the rationale. The overall record follows the same pending/failure/pass rule.
+
+Run the completeness validator against the recorded JSON:
+
+```sh
+node scripts/validate-accessibility-evidence.mjs /path/to/record.json
+```
+
+Exit 0 means the record contains all required observations and existing artifact references; it does **not** certify that the observations are true. Exit 1 means valid but NOT_RUN or FAIL; the JSON output lists pending/failed cases. Exit 2 means malformed, contradictory or insufficient evidence. This validator accepts honest partial records, rejects Linux WebKit as a macOS VoiceOver lane, and cannot convert missing devices into passes.
+
+## Current Windows/NVDA session
+
+The user confirmed Windows + NVDA availability on 2026-11-02. The separate
+[pending session record](../agent-notes/SCN030_MANUAL_SESSION_2026-11-02/evidence.json)
+preserves that answer without changing any outcome. Chrome is the protocol
+browser; its availability/version, Windows and NVDA versions remain to be recorded.
+Other device availability remains unconfirmed.
+
+Start with the search-and-announcements case in Windows Chrome at 100% zoom.
+Enable NVDA Speech Viewer, move focus back to the page, and reach Explorer's
+"Find a major body" field. Search Earth, replace it with Sun, replace it with
+`zzzz`, then clear it. Record actual speech, unchanged-count announcements,
+no-results guidance, restored picker usability, visible focus and repeated idle
+speech. Record whether NVDA intercepts Escape instead of assuming it reaches the
+page. Send those observations plus Windows/Chrome/NVDA versions. Leave all other
+cases pending; full lane acceptance still requires the remaining protocol cases.

@@ -1,0 +1,7 @@
+
+> solar-system-realistic-sim@0.0.0 typecheck
+> tsc --project tsconfig.json --strict --noEmit && npm run typecheck:scripts
+
+
+> solar-system-realistic-sim@0.0.0 typecheck:scripts
+> tsc --project tsconfig.scripts.json --noEmit && tsc --project tsconfig.asteroid-scripts.json --noEmit

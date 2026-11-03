@@ -1,0 +1,917 @@
+{
+  "scope": "SCN-005 measured planetary shader startup repair and cancellable completed-worker exit; canonical parent closure is not asserted",
+  "baseRevision": "4f97dce442cffb46fa9add8fb3a674534dd2333e",
+  "candidateRevision": "622457207479a92fcfcbdb4d33d9ee6706c4329e",
+  "backendCommit": "e928de3",
+  "baselineArm": "Candidate backend and frontend except planetShaders.ts replaced byte-for-byte by baseRevision; actual DEV and separately built PREVIEW, no response mocks",
+  "instrumentation": "Three devtools observe hook wraps actual render and inserts one GPU fence; early graphics metadata query; 1ms scheduled fence polling; continuous application RAF, no profile or per-object stalls in paired runs",
+  "fenceBoundary": "Observed completion of submitted GL commands, not compositor presentation",
+  "cacheBoundary": "Fresh browser/context and disabled browser network cache per run; driver/OS caches not cleared; backend shared across serial runs, so these are not cold-backend five-minute gates",
+  "paired": {
+    "dev": {
+      "baseline": {
+        "runs": [
+          {
+            "file": "quiet-baseline-dev-1.json",
+            "submissionMs": 2236.5999999940395,
+            "fenceObservedMs": 7983.699999988079,
+            "submissionToFenceMs": 5747.0999999940395,
+            "catalogLoadMs": 454.0,
+            "firstRender": {
+              "frame": 1,
+              "calls": 41,
+              "triangles": 619144,
+              "points": 16400,
+              "lines": 1152
+            },
+            "graphics": {
+              "renderer": "ANGLE (Microsoft Corporation, D3D12 (NVIDIA GeForce RTX 5090), OpenGL 4.6)",
+              "antialias": true,
+              "samples": 4,
+              "parallelCompile": true,
+              "width": 928,
+              "height": 900,
+              "dpr": 1
+            },
+            "belts": [
+              {
+                "count": 50000,
+                "kuiper": false
+              },
+              {
+                "count": 5000,
+                "kuiper": true
+              },
+              {
+                "count": 83,
+                "kuiper": true
+              }
+            ],
+            "errors": [],
+            "warnings": [],
+            "sourceHashes": {
+              "src/main.ts": "04933d3eef2de3e38352a713508b7d86d9c4405f45784e485ef7359db1c09638",
+              "src/frontend/features/planetary/planetShaders.ts": "b1fc59f1d75654d4ef5f97f05e4da891538ad487388c9d3928b51e5c529f2dc4",
+              "src/frontend/app/rendererWarmup.ts": "5f64f9ca35c0f07316d322229b98050c733ebd9ef3649727839990e665ec5503",
+              "src/frontend/app/sceneSetup.ts": "7984f156fc8c0b8a83dd75b3506dadb7fd52db23e17edd1cf71d2437d5e4191e",
+              "src/frontend/features/asteroids/startupBelt.ts": "87862911a41c3d3e483eee7280957fc13f61271adf3ebf004d1ff4953e466410",
+              "package-lock.json": "6f54638d28e8ed20cb8e036a52ca75f1c0687594af7bd82f3f123edcd6182702"
+            },
+            "loadStart": [
+              2.83,
+              4.39,
+              3.55
+            ],
+            "loadEnd": [
+              2.85,
+              4.37,
+              3.54
+            ]
+          },
+          {
+            "file": "quiet-baseline-dev-2.json",
+            "submissionMs": 2155.1000000089407,
+            "fenceObservedMs": 8295,
+            "submissionToFenceMs": 6139.899999991059,
+            "catalogLoadMs": 455.6,
+            "firstRender": {
+              "frame": 1,
+              "calls": 41,
+              "triangles": 619144,
+              "points": 16400,
+              "lines": 1152
+            },
+            "graphics": {
+              "renderer": "ANGLE (Microsoft Corporation, D3D12 (NVIDIA GeForce RTX 5090), OpenGL 4.6)",
+              "antialias": true,
+              "samples": 4,
+              "parallelCompile": true,
+              "width": 928,
+              "height": 900,
+              "dpr": 1
+            },
+            "belts": [
+              {
+                "count": 50000,
+                "kuiper": false
+              },
+              {
+                "count": 5000,
+                "kuiper": true
+              },
+              {
+                "count": 83,
+                "kuiper": true
+              }
+            ],
+            "errors": [],
+            "warnings": [],
+            "sourceHashes": {
+              "src/main.ts": "04933d3eef2de3e38352a713508b7d86d9c4405f45784e485ef7359db1c09638",
+              "src/frontend/features/planetary/planetShaders.ts": "b1fc59f1d75654d4ef5f97f05e4da891538ad487388c9d3928b51e5c529f2dc4",
+              "src/frontend/app/rendererWarmup.ts": "5f64f9ca35c0f07316d322229b98050c733ebd9ef3649727839990e665ec5503",
+              "src/frontend/app/sceneSetup.ts": "7984f156fc8c0b8a83dd75b3506dadb7fd52db23e17edd1cf71d2437d5e4191e",
+              "src/frontend/features/asteroids/startupBelt.ts": "87862911a41c3d3e483eee7280957fc13f61271adf3ebf004d1ff4953e466410",
+              "package-lock.json": "6f54638d28e8ed20cb8e036a52ca75f1c0687594af7bd82f3f123edcd6182702"
+            },
+            "loadStart": [
+              2.85,
+              4.37,
+              3.54
+            ],
+            "loadEnd": [
+              3.4,
+              4.44,
+              3.58
+            ]
+          },
+          {
+            "file": "quiet-baseline-dev-3.json",
+            "submissionMs": 2245.3999999910593,
+            "fenceObservedMs": 8005.79999999702,
+            "submissionToFenceMs": 5760.4000000059605,
+            "catalogLoadMs": 481.1,
+            "firstRender": {
+              "frame": 1,
+              "calls": 41,
+              "triangles": 619144,
+              "points": 16400,
+              "lines": 1152
+            },
+            "graphics": {
+              "renderer": "ANGLE (Microsoft Corporation, D3D12 (NVIDIA GeForce RTX 5090), OpenGL 4.6)",
+              "antialias": true,
+              "samples": 4,
+              "parallelCompile": true,
+              "width": 928,
+              "height": 900,
+              "dpr": 1
+            },
+            "belts": [
+              {
+                "count": 50000,
+                "kuiper": false
+              },
+              {
+                "count": 5000,
+                "kuiper": true
+              },
+              {
+                "count": 83,
+                "kuiper": true
+              }
+            ],
+            "errors": [],
+            "warnings": [],
+            "sourceHashes": {
+              "src/main.ts": "04933d3eef2de3e38352a713508b7d86d9c4405f45784e485ef7359db1c09638",
+              "src/frontend/features/planetary/planetShaders.ts": "b1fc59f1d75654d4ef5f97f05e4da891538ad487388c9d3928b51e5c529f2dc4",
+              "src/frontend/app/rendererWarmup.ts": "5f64f9ca35c0f07316d322229b98050c733ebd9ef3649727839990e665ec5503",
+              "src/frontend/app/sceneSetup.ts": "7984f156fc8c0b8a83dd75b3506dadb7fd52db23e17edd1cf71d2437d5e4191e",
+              "src/frontend/features/asteroids/startupBelt.ts": "87862911a41c3d3e483eee7280957fc13f61271adf3ebf004d1ff4953e466410",
+              "package-lock.json": "6f54638d28e8ed20cb8e036a52ca75f1c0687594af7bd82f3f123edcd6182702"
+            },
+            "loadStart": [
+              3.4,
+              4.44,
+              3.58
+            ],
+            "loadEnd": [
+              3.41,
+              4.41,
+              3.57
+            ]
+          }
+        ],
+        "medianFenceMs": 8005.79999999702,
+        "medianSubmissionMs": 2236.5999999940395
+      },
+      "candidate": {
+        "runs": [
+          {
+            "file": "quiet-candidate-dev-1.json",
+            "submissionMs": 2067.6000000089407,
+            "fenceObservedMs": 5196.5,
+            "submissionToFenceMs": 3128.8999999910593,
+            "catalogLoadMs": 462.5,
+            "firstRender": {
+              "frame": 1,
+              "calls": 41,
+              "triangles": 619144,
+              "points": 16400,
+              "lines": 1152
+            },
+            "graphics": {
+              "renderer": "ANGLE (Microsoft Corporation, D3D12 (NVIDIA GeForce RTX 5090), OpenGL 4.6)",
+              "antialias": true,
+              "samples": 4,
+              "parallelCompile": true,
+              "width": 928,
+              "height": 900,
+              "dpr": 1
+            },
+            "belts": [
+              {
+                "count": 50000,
+                "kuiper": false
+              },
+              {
+                "count": 5000,
+                "kuiper": true
+              },
+              {
+                "count": 83,
+                "kuiper": true
+              }
+            ],
+            "errors": [],
+            "warnings": [],
+            "sourceHashes": {
+              "src/main.ts": "04933d3eef2de3e38352a713508b7d86d9c4405f45784e485ef7359db1c09638",
+              "src/frontend/features/planetary/planetShaders.ts": "f8a8a5e6593167142807ac09923183c6af441e64584c92c5cb1ba15c10b81262",
+              "src/frontend/app/rendererWarmup.ts": "5f64f9ca35c0f07316d322229b98050c733ebd9ef3649727839990e665ec5503",
+              "src/frontend/app/sceneSetup.ts": "7984f156fc8c0b8a83dd75b3506dadb7fd52db23e17edd1cf71d2437d5e4191e",
+              "src/frontend/features/asteroids/startupBelt.ts": "87862911a41c3d3e483eee7280957fc13f61271adf3ebf004d1ff4953e466410",
+              "package-lock.json": "6f54638d28e8ed20cb8e036a52ca75f1c0687594af7bd82f3f123edcd6182702"
+            },
+            "loadStart": [
+              3.37,
+              4.29,
+              3.57
+            ],
+            "loadEnd": [
+              3.34,
+              4.27,
+              3.57
+            ]
+          },
+          {
+            "file": "quiet-candidate-dev-2.json",
+            "submissionMs": 2280.9000000059605,
+            "fenceObservedMs": 5897.9000000059605,
+            "submissionToFenceMs": 3617.0,
+            "catalogLoadMs": 524.7,
+            "firstRender": {
+              "frame": 1,
+              "calls": 41,
+              "triangles": 619144,
+              "points": 16400,
+              "lines": 1152
+            },
+            "graphics": {
+              "renderer": "ANGLE (Microsoft Corporation, D3D12 (NVIDIA GeForce RTX 5090), OpenGL 4.6)",
+              "antialias": true,
+              "samples": 4,
+              "parallelCompile": true,
+              "width": 928,
+              "height": 900,
+              "dpr": 1
+            },
+            "belts": [
+              {
+                "count": 50000,
+                "kuiper": false
+              },
+              {
+                "count": 5000,
+                "kuiper": true
+              },
+              {
+                "count": 83,
+                "kuiper": true
+              }
+            ],
+            "errors": [],
+            "warnings": [],
+            "sourceHashes": {
+              "src/main.ts": "04933d3eef2de3e38352a713508b7d86d9c4405f45784e485ef7359db1c09638",
+              "src/frontend/features/planetary/planetShaders.ts": "f8a8a5e6593167142807ac09923183c6af441e64584c92c5cb1ba15c10b81262",
+              "src/frontend/app/rendererWarmup.ts": "5f64f9ca35c0f07316d322229b98050c733ebd9ef3649727839990e665ec5503",
+              "src/frontend/app/sceneSetup.ts": "7984f156fc8c0b8a83dd75b3506dadb7fd52db23e17edd1cf71d2437d5e4191e",
+              "src/frontend/features/asteroids/startupBelt.ts": "87862911a41c3d3e483eee7280957fc13f61271adf3ebf004d1ff4953e466410",
+              "package-lock.json": "6f54638d28e8ed20cb8e036a52ca75f1c0687594af7bd82f3f123edcd6182702"
+            },
+            "loadStart": [
+              3.34,
+              4.27,
+              3.57
+            ],
+            "loadEnd": [
+              3.55,
+              4.29,
+              3.58
+            ]
+          },
+          {
+            "file": "quiet-candidate-dev-3.json",
+            "submissionMs": 2154.2999999970198,
+            "fenceObservedMs": 5427.70000000298,
+            "submissionToFenceMs": 3273.4000000059605,
+            "catalogLoadMs": 482.8,
+            "firstRender": {
+              "frame": 1,
+              "calls": 41,
+              "triangles": 619144,
+              "points": 16400,
+              "lines": 1152
+            },
+            "graphics": {
+              "renderer": "ANGLE (Microsoft Corporation, D3D12 (NVIDIA GeForce RTX 5090), OpenGL 4.6)",
+              "antialias": true,
+              "samples": 4,
+              "parallelCompile": true,
+              "width": 928,
+              "height": 900,
+              "dpr": 1
+            },
+            "belts": [
+              {
+                "count": 50000,
+                "kuiper": false
+              },
+              {
+                "count": 5000,
+                "kuiper": true
+              },
+              {
+                "count": 83,
+                "kuiper": true
+              }
+            ],
+            "errors": [],
+            "warnings": [],
+            "sourceHashes": {
+              "src/main.ts": "04933d3eef2de3e38352a713508b7d86d9c4405f45784e485ef7359db1c09638",
+              "src/frontend/features/planetary/planetShaders.ts": "f8a8a5e6593167142807ac09923183c6af441e64584c92c5cb1ba15c10b81262",
+              "src/frontend/app/rendererWarmup.ts": "5f64f9ca35c0f07316d322229b98050c733ebd9ef3649727839990e665ec5503",
+              "src/frontend/app/sceneSetup.ts": "7984f156fc8c0b8a83dd75b3506dadb7fd52db23e17edd1cf71d2437d5e4191e",
+              "src/frontend/features/asteroids/startupBelt.ts": "87862911a41c3d3e483eee7280957fc13f61271adf3ebf004d1ff4953e466410",
+              "package-lock.json": "6f54638d28e8ed20cb8e036a52ca75f1c0687594af7bd82f3f123edcd6182702"
+            },
+            "loadStart": [
+              3.51,
+              4.27,
+              3.58
+            ],
+            "loadEnd": [
+              3.87,
+              4.33,
+              3.6
+            ]
+          }
+        ],
+        "medianFenceMs": 5427.70000000298,
+        "medianSubmissionMs": 2154.2999999970198
+      },
+      "medianFenceReductionPercent": 32.20290289533837
+    },
+    "preview": {
+      "baseline": {
+        "runs": [
+          {
+            "file": "quiet-baseline-preview-1.json",
+            "submissionMs": 2298.8999999910593,
+            "fenceObservedMs": 8855.20000000298,
+            "submissionToFenceMs": 6556.300000011921,
+            "catalogLoadMs": 451.6,
+            "firstRender": {
+              "frame": 1,
+              "calls": 41,
+              "triangles": 619144,
+              "points": 16400,
+              "lines": 1152
+            },
+            "graphics": {
+              "renderer": "ANGLE (Microsoft Corporation, D3D12 (NVIDIA GeForce RTX 5090), OpenGL 4.6)",
+              "antialias": true,
+              "samples": 4,
+              "parallelCompile": true,
+              "width": 928,
+              "height": 900,
+              "dpr": 1
+            },
+            "belts": [
+              {
+                "count": 50000,
+                "kuiper": false
+              },
+              {
+                "count": 5000,
+                "kuiper": true
+              },
+              {
+                "count": 83,
+                "kuiper": true
+              }
+            ],
+            "errors": [],
+            "warnings": [],
+            "sourceHashes": {
+              "src/main.ts": "04933d3eef2de3e38352a713508b7d86d9c4405f45784e485ef7359db1c09638",
+              "src/frontend/features/planetary/planetShaders.ts": "b1fc59f1d75654d4ef5f97f05e4da891538ad487388c9d3928b51e5c529f2dc4",
+              "src/frontend/app/rendererWarmup.ts": "5f64f9ca35c0f07316d322229b98050c733ebd9ef3649727839990e665ec5503",
+              "src/frontend/app/sceneSetup.ts": "7984f156fc8c0b8a83dd75b3506dadb7fd52db23e17edd1cf71d2437d5e4191e",
+              "src/frontend/features/asteroids/startupBelt.ts": "87862911a41c3d3e483eee7280957fc13f61271adf3ebf004d1ff4953e466410",
+              "package-lock.json": "6f54638d28e8ed20cb8e036a52ca75f1c0687594af7bd82f3f123edcd6182702"
+            },
+            "loadStart": [
+              3.41,
+              4.41,
+              3.57
+            ],
+            "loadEnd": [
+              3.64,
+              4.43,
+              3.59
+            ]
+          },
+          {
+            "file": "quiet-baseline-preview-2.json",
+            "submissionMs": 2134.6000000089407,
+            "fenceObservedMs": 7783,
+            "submissionToFenceMs": 5648.399999991059,
+            "catalogLoadMs": 429.6,
+            "firstRender": {
+              "frame": 1,
+              "calls": 41,
+              "triangles": 619144,
+              "points": 16400,
+              "lines": 1152
+            },
+            "graphics": {
+              "renderer": "ANGLE (Microsoft Corporation, D3D12 (NVIDIA GeForce RTX 5090), OpenGL 4.6)",
+              "antialias": true,
+              "samples": 4,
+              "parallelCompile": true,
+              "width": 928,
+              "height": 900,
+              "dpr": 1
+            },
+            "belts": [
+              {
+                "count": 50000,
+                "kuiper": false
+              },
+              {
+                "count": 5000,
+                "kuiper": true
+              },
+              {
+                "count": 83,
+                "kuiper": true
+              }
+            ],
+            "errors": [],
+            "warnings": [],
+            "sourceHashes": {
+              "src/main.ts": "04933d3eef2de3e38352a713508b7d86d9c4405f45784e485ef7359db1c09638",
+              "src/frontend/features/planetary/planetShaders.ts": "b1fc59f1d75654d4ef5f97f05e4da891538ad487388c9d3928b51e5c529f2dc4",
+              "src/frontend/app/rendererWarmup.ts": "5f64f9ca35c0f07316d322229b98050c733ebd9ef3649727839990e665ec5503",
+              "src/frontend/app/sceneSetup.ts": "7984f156fc8c0b8a83dd75b3506dadb7fd52db23e17edd1cf71d2437d5e4191e",
+              "src/frontend/features/asteroids/startupBelt.ts": "87862911a41c3d3e483eee7280957fc13f61271adf3ebf004d1ff4953e466410",
+              "package-lock.json": "6f54638d28e8ed20cb8e036a52ca75f1c0687594af7bd82f3f123edcd6182702"
+            },
+            "loadStart": [
+              3.64,
+              4.43,
+              3.59
+            ],
+            "loadEnd": [
+              3.46,
+              4.36,
+              3.58
+            ]
+          },
+          {
+            "file": "quiet-baseline-preview-3.json",
+            "submissionMs": 2126.2999999970198,
+            "fenceObservedMs": 8078.899999991059,
+            "submissionToFenceMs": 5952.5999999940395,
+            "catalogLoadMs": 434.0,
+            "firstRender": {
+              "frame": 1,
+              "calls": 41,
+              "triangles": 619144,
+              "points": 16400,
+              "lines": 1152
+            },
+            "graphics": {
+              "renderer": "ANGLE (Microsoft Corporation, D3D12 (NVIDIA GeForce RTX 5090), OpenGL 4.6)",
+              "antialias": true,
+              "samples": 4,
+              "parallelCompile": true,
+              "width": 928,
+              "height": 900,
+              "dpr": 1
+            },
+            "belts": [
+              {
+                "count": 50000,
+                "kuiper": false
+              },
+              {
+                "count": 5000,
+                "kuiper": true
+              },
+              {
+                "count": 83,
+                "kuiper": true
+              }
+            ],
+            "errors": [],
+            "warnings": [],
+            "sourceHashes": {
+              "src/main.ts": "04933d3eef2de3e38352a713508b7d86d9c4405f45784e485ef7359db1c09638",
+              "src/frontend/features/planetary/planetShaders.ts": "b1fc59f1d75654d4ef5f97f05e4da891538ad487388c9d3928b51e5c529f2dc4",
+              "src/frontend/app/rendererWarmup.ts": "5f64f9ca35c0f07316d322229b98050c733ebd9ef3649727839990e665ec5503",
+              "src/frontend/app/sceneSetup.ts": "7984f156fc8c0b8a83dd75b3506dadb7fd52db23e17edd1cf71d2437d5e4191e",
+              "src/frontend/features/asteroids/startupBelt.ts": "87862911a41c3d3e483eee7280957fc13f61271adf3ebf004d1ff4953e466410",
+              "package-lock.json": "6f54638d28e8ed20cb8e036a52ca75f1c0687594af7bd82f3f123edcd6182702"
+            },
+            "loadStart": [
+              3.46,
+              4.36,
+              3.58
+            ],
+            "loadEnd": [
+              3.42,
+              4.34,
+              3.57
+            ]
+          }
+        ],
+        "medianFenceMs": 8078.899999991059,
+        "medianSubmissionMs": 2134.6000000089407
+      },
+      "candidate": {
+        "runs": [
+          {
+            "file": "quiet-candidate-preview-1.json",
+            "submissionMs": 2084.2000000029802,
+            "fenceObservedMs": 5308.4000000059605,
+            "submissionToFenceMs": 3224.2000000029802,
+            "catalogLoadMs": 447.7,
+            "firstRender": {
+              "frame": 1,
+              "calls": 41,
+              "triangles": 619144,
+              "points": 16400,
+              "lines": 1152
+            },
+            "graphics": {
+              "renderer": "ANGLE (Microsoft Corporation, D3D12 (NVIDIA GeForce RTX 5090), OpenGL 4.6)",
+              "antialias": true,
+              "samples": 4,
+              "parallelCompile": true,
+              "width": 928,
+              "height": 900,
+              "dpr": 1
+            },
+            "belts": [
+              {
+                "count": 50000,
+                "kuiper": false
+              },
+              {
+                "count": 5000,
+                "kuiper": true
+              },
+              {
+                "count": 83,
+                "kuiper": true
+              }
+            ],
+            "errors": [],
+            "warnings": [],
+            "sourceHashes": {
+              "src/main.ts": "04933d3eef2de3e38352a713508b7d86d9c4405f45784e485ef7359db1c09638",
+              "src/frontend/features/planetary/planetShaders.ts": "f8a8a5e6593167142807ac09923183c6af441e64584c92c5cb1ba15c10b81262",
+              "src/frontend/app/rendererWarmup.ts": "5f64f9ca35c0f07316d322229b98050c733ebd9ef3649727839990e665ec5503",
+              "src/frontend/app/sceneSetup.ts": "7984f156fc8c0b8a83dd75b3506dadb7fd52db23e17edd1cf71d2437d5e4191e",
+              "src/frontend/features/asteroids/startupBelt.ts": "87862911a41c3d3e483eee7280957fc13f61271adf3ebf004d1ff4953e466410",
+              "package-lock.json": "6f54638d28e8ed20cb8e036a52ca75f1c0687594af7bd82f3f123edcd6182702"
+            },
+            "loadStart": [
+              3.87,
+              4.33,
+              3.6
+            ],
+            "loadEnd": [
+              3.96,
+              4.35,
+              3.61
+            ]
+          },
+          {
+            "file": "quiet-candidate-preview-2.json",
+            "submissionMs": 2010.0999999940395,
+            "fenceObservedMs": 5107,
+            "submissionToFenceMs": 3096.9000000059605,
+            "catalogLoadMs": 439.8,
+            "firstRender": {
+              "frame": 1,
+              "calls": 41,
+              "triangles": 619144,
+              "points": 16400,
+              "lines": 1152
+            },
+            "graphics": {
+              "renderer": "ANGLE (Microsoft Corporation, D3D12 (NVIDIA GeForce RTX 5090), OpenGL 4.6)",
+              "antialias": true,
+              "samples": 4,
+              "parallelCompile": true,
+              "width": 928,
+              "height": 900,
+              "dpr": 1
+            },
+            "belts": [
+              {
+                "count": 50000,
+                "kuiper": false
+              },
+              {
+                "count": 5000,
+                "kuiper": true
+              },
+              {
+                "count": 83,
+                "kuiper": true
+              }
+            ],
+            "errors": [],
+            "warnings": [],
+            "sourceHashes": {
+              "src/main.ts": "04933d3eef2de3e38352a713508b7d86d9c4405f45784e485ef7359db1c09638",
+              "src/frontend/features/planetary/planetShaders.ts": "f8a8a5e6593167142807ac09923183c6af441e64584c92c5cb1ba15c10b81262",
+              "src/frontend/app/rendererWarmup.ts": "5f64f9ca35c0f07316d322229b98050c733ebd9ef3649727839990e665ec5503",
+              "src/frontend/app/sceneSetup.ts": "7984f156fc8c0b8a83dd75b3506dadb7fd52db23e17edd1cf71d2437d5e4191e",
+              "src/frontend/features/asteroids/startupBelt.ts": "87862911a41c3d3e483eee7280957fc13f61271adf3ebf004d1ff4953e466410",
+              "package-lock.json": "6f54638d28e8ed20cb8e036a52ca75f1c0687594af7bd82f3f123edcd6182702"
+            },
+            "loadStart": [
+              3.96,
+              4.35,
+              3.61
+            ],
+            "loadEnd": [
+              3.88,
+              4.32,
+              3.6
+            ]
+          },
+          {
+            "file": "quiet-candidate-preview-3.json",
+            "submissionMs": 1979,
+            "fenceObservedMs": 5831.0999999940395,
+            "submissionToFenceMs": 3852.0999999940395,
+            "catalogLoadMs": 420.3,
+            "firstRender": {
+              "frame": 1,
+              "calls": 41,
+              "triangles": 619144,
+              "points": 16400,
+              "lines": 1152
+            },
+            "graphics": {
+              "renderer": "ANGLE (Microsoft Corporation, D3D12 (NVIDIA GeForce RTX 5090), OpenGL 4.6)",
+              "antialias": true,
+              "samples": 4,
+              "parallelCompile": true,
+              "width": 928,
+              "height": 900,
+              "dpr": 1
+            },
+            "belts": [
+              {
+                "count": 50000,
+                "kuiper": false
+              },
+              {
+                "count": 5000,
+                "kuiper": true
+              },
+              {
+                "count": 83,
+                "kuiper": true
+              }
+            ],
+            "errors": [],
+            "warnings": [],
+            "sourceHashes": {
+              "src/main.ts": "04933d3eef2de3e38352a713508b7d86d9c4405f45784e485ef7359db1c09638",
+              "src/frontend/features/planetary/planetShaders.ts": "f8a8a5e6593167142807ac09923183c6af441e64584c92c5cb1ba15c10b81262",
+              "src/frontend/app/rendererWarmup.ts": "5f64f9ca35c0f07316d322229b98050c733ebd9ef3649727839990e665ec5503",
+              "src/frontend/app/sceneSetup.ts": "7984f156fc8c0b8a83dd75b3506dadb7fd52db23e17edd1cf71d2437d5e4191e",
+              "src/frontend/features/asteroids/startupBelt.ts": "87862911a41c3d3e483eee7280957fc13f61271adf3ebf004d1ff4953e466410",
+              "package-lock.json": "6f54638d28e8ed20cb8e036a52ca75f1c0687594af7bd82f3f123edcd6182702"
+            },
+            "loadStart": [
+              3.88,
+              4.32,
+              3.6
+            ],
+            "loadEnd": [
+              5.17,
+              4.58,
+              3.69
+            ]
+          }
+        ],
+        "medianFenceMs": 5308.4000000059605,
+        "medianSubmissionMs": 2010.0999999940395
+      },
+      "medianFenceReductionPercent": 34.29303494272939
+    }
+  },
+  "checks": {
+    "backendOwnership": {
+      "passed": 123,
+      "warnings": "2 installed Starlette/FastAPI deprecations"
+    },
+    "unitIdentityQuadtreeWarmup": {
+      "passed": 29
+    },
+    "specializedEglGeometry": {
+      "passed": 2,
+      "renderer": "llvmpipe"
+    },
+    "strictSourceTypes": "PASS",
+    "productionBuild": "PASS; existing >500kB chunk warning",
+    "hardwareStartupBrowser": {
+      "passed": 5,
+      "log": "startup-browser.log"
+    }
+  },
+  "preserved": {
+    "sourceRows": 100000,
+    "asteroidDisplayed": 50000,
+    "otherInstances": [
+      5000,
+      83
+    ],
+    "antialias": true,
+    "samples": 4,
+    "dpr": 1,
+    "drawingBuffer": [
+      928,
+      900
+    ],
+    "catalogBudgetMs": 2000,
+    "shaderNoiseOctaves": "unchanged",
+    "sunSurfaceWindEjectionSource": "unchanged",
+    "noArtificialFullSceneBudget": true
+  },
+  "residuals": [
+    "GPU completion remains5.1\u20135.9s in candidate paired runs; no universal startup latency or compositor bound is certified.",
+    "Cold-backend five-minute DEV/PREVIEW delivery is not rerun here; this evidence supplements retained delivery gates.",
+    "Exact pixel identity is not claimed: one of3,686,400 sampled channels differs by1/255; strict comparator exits1 and remains retained."
+  ],
+  "rejectedPrototype": "Runtime uniform loop bound at original12 cap improved pilot further but produced more numerical pixel differences and was not shipped.",
+  "visualReference": {
+    "referenceRevision": "4f97dce442cffb46fa9add8fb3a674534dd2333e",
+    "cases": 36,
+    "exactCases": 35,
+    "maxChannelDifference": 1,
+    "changedChannels": 1,
+    "totalChannels": 3686400,
+    "file": "fidelity-source.json",
+    "strictComparatorExit": 1,
+    "graphics": {
+      "renderer": "ANGLE (Microsoft Corporation, D3D12 (NVIDIA GeForce RTX 5090), OpenGL 4.6)",
+      "antialias": true,
+      "samples": 4
+    }
+  },
+  "trustedKeyboard": {
+    "event": {
+      "key": "+",
+      "at": 2390.0999999940395,
+      "eventTimestamp": 2388,
+      "trusted": true,
+      "target": "space-canvas"
+    },
+    "hud": {
+      "at": 2390.3999999910593,
+      "text": "Range \u00b7 2.47 AU"
+    },
+    "eventHandlingDelayMs": 2.0999999940395355,
+    "handlingToHudMs": 0.29999999701976776,
+    "fenceObservedMs": 5808.5
+  },
+  "sourceIdentity": {
+    "package-lock.json": "6f54638d28e8ed20cb8e036a52ca75f1c0687594af7bd82f3f123edcd6182702",
+    "src/frontend/features/planetary/planetShaders.ts": "f8a8a5e6593167142807ac09923183c6af441e64584c92c5cb1ba15c10b81262",
+    "src/main.ts": "04933d3eef2de3e38352a713508b7d86d9c4405f45784e485ef7359db1c09638",
+    "src/frontend/features/solar/sunVisuals.ts": "2e5506ba4f38da22c7f7287f5c6e8c6ed66a47af0c8abd8596b5d8ff0234cb73",
+    "public/data/asteroid-phase1/asteroid_phase1_main_100000.bin": "679312f651b65e8bacdeb4afd9da7dd0eead389545b8752aef1ca4b24e620200",
+    "backend/sim/process_supervisor.py": "25bb62637a5b433cbca03c06d977177e5f1dee6172dfd2be4b0039ba3ae8366e"
+  },
+  "artifacts": {
+    "baseline": {
+      "assets/index-Ba7vuM9D.css": {
+        "bytes": 26390,
+        "sha256": "144385b61810c2316483ee8e8d73b4db769c781331c09ad5f92be4fb4481cdd0"
+      },
+      "assets/index-Pp4weFoU.js": {
+        "bytes": 1003858,
+        "sha256": "e4e112a057b5fe5d18015b9cd1b653598dc6dfa773171e534e0b4d7ceea72f70"
+      },
+      "assets/modelWorker-B4I096xc.js": {
+        "bytes": 30430,
+        "sha256": "eca3f43726af0b047f6f2b55dbf243dd31589810ea2083a8f3ab5a7246a1e97d"
+      },
+      "index.html": {
+        "bytes": 21172,
+        "sha256": "ebd811baea6df73a997c6783f1e8c105d8cb02c872c37ecb306a6686549f74ef"
+      }
+    },
+    "candidate": {
+      "assets/index-Ba7vuM9D.css": {
+        "bytes": 26390,
+        "sha256": "144385b61810c2316483ee8e8d73b4db769c781331c09ad5f92be4fb4481cdd0"
+      },
+      "assets/index-LgR7yakE.js": {
+        "bytes": 1003998,
+        "sha256": "c445ea72b7703f78f48bbca80f187bafaf51d5faedbfcfe4a3d57f1d1c7f9633"
+      },
+      "assets/modelWorker-B4I096xc.js": {
+        "bytes": 30430,
+        "sha256": "eca3f43726af0b047f6f2b55dbf243dd31589810ea2083a8f3ab5a7246a1e97d"
+      },
+      "index.html": {
+        "bytes": 21172,
+        "sha256": "751eb8c316efd871eca789ce5ba877d0e9fb9be39f2ecab0dbfecd2ecada26a9"
+      }
+    }
+  },
+  "toolchain": {
+    "node": "22.23.2",
+    "playwright": "1.64.0",
+    "three": "0.182.0",
+    "vite": "7.3.7",
+    "python": "3.12.13",
+    "pythonPackages": "python-freeze.txt",
+    "nodeModules": "/tmp/solar-partials-clean-install-20261031/node_modules (exact lock match; no package upgrades)",
+    "buildCommand": "VITE_BACKEND_ORIGIN=http://127.0.0.1:9445 node node_modules/vite/bin/vite.js build --config agent-notes/SCN005_CLOSURE_2026-11-02_EVIDENCE/vite.config.mjs",
+    "buildBoundary": "Direct Vite artifact for paired local render comparison; root owns full npm prebuild/distribution integration gates.",
+    "chromium": "156.0.8078.4"
+  },
+  "diagnosis": {
+    "perObjectReadback": "Diagnostic readPixels after each first-frame object; serializes GPU work and is not a performance acceptance run",
+    "slowestObjects": [
+      {
+        "name": "",
+        "type": "Mesh",
+        "material": "ShaderMaterial",
+        "shader": "\nuniform vec3 uColorBase;\nuniform int uPlanetType;\nuniform vec3 uLightDirection;\nuniform vec3 uCamer",
+        "at": 2581.7000000029802,
+        "duration": 8213.89999999106
+      },
+      {
+        "name": "",
+        "type": "Mesh",
+        "material": "ShaderMaterial",
+        "shader": "\nuniform float time;\nuniform vec3 rotationCoefficientsDegDay;\nuniform float activity;\nuniform sample",
+        "at": 2307.5,
+        "duration": 239.90000000596046
+      },
+      {
+        "name": "",
+        "type": "Mesh",
+        "material": "ShaderMaterial",
+        "shader": "\nuniform float time;\nuniform float activity;\nuniform float coronalHoleActivity;\nuniform vec3 coronaC",
+        "at": 11051.70000000298,
+        "duration": 140.20000000298023
+      },
+      {
+        "name": "",
+        "type": "Mesh",
+        "material": "MeshStandardMaterial",
+        "at": 10858.5,
+        "duration": 74.20000000298023
+      },
+      {
+        "name": "",
+        "type": "Sprite",
+        "material": "SpriteMaterial",
+        "at": 10953.90000000596,
+        "duration": 52.29999999701977
+      }
+    ],
+    "nativeSampler": "User-only perf_event_open sampling GPU-process main thread,2msCPUperiod,18swall window; full window includes startup and post-fence rendering, so module totals are not exclusive stall attribution",
+    "symbolDebugSource": "https://debuginfod.ubuntu.com/buildid/6ccf17f6a28dda1c4c6e147c8d7503b974a501ba/debuginfo",
+    "symbolDebugSha256": "67c8d931cfa3f94f665ae5fe29b130f163a79a7c328af961a6a97449403cd826",
+    "symbolLog": "native-symbols.log"
+  },
+  "rawCaptureArchive": "raw-evidence.tar.gz",
+  "rawCaptureManifest": "raw-manifest.json",
+  "cleanup": {
+    "ownedListeners": [
+      5445,
+      5446,
+      9445
+    ],
+    "allStopped": true,
+    "browserCleanup": "All harness launches await browser.close in finally; no owned profiler remains"
+  }
+}

@@ -1,0 +1,211 @@
+{
+  "alternative_boundary_diagnostic": {
+    "checks": {
+      "boundary_correlation": true,
+      "boundary_median_abs": false,
+      "log_expansion_correlation": false,
+      "log_expansion_median_abs": true,
+      "matched_feature_cells": false,
+      "provider_closed_recall": true,
+      "provider_open_recall": false,
+      "topology_accuracy": true
+    },
+    "coefficient_errors": {
+      "15": {
+        "correlation": 0.9999737000145379,
+        "max_abs_gauss": 0.052069437959346265,
+        "normalized_rmse": 0.007336379672167907
+      },
+      "30": {
+        "correlation": 0.9998126559739051,
+        "max_abs_gauss": 0.2439545749295906,
+        "normalized_rmse": 0.02367351799234067
+      },
+      "64": {
+        "correlation": 0.9950120572104422,
+        "max_abs_gauss": 1.2475605045727263,
+        "normalized_rmse": 0.11965230912205638
+      },
+      "90": {
+        "correlation": 0.9627228536107364,
+        "max_abs_gauss": 3.1489058175449003,
+        "normalized_rmse": 0.2995167690124107
+      }
+    },
+    "feature_budget_passed": false,
+    "method": "independent_scipy_cell_constant_integral_v1",
+    "metrics": {
+      "application_api": "compute_pfss_from_coefficients",
+      "application_degree": 90,
+      "application_input": "diagnostic_degree90_integral_of_piecewise_constant_retained_pixels",
+      "application_metadata": {
+        "calibration_status": "unvalidated",
+        "coverage_fraction": 0.7303240740740741,
+        "indeterminate_fraction": 0.0,
+        "model": "wsa_inspired_v1",
+        "provider_feature_evidence": {
+          "corpus": "nso-gong-zqs-wsa-v6.2-20261012T1744",
+          "current_input_certified": false,
+          "evidence_scope": "topology_expansion_boundary_features_only",
+          "excluded_claims": [
+            "independent speed calibration",
+            "operational WSA equivalence",
+            "SCS equivalence",
+            "1-AU wind forecast accuracy",
+            "live-provider availability",
+            "solar-cycle generalization",
+            "scene-coordinate rendering"
+          ],
+          "independent_speed_output_available": false,
+          "observation_sha256": "e405550e1f8844bf5556419e7137aa6eb9bce79e0292a628df2c1ece28872ee8",
+          "operational_forecast_validated": false,
+          "provider": "NASA/CCMC WSA_V6.2 FILELIST mrzql matched by epoch, rotation, and left edge to retained NSO/GONG zqs",
+          "provider_wsa_sha256": "5b8f1da9e8bcf057b1c86ecd80207166e3362e1ecb92db7a54499ec7bf192035",
+          "scope": "topology, expansion, and boundary-feature agreement at one retained epoch",
+          "status": "bounded_retained_epoch_feature_match"
+        },
+        "quality_reasons": [
+          "incomplete_source_surface_coverage"
+        ],
+        "valid_fraction": 0.08989197530864197
+      },
+      "boundary_distance_deg": {
+        "actual_median": 2.4757585706332548,
+        "bias": -4.822165015335821,
+        "correlation": 0.5285397195653484,
+        "median_abs": 3.9114348684791023,
+        "p90_abs": 9.686112366195248,
+        "reference_median": 6.628567218780518,
+        "rmse": 5.9159222311892705
+      },
+      "grid_shape": [
+        36,
+        72
+      ],
+      "log_expansion": {
+        "actual_median": 1.6413144372050072,
+        "bias": -0.07522402205566335,
+        "correlation": 0.641653813347628,
+        "median_abs": 0.46144550807295026,
+        "p90_abs": 1.214253235098927,
+        "reference_median": 1.5833115509019122,
+        "rmse": 0.8275305222354887
+      },
+      "matched_feature_cells": 233,
+      "provider": "WSA_V6.2",
+      "provider_degree": 90,
+      "source_surface_radii": 2.51,
+      "topology": {
+        "accuracy": 0.9621913580246914,
+        "application_open": 233,
+        "balanced_accuracy": 0.851963746223565,
+        "false_closed": 98,
+        "false_open": 0,
+        "provider_closed_recall": 1.0,
+        "provider_open": 331,
+        "provider_open_recall": 0.7039274924471299
+      }
+    },
+    "original_inverse_condition_gate_passed": false,
+    "production_enabled": false,
+    "quadrature_32_to_64_max_coefficient_change_gauss": 1.2363802821546699e-06,
+    "quadrature_order": 64
+  },
+  "application_calibrated": false,
+  "conclusions": [
+    "The degree-90 latitude inverse loses polar information on the retained 180-row equal-sine grid; the independent basis reproduces the rejection.",
+    "The monopole and missing polar-area weights are not the cause. Removing l=0 and fitting finite-cell averages remain ill-conditioned.",
+    "Different observed sampling can be well-conditioned. Interpolation of the retained samples does not supply those additional observations.",
+    "A cell-constant boundary is a different assumed field; its coefficients must not be presented as recovery of the original point-sampled harmonic field."
+  ],
+  "contributor_identity": {
+    "claim": "Both products name the same contributor list; this does not establish identical downstream preprocessing.",
+    "contributor_count": 6059,
+    "contributor_list_sha256": "29a0e5c2819c938736f293b7a62325ef43309dfa8224b8c9537d5d4b96bc8e3c",
+    "first_contributor": "/oQR/zqr/202609/lezqr260911/lezqr260911t0134.fits",
+    "last_contributor": "/oQR/zqr/202610/tdzqr261012/tdzqr261012t1744.fits",
+    "list_is_magnetogram_pixel_data": false,
+    "provider_filelist": "mrzql261012t1744c2316_079",
+    "retained_map_count": 6059,
+    "retained_map_filelist": "mrzql261012t1744c2316_079"
+  },
+  "degree_admission": [
+    {
+      "admitted": false,
+      "degree": 90,
+      "error": "latitude design for m=0 has condition 5.3876e+09 above limit 1e+06",
+      "independent_m0_condition": 5387597712.654145
+    },
+    {
+      "admitted": true,
+      "degree": 64,
+      "independent_m0_condition": 44343.28161456763
+    },
+    {
+      "admitted": true,
+      "degree": 30,
+      "independent_m0_condition": 13.589494114323061
+    },
+    {
+      "admitted": true,
+      "degree": 15,
+      "independent_m0_condition": 5.702702380022034
+    }
+  ],
+  "observation_sha256": "e405550e1f8844bf5556419e7137aa6eb9bce79e0292a628df2c1ece28872ee8",
+  "original_map_degree90_accepted": false,
+  "production_behavior_changed": false,
+  "provider_wsa_sha256": "5b8f1da9e8bcf057b1c86ecd80207166e3362e1ecb92db7a54499ec7bf192035",
+  "sampling_evidence": {
+    "closest_pixel_to_pole_deg": 6.042305020751602,
+    "coefficient_vector_l2_norm": 1.0000000000000004,
+    "condition_degree90": 5387597712.654143,
+    "condition_of_cell_average_inverse": 1483968695.6867127,
+    "condition_without_monopole": 1813687020.4447126,
+    "hypothetical_new_sampling": [
+      {
+        "actual_retained_observation": false,
+        "condition": 35788.04161005539,
+        "grid": "equal-area-sine-latitude-v1",
+        "n_lat": 360
+      },
+      {
+        "actual_retained_observation": false,
+        "condition": 186.66707980323216,
+        "grid": "equal-area-sine-latitude-v1",
+        "n_lat": 720
+      },
+      {
+        "actual_retained_observation": false,
+        "condition": 13.439934141374284,
+        "grid": "uniform-colatitude-v1",
+        "n_lat": 180
+      }
+    ],
+    "matrix": "independent NumPy Legendre Vandermonde, m=0, exact strip-area weights",
+    "max_sampled_field_gauss": 6.44781324777315e-10,
+    "north_pole_field_gauss": 4.952330388047235,
+    "polar_edges": [
+      -1.0,
+      1.0
+    ],
+    "scipy_basis_max_abs_disagreement": 4.5102810375396984e-15,
+    "total_strip_area": 1.9999999999999998
+  },
+  "schema": "scn041_independent_sampling_investigation_v1",
+  "unchanged_acceptance_budget": {
+    "boundary_correlation_min": 0.5,
+    "boundary_median_abs_deg_max": 3.5,
+    "coefficient_correlation_min": 0.9999,
+    "coefficient_max_abs_gauss_max": 0.06,
+    "coefficient_normalized_rmse_max": 0.01,
+    "constant_monopole_normalized_rmse_min": 0.04,
+    "log_expansion_correlation_min": 0.67,
+    "log_expansion_median_abs_max": 0.47,
+    "matched_feature_cells_min": 240,
+    "provider_closed_recall_min": 0.999,
+    "provider_open_recall_min": 0.74,
+    "topology_accuracy_min": 0.96,
+    "wrong_frame_correlation_max": 0.1
+  }
+}
