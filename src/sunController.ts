@@ -686,9 +686,11 @@ export function createSunController({
     // Snapshot and image changes ease in on the same decorative clock as the feature blend.
     const blendNowMs = decorativeTimeSec * 1000;
     const skipBlend = decorativeMotionSuppressed();
+    // The feature blend's activity only stands in while a state is drawn; a cleared state's
+    // fading features must not hold the old value against the ease to the cycle model.
     const activity = activityEase.step(clampUnit(
       finiteOrNull(solarPhysicsState?.activity_index)
-        ?? finiteOrNull(solarBlendView?.activityIndex)
+        ?? (solarPhysicsState ? finiteOrNull(solarBlendView?.activityIndex) : null)
         ?? fallbackActivity
     ), blendNowMs, SOLAR_BLEND_MS, skipBlend);
     const observationState = getRenderableObservationState(Date.now());

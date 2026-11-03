@@ -3,7 +3,7 @@ import { Group, Matrix4, Mesh, PerspectiveCamera, SphereGeometry, Texture, Vecto
 import type { ShaderMaterial, TextureLoader } from 'three';
 import captured from '../backend/tests/fixtures/solar_frames/synthetic_state_2451552.json';
 import reference from '../backend/tests/fixtures/solar_frames/cspice_solar_frame.json';
-import { createSunController } from './sunController';
+import { createSunController, fallbackSolarActivityFromJulianDate } from './sunController';
 import { SOLAR_RADIUS_AU } from './frontend/features/solar/solarDisplayScale';
 import { validatedSolarLayerFrames } from './frontend/features/solar/solarGeometryContract';
 import type { SolarPhysicsStatePayload } from './frontend/features/solar/solarPhysicsClient';
@@ -331,6 +331,21 @@ describe('a backend state is labelled with its lag, then cleared when too old (H
     expect(f.blend().entries.every(entry => entry.toWeight === 0)).toBe(true);
     frames(f, 15);
     expect(f.blend().entries).toHaveLength(0);
+  });
+
+  it('eases activity from the cleared backend value to the cycle model', async () => {
+    const state = payload();
+    state.activity_index = 0.9;
+    const f = await fixture(state);
+    frames(f, 15);
+    f.tick(200);
+    frames(f, 7);
+    const moved = (0.9 - f.material.uniforms.activity.value) / (0.9 - fallbackSolarActivityFromJulianDate(f.state.julianDate));
+    // 0.7 s into the 1.5 s smoothstep is 0.45 of the way.
+    expect(moved).toBeGreaterThan(0.3);
+    expect(moved).toBeLessThan(0.7);
+    frames(f, 8);
+    expect(f.material.uniforms.activity.value).toBeCloseTo(fallbackSolarActivityFromJulianDate(f.state.julianDate), 6);
   });
 
   it('drops an arriving snapshot that is already too old for the clock', async () => {
