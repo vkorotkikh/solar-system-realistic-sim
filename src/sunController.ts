@@ -857,12 +857,16 @@ export function createSunController({
     return state ? Math.abs(simState.julianDate - state.epoch_jd_tdb) : null;
   }
 
-  /** Too old for the clock, or no longer refreshed: five failures in a row or five minutes without success. */
+  /**
+   * Too old for the clock, or no longer refreshed: five failures in a row, or five minutes since
+   * the last success while the latest attempt failed. Time with no attempts (a hidden tab runs no
+   * frames, so no polls) does not count.
+   */
   function solarStateExpired(nowMs: number) {
     const status = solarPhysicsClient.status();
     return (solarStateLagDays() ?? 0) > solarStateLagLimitDays()
       || status.consecutiveFailures >= 5
-      || nowMs - status.lastSuccessMs > 300_000;
+      || (status.lastFailure !== null && nowMs - status.lastSuccessMs > 300_000);
   }
 
   /** Fade the backend state out and draw the procedural Sun until a usable snapshot arrives (H2.7). */
