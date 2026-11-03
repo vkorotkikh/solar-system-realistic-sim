@@ -53,6 +53,7 @@ class RiskService:
         base_arrival_jd: float,
         reclose: Callable[[float, float], Dict[str, Any]],
         base_departure_cargo_kg: float | None = None,
+        departure_stock_kg: float | None = None,
         samples: int = 300,
         seed: int = 7,
         ephemeris_sigma_fraction: float = DEFAULT_EPHEMERIS_SIGMA_FRACTION,
@@ -69,6 +70,15 @@ class RiskService:
                     or not math.isfinite(base_returned_payload_kg)
                     or not 0.0 <= base_returned_payload_kg <= base_departure_cargo_kg):
                 raise ValueError("Explicit cargo masses must be finite with 0 <= returned payload <= departure cargo")
+            if departure_stock_kg is not None:
+                try:
+                    departure_stock_kg = float(departure_stock_kg)
+                except (TypeError, ValueError, OverflowError) as error:
+                    raise ValueError("Invalid departure stock") from error
+                if not math.isfinite(departure_stock_kg) or departure_stock_kg < base_departure_cargo_kg:
+                    raise ValueError("Departure stock must be finite and at least the departure cargo")
+        elif departure_stock_kg is not None:
+            raise ValueError("departure_stock_kg requires base_departure_cargo_kg")
         samples = max(MIN_MISSION_RISK_SAMPLES, min(50_000, int(samples)))
         rng = random.Random(int(seed))
 
@@ -83,6 +93,9 @@ class RiskService:
         margin_samples: List[float] = []
 
         failure_count = 0
+        # The mining draw scales the mined stock; the manifest only caps how much of it flies.
+        # Without a stock the manifest is the best estimate of it (the previous behaviour).
+        stock_kg = base_departure_cargo_kg if departure_stock_kg is None else departure_stock_kg
 
         for _ in range(samples):
             dv_factor = max(0.5, 1.0 + rng.gauss(0.0, dv_sigma))
@@ -100,7 +113,7 @@ class RiskService:
             cargo = min(payload, base_returned_payload_kg)
             delivered = cargo
             if base_departure_cargo_kg is not None:
-                cargo = min(base_departure_cargo_kg * payload_factor, base_departure_cargo_kg)
+                cargo = min(base_departure_cargo_kg, stock_kg * payload_factor)
             budget = reclose(dv_factor, cargo)
             margin = float(budget.get("propellantMarginKg", 0.0))
 

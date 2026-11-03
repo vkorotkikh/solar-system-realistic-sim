@@ -438,3 +438,38 @@ def test_real_lambert_planner_continuous_production_and_lossy_return_end_to_end(
     objective = candidate["objectiveBreakdown"]
     assert candidate["missionScore"] == pytest.approx(delivered - logistics["totalPropellantUsedKg"]
         - objective["riskPenalty"] - objective["timePenalty"])
+
+
+# Capacity-bound risk sampling: the sampled mining draw scales the mined stock, not the manifest.
+def test_capacity_bound_cargo_is_not_lightened_by_a_shortfall_that_leaves_stock_above_capacity(planner, monkeypatch):
+    # Capacity is a quarter of the mined stock, so any mining draw above 25% leaves the load unchanged.
+    monkeypatch.setattr(VehicleService, "max_closable_cargo_kg",
+                        lambda self, vehicle, *, available_cargo_kg, **_: available_cargo_kg / 4)
+    run, seen = planner
+    _, candidate = run()
+    capacity = candidate["logistics"]["returnCargoKg"]
+    assert capacity == pytest.approx(seen["logistics"][0] / 4)
+    assert min(cargo for _factor, cargo, _budget in seen["risk"][0]["calls"]) == capacity
+
+
+@pytest.mark.parametrize("stock", [1000.0, 1500.0, 5000.0])
+def test_selected_risk_departure_stock_limits_cargo_to_manifest_or_realized_stock(stock):
+    cargo = []
+
+    def reclose(_factor, kg):
+        cargo.append(kg)
+        return {"feasible": True}
+    RiskService().run_monte_carlo(**RISK, base_departure_cargo_kg=1000.0, departure_stock_kg=stock, reclose=reclose)
+    # random_oracle(.., stock, ..) rows are min(stock * draw, stock); the sampled cargo is that capped at the manifest.
+    assert cargo == pytest.approx([min(1000.0, row[2]) for row in random_oracle(17, stock, 500.0)])
+
+
+@pytest.mark.parametrize("stock, departure", [
+    (math.nan, 1000.0), (math.inf, 1000.0), (-1.0, 1000.0), (999.0, 1000.0), ("x", 1000.0), (2000.0, None)])
+def test_selected_risk_invalid_departure_stock_before_rng_or_callback(monkeypatch, stock, departure):
+    def forbidden(*_args, **_kwargs):
+        pytest.fail("invalid departure stock reached RNG or closure work")
+    monkeypatch.setattr("mission.risk_service.random.Random", forbidden)
+    with pytest.raises(ValueError):
+        RiskService().run_monte_carlo(**RISK, base_departure_cargo_kg=departure,
+                                      departure_stock_kg=stock, reclose=forbidden)
