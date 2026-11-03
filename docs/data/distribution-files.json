@@ -59,6 +59,51 @@
       "releaseClass": "copied-public-asset"
     },
     {
+      "path": "public/fonts/OFL-ChakraPetch.txt",
+      "bytes": 4396,
+      "sha256": "13831d02389d917d22fcfa6c79f98f8acbf61d230add0e73a4d4dc5f3bfb9e56",
+      "sourceProductIds": [
+        "chakra-petch-font"
+      ],
+      "releaseClass": "copied-public-asset"
+    },
+    {
+      "path": "public/fonts/OFL-Oxanium.txt",
+      "bytes": 4384,
+      "sha256": "fe17c0f2581d71b4e1ea7e636e7f4877c29223e11bb1dd1a871e8c3f2a86336b",
+      "sourceProductIds": [
+        "oxanium-font"
+      ],
+      "releaseClass": "copied-public-asset"
+    },
+    {
+      "path": "public/fonts/chakra-petch-500-latin.woff2",
+      "bytes": 9956,
+      "sha256": "36ad966cb653de70ba37355c41003b02de8940b2df6cbcd46480a6ad8cadd65d",
+      "sourceProductIds": [
+        "chakra-petch-font"
+      ],
+      "releaseClass": "copied-public-asset"
+    },
+    {
+      "path": "public/fonts/chakra-petch-600-latin.woff2",
+      "bytes": 9968,
+      "sha256": "a5888696e9eb1b4bbbecc8eb3922b8369f49d4bddb72263e033cbd17f399be76",
+      "sourceProductIds": [
+        "chakra-petch-font"
+      ],
+      "releaseClass": "copied-public-asset"
+    },
+    {
+      "path": "public/fonts/oxanium-latin.woff2",
+      "bytes": 14044,
+      "sha256": "3aa555c528430aab19bb2693dc206bab557767d3082dba66400784c9cc90cfbb",
+      "sourceProductIds": [
+        "oxanium-font"
+      ],
+      "releaseClass": "copied-public-asset"
+    },
+    {
       "path": "public/moon-ephemerides/00436738975cfa2b29acd0d9ce23ef0734fb05d97102deaf30848b0eb9131d45.json",
       "bytes": 120599,
       "sha256": "00436738975cfa2b29acd0d9ce23ef0734fb05d97102deaf30848b0eb9131d45",
