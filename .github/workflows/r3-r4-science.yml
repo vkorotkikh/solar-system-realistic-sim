@@ -116,7 +116,7 @@ jobs:
 
       - name: Run the catalog and moon-source script tests
         run: >-
-          python -m pytest -q
+          python -m pytest -v --durations=20 -o faulthandler_timeout=120
           scripts/test_catalog_generation.py
           scripts/test_catalog_science_review.py
           scripts/test_fetch_jpl_sbdb_preflight.py

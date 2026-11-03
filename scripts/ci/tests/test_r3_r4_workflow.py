@@ -107,7 +107,10 @@ def test_backend_job_runs_catalog_script_guards_and_classifies_every_script_test
     document = yaml.safe_load(WORKFLOW.read_text())
     commands = [step.get("run", "") for step in document["jobs"]["backend-tests"]["steps"]]
     script_runs = [command for command in commands if "scripts/test_" in command]
-    assert len(script_runs) == 1 and script_runs[0].startswith("python -m pytest -q ")
+    assert len(script_runs) == 1
+    assert script_runs[0].startswith(
+        "python -m pytest -v --durations=20 -o faulthandler_timeout=120 "
+    )
     wired = set(re.findall(r"scripts/(test_\w+\.py)", script_runs[0]))
     present = {path.name for path in (ROOT / "scripts").glob("test_*.py")}
     assert not wired & set(NOT_IN_CI)
