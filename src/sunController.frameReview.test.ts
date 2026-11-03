@@ -73,10 +73,12 @@ function frozenToEcliptic() {
 }
 
 async function fixture(initial = payload()) {
-  let nowMs = Date.UTC(2026, 9, 14), realtime = 0, reduced = false;
+  let nowMs = Date.UTC(2026, 9, 14), realtime = 0, reduced = false, wallOffsetMs = 0;
   let response: ReturnType<typeof payload> | null = initial;
   const statuses: SolarDataSourceStatus[] = [];
-  vi.spyOn(Date, 'now').mockImplementation(() => nowMs);
+  // nowMs is monotonic test time; the wall clock can be stepped apart from it.
+  vi.spyOn(Date, 'now').mockImplementation(() => nowMs + wallOffsetMs);
+  vi.spyOn(performance, 'now').mockImplementation(() => nowMs);
   vi.stubGlobal('matchMedia', () => ({ matches: reduced }));
   vi.stubGlobal('document', { createElement: () => ({ width: 4, height: 4, getContext: () => null }) });
   vi.stubGlobal('fetch', vi.fn(async (url: unknown) => String(url).includes('/solar/physics') && response
@@ -114,6 +116,7 @@ async function fixture(initial = payload()) {
   return { controller, root, spin, state, material, refresh, fail, statuses,
     lastStatus: () => statuses[statuses.length - 1],
     setReduced(value: boolean) { reduced = value; },
+    stepWallClock(ms: number) { wallOffsetMs += ms; },
     tick(days = 0.1, elapsedSec = 0.1) {
       state.julianDate += days; realtime += elapsedSec; nowMs += elapsedSec * 1000;
       controller.update(state.julianDate, realtime);
@@ -327,6 +330,14 @@ describe('a backend state is labelled with its lag, then cleared when too old (H
     const before = published();
     for (let i = 0; i < 60; i += 1) f.tick(4 / 60, 1 / 60); // one second at 60 fps: the lag grows 0 -> 4 d
     expect(published() - before).toBeLessThanOrEqual(3);
+    expect(f.lastStatus().text).toMatch(/ · time-lapse: state lags [34] d · /);
+  });
+
+  it('keeps republishing the moving lag label after the wall clock steps backwards', async () => {
+    const f = await fixture();
+    f.state.timeScaleDaysPerSec = 4;
+    f.stepWallClock(-3_600_000); // an NTP or time-zone correction
+    for (let i = 0; i < 60; i += 1) f.tick(4 / 60, 1 / 60);
     expect(f.lastStatus().text).toMatch(/ · time-lapse: state lags [34] d · /);
   });
 

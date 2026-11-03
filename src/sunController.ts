@@ -279,7 +279,7 @@ export function createSunController({
     const clientStatus = solarPhysicsClient.status();
     const stateLagDays = solarStateLagDays();
     publishedLagLabelDays = solarStateLagLabelDays(stateLagDays);
-    lastStatusPublishMs = Date.now();
+    lastStatusPublishMs = performance.now();
     const status = describeSolarDataStatus({
       lastSuccessMs: clientStatus.lastSuccessMs,
       lastFailure: clientStatus.lastFailure,
@@ -708,7 +708,7 @@ export function createSunController({
       clearSolarPhysicsState();
     }
     // The lag label is the one part of the chip that moves with the clock: republish it at most twice a second.
-    if (solarStateLagLabelDays(solarStateLagDays()) !== publishedLagLabelDays && Date.now() - lastStatusPublishMs >= 500) {
+    if (solarStateLagLabelDays(solarStateLagDays()) !== publishedLagLabelDays && performance.now() - lastStatusPublishMs >= 500) {
       publishSolarDataStatus();
     }
     const fallbackActivity = fallbackSolarActivityFromJulianDate(julianDate);
