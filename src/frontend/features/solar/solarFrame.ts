@@ -79,9 +79,13 @@ export function solarVectorToSurfaceLocal(vector: readonly number[], frame: Sola
  * Do NOT put this object under a second tilted/spinning surface parent.
  * Translation/scale are deliberately preserved. Legacy callers must opt in
  * with a declared input frame; unknown observed-map frames are not guessed.
+ * Geometry given at `context.jdTdb` is carried with the Sun's rigid rotation to
+ * `carryToJdTdb`, so a snapshot stays on the turning surface until it is replaced.
  */
-export function applySolarGeometryFrame(object: Object3D, context: SolarFrameContext): void {
-  object.quaternion.setFromRotationMatrix(solarFrameToEclipticMatrix(context.inputFrame, context.jdTdb));
+export function applySolarGeometryFrame(object: Object3D, context: SolarFrameContext, carryToJdTdb = context.jdTdb): void {
+  const carriedDeg = (phase(carryToJdTdb) - phase(context.jdTdb)) % 360;
+  object.quaternion.setFromRotationMatrix(solarFrameToEclipticMatrix(context.inputFrame, context.jdTdb)
+    .multiply(new Matrix4().makeRotationZ(carriedDeg * DEG)));
   object.userData.lockBodySpin = true;
   object.userData.solarInputFrame = context.inputFrame;
   object.userData.solarOutputFrame = 'ECLIPJ2000';

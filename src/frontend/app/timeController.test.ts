@@ -22,6 +22,21 @@ describe('time HUD output', () => {
   });
 });
 
+describe('honest session header (H2.10)', () => {
+  it('names the simulation rate, or that it is paused, writing only on change', () => {
+    const label = tracked();
+    const state = { julianDate: 10, timeScaleDaysPerSec: 4, timeScaleDirty: false, paused: false };
+    const time = createTimeController({ dom: { sessionLabel: label.element }, simState: state,
+      minTimeScale: -120, maxTimeScale: 120, currentJulianDate: () => 10, formatJulianAsDate: String });
+    time.updateHud(); time.updateHud();
+    expect(label.element.textContent).toBe('Simulation · +4.0 d/s'); expect(label.writes.text).toBe(1);
+    state.timeScaleDaysPerSec = -0.5; time.updateHud();
+    expect(label.element.textContent).toBe('Simulation · -0.5 d/s');
+    state.paused = true; time.updateHud();
+    expect(label.element.textContent).toBe('Paused');
+  });
+});
+
 // SDEL-060 / R0052 Now integration. Found by /qa on 2026-10-24.
 // agent-notes/CONSOLIDATED_MARKDOWN_ISSUE_AUDIT_2026-10-24.md.
 describe('explicit Now time jump', () => {

@@ -1,5 +1,13 @@
 # H-1 remediation plan: getting the backend solar model onto the screen
 
+> **H2.7–10 implementation update, 2026-11-03 (`fix/solar-h2-7-to-10`, through `b60564a`).**
+> The branch implements stale-state clearing and lag/date notices (H2.7), content/epoch field-line identity and rigid surface rotation (H2.8),
+> fixed 1.5-second decorative snapshot blends (H2.9), and the rate/Paused header (H2.10). Coronal-hole longitude interpolation preserves the seam.
+> The lag formula uses the current 30-second poll interval: 240 days at 4 d/s, 7,200 days at 120 d/s, and 30 days while paused.
+> Pause, reverse and reduced motion apply blend targets immediately; this does not alter the accepted decorative-motion policy.
+> See [delivery](../docs/solar-render-delivery.md) and [rotation/display scope](../docs/solar-rotation-and-display.md).
+> This records branch implementation, not full H1 acceptance or observational calibration. The dated status blocks and original plan below remain historical.
+
 > **Display phase 2026-10-07 (branch `fix/solar-display-truth`, stacked on the chip branch, unmerged).** Owner decisions:
 > D3 (b), D4 (a), D10 (a) and D17 start now. Done, each with a test that fails without it:
 > - **H2.4:** backend geometry gated (`BACKEND_GEOMETRY_VALIDATED = false`); the chip says "backend activity, procedural features".

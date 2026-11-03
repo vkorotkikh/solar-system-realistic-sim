@@ -120,6 +120,7 @@ const dom = {
   timeScale: elementById<HTMLInputElement>('time-scale'),
   timeScaleValue: elementById<HTMLOutputElement>('time-scale-value'),
   timeDate: elementById<HTMLTimeElement>('time-date'),
+  sessionLabel: elementById<HTMLElement>('session-label'),
   toggleOrbits: elementById<HTMLInputElement>('toggle-orbits'),
   toggleMagneticField: elementById<HTMLInputElement>('toggle-magnetic-field'),
   toggleLabels: elementById<HTMLInputElement>('toggle-labels'),

@@ -251,6 +251,12 @@ def evaluate_features(body, times):
     return result
 
 
+def scalar_atan2(y, x):
+    # NumPy's X86_V4 atan2 rounds differently from its baseline CPU path.
+    # Content-addressed artifacts need the same scalar libm operation on both.
+    return np.fromiter(map(math.atan2, y, x), dtype=np.float64, count=len(y))
+
+
 def state_from_features(values):
     a = values[:, 0]
     h = values[:, 1:4]
@@ -260,10 +266,10 @@ def state_from_features(values):
     e = np.linalg.norm(evec, axis=1)
     if np.any(e >= 1) or np.any(a <= 0):
         raise RuntimeError('Invalid interpolated ellipse')
-    node = np.arctan2(h[:, 0], -h[:, 1])
+    node = scalar_atan2(h[:, 0], -h[:, 1])
     nodal = np.column_stack((np.cos(node), np.sin(node), np.zeros(len(node))))
     transverse = np.cross(h, nodal)
-    peri = np.arctan2(np.sum(evec*transverse, axis=1), np.sum(evec*nodal, axis=1))
+    peri = scalar_atan2(np.sum(evec*transverse, axis=1), np.sum(evec*nodal, axis=1))
     p = np.divide(evec, e[:, None], out=nodal.copy(), where=e[:, None] > 1e-12)
     q = np.cross(h, p)
     mean = np.mod(np.deg2rad(values[:, 7])-node-peri, 2*np.pi)
