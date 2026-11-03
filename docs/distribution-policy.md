@@ -30,10 +30,13 @@ Restoring one requires a current consumer, exact source and reuse terms.
 ## Build boundary
 
 `npm run build` first validates the curated texture manifest and exact image
-hashes, refuses unlisted or unresolved-license moon assets, and packages notices.
-It must fail before publishing if an unreviewed map is placed in that public
-directory. Vite copies the public directory, including opt-in moon ephemerides;
-being dormant at runtime does not exclude an asset from distribution.
+hashes, refuses unresolved-license moon assets, and walks all of `public/`. It
+fails before packaging notices if any file there is neither pinned by a reviewed
+manifest (moon textures, lazy moon shards, the Phase 1 asteroid binary) nor
+listed with its SHA-256 in
+[`ci/public-asset-allowlist.json`](../ci/public-asset-allowlist.json). Vite
+copies the whole public directory, including opt-in moon ephemerides; being
+dormant at runtime does not exclude an asset from distribution.
 The scientific catalog builders and tests validate their own source/artifact
 hashes. Build output is not a new certification of scientific accuracy.
 
