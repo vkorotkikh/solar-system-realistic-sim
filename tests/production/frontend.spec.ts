@@ -106,6 +106,29 @@ async function expandPanelDisclosures(page: Page) {
   }
 }
 
+async function setViewportAndAwaitNativeResize(page: Page, size: { width: number; height: number }) {
+  // The emulation command can finish before Chromium delivers its native
+  // resize under software rendering. Start state assertions after that input.
+  const pending = await page.evaluateHandle(({ width, height }) => {
+    let finish!: () => void;
+    const done = new Promise<void>(resolve => { finish = resolve; });
+    const onResize = () => {
+      if (innerWidth !== width || innerHeight !== height) return;
+      window.removeEventListener('resize', onResize);
+      finish();
+    };
+    window.addEventListener('resize', onResize);
+    return { done, cleanup: () => window.removeEventListener('resize', onResize) };
+  }, size);
+  try {
+    await page.setViewportSize(size);
+    await pending.evaluate(async ({ done }) => { await done; });
+  } finally {
+    await pending.evaluate(({ cleanup }) => cleanup());
+    await pending.dispose();
+  }
+}
+
 async function expectReachableTarget(target: Locator) {
   await expect(target).toBeEnabled();
   // Scroll the real DOM immediately; Playwright's stability wait can starve
@@ -352,14 +375,14 @@ test('compiled mobile drawer restores focus across desktop breakpoints', async (
     await toggle.click();
     await expect(close).toBeFocused();
 
-    await page.setViewportSize({ width: 1440, height: 900 });
+    await setViewportAndAwaitNativeResize(page, { width: 1440, height: 900 });
     await expect(page.locator('#control-panel')).toBeVisible();
     await expect(page.locator('#control-panel')).not.toHaveAttribute('aria-modal', 'true');
     await expect(viewport).toHaveJSProperty('inert', false);
     await expect(viewport).not.toHaveAttribute('aria-hidden', 'true');
     await canvas.focus();
     await expect(canvas).toBeFocused();
-    await page.setViewportSize({ width: 390, height: 844 });
+    await setViewportAndAwaitNativeResize(page, { width: 390, height: 844 });
     await expect(panel).toBeVisible();
     await expect(close).toBeFocused();
     await expect(viewport).toHaveJSProperty('inert', true);
