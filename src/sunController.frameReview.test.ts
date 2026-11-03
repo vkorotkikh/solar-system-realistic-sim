@@ -333,6 +333,26 @@ describe('a backend state is labelled with its lag, then cleared when too old (H
     expect(f.blend().entries).toHaveLength(0);
   });
 
+  it('cross-fades the procedural polar holes with the backend holes on a clear and a new arrival', async () => {
+    const f = await fixture();
+    frames(f, 15);
+    const corona = f.spin.children.map(child => (child as Mesh).material as ShaderMaterial)
+      .find(material => material?.uniforms?.coronalHoles)!;
+    const weight = () => corona.uniforms.proceduralHoleWeight?.value;
+    expect(weight()).toBe(0);
+    f.tick(200);
+    frames(f, 7);
+    // smoothstep(0.7 / 1.5) of the way in, while the backend holes are still shrinking.
+    expect(weight()).toBeCloseTo(0.450074, 5);
+    expect(readCoronalHoles(corona)!.count).toBeGreaterThan(0);
+    frames(f, 8);
+    expect(weight()).toBe(1);
+    expect(readCoronalHoles(corona)!.count).toBe(0);
+    await f.refresh(atEpoch(payload(), f.state.julianDate));
+    frames(f, 7);
+    expect(weight()).toBeCloseTo(1 - 0.450074, 5);
+  });
+
   it('eases activity from the cleared backend value to the cycle model', async () => {
     const state = payload();
     state.activity_index = 0.9;

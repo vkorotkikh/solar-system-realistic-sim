@@ -245,6 +245,7 @@ export function createSunController({
   const activityEase = new SolarEase();
   const observationBlendEase = new SolarEase();
   const observationEmissionEase = new SolarEase();
+  const proceduralHoleEase = new SolarEase();
   // Spot seeds and holes drawn when the snapshot last changed, blended from for SOLAR_BLEND_MS.
   let spotSeedsBefore: ReturnType<typeof readSunspotSeeds> = null;
   let coronalHolesBefore: ReturnType<typeof readCoronalHoles> = null;
@@ -350,6 +351,7 @@ export function createSunController({
   /** The snapshot behind the Sun changed: ease activity, spots and holes from what is drawn now. */
   function blendSnapshotFromShown() {
     activityEase.restart(decorativeTimeSec * 1000);
+    proceduralHoleEase.restart(decorativeTimeSec * 1000);
     spotSeedsBefore = readSunspotSeeds(sunSurfaceMaterial);
     coronalHolesBefore = readCoronalHoles(sunCoronaMaterial);
     surfaceBlendStartMs = decorativeTimeSec * 1000;
@@ -742,6 +744,7 @@ export function createSunController({
     const spotState = solarFeaturesInSurfaceFrame(geometryStateFor('spots'), solarLayerFrames.spots);
     const cmeState = solarFeaturesInSurfaceFrame(geometryStateFor('cme'), solarLayerFrames.cme);
 
+    const coronalHoleData = solarHolesInSurfaceFrame(geometryStateFor('coronal_holes'), solarLayerFrames.coronal_holes);
     updateSunMaterialUniforms({
       sunSurfaceMaterial,
       sunCoronaMaterial,
@@ -752,13 +755,19 @@ export function createSunController({
       coronaHue: observationControls.coronaHue ?? undefined,
       sunDisplayRadius: sunRadiusAu,
       activeChannel: activeObservationChannel ?? undefined,
-      coronalHoleData: solarHolesInSurfaceFrame(geometryStateFor('coronal_holes'), solarLayerFrames.coronal_holes)
+      coronalHoleData
     });
     updateSunspotUniforms(sunSurfaceMaterial, effectiveActivity, timeSec, spotState ?? undefined);
     const surfaceBlend = skipBlend ? 1 : solarBlendProgress(surfaceBlendStartMs, blendNowMs, SOLAR_BLEND_MS);
     blendSunspotUniforms(sunSurfaceMaterial, spotSeedsBefore, surfaceBlend);
     blendCoronalHoleUniforms(sunCoronaMaterial, coronalHolesBefore, surfaceBlend);
     if (surfaceBlend >= 1) spotSeedsBefore = coronalHolesBefore = null;
+    // The procedural polar holes fade out under backend holes and back in after a clear.
+    if (sunCoronaMaterial?.uniforms.proceduralHoleWeight) {
+      sunCoronaMaterial.uniforms.proceduralHoleWeight.value = proceduralHoleEase.step(
+        coronalHoleData?.holes?.length ? 0 : 1, blendNowMs, SOLAR_BLEND_MS, skipBlend
+      );
+    }
 
     if (solarFlareManager) {
       solarFlareManager.update(Math.min(0.1, dtSec), effectiveActivity, sunRadiusAu, cmeState, timeSec);
