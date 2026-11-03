@@ -694,7 +694,9 @@ export function createSunController({
     if (solarPhysicsState && solarStateTooOld()) {
       clearSolarPhysicsState();
       currentSolarStateWanted = true;
-    } else if (solarPhysicsState && solarStateUnrefreshed(Date.now())) {
+    } else if (solarPhysicsState && (solarStateLagDays() ?? 0) > 1 && solarStateUnrefreshed(Date.now())) {
+      // Within a day of the clock the state is still right for the displayed date: while
+      // refreshes fail it stays, and the 'stale' chip says they are failing.
       clearSolarPhysicsState();
     }
     // The lag label is the one part of the chip that moves with the clock: republish it at most twice a second.

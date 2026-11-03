@@ -426,6 +426,7 @@ describe('a backend state is labelled with its lag, then cleared when too old (H
 
   it('clears the backend state after five failed refreshes in a row', async () => {
     const f = await fixture();
+    f.tick(2); // the failure rules apply once the state lags the clock by more than a day
     for (let i = 0; i < 4; i += 1) await f.fail();
     f.tick(0.01);
     expect(shownEpoch(f)).toBe(2451552);
@@ -439,10 +440,20 @@ describe('a backend state is labelled with its lag, then cleared when too old (H
   it('clears the backend state five minutes after its last success once a refresh has failed', async () => {
     const f = await fixture();
     await f.fail();
-    f.tick(0.01, 299);
+    f.tick(2, 299);
     expect(shownEpoch(f)).toBe(2451552);
     f.tick(0.01, 2);
     expect(shownEpoch(f)).toBeNull();
+  });
+
+  it('keeps a state that is right for the paused date while refreshes fail, and says they fail', async () => {
+    const f = await fixture();
+    f.state.paused = true;
+    for (let i = 0; i < 5; i += 1) await f.fail();
+    f.tick(0, 360);
+    expect(shownEpoch(f)).toBe(2451552);
+    expect(f.lastStatus()).toMatchObject({ state: 'stale' });
+    expect(f.lastStatus().text).toMatch(/^Sun: backend state from \d\d:\d\d UTC \(refresh failing: /);
   });
 
   it('keeps the backend state after five quiet minutes with nothing failed, as when a tab was hidden', async () => {
