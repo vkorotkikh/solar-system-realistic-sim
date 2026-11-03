@@ -109,7 +109,7 @@ async function fixture(initial = payload()) {
   }
   await refresh();
   controller.update(state.julianDate, realtime);
-  return { controller, root, spin, state, material, refresh, fail,
+  return { controller, root, spin, state, material, refresh, fail, statuses,
     lastStatus: () => statuses[statuses.length - 1],
     setReduced(value: boolean) { reduced = value; },
     tick(days = 0.1, elapsedSec = 0.1) {
@@ -312,9 +312,19 @@ describe('a backend state is labelled with its lag, then cleared when too old (H
   // At 1 d/s the lag limit is max(30, 1 d/s x (30 s poll + 30 s error backoff + 20 s timeout)) = 80 simulated days.
   const shownEpoch = (f: Awaited<ReturnType<typeof fixture>>) => f.controller.getSolarDeliveryStatus().geometry.snapshotEpochJdTdb;
 
+  it('republishes the moving lag label at most twice a second', async () => {
+    const f = await fixture();
+    f.state.timeScaleDaysPerSec = 4;
+    const published = () => f.statuses.length;
+    const before = published();
+    for (let i = 0; i < 60; i += 1) f.tick(4 / 60, 1 / 60); // one second at 60 fps: the lag grows 0 -> 4 d
+    expect(published() - before).toBeLessThanOrEqual(3);
+    expect(f.lastStatus().text).toMatch(/ · time-lapse: state lags [34] d · /);
+  });
+
   it('keeps a backend state within the lag limit and labels its lag', async () => {
     const f = await fixture();
-    f.tick(10);
+    f.tick(10, 0.5); // the label republishes at most twice a second
     expect(shownEpoch(f)).toBe(2451552);
     expect(f.lastStatus().text).toContain(' · time-lapse: state lags 10 d · updated ');
   });

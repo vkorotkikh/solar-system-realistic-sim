@@ -69,9 +69,10 @@ function formatUtcMinute(ms: number): string {
   return `${new Date(ms).toISOString().slice(11, 16)} UTC`;
 }
 
-/** Lag shown on the chip, to two significant digits; null within a day (D5). */
+/** Lag shown on the chip: whole days below 10, two significant digits above; null within a day (D5). */
 export function solarStateLagLabelDays(lagDays: number | null | undefined): number | null {
-  return typeof lagDays === 'number' && lagDays > 1 ? Number(lagDays.toPrecision(2)) : null;
+  if (typeof lagDays !== 'number' || !(lagDays > 1)) return null;
+  return lagDays < 10 ? Math.round(lagDays) : Number(lagDays.toPrecision(2));
 }
 
 function describeLag(input: SolarDataStatusInput): string {
