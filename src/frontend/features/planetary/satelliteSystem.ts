@@ -135,14 +135,28 @@ function nowMs() {
   return globalThis.performance?.now?.() ?? Date.now();
 }
 
-function tleEpochToJulian(epochYearTwoDigits: number, dayOfYearFloat: number): number {
+/** Epoch day 1 is 1 January 00:00; null when the day is outside [1, days in year + 1). */
+function tleEpochToJulian(epochYearTwoDigits: number, dayOfYearFloat: number): number | null {
   const twoDigitYear = Number(epochYearTwoDigits);
   const year = twoDigitYear >= 57 ? 1900 + twoDigitYear : 2000 + twoDigitYear;
+  const startMs = Date.UTC(year, 0, 1, 0, 0, 0, 0);
+  const daysInYear = (Date.UTC(year + 1, 0, 1) - startMs) / (DAY_SECONDS * 1_000);
+  if (!(dayOfYearFloat >= 1 && dayOfYearFloat < daysInYear + 1)) return null;
   const dayWhole = Math.floor(dayOfYearFloat);
   const dayFraction = dayOfYearFloat - dayWhole;
-  const startMs = Date.UTC(year, 0, 1, 0, 0, 0, 0);
   const unixMs = startMs + (dayWhole - 1 + dayFraction) * DAY_SECONDS * 1_000;
   return utcJulianDateToTdb(julianDateFromUnixMs(unixMs));
+}
+
+/** A TLE line is 69 columns; the last is the sum of the digits (a '-' counts 1) mod 10. */
+function hasValidTleChecksum(line: string): boolean {
+  if (line.length !== 69) return false;
+  let sum = 0;
+  for (let i = 0; i < 68; i += 1) {
+    const code = line.charCodeAt(i);
+    sum += code >= 48 && code <= 57 ? code - 48 : code === 45 ? 1 : 0;
+  }
+  return sum % 10 === line.charCodeAt(68) - 48;
 }
 
 function sanitizeId(name: string): string {
@@ -231,6 +245,7 @@ function parseTleElements(
   category: string,
   primaryModel: PrimaryModel
 ): NormalizedSatellite | null {
+  if (!hasValidTleChecksum(line1) || !hasValidTleChecksum(line2)) return null;
   const catalogFields = [line1.slice(2, 7).trim(), line2.slice(2, 7).trim()];
   if (!catalogFields.every(value => /^[a-z0-9]{1,5}$/i.test(value))) return null;
   const [catalogId, secondCatalogId] = catalogFields.map(value => /^\d+$/.test(value)
@@ -259,6 +274,8 @@ function parseTleElements(
     return null;
   }
 
+  const epochJd = tleEpochToJulian(epochYear, epochDay);
+  if (epochJd === null) return null;
   const meanMotionRadSec = (meanMotionRevDay * TWO_PI) / DAY_SECONDS;
   const aKm = Math.cbrt(primaryModel.muKm3S2 / (meanMotionRadSec * meanMotionRadSec));
 
@@ -268,7 +285,7 @@ function parseTleElements(
     id: `sat-norad-${catalogId}`,
     name,
     category,
-    epochJd: tleEpochToJulian(epochYear, epochDay),
+    epochJd,
     aKm,
     e,
     iRad: iDeg * DEG_TO_RAD,
