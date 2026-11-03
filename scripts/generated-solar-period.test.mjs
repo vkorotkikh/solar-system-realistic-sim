@@ -12,17 +12,19 @@ import { generateKuiperBelt, NAMED_KBOS } from '../src/sim/kuiperBelt';
 // Full pre-change populations and capture provenance are retained in the owned
 // preparation root. These hashes retain ALL original values except generated
 // orbit.periodDays; PR22 population metadata is asserted separately, not rehashed.
+// The Kuiper values were re-baselined for SMB-051: binary fractions apply at every
+// size, which changes which objects are binary and so the seeded draw after them.
 const SEEDS = [0, 42, 137];
 const BASELINES = [
   { asteroid: '70cc1a3b8f3db67e52297385f8424691638e9540e953db59d2af2785e99c1652',
-    kuiper: 'f423be246ed4ec3ab26fde76e0ace008ce7414166bcdcf6f463548530e618c38',
-    binaryCount: 8, binary: '7f5cd0663bdc9989df504d1edaffce709d88df321a9f9e8372ee4fe0eaa39227' },
+    kuiper: 'b8fc760fe0ab236621f398768e2920984b09ee02c7939e2eea4017f09f432645',
+    binaryCount: 31, binary: '18fbf6ce7cd5816c5321c361ca8e05e66896e6648ef14f8f7a92ddbfd01757a3' },
   { asteroid: 'e53ad5d3cda40b4fb7f00c20d31fd12ccd29df8b1b607592a9a8d86d91f2771b',
-    kuiper: '3dfc3a7c341018ed5a61a80aadaf98a65baf0427845ceb1a720bae1efff9a7d5',
-    binaryCount: 6, binary: '7ad93f14b4ad828eced559bb0f07bc27fe525ce549aa0e7be1372372160fe384' },
+    kuiper: '1c106e18c3c9423dc3ce22c6a6821cb358d26f0339e466d3be5e78fececec1ae',
+    binaryCount: 24, binary: 'd93ddfc2efcb984dfc75f55b0221e4995d721a116a924e375268ab1fa99a78fa' },
   { asteroid: '84531be183a08c2d5cf7167a677d0b2bf1f21575fb126c3d8618a730d0438357',
-    kuiper: 'c04903d9b640bdfb5574e4808e84bf32b322268961064e5baf1099443fc7b65f',
-    binaryCount: 4, binary: '3740a4fd537ca510f202102fcafddfa3b65427e176ecbd6d2cdc34c6d3dd0e91' },
+    kuiper: 'cec3a6591fb157fbdabfc63fb60d7ddafff0b92863585dcd959a4f60df90b490',
+    binaryCount: 24, binary: 'bb33ff0a7a5cb347418d64492e2f8d8ff20df58b42db963e8e25927e5ed8d5f6' },
 ];
 const NAMED_ASTEROIDS_HASH = '1c8043c8c0a3f5a1fd7f6c945c6ab036bacb2a5e06d0ffbeb6ec4cf669c25608';
 const NAMED_KBOS_HASH = '2a7cb40e576844186af0bc2003b49aa9b7bb7b676baf6c03db9880365bb05a45';
