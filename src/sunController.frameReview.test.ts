@@ -100,12 +100,13 @@ async function fixture(initial = payload()) {
     whileInFlight?.();
     await vi.waitFor(() => expect(controller.getSolarDeliveryStatus().physics.lastSuccessMs).toBeGreaterThanOrEqual(requestedAt));
   }
-  /** One forced refresh that the backend answers with HTTP 503. */
-  async function fail() {
+  /** One forced refresh that the backend answers with HTTP 503, after `whileInFlight` has run. */
+  async function fail(whileInFlight?: () => void) {
     response = null;
     nowMs += 1;
     const failures = controller.getSolarDeliveryStatus().physics.consecutiveFailures;
     controller.maybeRefreshPhysics(nowMs, true);
+    whileInFlight?.();
     await vi.waitFor(() => expect(controller.getSolarDeliveryStatus().physics.consecutiveFailures).toBe(failures + 1));
   }
   await refresh();
@@ -310,7 +311,8 @@ describe('field lines are rebuilt only when the drawn field changes (H2.8)', () 
 });
 
 describe('a backend state is labelled with its lag, then cleared when too old (H2.7)', () => {
-  // At 1 d/s the lag limit is max(30, 1 d/s x (30 s poll + 30 s error backoff + 20 s timeout)) = 80 simulated days.
+  // At 1 d/s the lag limit is max(30, 1 d/s x (30 s poll + 24 s failed request + 30 s error backoff
+  // + 20 s replacement latency)) = 104 simulated days.
   const shownEpoch = (f: Awaited<ReturnType<typeof fixture>>) => f.controller.getSolarDeliveryStatus().geometry.snapshotEpochJdTdb;
 
   it('republishes the moving lag label at most twice a second', async () => {
@@ -333,7 +335,7 @@ describe('a backend state is labelled with its lag, then cleared when too old (H
   it('clears a backend state beyond the lag limit, fading it out, and says which epoch it was for', async () => {
     const f = await fixture();
     frames(f, 15);
-    f.tick(80);
+    f.tick(110);
     expect(shownEpoch(f)).toBeNull();
     expect(f.lastStatus()).toMatchObject({ state: 'connecting', text: 'Sun: procedural fallback (last backend state was for 2000-01-08)' });
     expect(f.controller.magneticFieldGroup?.userData.solarGeometrySource).toBe('procedural');
@@ -419,7 +421,7 @@ describe('a backend state is labelled with its lag, then cleared when too old (H
   it('drops an arriving snapshot that is already too old for the clock', async () => {
     const f = await fixture();
     f.tick(5);
-    await f.refresh(atEpoch(payload(), f.state.julianDate), () => f.tick(90));
+    await f.refresh(atEpoch(payload(), f.state.julianDate), () => f.tick(120));
     expect(shownEpoch(f)).toBeNull();
     expect(f.lastStatus().text).toBe('Sun: procedural fallback (last backend state was for 2000-01-13)');
   });
@@ -512,6 +514,26 @@ describe('a backend state is labelled with its lag, then cleared when too old (H
     await f.fail(); // the poll at 30 s fails at once
     run(30); // the 30 s error backoff
     await f.refresh(atEpoch(payload(), f.state.julianDate), () => run(2)); // answered 2 s later
+    run(1);
+    expect(clears).toBe(0);
+  });
+
+  it('keeps the backend state through one poll that fails 19 s after it was sent', async () => {
+    const f = await fixture();
+    f.state.timeScaleDaysPerSec = 4;
+    let shown = true, clears = 0;
+    const run = (seconds: number) => {
+      for (let i = 0; i < seconds * 10; i += 1) {
+        f.tick(0.4);
+        const now = shownEpoch(f) !== null;
+        if (shown && !now) clears += 1;
+        shown = now;
+      }
+    };
+    run(30);
+    await f.fail(() => run(19)); // the backend's compute deadline: HTTP 503 after 19 s
+    run(30); // the 30 s error backoff
+    await f.refresh(atEpoch(payload(), f.state.julianDate), () => run(5)); // answered 5 s later
     run(1);
     expect(clears).toBe(0);
   });

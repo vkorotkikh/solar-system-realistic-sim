@@ -19,6 +19,7 @@ import type {
 } from 'three';
 import { J2000_JD } from './constants';
 import {
+  HEALTH_PROBE_TIMEOUT_MS,
   SOLAR_PHYSICS_ERROR_BACKOFF_MS,
   SOLAR_PHYSICS_POLL_INTERVAL_MS,
   SolarPhysicsClient,
@@ -264,11 +265,13 @@ export function createSunController({
   const solarRealtimeClient = new SolarRealtimeClient({
     baseUrl: backendBaseUrl
   });
-  // The longest a running clock waits for its next snapshot through one failed poll:
-  // a poll, the error backoff (at least a poll) and a request timeout.
-  const solarReplacementGapSec = (({ pollIntervalMs, timeoutMs }) =>
-    (pollIntervalMs + Math.max(pollIntervalMs, SOLAR_PHYSICS_ERROR_BACKOFF_MS) + timeoutMs) / 1000
-  )(solarPhysicsClient.status());
+  // The longest a running clock waits for its next snapshot through one failed poll: a poll, the
+  // failed request itself (its timeout and up to two /health probes), the error backoff (at least a
+  // poll) and the replacement's own latency (up to a timeout). 104 s with the defaults.
+  const solarReplacementGapSec = (({ pollIntervalMs, timeoutMs }) => (
+    pollIntervalMs + timeoutMs + 2 * HEALTH_PROBE_TIMEOUT_MS
+      + Math.max(pollIntervalMs, SOLAR_PHYSICS_ERROR_BACKOFF_MS) + timeoutMs
+  ) / 1000)(solarPhysicsClient.status());
 
   function publishSolarDataStatus() {
     const clientStatus = solarPhysicsClient.status();

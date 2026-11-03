@@ -226,7 +226,7 @@ export interface SolarPhysicsClientStatus {
 }
 
 /** Each `/health` probe only has to tell "answers" from "refused" from "nothing listening". */
-const HEALTH_PROBE_TIMEOUT_MS = 2_000;
+export const HEALTH_PROBE_TIMEOUT_MS = 2_000;
 /** The origin allowlist and the server's reachability change rarely; don't re-probe every retry. */
 const HEALTH_PROBE_REUSE_MS = 30_000;
 /** Upper bound on how long a server's Retry-After can postpone the next attempt. */
