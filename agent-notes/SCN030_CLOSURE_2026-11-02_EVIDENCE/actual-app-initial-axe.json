@@ -1,0 +1,860 @@
+{
+  "violations": [],
+  "incomplete": [
+    {
+      "id": "color-contrast",
+      "impact": "serious",
+      "tags": [
+        "cat.color",
+        "wcag2aa",
+        "wcag143",
+        "TTv5",
+        "TT13.c",
+        "EN-301-549",
+        "EN-9.1.4.3",
+        "ACT",
+        "RGAAv4",
+        "RGAA-3.2.1"
+      ],
+      "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+      "help": "Elements must meet minimum color contrast ratio thresholds",
+      "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/color-contrast?application=playwright",
+      "nodes": [
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "contrastRatio": 0,
+                "fontSize": "8.1pt (10.8px)",
+                "fontWeight": "normal",
+                "messageKey": "bgGradient",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [
+                {
+                  "html": "<aside id=\"control-panel\" aria-labelledby=\"app-title\" tabindex=\"-1\" aria-hidden=\"false\">",
+                  "target": [
+                    "#control-panel"
+                  ]
+                }
+              ],
+              "impact": "serious",
+              "message": "Element's background color could not be determined due to a background gradient"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": "serious",
+          "html": "<p class=\"eyebrow\">Solar observatory</p>",
+          "target": [
+            ".eyebrow"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element's background color could not be determined due to a background gradient"
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "contrastRatio": 0,
+                "fontSize": "14.2pt (18.88px)",
+                "fontWeight": "normal",
+                "messageKey": "bgGradient",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [
+                {
+                  "html": "<aside id=\"control-panel\" aria-labelledby=\"app-title\" tabindex=\"-1\" aria-hidden=\"false\">",
+                  "target": [
+                    "#control-panel"
+                  ]
+                }
+              ],
+              "impact": "serious",
+              "message": "Element's background color could not be determined due to a background gradient"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": "serious",
+          "html": "<h1 id=\"app-title\">Sun Model Lab</h1>",
+          "target": [
+            "#app-title"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element's background color could not be determined due to a background gradient"
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "contrastRatio": 0,
+                "fontSize": "9.4pt (12.48px)",
+                "fontWeight": "normal",
+                "messageKey": "bgGradient",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [
+                {
+                  "html": "<aside id=\"control-panel\" aria-labelledby=\"app-title\" tabindex=\"-1\" aria-hidden=\"false\">",
+                  "target": [
+                    "#control-panel"
+                  ]
+                }
+              ],
+              "impact": "serious",
+              "message": "Element's background color could not be determined due to a background gradient"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": "serious",
+          "html": "<p class=\"subtitle\">Real-time heliocentric model and solar observation workspace.</p>",
+          "target": [
+            ".subtitle"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element's background color could not be determined due to a background gradient"
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "contrastRatio": 0,
+                "fontSize": "8.4pt (11.2px)",
+                "fontWeight": "normal",
+                "messageKey": "bgGradient",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [
+                {
+                  "html": "<aside id=\"control-panel\" aria-labelledby=\"app-title\" tabindex=\"-1\" aria-hidden=\"false\">",
+                  "target": [
+                    "#control-panel"
+                  ]
+                }
+              ],
+              "impact": "serious",
+              "message": "Element's background color could not be determined due to a background gradient"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": "serious",
+          "html": "<span id=\"session-label\">Live simulation</span>",
+          "target": [
+            "#session-label"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element's background color could not be determined due to a background gradient"
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "contrastRatio": 0,
+                "fontSize": "8.4pt (11.2px)",
+                "fontWeight": "normal",
+                "messageKey": "bgGradient",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [
+                {
+                  "html": "<aside id=\"control-panel\" aria-labelledby=\"app-title\" tabindex=\"-1\" aria-hidden=\"false\">",
+                  "target": [
+                    "#control-panel"
+                  ]
+                }
+              ],
+              "impact": "serious",
+              "message": "Element's background color could not be determined due to a background gradient"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": "serious",
+          "html": "<span class=\"session-state__frame\">J2000 frame</span>",
+          "target": [
+            ".session-state__frame"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element's background color could not be determined due to a background gradient"
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "contrastRatio": 0,
+                "fontSize": "7.9pt (10.56px)",
+                "fontWeight": "normal",
+                "messageKey": "bgGradient",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [
+                {
+                  "html": "<aside id=\"control-panel\" aria-labelledby=\"app-title\" tabindex=\"-1\" aria-hidden=\"false\">",
+                  "target": [
+                    "#control-panel"
+                  ]
+                }
+              ],
+              "impact": "serious",
+              "message": "Element's background color could not be determined due to a background gradient"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": "serious",
+          "html": "<span>0.20× precise</span>",
+          "target": [
+            "#zoom-sensitivity-context > span:nth-child(1)"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element's background color could not be determined due to a background gradient"
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "contrastRatio": 0,
+                "fontSize": "7.9pt (10.56px)",
+                "fontWeight": "normal",
+                "messageKey": "bgGradient",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [
+                {
+                  "html": "<aside id=\"control-panel\" aria-labelledby=\"app-title\" tabindex=\"-1\" aria-hidden=\"false\">",
+                  "target": [
+                    "#control-panel"
+                  ]
+                }
+              ],
+              "impact": "serious",
+              "message": "Element's background color could not be determined due to a background gradient"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": "serious",
+          "html": "<span>4.00× fast</span>",
+          "target": [
+            "#zoom-sensitivity-context > span:nth-child(2)"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element's background color could not be determined due to a background gradient"
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "contrastRatio": 0,
+                "fontSize": "9.1pt (12.16px)",
+                "fontWeight": "normal",
+                "messageKey": "bgGradient",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [
+                {
+                  "html": "<aside id=\"control-panel\" aria-labelledby=\"app-title\" tabindex=\"-1\" aria-hidden=\"false\">",
+                  "target": [
+                    "#control-panel"
+                  ]
+                }
+              ],
+              "impact": "serious",
+              "message": "Element's background color could not be determined due to a background gradient"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": "serious",
+          "html": "<span class=\"section-heading\" role=\"heading\" aria-level=\"2\">\n              <svg viewBox=\"0 0 24 24\" aria-hidden=\"true\">\n                <circle cx=\"10.5\" cy=\"10.5\" r=\"6.5\"></circle>\n                <path d=\"m15.5 15.5 5 5\"></path>\n              </svg>\n              Explorer\n            </span>",
+          "target": [
+            "summary[aria-controls=\"explorer-controls\"] > .section-heading[role=\"heading\"][aria-level=\"2\"]"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element's background color could not be determined due to a background gradient"
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "contrastRatio": 0,
+                "fontSize": "9.6pt (12.8px)",
+                "fontWeight": "normal",
+                "messageKey": "bgGradient",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [
+                {
+                  "html": "<aside id=\"control-panel\" aria-labelledby=\"app-title\" tabindex=\"-1\" aria-hidden=\"false\">",
+                  "target": [
+                    "#control-panel"
+                  ]
+                }
+              ],
+              "impact": "serious",
+              "message": "Element's background color could not be determined due to a background gradient"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": "serious",
+          "html": "<label for=\"body-search\">Find a major body</label>",
+          "target": [
+            "label[for=\"body-search\"]"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element's background color could not be determined due to a background gradient"
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "contrastRatio": 0,
+                "fontSize": "8.4pt (11.2px)",
+                "fontWeight": "normal",
+                "messageKey": "bgGradient",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [
+                {
+                  "html": "<aside id=\"control-panel\" aria-labelledby=\"app-title\" tabindex=\"-1\" aria-hidden=\"false\">",
+                  "target": [
+                    "#control-panel"
+                  ]
+                }
+              ],
+              "impact": "serious",
+              "message": "Element's background color could not be determined due to a background gradient"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": "serious",
+          "html": "<p id=\"body-search-help\" class=\"control-help\">Filter major bodies by name or type. Escape clears the search.</p>",
+          "target": [
+            "#body-search-help"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element's background color could not be determined due to a background gradient"
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "contrastRatio": 0,
+                "fontSize": "9.6pt (12.8px)",
+                "fontWeight": "normal",
+                "messageKey": "bgGradient",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [
+                {
+                  "html": "<aside id=\"control-panel\" aria-labelledby=\"app-title\" tabindex=\"-1\" aria-hidden=\"false\">",
+                  "target": [
+                    "#control-panel"
+                  ]
+                }
+              ],
+              "impact": "serious",
+              "message": "Element's background color could not be determined due to a background gradient"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": "serious",
+          "html": "<label for=\"body-list\">Major bodies</label>",
+          "target": [
+            "label[for=\"body-list\"]"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element's background color could not be determined due to a background gradient"
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "contrastRatio": 0,
+                "fontSize": "9.1pt (12.16px)",
+                "fontWeight": "normal",
+                "messageKey": "bgGradient",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [
+                {
+                  "html": "<aside id=\"control-panel\" aria-labelledby=\"app-title\" tabindex=\"-1\" aria-hidden=\"false\">",
+                  "target": [
+                    "#control-panel"
+                  ]
+                }
+              ],
+              "impact": "serious",
+              "message": "Element's background color could not be determined due to a background gradient"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": "serious",
+          "html": "<output id=\"body-match-count\" aria-live=\"polite\" aria-atomic=\"true\">10 bodies</output>",
+          "target": [
+            "#body-match-count"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element's background color could not be determined due to a background gradient"
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "contrastRatio": 0,
+                "fontSize": "8.4pt (11.2px)",
+                "fontWeight": "normal",
+                "messageKey": "bgGradient",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [
+                {
+                  "html": "<aside id=\"control-panel\" aria-labelledby=\"app-title\" tabindex=\"-1\" aria-hidden=\"false\">",
+                  "target": [
+                    "#control-panel"
+                  ]
+                }
+              ],
+              "impact": "serious",
+              "message": "Element's background color could not be determined due to a background gradient"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": "serious",
+          "html": "<p id=\"body-list-help\" class=\"control-help\">Select a target, then choose a camera action.</p>",
+          "target": [
+            "#body-list-help"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element's background color could not be determined due to a background gradient"
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "contrastRatio": 0,
+                "fontSize": "8.4pt (11.2px)",
+                "fontWeight": "normal",
+                "messageKey": "bgGradient",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [
+                {
+                  "html": "<button id=\"focus-body\" class=\"button button--secondary\" type=\"button\" aria-pressed=\"true\">",
+                  "target": [
+                    "#focus-body"
+                  ]
+                },
+                {
+                  "html": "<aside id=\"control-panel\" aria-labelledby=\"app-title\" tabindex=\"-1\" aria-hidden=\"false\">",
+                  "target": [
+                    "#control-panel"
+                  ]
+                }
+              ],
+              "impact": "serious",
+              "message": "Element's background color could not be determined due to a background gradient"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": "serious",
+          "html": "<span>Focus</span>",
+          "target": [
+            "#focus-body > span"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element's background color could not be determined due to a background gradient"
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "contrastRatio": 0,
+                "fontSize": "8.4pt (11.2px)",
+                "fontWeight": "normal",
+                "messageKey": "bgGradient",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [
+                {
+                  "html": "<aside id=\"control-panel\" aria-labelledby=\"app-title\" tabindex=\"-1\" aria-hidden=\"false\">",
+                  "target": [
+                    "#control-panel"
+                  ]
+                }
+              ],
+              "impact": "serious",
+              "message": "Element's background color could not be determined due to a background gradient"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": "serious",
+          "html": "<span>Free cam</span>",
+          "target": [
+            "#clear-follow > span"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element's background color could not be determined due to a background gradient"
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "contrastRatio": 0,
+                "fontSize": "9.1pt (12.16px)",
+                "fontWeight": "normal",
+                "messageKey": "bgGradient",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [
+                {
+                  "html": "<details class=\"panel-disclosure panel-disclosure--danger\" open=\"\">",
+                  "target": [
+                    ".panel-disclosure--danger"
+                  ]
+                }
+              ],
+              "impact": "serious",
+              "message": "Element's background color could not be determined due to a background gradient"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": "serious",
+          "html": "<span class=\"section-heading\" role=\"heading\" aria-level=\"2\">",
+          "target": [
+            "summary[aria-controls=\"cataclysm-controls\"] > .section-heading[role=\"heading\"][aria-level=\"2\"]"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element's background color could not be determined due to a background gradient"
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "contrastRatio": 0,
+                "fontSize": "7.7pt (10.24px)",
+                "fontWeight": "normal",
+                "messageKey": "bgGradient",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [
+                {
+                  "html": "<span class=\"advanced-badge\">Advanced</span>",
+                  "target": [
+                    ".advanced-badge"
+                  ]
+                },
+                {
+                  "html": "<details class=\"panel-disclosure panel-disclosure--danger\" open=\"\">",
+                  "target": [
+                    ".panel-disclosure--danger"
+                  ]
+                }
+              ],
+              "impact": "serious",
+              "message": "Element's background color could not be determined due to a background gradient"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": "serious",
+          "html": "<span class=\"advanced-badge\">Advanced</span>",
+          "target": [
+            ".advanced-badge"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element's background color could not be determined due to a background gradient"
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "contrastRatio": 0,
+                "fontSize": "8.6pt (11.52px)",
+                "fontWeight": "normal",
+                "messageKey": "bgGradient",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [
+                {
+                  "html": "<p class=\"experiment-intro\">",
+                  "target": [
+                    ".experiment-intro"
+                  ]
+                },
+                {
+                  "html": "<details class=\"panel-disclosure panel-disclosure--danger\" open=\"\">",
+                  "target": [
+                    ".panel-disclosure--danger"
+                  ]
+                }
+              ],
+              "impact": "serious",
+              "message": "Element's background color could not be determined due to a background gradient"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": "serious",
+          "html": "<p class=\"experiment-intro\">",
+          "target": [
+            ".experiment-intro"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element's background color could not be determined due to a background gradient"
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "contrastRatio": 0,
+                "fontSize": "7.7pt (10.24px)",
+                "fontWeight": "normal",
+                "messageKey": "imgNode",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [
+                {
+                  "html": "<div class=\"frame-indicator\" aria-hidden=\"true\">\n          <span></span>\n          Heliocentric view\n        </div>",
+                  "target": [
+                    ".frame-indicator"
+                  ]
+                },
+                {
+                  "html": "<canvas id=\"space-canvas\" tabindex=\"0\" aria-label=\"Solar system visualization\" aria-describedby=\"camera-keyboard-help camera-follow-help\" data-engine=\"three.js r182\" width=\"250\" height=\"350\" style=\"touch-action: none;\" data-orbital-worker=\"ready\"></canvas>",
+                  "target": [
+                    "#space-canvas"
+                  ]
+                }
+              ],
+              "impact": "serious",
+              "message": "Element's background color could not be determined because element contains an image node"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": "serious",
+          "html": "<div class=\"frame-indicator\" aria-hidden=\"true\">\n          <span></span>\n          Heliocentric view\n        </div>",
+          "target": [
+            ".frame-indicator"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element's background color could not be determined because element contains an image node"
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "contrastRatio": 0,
+                "fontSize": "7.9pt (10.56px)",
+                "fontWeight": "normal",
+                "messageKey": "bgOverlap",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element's background color could not be determined because it is overlapped by another element"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": "serious",
+          "html": "<span class=\"pointer-hint\">Drag to orbit · Scroll to zoom · Double-click to follow a body</span>",
+          "target": [
+            ".pointer-hint"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "contrastRatio": 0,
+                "fontSize": "8.2pt (10.88px)",
+                "fontWeight": "normal",
+                "messageKey": "imgNode",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [
+                {
+                  "html": "<span id=\"status-focus\" data-camera-mode=\"focus\">Focused · Sun</span>",
+                  "target": [
+                    "#status-focus"
+                  ]
+                },
+                {
+                  "html": "<canvas id=\"space-canvas\" tabindex=\"0\" aria-label=\"Solar system visualization\" aria-describedby=\"camera-keyboard-help camera-follow-help\" data-engine=\"three.js r182\" width=\"250\" height=\"350\" style=\"touch-action: none;\" data-orbital-worker=\"ready\"></canvas>",
+                  "target": [
+                    "#space-canvas"
+                  ]
+                }
+              ],
+              "impact": "serious",
+              "message": "Element's background color could not be determined because element contains an image node"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": "serious",
+          "html": "<span id=\"status-focus\" data-camera-mode=\"focus\">Focused · Sun</span>",
+          "target": [
+            "#status-focus"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element's background color could not be determined because element contains an image node"
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "contrastRatio": 0,
+                "fontSize": "8.2pt (10.88px)",
+                "fontWeight": "normal",
+                "messageKey": "imgNode",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [
+                {
+                  "html": "<span id=\"status-bodies\">Bodies · 55,010</span>",
+                  "target": [
+                    "#status-bodies"
+                  ]
+                },
+                {
+                  "html": "<canvas id=\"space-canvas\" tabindex=\"0\" aria-label=\"Solar system visualization\" aria-describedby=\"camera-keyboard-help camera-follow-help\" data-engine=\"three.js r182\" width=\"250\" height=\"350\" style=\"touch-action: none;\" data-orbital-worker=\"ready\"></canvas>",
+                  "target": [
+                    "#space-canvas"
+                  ]
+                }
+              ],
+              "impact": "serious",
+              "message": "Element's background color could not be determined because element contains an image node"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": "serious",
+          "html": "<span id=\"status-bodies\">Bodies · 55,010</span>",
+          "target": [
+            "#status-bodies"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element's background color could not be determined because element contains an image node"
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "contrastRatio": 0,
+                "fontSize": "8.2pt (10.88px)",
+                "fontWeight": "normal",
+                "messageKey": "imgNode",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [
+                {
+                  "html": "<span id=\"status-zoom\">Range · 2.60 AU</span>",
+                  "target": [
+                    "#status-zoom"
+                  ]
+                },
+                {
+                  "html": "<canvas id=\"space-canvas\" tabindex=\"0\" aria-label=\"Solar system visualization\" aria-describedby=\"camera-keyboard-help camera-follow-help\" data-engine=\"three.js r182\" width=\"250\" height=\"350\" style=\"touch-action: none;\" data-orbital-worker=\"ready\"></canvas>",
+                  "target": [
+                    "#space-canvas"
+                  ]
+                }
+              ],
+              "impact": "serious",
+              "message": "Element's background color could not be determined because element contains an image node"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": "serious",
+          "html": "<span id=\"status-zoom\">Range · 2.60 AU</span>",
+          "target": [
+            "#status-zoom"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element's background color could not be determined because element contains an image node"
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "contrastRatio": 0,
+                "fontSize": "8.2pt (10.88px)",
+                "fontWeight": "normal",
+                "messageKey": "elmPartiallyObscuring",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element's background color could not be determined because it partially overlaps other elements"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": "serious",
+          "html": "<span id=\"status-catalog\" role=\"status\" aria-live=\"polite\" aria-atomic=\"true\" data-catalog-state=\"verified\" title=\"Asteroids: Phase-1 integrity checked (100,000 stored rows, SHA-256); largest-first prefix, not representative; scientific accuracy not certified\">",
+          "target": [
+            "#status-catalog"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element's background color could not be determined because it partially overlaps other elements"
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "contrastRatio": 0,
+                "fontSize": "8.2pt (10.88px)",
+                "fontWeight": "normal",
+                "messageKey": "imgNode",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [
+                {
+                  "html": "<span id=\"status-solar\" data-solar-state=\"error\" title=\"Sun: procedural fallback (solar server sent an invalid response)\"><span class=\"status-text\">Sun: procedural fallback (solar server sent an invalid response)</span></span>",
+                  "target": [
+                    "#status-solar"
+                  ]
+                },
+                {
+                  "html": "<canvas id=\"space-canvas\" tabindex=\"0\" aria-label=\"Solar system visualization\" aria-describedby=\"camera-keyboard-help camera-follow-help\" data-engine=\"three.js r182\" width=\"250\" height=\"350\" style=\"touch-action: none;\" data-orbital-worker=\"ready\"></canvas>",
+                  "target": [
+                    "#space-canvas"
+                  ]
+                }
+              ],
+              "impact": "serious",
+              "message": "Element's background color could not be determined because element contains an image node"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": "serious",
+          "html": "<span class=\"status-text\">Sun: procedural fallback (solar server sent an invalid response)</span>",
+          "target": [
+            ".status-text"
+          ],
+          "failureSummary": "Fix any of the following:\n  Element's background color could not be determined because element contains an image node"
+        }
+      ]
+    }
+  ]
+}

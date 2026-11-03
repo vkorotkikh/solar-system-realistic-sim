@@ -1,0 +1,80 @@
+
+ RUN  v5.0.4 /home/nomad/ai/projects/worktrees/solar-scn005-closure-20261102
+
+ ❯ scripts/moon-visual-identity.test.mjs (8 tests | 4 failed) 20ms
+   × forced-visible Earth Moon uses the intended procedural lunar quadtree (realistic=false) 5ms
+   × forced-visible Earth Moon uses the intended procedural lunar quadtree (realistic=true) 2ms
+   × earth keeps actual quadtree material, canonical identity and radius 2ms
+   × mars keeps actual quadtree material, canonical identity and radius 2ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  scripts/moon-visual-identity.test.mjs > forced-visible Earth Moon uses the intended procedural lunar quadtree (realistic=false)
+ FAIL  scripts/moon-visual-identity.test.mjs > forced-visible Earth Moon uses the intended procedural lunar quadtree (realistic=true)
+AssertionError: expected undefined to be 1 // Object.is equality
+
+- Expected:
+1
+
++ Received:
+undefined
+
+ ❯ scripts/moon-visual-identity.test.mjs:91:49
+     89|       expect(mesh.userData.isQuadtree).toBe(true);
+     90|       const tree = mesh.userData.quadtree;
+     91|       expect(tree.material.defines.PLANET_TYPE).toBe(1);
+       |                                                 ^
+     92|       const radius = realistic ? moon.realRadiusAu : moon.displayRadiu…
+     93|       expect(tree.baseRadius).toBe(radius);
+ ❯ withScene scripts/moon-visual-identity.test.mjs:62:5
+ ❯ scripts/moon-visual-identity.test.mjs:87:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  scripts/moon-visual-identity.test.mjs > earth keeps actual quadtree material, canonical identity and radius
+AssertionError: expected undefined to be +0 // Object.is equality
+
+- Expected:
+0
+
++ Received:
+undefined
+
+ ❯ scripts/moon-visual-identity.test.mjs:121:49
+    119|       const mesh = runtime.bodyMeshes.get(id), tree = mesh.userData.qu…
+    120|       expect(mesh.userData.isQuadtree).toBe(true);
+    121|       expect(tree.material.defines.PLANET_TYPE).toBe(type);
+       |                                                 ^
+    122|       expect(tree.baseRadius).toBe(byId(id).displayRadiusAu);
+    123|       expect(tree.material.uniforms.uDisplacementScale.value).toBeClos…
+ ❯ withScene scripts/moon-visual-identity.test.mjs:62:5
+ ❯ scripts/moon-visual-identity.test.mjs:118:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+ FAIL  scripts/moon-visual-identity.test.mjs > mars keeps actual quadtree material, canonical identity and radius
+AssertionError: expected undefined to be 2 // Object.is equality
+
+- Expected:
+2
+
++ Received:
+undefined
+
+ ❯ scripts/moon-visual-identity.test.mjs:121:49
+    119|       const mesh = runtime.bodyMeshes.get(id), tree = mesh.userData.qu…
+    120|       expect(mesh.userData.isQuadtree).toBe(true);
+    121|       expect(tree.material.defines.PLANET_TYPE).toBe(type);
+       |                                                 ^
+    122|       expect(tree.baseRadius).toBe(byId(id).displayRadiusAu);
+    123|       expect(tree.material.uniforms.uDisplacementScale.value).toBeClos…
+ ❯ withScene scripts/moon-visual-identity.test.mjs:62:5
+ ❯ scripts/moon-visual-identity.test.mjs:118:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  4 failed | 4 passed (8)
+   Start at  12:29:07
+   Duration  625ms (import 63%, transform 33%, tests 4%)

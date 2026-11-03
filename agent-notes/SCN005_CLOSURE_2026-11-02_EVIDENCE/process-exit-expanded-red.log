@@ -1,0 +1,278 @@
+FFF.                                                                     [100%]
+=================================== FAILURES ===================================
+________ test_finished_result_survives_slow_child_exit_within_deadline _________
+
+    def test_finished_result_survives_slow_child_exit_within_deadline() -> None:
+        # A loaded host can take longer than a fixed sub-second grace to tear down
+        # an interpreter holding numpy/scipy/astropy. That turned complete PFSS
+        # results into 503 solar_compute_timeout with most of the deadline unused.
+        from sim.process_supervisor import SupervisedProcessRunner
+
+        runner = SupervisedProcessRunner(TARGET, max_workers=1, max_queue=0)
+        try:
+            future = runner.submit(
+                {
+                    "operation": "echo_then_slow_exit",
+                    "exit_delay_seconds": 0.6,
+                    "result": _result("late exit"),
+                },
+                timeout_seconds=5.0,
+            )
+>           assert future.result(timeout=7.0)["value"] == "late exit"
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+backend/tests/test_solar_process_supervisor.py:193:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+/home/nomad/.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/concurrent/futures/_base.py:456: in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+/home/nomad/.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/concurrent/futures/_base.py:401: in __get_result
+    raise self._exception
+/home/nomad/.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/concurrent/futures/thread.py:59: in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <sim.process_supervisor.SupervisedProcessRunner object at 0x78033a25b920>
+job_id = 1
+payload = {'operation': 'echo_then_slow_exit', 'exit_delay_seconds': 0.6, 'result': {'schema': {'name': 'solar_physics_state', 'version': 2}, 'source': 'backend', 'value': 'late exit'}}
+absolute_deadline = 129426.999344356
+cancel_event = <threading.Event at 0x78033a599700: unset>
+
+    def _execute(
+        self,
+        job_id: int,
+        payload: Any,
+        absolute_deadline: float,
+        cancel_event: threading.Event,
+    ) -> Any:
+        if cancel_event.is_set():
+            raise ProcessCancelled("process job cancelled before start")
+        if time.monotonic() >= absolute_deadline:
+            raise ProcessTimedOut("worker deadline expired while queued")
+
+        receive_connection: Connection | None = None
+        send_connection: Connection | None = None
+        process: Any | None = None
+        started = False
+        try:
+            try:
+                receive_connection, send_connection = self._context.Pipe(duplex=False)
+                process = self._context.Process(
+                    target=_child_entry,
+                    args=(
+                        self._target_spec,
+                        payload,
+                        send_connection,
+                        self._max_result_bytes,
+                    ),
+                    name=f"solar-physics-{job_id}",
+                    daemon=True,
+                )
+            except BaseException as exc:
+                raise ProcessSubmissionFailed(
+                    "worker process construction failed"
+                ) from exc
+
+            with self._state_lock:
+                if self._closed or cancel_event.is_set():
+                    raise ProcessCancelled("process job cancelled before start")
+                if time.monotonic() >= absolute_deadline:
+                    raise ProcessTimedOut("worker deadline expired while queued")
+                try:
+                    process.start()
+                except BaseException as exc:
+                    raise ProcessSubmissionFailed("worker process failed to start") from exc
+                started = True
+                self._active_processes[job_id] = process
+            send_connection.close()
+
+            while True:
+                if cancel_event.is_set():
+                    self._reap_or_quarantine(job_id, process)
+                    raise ProcessCancelled("process job cancelled by its owner")
+
+                remaining = absolute_deadline - time.monotonic()
+                if remaining <= 0:
+                    self._reap_or_quarantine(job_id, process)
+                    raise ProcessTimedOut("worker process exceeded its hard deadline")
+
+                if receive_connection.poll(min(_POLL_SECONDS, remaining)):
+                    try:
+                        encoded = receive_connection.recv_bytes(
+                            maxlength=self._max_result_bytes
+                        )
+                    except (EOFError, OSError) as exc:
+                        self._reap_or_quarantine(job_id, process)
+                        if process.exitcode not in (None, 0):
+                            raise ProcessCrashed(process.exitcode) from exc
+                        raise ProcessResultRejected(
+                            "worker result exceeded or broke the wire contract"
+                        ) from exc
+
+                    exit_remaining = max(0.0, absolute_deadline - time.monotonic())
+                    process.join(min(_REAP_GRACE_SECONDS, exit_remaining))
+                    if process.is_alive():
+                        self._reap_or_quarantine(job_id, process)
+>                       raise ProcessTimedOut(
+                            "worker sent a result but did not exit before its deadline"
+                        )
+E                       sim.process_supervisor.ProcessTimedOut: worker sent a result but did not exit before its deadline
+
+backend/sim/process_supervisor.py:587: ProcessTimedOut
+_________ test_child_that_never_exits_after_its_result_still_times_out _________
+
+tmp_path = PosixPath('/tmp/pytest-of-nomad/pytest-3379/test_child_that_never_exits_af0')
+
+    def test_child_that_never_exits_after_its_result_still_times_out(tmp_path: Path) -> None:
+        from sim.process_supervisor import ProcessTimedOut, SupervisedProcessRunner
+
+        runner = SupervisedProcessRunner(TARGET, max_workers=1, max_queue=0)
+        started = tmp_path / "lingering.pid"
+        hard_timeout_seconds = 3.0
+        admitted_at = time.monotonic()
+        try:
+            future = runner.submit(
+                {
+                    "operation": "echo_then_slow_exit",
+                    "exit_delay_seconds": 30.0,
+                    "started_path": str(started),
+                    "result": _result(),
+                },
+                timeout_seconds=hard_timeout_seconds,
+            )
+            child_pid = _wait_for_pid(started)
+            with pytest.raises(ProcessTimedOut):
+                future.result(timeout=hard_timeout_seconds + 2.0)
+>           assert time.monotonic() - admitted_at >= hard_timeout_seconds
+E           assert (129422.796387587 - 129422.412201536) >= 3.0
+E            +  where 129422.796387587 = <built-in function monotonic>()
+E            +    where <built-in function monotonic> = time.monotonic
+
+backend/tests/test_solar_process_supervisor.py:220: AssertionError
+___________ test_shutdown_cancels_child_already_finishing_its_result ___________
+
+tmp_path = PosixPath('/tmp/pytest-of-nomad/pytest-3379/test_shutdown_cancels_child_al0')
+
+    def test_shutdown_cancels_child_already_finishing_its_result(tmp_path: Path) -> None:
+        from sim.process_supervisor import ProcessCancelled, SupervisedProcessRunner
+
+        runner = SupervisedProcessRunner(TARGET, max_workers=1, max_queue=0)
+        exit_started = tmp_path / "shutdown-exit.pid"
+        try:
+            future = runner.submit(
+                {"operation": "echo_then_slow_exit", "exit_delay_seconds": 30,
+                 "exit_started_path": str(exit_started), "result": _result()},
+                timeout_seconds=5.0,
+            )
+            child_pid = _wait_for_pid(exit_started)
+            shutdown_started = time.monotonic()
+            runner.shutdown()
+            assert time.monotonic() - shutdown_started < 2.0
+            with pytest.raises(ProcessCancelled):
+>               future.result()
+
+backend/tests/test_solar_process_supervisor.py:244:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+/home/nomad/.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/concurrent/futures/_base.py:449: in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+/home/nomad/.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/concurrent/futures/_base.py:401: in __get_result
+    raise self._exception
+/home/nomad/.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/concurrent/futures/thread.py:59: in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <sim.process_supervisor.SupervisedProcessRunner object at 0x780337dc7860>
+job_id = 1
+payload = {'operation': 'echo_then_slow_exit', 'exit_delay_seconds': 30, 'exit_started_path': '/tmp/pytest-of-nomad/pytest-3379/...own-exit.pid', 'result': {'schema': {'name': 'solar_physics_state', 'version': 2}, 'source': 'backend', 'value': 'ok'}}
+absolute_deadline = 129427.806351301
+cancel_event = <threading.Event at 0x780337dc7590: set>
+
+    def _execute(
+        self,
+        job_id: int,
+        payload: Any,
+        absolute_deadline: float,
+        cancel_event: threading.Event,
+    ) -> Any:
+        if cancel_event.is_set():
+            raise ProcessCancelled("process job cancelled before start")
+        if time.monotonic() >= absolute_deadline:
+            raise ProcessTimedOut("worker deadline expired while queued")
+
+        receive_connection: Connection | None = None
+        send_connection: Connection | None = None
+        process: Any | None = None
+        started = False
+        try:
+            try:
+                receive_connection, send_connection = self._context.Pipe(duplex=False)
+                process = self._context.Process(
+                    target=_child_entry,
+                    args=(
+                        self._target_spec,
+                        payload,
+                        send_connection,
+                        self._max_result_bytes,
+                    ),
+                    name=f"solar-physics-{job_id}",
+                    daemon=True,
+                )
+            except BaseException as exc:
+                raise ProcessSubmissionFailed(
+                    "worker process construction failed"
+                ) from exc
+
+            with self._state_lock:
+                if self._closed or cancel_event.is_set():
+                    raise ProcessCancelled("process job cancelled before start")
+                if time.monotonic() >= absolute_deadline:
+                    raise ProcessTimedOut("worker deadline expired while queued")
+                try:
+                    process.start()
+                except BaseException as exc:
+                    raise ProcessSubmissionFailed("worker process failed to start") from exc
+                started = True
+                self._active_processes[job_id] = process
+            send_connection.close()
+
+            while True:
+                if cancel_event.is_set():
+                    self._reap_or_quarantine(job_id, process)
+                    raise ProcessCancelled("process job cancelled by its owner")
+
+                remaining = absolute_deadline - time.monotonic()
+                if remaining <= 0:
+                    self._reap_or_quarantine(job_id, process)
+                    raise ProcessTimedOut("worker process exceeded its hard deadline")
+
+                if receive_connection.poll(min(_POLL_SECONDS, remaining)):
+                    try:
+                        encoded = receive_connection.recv_bytes(
+                            maxlength=self._max_result_bytes
+                        )
+                    except (EOFError, OSError) as exc:
+                        self._reap_or_quarantine(job_id, process)
+                        if process.exitcode not in (None, 0):
+                            raise ProcessCrashed(process.exitcode) from exc
+                        raise ProcessResultRejected(
+                            "worker result exceeded or broke the wire contract"
+                        ) from exc
+
+                    exit_remaining = max(0.0, absolute_deadline - time.monotonic())
+                    process.join(min(_REAP_GRACE_SECONDS, exit_remaining))
+                    if process.is_alive():
+                        self._reap_or_quarantine(job_id, process)
+>                       raise ProcessTimedOut(
+                            "worker sent a result but did not exit before its deadline"
+                        )
+E                       sim.process_supervisor.ProcessTimedOut: worker sent a result but did not exit before its deadline
+
+backend/sim/process_supervisor.py:587: ProcessTimedOut
+=========================== short test summary info ============================
+FAILED backend/tests/test_solar_process_supervisor.py::test_finished_result_survives_slow_child_exit_within_deadline
+FAILED backend/tests/test_solar_process_supervisor.py::test_child_that_never_exits_after_its_result_still_times_out
+FAILED backend/tests/test_solar_process_supervisor.py::test_shutdown_cancels_child_already_finishing_its_result
+3 failed, 1 passed, 42 deselected in 1.73s

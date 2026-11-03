@@ -1,0 +1,389 @@
+{
+  "record_type": "NORMALIZED_PLAYWRIGHT_REPORT",
+  "raw_report": "scene-contrast-final.json.gz",
+  "raw_uncompressed_sha256": "0c71b45b049df6c60f213271f8978080c6b998581569692de225871583e6bd77",
+  "stats": {
+    "startTime": "2026-11-02T17:35:45.363Z",
+    "duration": 25304.655,
+    "expected": 1,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  },
+  "cases": [
+    {
+      "title": "actual rendered desktop and mobile text retains contrast over any scene",
+      "project": "chromium",
+      "status": "passed",
+      "duration_ms": 24261,
+      "errors": [],
+      "attachments": [
+        {
+          "name": "scene-contrast-desktop",
+          "data": [
+            {
+              "selector": ".frame-indicator",
+              "foreground": "rgb(166, 179, 182)",
+              "background": "rgb(7, 11, 14)",
+              "backgroundImage": "none",
+              "conservativeContrast": 9.165267231908057
+            },
+            {
+              "selector": ".interaction-hint",
+              "foreground": "rgba(209, 218, 218, 0.72)",
+              "background": "rgb(7, 11, 14)",
+              "backgroundImage": "none",
+              "conservativeContrast": 7.419254213925699
+            },
+            {
+              "selector": "#status-focus",
+              "foreground": "rgb(221, 229, 227)",
+              "background": "rgb(7, 12, 15)",
+              "backgroundImage": "none",
+              "conservativeContrast": 15.340238892772325
+            },
+            {
+              "selector": "#status-bodies",
+              "foreground": "rgb(221, 229, 227)",
+              "background": "rgb(7, 12, 15)",
+              "backgroundImage": "none",
+              "conservativeContrast": 15.340238892772325
+            },
+            {
+              "selector": "#status-zoom",
+              "foreground": "rgb(221, 229, 227)",
+              "background": "rgb(7, 12, 15)",
+              "backgroundImage": "none",
+              "conservativeContrast": 15.340238892772325
+            },
+            {
+              "selector": "#status-catalog",
+              "foreground": "rgb(221, 229, 227)",
+              "background": "rgb(7, 12, 15)",
+              "backgroundImage": "none",
+              "conservativeContrast": 15.340238892772325
+            },
+            {
+              "selector": "#status-solar",
+              "foreground": "rgb(221, 229, 227)",
+              "background": "rgb(7, 12, 15)",
+              "backgroundImage": "none",
+              "conservativeContrast": 15.340238892772325
+            }
+          ]
+        },
+        {
+          "name": "actual-app-axe-desktop",
+          "data": {
+            "testEngine": {
+              "name": "axe-core",
+              "version": "4.11.1"
+            },
+            "passes": [
+              "aria-allowed-attr",
+              "aria-conditional-attr",
+              "aria-deprecated-role",
+              "aria-hidden-body",
+              "aria-hidden-focus",
+              "aria-prohibited-attr",
+              "aria-required-attr",
+              "aria-roles",
+              "aria-valid-attr-value",
+              "aria-valid-attr",
+              "autocomplete-valid",
+              "avoid-inline-spacing",
+              "button-name",
+              "color-contrast",
+              "definition-list",
+              "dlitem",
+              "document-title",
+              "duplicate-id-aria",
+              "form-field-multiple-labels",
+              "html-has-lang",
+              "html-lang-valid",
+              "label",
+              "meta-viewport",
+              "nested-interactive",
+              "scrollable-region-focusable",
+              "select-name",
+              "summary-name",
+              "target-size"
+            ],
+            "violations": [],
+            "incomplete": []
+          }
+        },
+        {
+          "name": "scene-contrast-mobile-closed",
+          "data": [
+            {
+              "selector": "#panel-toggle",
+              "foreground": "rgb(241, 238, 231)",
+              "background": "rgb(9, 14, 18)",
+              "backgroundImage": "none",
+              "conservativeContrast": 16.732327799125013
+            },
+            {
+              "selector": ".frame-indicator",
+              "foreground": "rgb(166, 179, 182)",
+              "background": "rgb(7, 11, 14)",
+              "backgroundImage": "none",
+              "conservativeContrast": 9.165267231908057
+            },
+            {
+              "selector": ".interaction-hint",
+              "foreground": "rgba(209, 218, 218, 0.72)",
+              "background": "rgb(7, 11, 14)",
+              "backgroundImage": "none",
+              "conservativeContrast": 7.419254213925699
+            },
+            {
+              "selector": "#status-focus",
+              "foreground": "rgb(221, 229, 227)",
+              "background": "rgb(7, 12, 15)",
+              "backgroundImage": "none",
+              "conservativeContrast": 15.340238892772325
+            },
+            {
+              "selector": "#status-bodies",
+              "foreground": "rgb(221, 229, 227)",
+              "background": "rgb(7, 12, 15)",
+              "backgroundImage": "none",
+              "conservativeContrast": 15.340238892772325
+            },
+            {
+              "selector": "#status-zoom",
+              "foreground": "rgb(221, 229, 227)",
+              "background": "rgb(7, 12, 15)",
+              "backgroundImage": "none",
+              "conservativeContrast": 15.340238892772325
+            },
+            {
+              "selector": "#status-catalog",
+              "foreground": "rgb(221, 229, 227)",
+              "background": "rgb(7, 12, 15)",
+              "backgroundImage": "none",
+              "conservativeContrast": 15.340238892772325
+            },
+            {
+              "selector": "#status-solar",
+              "foreground": "rgb(221, 229, 227)",
+              "background": "rgb(7, 12, 15)",
+              "backgroundImage": "none",
+              "conservativeContrast": 15.340238892772325
+            }
+          ]
+        },
+        {
+          "name": "actual-app-axe-mobile-closed",
+          "data": {
+            "testEngine": {
+              "name": "axe-core",
+              "version": "4.11.1"
+            },
+            "passes": [
+              "aria-allowed-attr",
+              "aria-conditional-attr",
+              "aria-deprecated-role",
+              "aria-hidden-body",
+              "aria-hidden-focus",
+              "aria-prohibited-attr",
+              "aria-required-attr",
+              "aria-roles",
+              "aria-valid-attr-value",
+              "aria-valid-attr",
+              "avoid-inline-spacing",
+              "button-name",
+              "color-contrast",
+              "document-title",
+              "duplicate-id-aria",
+              "html-has-lang",
+              "html-lang-valid",
+              "meta-viewport",
+              "nested-interactive",
+              "summary-name",
+              "target-size"
+            ],
+            "violations": [],
+            "incomplete": []
+          }
+        },
+        {
+          "name": "actual-app-axe-mobile-open",
+          "data": {
+            "testEngine": {
+              "name": "axe-core",
+              "version": "4.11.1"
+            },
+            "passes": [
+              "aria-allowed-attr",
+              "aria-conditional-attr",
+              "aria-deprecated-role",
+              "aria-hidden-body",
+              "aria-hidden-focus",
+              "aria-prohibited-attr",
+              "aria-required-attr",
+              "aria-roles",
+              "aria-valid-attr-value",
+              "aria-valid-attr",
+              "autocomplete-valid",
+              "button-name",
+              "color-contrast",
+              "definition-list",
+              "dlitem",
+              "document-title",
+              "duplicate-id-aria",
+              "form-field-multiple-labels",
+              "html-has-lang",
+              "html-lang-valid",
+              "label",
+              "meta-viewport",
+              "nested-interactive",
+              "scrollable-region-focusable",
+              "select-name",
+              "summary-name",
+              "target-size"
+            ],
+            "violations": [],
+            "incomplete": [
+              {
+                "id": "color-contrast",
+                "impact": "serious",
+                "tags": [
+                  "cat.color",
+                  "wcag2aa",
+                  "wcag143",
+                  "TTv5",
+                  "TT13.c",
+                  "EN-301-549",
+                  "EN-9.1.4.3",
+                  "ACT",
+                  "RGAAv4",
+                  "RGAA-3.2.1"
+                ],
+                "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+                "help": "Elements must meet minimum color contrast ratio thresholds",
+                "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/color-contrast?application=playwright",
+                "nodes": [
+                  {
+                    "any": [
+                      {
+                        "id": "color-contrast",
+                        "data": {
+                          "contrastRatio": 0,
+                          "fontSize": "9.4pt (12.48px)",
+                          "fontWeight": "normal",
+                          "messageKey": "elmPartiallyObscuring",
+                          "expectedContrastRatio": "4.5:1"
+                        },
+                        "relatedNodes": [],
+                        "impact": "serious",
+                        "message": "Element's background color could not be determined because it partially overlaps other elements"
+                      }
+                    ],
+                    "all": [],
+                    "none": [],
+                    "impact": "serious",
+                    "html": "<p class=\"subtitle\">Real-time heliocentric model and solar observation workspace.</p>",
+                    "target": [
+                      ".subtitle"
+                    ],
+                    "failureSummary": "Fix any of the following:\n  Element's background color could not be determined because it partially overlaps other elements"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "contrast-disposition-mobile-open-subtitle",
+          "data": {
+            "rule": "color-contrast",
+            "target": [
+              ".subtitle"
+            ],
+            "rawReason": {
+              "contrastRatio": 0,
+              "fontSize": "9.4pt (12.48px)",
+              "fontWeight": "normal",
+              "messageKey": "elmPartiallyObscuring",
+              "expectedContrastRatio": "4.5:1"
+            },
+            "method": "Opaque ancestor bounds, all text-line corner/center hit tests, WCAG sRGB relative luminance; no tolerance",
+            "observation": {
+              "foreground": [
+                154,
+                168,
+                172,
+                1
+              ],
+              "background": [
+                9,
+                14,
+                18,
+                1
+              ],
+              "layers": [
+                {
+                  "selector": "subtitle",
+                  "image": "none",
+                  "opacity": "1",
+                  "filter": "none",
+                  "blend": "normal",
+                  "color": "rgba(0, 0, 0, 0)"
+                },
+                {
+                  "selector": "panel-header",
+                  "image": "none",
+                  "opacity": "1",
+                  "filter": "none",
+                  "blend": "normal",
+                  "color": "rgba(0, 0, 0, 0)"
+                },
+                {
+                  "selector": "control-panel",
+                  "image": "none",
+                  "opacity": "1",
+                  "filter": "none",
+                  "blend": "normal",
+                  "color": "rgb(9, 14, 18)"
+                }
+              ],
+              "lines": [
+                {
+                  "rect": {
+                    "x": 16,
+                    "y": 69.515625,
+                    "width": 242.015625,
+                    "height": 15,
+                    "top": 69.515625,
+                    "right": 258.015625,
+                    "bottom": 84.515625,
+                    "left": 16
+                  },
+                  "coveredByOpaqueSurface": true,
+                  "unobscured": true
+                },
+                {
+                  "rect": {
+                    "x": 16,
+                    "y": 88.234375,
+                    "width": 149.046875,
+                    "height": 15,
+                    "top": 88.234375,
+                    "right": 165.046875,
+                    "bottom": 103.234375,
+                    "left": 16
+                  },
+                  "coveredByOpaqueSurface": true,
+                  "unobscured": true
+                }
+              ],
+              "contrast": 7.91270822812218
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

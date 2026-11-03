@@ -9,19 +9,24 @@ const targetPosition = new Vector3();
 
 /** Labels have a constant CSS-pixel footprint, with clearance outside the
  * displayed body. No AU-sized minimum overwhelms a realistically scaled moon.
+ * The clearance is measured from the sphere's limb, not its radius, and the
+ * label is hidden once the camera reaches the surface.
  */
 export function updateBodyLabel(sprite: Sprite, worldCenter: Vector3, radiusAu: number,
   camera: PerspectiveCamera, viewportHeight: number): boolean {
   viewPosition.copy(worldCenter).applyMatrix4(camera.matrixWorldInverse);
   const depth = -viewPosition.z;
-  if (depth <= 0) return false;
+  const radius = Math.max(0, radiusAu);
+  if (depth <= radius) return false;
   const unitsPerPixel = 2 * depth * Math.tan(camera.fov * Math.PI / 360)
     / (Math.max(1, viewportHeight) * camera.zoom);
   const height = 40 * unitsPerPixel;
   sprite.scale.set(height * 4, height, 1);
   screenUp.set(0, 1, 0).applyQuaternion(camera.quaternion);
-  targetPosition.copy(worldCenter).addScaledVector(screenUp,
-    Math.max(0, radiusAu) + (8 + 20) * unitsPerPixel);
+  // The limb is at angular radius asin(r/d), which is r*d/sqrt(d^2-r^2) in the
+  // centre's depth plane and grows without bound as the camera nears the body.
+  const limb = radius * depth / Math.sqrt(depth * depth - radius * radius);
+  targetPosition.copy(worldCenter).addScaledVector(screenUp, limb + (8 + 20) * unitsPerPixel);
   if (sprite.parent) sprite.parent.worldToLocal(targetPosition);
   sprite.position.copy(targetPosition);
   return true;

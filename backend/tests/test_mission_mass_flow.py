@@ -462,3 +462,31 @@ def test_risk_is_low_for_a_plan_with_real_margin() -> None:
     )
     assert risk["failureProbability"] < 0.05
     assert risk["envelopes"]["propellantMarginKg"]["p50"] > 0.0
+
+
+def test_max_closable_cargo_never_decreases_as_more_cargo_is_available() -> None:
+    # Reviewer's case: the largest closable cargo (0.4 kg) is below the old fixed 1 kg bisection
+    # tolerance, so 5 kg available returned 0.0 while 0.39 kg available returned 0.39.
+    vehicle = VehicleDefinition("thin-margin", [StageDefinition("stage", 1_000.0, 2_000.0, 300.0)])
+
+    def closes(burn_km_s: float, cargo_kg: float) -> bool:
+        return SERVICE.evaluate_burn_budget(
+            vehicle, payload_mass_kg=100.0, burns_km_s=[0.0, 0.0, burn_km_s, 0.0],
+            reserve_fraction=0.02, cargo_added_kg=[0.0, 0.0, cargo_kg, 0.0],
+        )["feasible"]
+
+    lo, hi = 1.0, 6.0  # bisect the return burn to the one that only just closes with 0.4 kg aboard
+    for _ in range(80):
+        mid = (lo + hi) / 2
+        lo, hi = (mid, hi) if closes(mid, 0.4) else (lo, mid)
+    available = [0.1, 0.39, 0.5, 1.0, 2.0, 5.0, 10.0, 100.0, 1e4]
+    closable = [
+        SERVICE.max_closable_cargo_kg(
+            vehicle, payload_mass_kg=100.0, burns_km_s=[0.0, 0.0, lo, 0.0], cargo_burn_index=2,
+            available_cargo_kg=kg, reserve_fraction=0.02,
+        )
+        for kg in available
+    ]
+    assert closable == sorted(closable)
+    assert closable[:2] == [0.1, 0.39]
+    assert closable[2:] == pytest.approx([0.4] * 7, abs=1e-9)

@@ -9,6 +9,12 @@ import time
 from typing import Any
 
 
+def _slow_exit(delay: float, marker: str | None) -> None:
+    if marker:
+        Path(marker).write_text(str(os.getpid()), encoding="ascii")
+    time.sleep(delay)
+
+
 def execute(payload: dict[str, Any]) -> Any:
     operation = payload["operation"]
     if path := payload.get("started_path"):
@@ -22,7 +28,7 @@ def execute(payload: dict[str, Any]) -> Any:
     if operation == "echo_then_slow_exit":
         # Runs during interpreter shutdown, after the result is on the pipe:
         # the same window a loaded host spends tearing down numpy/astropy.
-        atexit.register(time.sleep, float(payload["exit_delay_seconds"]))
+        atexit.register(_slow_exit, float(payload["exit_delay_seconds"]), payload.get("exit_started_path"))
         return payload["result"]
     if operation == "crash":
         os._exit(int(payload.get("exit_code", 17)))

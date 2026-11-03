@@ -3,7 +3,7 @@
 The original code uses the owner's permission-required [LICENSE](../LICENSE).
 Permission to distribute this code does not change the independent rights of
 third-party data. Build output carries that notice, [NOTICE](../NOTICE.md), this
-policy and the Three.js license under `legal/`.
+policy, the Three.js license, and the current source/file registers under `legal/`.
 
 The current supported data-use scope is noncommercial research and evaluation.
 SILSO data retain WDC-SILSO / Royal Observatory of Belgium attribution and
@@ -29,18 +29,43 @@ Restoring one requires a current consumer, exact source and reuse terms.
 
 ## Build boundary
 
-`npm run build` first validates the curated texture manifest and exact image
-hashes, refuses unlisted or unresolved-license moon assets, and packages notices.
-It must fail before publishing if an unreviewed map is placed in that public
-directory. Vite copies the public directory, including opt-in moon ephemerides;
+`npm run build` layers two independent checks. It first verifies curated moon
+textures, lazy moon shards and the Phase 1 asteroid binary against their source
+manifests, and all other public files against
+[`ci/public-asset-allowlist.json`](../ci/public-asset-allowlist.json). It then
+validates every file in the [current file register](data/distribution-files.json). It rejects changed or
+missing bytes, unknown source products, symlinks and unlisted public files before
+writing notices. The six generated files under `public/legal` are regenerated;
+any other file in that directory is rejected. Vite copies the public directory,
+including opt-in moon ephemerides;
 being dormant at runtime does not exclude an asset from distribution.
-The scientific catalog builders and tests validate their own source/artifact
-hashes. Build output is not a new certification of scientific accuracy.
+The register currently covers 426 public files and 12 retained scientific data
+inputs. The [source register](data/distribution-sources.json) records 45 products,
+including configured remote/optional providers whose response bytes are outside
+this static inventory. Both JSON registers accompany the build as
+`legal/DISTRIBUTION-FILES.json` and `legal/DISTRIBUTION-SOURCES.json`.
+The scientific catalog builders and tests retain their independent validation.
+Build output certifies neither scientific accuracy nor redistribution rights.
+
+Run `npm run verify:distribution` for the offline integrity check and unresolved
+product list. `npm run verify:distribution:rights` additionally exits nonzero
+while product rights reviews remain incomplete. This second check is deliberately
+not a development-build prerequisite: local evaluation and clearance to publish
+are distinct decisions. Its scope is the selected noncommercial workflow;
+commercial use needs a fresh rights review even after current gaps are resolved.
+
+To change data, regenerate it through its scientific builder, review its source
+and applicable terms, then update only the corresponding file hashes, sizes and
+product records. Adding a hash does not approve a license. Do not remove a product
+from the register merely to make the rights check pass. The current register
+retains unresolved JPL numerical-product, exact moon-map, nearby catalog and other
+provider reviews; see the [decision checklist](distribution-rights-review.md).
 
 Live provider responses are acquired separately. Their source identifiers,
 retrieval times, transformation history and terms must accompany exports.
 The historical [2026-10-30 inventory](../agent-notes/DISTRIBUTION_INVENTORY_2026-10-30.md)
-is a baseline, not the current release manifest. No blanket license or
+is a historical baseline; the two machine-readable registers above supersede
+its current-tree counts and stale owner-decision wording. No blanket license or
 institutional endorsement is inferred from a NASA, JPL or USGS URL.
 
 ## Retention and contributions

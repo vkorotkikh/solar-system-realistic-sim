@@ -2,7 +2,6 @@ import { execFileSync } from 'node:child_process';
 import { describe, expect, it } from 'vitest';
 import { Matrix4, PerspectiveCamera, Vector3 } from 'three';
 import { PlanetQuadtree } from '../src/frontend/features/planetary/quadtreeLOD';
-import { planetVertexShader } from '../src/frontend/features/planetary/planetShaders';
 
 // Run explicitly with PLANET_SHADER_GPU_TEST=1. The default suite honestly skips
 // the optional EGL runtime; the enabled gate fails on missing/broken runtime.
@@ -32,7 +31,6 @@ describe.skipIf(process.env.PLANET_SHADER_GPU_TEST !== '1')('planet vertex shade
         uniforms: {
           uRadius: 0.001,
           uDisplacementScale: displacement,
-          uPlanetType: planetId === 'earth' ? 0 : 2,
           uPatchToCube: tree.material.uniforms.uPatchToCube?.value.toArray() ?? new Matrix4().toArray(),
           modelViewMatrix: mesh.matrixWorld.toArray(),
           projectionMatrix: new Matrix4().toArray(),
@@ -47,7 +45,10 @@ describe.skipIf(process.env.PLANET_SHADER_GPU_TEST !== '1')('planet vertex shade
     tree.faces[0].children[0].split();
     for (const child of tree.faces[0].children[0].children) capture(child, displacement);
     const output = JSON.parse(execFileSync('uv', ['run', '--python', '3.12', '--with', 'moderngl', 'python', 'scripts/planet-shader-feedback.py'], {
-      input: JSON.stringify({ shader: planetVertexShader, cases }),
+      input: JSON.stringify({
+        shader: `#define PLANET_TYPE ${tree.material.defines.PLANET_TYPE}\n${tree.material.vertexShader}`,
+        cases,
+      }),
       encoding: 'utf8',
       timeout: 90_000,
       env: { ...process.env, LIBGL_ALWAYS_SOFTWARE: '1' },

@@ -113,3 +113,21 @@ jobs:
 
       - name: Run the complete backend test suite
         run: python -m pytest -q backend/tests
+
+      - name: Run the catalog and moon-source script tests
+        run: >-
+          python -m pytest -q
+          scripts/test_catalog_generation.py
+          scripts/test_catalog_science_review.py
+          scripts/test_fetch_jpl_sbdb_preflight.py
+          scripts/test_moon_candidate_inputs.py
+          scripts/test_moon_lazy_ephemerides.py
+          scripts/test_moon_physical_radii.py
+          scripts/test_moon_repairs.py
+          scripts/test_wsa_observation_overlap.py
+
+      - name: Verify the committed moon radii offline
+        run: python scripts/generate_moon_physical_radii.py --check
+
+      - name: Verify the committed asteroid Phase 1 dataset offline
+        run: python scripts/build_asteroid_phase1_dataset.py --offline --check

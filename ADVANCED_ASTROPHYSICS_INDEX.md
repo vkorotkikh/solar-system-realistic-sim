@@ -176,7 +176,7 @@ Actual running code for SMBH/AGN/superluminal/exotic physics.
 
 | # | File | Description |
 |---|------|-------------|
-| 10 | `testWarp.js` | Playwright diagnostic: selects the H29 preset and hypothesis, triggers it, and checks the 10-second error window; not visual or physics accuracy verification. |
+| 10 | `tests/browser/legacy-diagnostics.spec.ts` | Playwright diagnostic, run with `node scripts/run-browser-diagnostic.mjs warp`: selects the H29 preset and hypothesis, triggers it, and watches for errors for 10 seconds; not visual or physics accuracy verification. The root `testWarp.js` is a retired stub: it prints a retirement message and exits with status 2. |
 
 ---
 

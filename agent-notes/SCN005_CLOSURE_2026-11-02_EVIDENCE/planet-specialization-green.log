@@ -1,0 +1,8 @@
+
+ RUN  v5.0.4 /home/nomad/ai/projects/worktrees/solar-scn005-closure-20261102
+
+
+ Test Files  3 passed (3)
+      Tests  29 passed (29)
+   Start at  12:29:29
+   Duration  518ms (import 41%, transform 31%, tests 27%, worker 1%)

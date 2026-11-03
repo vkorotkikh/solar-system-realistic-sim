@@ -1,0 +1,12 @@
+Date: Mon, 02 Nov 2026 17:19:55 GMT
+Server: Apache
+Strict-Transport-Security: max-age=63072000; includeSubdomains; preload
+X-Frame-Options: SAMEORIGIN
+X-Content-Type-Options: nosniff
+X-XSS-Protection: 1; mode=block
+X-Frame-Options: SAMEORIGIN
+Strict-Transport-Security: max-age=63072000; includeSubdomains; preload
+Access-Control-Allow-Methods: GET
+Content-Length: 1156
+Content-Type: text/html;charset=ISO-8859-1
+Connection: close

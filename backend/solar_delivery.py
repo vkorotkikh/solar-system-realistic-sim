@@ -17,15 +17,20 @@ MAX_DECODED_BYTES = 2 * 1024 * 1024
 
 
 def _gzip_accepted(accept_encoding: str) -> bool:
+    """RFC 9110 12.5.3: an explicit gzip entry beats `*`, and q=0 refuses.
+
+    Gzip is served whenever its weight is positive; its weight relative to
+    `identity` is not modelled. No header means identity, as before.
+    """
+    weights: dict[str, float] = {}
     for item in accept_encoding.lower().split(','):
-        name, *parameters = item.strip().split(';')
-        if name == 'gzip':
-            try:
-                quality = float(next((p.strip()[2:] for p in parameters if p.strip().startswith('q=')), '1'))
-            except ValueError:
-                return False
-            return 0 < quality <= 1
-    return False
+        name, *parameters = (part.strip() for part in item.split(';'))
+        try:
+            weight = float(next((p[2:] for p in parameters if p.startswith('q=')), '1'))
+        except ValueError:
+            weight = 0.0
+        weights.setdefault(name, weight)
+    return 0 < weights.get('gzip', weights.get('*', 0.0)) <= 1
 
 
 def render_solar_response(

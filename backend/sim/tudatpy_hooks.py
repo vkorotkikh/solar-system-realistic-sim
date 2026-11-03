@@ -270,6 +270,8 @@ class TudatPyEngine(SimulationEngine):
         return (SUPPORTED_JD_MIN_TDB, SUPPORTED_JD_MAX_TDB)
 
     def cancel_pending_operation(self) -> None:
+        # Sticky and never re-armed: the runner stops its engine for good, and
+        # a stop() that lands before a seek starts must still cancel that seek.
         self._seek_cancel_event.set()
 
     def _raise_if_seek_cancelled(self) -> None:
@@ -519,7 +521,6 @@ class TudatPyEngine(SimulationEngine):
             or target_s > self._chunk_end_s
             or target_s < self._chunk_start_s
         ):
-            self._seek_cancel_event.clear()
             candidate = copy(self)
             candidate._raise_if_seek_cancelled()
             while (

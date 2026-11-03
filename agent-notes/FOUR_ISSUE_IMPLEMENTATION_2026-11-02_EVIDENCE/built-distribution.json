@@ -1,0 +1,13 @@
+{
+  "publicAssetsVerified": 426,
+  "packagedLegalFiles": [
+    "DISTRIBUTION-FILES.json",
+    "DISTRIBUTION-POLICY.md",
+    "DISTRIBUTION-SOURCES.json",
+    "LICENSE.txt",
+    "NOTICE.md",
+    "THREE-LICENSE.txt"
+  ],
+  "failures": [],
+  "scope": "Built public copies and both source/file registers; generated JS/CSS inspected separately by build/tests, not rights clearance."
+}

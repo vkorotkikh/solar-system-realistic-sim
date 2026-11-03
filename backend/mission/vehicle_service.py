@@ -214,10 +214,13 @@ class VehicleService:
         cargo_burn_index: int,
         available_cargo_kg: float,
         reserve_fraction: float = 0.05,
-        tolerance_kg: float = 1.0,
     ) -> Optional[float]:
         """Largest cargo (<= available) loaded before `burns_km_s[cargo_burn_index]` that still
-        closes every burn, or None when the burns do not close even with no cargo."""
+        closes every burn, or None when the burns do not close even with no cargo.
+
+        The bisection runs to float resolution. Any coarser stopping rule makes the answer depend
+        on `available_cargo_kg` (a fixed 1 kg tolerance returned 0 for 5 kg available but 0.39 for
+        0.39 kg available when the true capacity was 0.4 kg), so more cargo could close less."""
 
         def closes(cargo_kg: float) -> bool:
             added = [0.0] * len(burns_km_s)
@@ -240,10 +243,10 @@ class VehicleService:
         if closes(hi):
             return hi
         lo = 0.0  # more cargo never makes a burn easier, so bisect
-        while hi - lo > tolerance_kg:
+        while True:
             mid = lo + 0.5 * (hi - lo)
             if not lo < mid < hi:
-                break
+                break  # adjacent floats: the closable boundary is resolved
             if closes(mid):
                 lo = mid
             else:

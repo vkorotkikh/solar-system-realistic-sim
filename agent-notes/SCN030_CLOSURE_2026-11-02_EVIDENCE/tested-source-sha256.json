@@ -1,0 +1,10 @@
+{
+  "index.html": "da5f863af5c8cf1035853c8ece29c0affbbf8dc6b4df2d8a095d6f17a5d5f85e",
+  "src/style.css": "3db1298b3008b813c2ee5e0d58d72e7a2aafad8df77b216f395bc2b635b0a31d",
+  "scripts/validate-accessibility-evidence.mjs": "0481fbfb6523518dfbdffac16170c33687e939f8e5bc82aec65ed3659fa8c3ec",
+  "scripts/validate-accessibility-evidence.test.mjs": "38781321d1db8f006c78179dba667614aa018393f550495935e24ed5ae9f9361",
+  "tests/browser/accessibility-audit.spec.ts": "e2f3dba9e0968ca02ec45db0285b11c2d5f6f594d43f3de28c14c2814db152e3",
+  "tests/browser/accessibility.spec.ts": "4e753dd9671d56d214ee124dd675af1dd93496c7eb9642983024cc792d92ea16",
+  "tests/browser/contrast-review.ts": "3ae8eb425d84314230b224e4ef22e716d07c0bd34121316b2dbaa19c424e0d87",
+  "tests/browser/scene-text-contrast.spec.ts": "061e83d93367c2a3b046450b8221bbc0cebe9c8ed281abf900d6b647ff6db22e"
+}

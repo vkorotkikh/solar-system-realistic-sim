@@ -6,8 +6,9 @@ export const SOLAR_RADIUS_AU = SUN.radiusKm / AU_KM;
 
 /**
  * Share of a structure's height above the surface kept when the Sun is drawn enlarged (owner
- * decision D3). At the default scale the Sun is about 81 times its real size, so true heights
- * multiplied by the display radius would send loops past Mars.
+ * decision D3). At the default scale the Sun is about 53 times its real size (0.246 AU against
+ * 0.00465 AU), so true heights multiplied by the display radius would send coronal points more
+ * than about 4 solar radii out beyond Earth's orbit.
  */
 const ENLARGED_HEIGHT_SCALE = 0.15;
 

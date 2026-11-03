@@ -1,6 +1,7 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
 import { loadShell } from './helpers';
+import { assertTextContrastReviewed } from './contrast-review';
 
 const tags = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'];
 
@@ -52,7 +53,8 @@ async function auditDocument(page: Page, info: TestInfo, state: string) {
   expect(results.violations, `${state}: automatically detected WCAG violations`).toEqual([]);
   expect(results.incomplete.filter(rule => rule.id === 'aria-prohibited-attr'),
     `${state}: named groups must expose a role that supports their accessible label`).toEqual([]);
-  // Incomplete results require disposition; this assertion is not a manual AT pass.
+  await assertTextContrastReviewed(page, info, state, results);
+  // Other incomplete results still require disposition; this is not a manual AT pass.
 }
 
 test.describe('rendered accessibility rule contracts', () => {

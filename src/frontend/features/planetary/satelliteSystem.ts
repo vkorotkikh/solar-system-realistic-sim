@@ -135,18 +135,43 @@ function nowMs() {
   return globalThis.performance?.now?.() ?? Date.now();
 }
 
-function tleEpochToJulian(epochYearTwoDigits: number, dayOfYearFloat: number): number {
+/** Epoch day 1 is 1 January 00:00; null when the day is outside [1, days in year + 1). */
+function tleEpochToJulian(epochYearTwoDigits: number, dayOfYearFloat: number): number | null {
   const twoDigitYear = Number(epochYearTwoDigits);
   const year = twoDigitYear >= 57 ? 1900 + twoDigitYear : 2000 + twoDigitYear;
+  const startMs = Date.UTC(year, 0, 1, 0, 0, 0, 0);
+  const daysInYear = (Date.UTC(year + 1, 0, 1) - startMs) / (DAY_SECONDS * 1_000);
+  if (!(dayOfYearFloat >= 1 && dayOfYearFloat < daysInYear + 1)) return null;
   const dayWhole = Math.floor(dayOfYearFloat);
   const dayFraction = dayOfYearFloat - dayWhole;
-  const startMs = Date.UTC(year, 0, 1, 0, 0, 0, 0);
   const unixMs = startMs + (dayWhole - 1 + dayFraction) * DAY_SECONDS * 1_000;
   return utcJulianDateToTdb(julianDateFromUnixMs(unixMs));
 }
 
+/** A TLE line is 69 columns; the last is the sum of the digits (a '-' counts 1) mod 10. */
+function hasValidTleChecksum(line: string): boolean {
+  if (line.length !== 69) return false;
+  let sum = 0;
+  for (let i = 0; i < 68; i += 1) {
+    const code = line.charCodeAt(i);
+    sum += code >= 48 && code <= 57 ? code - 48 : code === 45 ? 1 : 0;
+  }
+  return sum % 10 === line.charCodeAt(68) - 48;
+}
+
+/** FNV-1a over UTF-16 code units: short, ASCII and identical on every run. */
+function hashName(name: string): string {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < name.length; i += 1) hash = Math.imul(hash ^ name.charCodeAt(i), 0x01000193);
+  return (hash >>> 0).toString(16).padStart(8, '0');
+}
+
 function sanitizeId(name: string): string {
-  return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+  const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+  // The slug drops every non-ASCII letter, so "Метеор-М" and "Ресурс-П" would both
+  // become "sat-" and "Метеор-М №2" and "Ресурс-П №2" both "sat-2". A name the slug
+  // cannot carry gets a stable hash of the whole name; ASCII names are unchanged.
+  return slug && !/[^\x00-\x7f]/.test(name) ? slug : [slug, hashName(name)].filter(Boolean).join('-');
 }
 
 function normalizeCatalogSatellite(entry: SatelliteCatalogEntry, primaryModel: PrimaryModel): NormalizedSatellite | null {
@@ -231,6 +256,7 @@ function parseTleElements(
   category: string,
   primaryModel: PrimaryModel
 ): NormalizedSatellite | null {
+  if (!hasValidTleChecksum(line1) || !hasValidTleChecksum(line2)) return null;
   const catalogFields = [line1.slice(2, 7).trim(), line2.slice(2, 7).trim()];
   if (!catalogFields.every(value => /^[a-z0-9]{1,5}$/i.test(value))) return null;
   const [catalogId, secondCatalogId] = catalogFields.map(value => /^\d+$/.test(value)
@@ -259,6 +285,8 @@ function parseTleElements(
     return null;
   }
 
+  const epochJd = tleEpochToJulian(epochYear, epochDay);
+  if (epochJd === null) return null;
   const meanMotionRadSec = (meanMotionRevDay * TWO_PI) / DAY_SECONDS;
   const aKm = Math.cbrt(primaryModel.muKm3S2 / (meanMotionRadSec * meanMotionRadSec));
 
@@ -268,7 +296,7 @@ function parseTleElements(
     id: `sat-norad-${catalogId}`,
     name,
     category,
-    epochJd: tleEpochToJulian(epochYear, epochDay),
+    epochJd,
     aKm,
     e,
     iRad: iDeg * DEG_TO_RAD,
@@ -663,13 +691,17 @@ export class OrbitalSatelliteSystem {
       .map((entry) => normalizeCatalogSatellite(entry, this.primaryModel))
       .filter((satellite): satellite is NormalizedSatellite => Boolean(satellite));
 
-    const merged = [...loaded, ...catalog];
+    // One record per id: the newer epoch wins and keeps the first record's place; a tie keeps the first.
     const deduped: NormalizedSatellite[] = [];
-    const seen = new Set<string>();
-    for (const sat of merged) {
-      if (seen.has(sat.id)) continue;
-      seen.add(sat.id);
-      deduped.push(sat);
+    const slotById = new Map<string, number>();
+    for (const sat of [...loaded, ...catalog]) {
+      const slot = slotById.get(sat.id);
+      if (slot === undefined) {
+        slotById.set(sat.id, deduped.length);
+        deduped.push(sat);
+      } else if (sat.epochJd > deduped[slot].epochJd) {
+        deduped[slot] = sat;
+      }
     }
 
     this.satellites = deduped;
@@ -941,17 +973,26 @@ export class OrbitalSatelliteSystem {
   applyWorkerSnapshot(jd: number): boolean {
     if (!this.workerSnapshot) return false;
     const snapshot = this.workerSnapshot;
-    if (!Number.isFinite(jd) || !Number.isFinite(snapshot.jd0) || !Number.isFinite(snapshot.jd1)) return false;
-    if (snapshot.count !== this.satellites.length) return false;
-    if (typeof snapshot.applyJ2 !== 'boolean' || snapshot.applyJ2 !== this.useJ2) return false;
+    if (!Number.isFinite(jd)) return false;
+    // A snapshot rejected for its own content can never become usable, and a
+    // non-finite jd0/jd1 also switches off the refresh test in
+    // shouldRequestWorkerSnapshot. Drop it so the next update asks for a fresh
+    // one. A display JD outside the window only means it is stale, so it stays.
+    const reject = () => {
+      this.workerSnapshot = null;
+      return false;
+    };
+    if (!Number.isFinite(snapshot.jd0) || !Number.isFinite(snapshot.jd1)) return reject();
+    if (snapshot.count !== this.satellites.length) return reject();
+    if (typeof snapshot.applyJ2 !== 'boolean' || snapshot.applyJ2 !== this.useJ2) return reject();
     // Validate the entire snapshot before touching any marker. A bad later
     // coordinate must not leave earlier markers at a partially applied epoch.
     if (!(snapshot.positions0 instanceof Float32Array) || !(snapshot.positions1 instanceof Float32Array)
       || snapshot.positions0.length !== snapshot.count * 3 || snapshot.positions1.length !== snapshot.count * 3
-      || !snapshot.positions0.every(Number.isFinite) || !snapshot.positions1.every(Number.isFinite)) return false;
+      || !snapshot.positions0.every(Number.isFinite) || !snapshot.positions1.every(Number.isFinite)) return reject();
 
     const span = snapshot.jd1 - snapshot.jd0;
-    if (Math.abs(span) > this.workerInterpolationLimitDays() + 1e-9) return false;
+    if (Math.abs(span) > this.workerInterpolationLimitDays() + 1e-9) return reject();
     if (jd < Math.min(snapshot.jd0, snapshot.jd1) || jd > Math.max(snapshot.jd0, snapshot.jd1)) return false;
     const alpha = Math.abs(span) < 1e-12 ? 0 : clamp01((jd - snapshot.jd0) / span);
 
@@ -982,11 +1023,13 @@ export class OrbitalSatelliteSystem {
 
   private workerInterpolationLimitDays(): number {
     // A circular orbit's midpoint chord error is r*(1-cos(pi/256)),
-    // about 0.527 km at r=7000 km. Use the fastest satellite in the batch;
-    // outside this short interval update() propagates at the display epoch.
-    const periods = this.satellites.map(satellite => 1 / satellite.meanMotionRevDay)
-      .filter(period => Number.isFinite(period) && period > 0);
-    return periods.length ? Math.min(...periods) / 256 : 0;
+    // about 0.527 km at r=7000 km. An eccentric orbit sweeps fastest at
+    // periapsis, n*(1+e)^2/(1-e^2)^1.5 (just n when e=0), and that peak rate
+    // sets the interval. Use the fastest satellite in the batch; outside this
+    // short interval update() propagates at the display epoch.
+    const rates = this.satellites.map(({ meanMotionRevDay, e }) => meanMotionRevDay * (1 + e) ** 2 / (1 - e * e) ** 1.5)
+      .filter(rate => Number.isFinite(rate) && rate > 0);
+    return rates.length ? 1 / (256 * Math.max(...rates)) : 0;
   }
 
   requestWorkerSnapshot(jd: number): void {

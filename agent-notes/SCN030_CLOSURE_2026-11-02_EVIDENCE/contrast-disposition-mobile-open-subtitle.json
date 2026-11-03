@@ -1,0 +1,85 @@
+{
+  "rule": "color-contrast",
+  "target": [
+    ".subtitle"
+  ],
+  "rawReason": {
+    "contrastRatio": 0,
+    "fontSize": "9.4pt (12.48px)",
+    "fontWeight": "normal",
+    "messageKey": "elmPartiallyObscuring",
+    "expectedContrastRatio": "4.5:1"
+  },
+  "method": "Opaque ancestor bounds, all text-line corner/center hit tests, WCAG sRGB relative luminance; no tolerance",
+  "observation": {
+    "foreground": [
+      154,
+      168,
+      172,
+      1
+    ],
+    "background": [
+      9,
+      14,
+      18,
+      1
+    ],
+    "layers": [
+      {
+        "selector": "subtitle",
+        "image": "none",
+        "opacity": "1",
+        "filter": "none",
+        "blend": "normal",
+        "color": "rgba(0, 0, 0, 0)"
+      },
+      {
+        "selector": "panel-header",
+        "image": "none",
+        "opacity": "1",
+        "filter": "none",
+        "blend": "normal",
+        "color": "rgba(0, 0, 0, 0)"
+      },
+      {
+        "selector": "control-panel",
+        "image": "none",
+        "opacity": "1",
+        "filter": "none",
+        "blend": "normal",
+        "color": "rgb(9, 14, 18)"
+      }
+    ],
+    "lines": [
+      {
+        "rect": {
+          "x": 16,
+          "y": 69.515625,
+          "width": 242.015625,
+          "height": 15,
+          "top": 69.515625,
+          "right": 258.015625,
+          "bottom": 84.515625,
+          "left": 16
+        },
+        "coveredByOpaqueSurface": true,
+        "unobscured": true
+      },
+      {
+        "rect": {
+          "x": 16,
+          "y": 88.234375,
+          "width": 149.046875,
+          "height": 15,
+          "top": 88.234375,
+          "right": 165.046875,
+          "bottom": 103.234375,
+          "left": 16
+        },
+        "coveredByOpaqueSurface": true,
+        "unobscured": true
+      }
+    ],
+    "contrast": 7.91270822812218
+  }
+}

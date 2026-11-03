@@ -294,18 +294,22 @@ it('aborts a stalled body and awaits stream cleanup before releasing its permit'
     }));
   };
   const loader = createLazyMoonEphemerisLoader({ fetch: fetcher, maxConcurrentRequests: 1, requestTimeoutMs: 25 });
-  await loader.getManifest();
+  // Keep the 25 ms deadline virtual for every request, to the end of the test: the
+  // manifest and the second shard are real file IO, and a loaded machine can take
+  // longer than 25 real milliseconds to read them.
   vi.useFakeTimers();
-  const first = loader.load(['amalthea']).catch(error => error);
-  const second = loader.load(['himalia']);
   try {
+    await loader.getManifest();
+    const first = loader.load(['amalthea']).catch(error => error);
+    const second = loader.load(['himalia']);
     await vi.advanceTimersByTimeAsync(26);
     expect(signal?.aborted).toBe(true);
     expect(events).toEqual(['first', 'cancel-start']);
+    finishCancellation.resolve();
+    expect(await first).toBeInstanceOf(Error);
+    expect((await second).himalia).toBeDefined();
+    expect(events).toEqual(['first', 'cancel-start', 'cancel-end', 'next']);
   } finally { finishCancellation.resolve(); vi.useRealTimers(); }
-  expect(await first).toBeInstanceOf(Error);
-  expect((await second).himalia).toBeDefined();
-  expect(events).toEqual(['first', 'cancel-start', 'cancel-end', 'next']);
 });
 
 it('cancels a rejected manifest body and allows a clean retry', async () => {

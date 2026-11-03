@@ -1,0 +1,51 @@
+[
+  {
+    "selector": ".frame-indicator",
+    "foreground": "rgb(166, 179, 182)",
+    "background": "rgb(7, 11, 14)",
+    "backgroundImage": "none",
+    "conservativeContrast": 9.165267231908057
+  },
+  {
+    "selector": ".interaction-hint",
+    "foreground": "rgba(209, 218, 218, 0.72)",
+    "background": "rgb(7, 11, 14)",
+    "backgroundImage": "none",
+    "conservativeContrast": 7.419254213925699
+  },
+  {
+    "selector": "#status-focus",
+    "foreground": "rgb(221, 229, 227)",
+    "background": "rgb(7, 12, 15)",
+    "backgroundImage": "none",
+    "conservativeContrast": 15.340238892772325
+  },
+  {
+    "selector": "#status-bodies",
+    "foreground": "rgb(221, 229, 227)",
+    "background": "rgb(7, 12, 15)",
+    "backgroundImage": "none",
+    "conservativeContrast": 15.340238892772325
+  },
+  {
+    "selector": "#status-zoom",
+    "foreground": "rgb(221, 229, 227)",
+    "background": "rgb(7, 12, 15)",
+    "backgroundImage": "none",
+    "conservativeContrast": 15.340238892772325
+  },
+  {
+    "selector": "#status-catalog",
+    "foreground": "rgb(221, 229, 227)",
+    "background": "rgb(7, 12, 15)",
+    "backgroundImage": "none",
+    "conservativeContrast": 15.340238892772325
+  },
+  {
+    "selector": "#status-solar",
+    "foreground": "rgb(221, 229, 227)",
+    "background": "rgb(7, 12, 15)",
+    "backgroundImage": "none",
+    "conservativeContrast": 15.340238892772325
+  }
+]

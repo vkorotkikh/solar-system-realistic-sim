@@ -144,3 +144,46 @@ describe('orbital worker ownership and silence recovery', () => {
     expect(controller.status).toBe('disposed');
   });
 });
+
+describe('restart budget over a long-lived page', () => {
+  const MINUTE = 60_000;
+
+  it('earns the budget back after a healthy hour, so isolated stalls never end in permanent fallback', () => {
+    const { controller, workers } = setup();
+    for (let stall = 0; stall < 3; stall++) {
+      const worker = workers.at(-1)!;
+      worker.ready();
+      for (let minute = 0; minute < 60; minute++) {
+        controller.tick(0.016); worker.emit(worker.state()); vi.advanceTimersByTime(MINUTE);
+      }
+      controller.tick(0.016); vi.advanceTimersByTime(50); // the worker goes silent
+      expect(controller.status).toBe('fallback');
+      vi.advanceTimersByTime(10); // retry delay
+    }
+    expect(workers).toHaveLength(4); // the initial worker plus one restart per stall
+    workers.at(-1)!.ready();
+    expect(controller.status).toBe('ready');
+    controller.dispose();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it.each([
+    { thirdStallAfterMinutes: 4, workerCount: 3, status: 'fallback' }, // 9 min after the first restart
+    { thirdStallAfterMinutes: 6, workerCount: 4, status: 'starting' }, // 11 min: the first restart left the window
+  ])('bounds restarts to two per rolling ten minutes (%o)', ({ thirdStallAfterMinutes, workerCount, status }) => {
+    const { controller, workers } = setup();
+    const stallAfter = (minutes: number) => {
+      workers.at(-1)!.ready();
+      vi.advanceTimersByTime(minutes * MINUTE);
+      controller.tick(0.016); vi.advanceTimersByTime(50); // the worker goes silent
+      vi.advanceTimersByTime(30); // longer than either retry delay
+    };
+    stallAfter(0);
+    stallAfter(5);
+    stallAfter(thirdStallAfterMinutes);
+    expect(workers).toHaveLength(workerCount);
+    expect(controller.status).toBe(status);
+    controller.dispose();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+});

@@ -1,0 +1,139 @@
+{
+  "application_one_au_propagation_validated": false,
+  "application_speed_calibrated": false,
+  "ballistic_assumption_audit": {
+    "astronomical_unit_km": 149597870.7,
+    "model": "constant_radial_speed_no_acceleration_no_stream_interaction",
+    "nominal_solar_radius_km": 695700.0,
+    "source_radius_solar": 2.51,
+    "target_is_actual_ACE_ephemeris": false,
+    "target_radius_au": 1.0,
+    "trial_speeds": [
+      {
+        "speed_kms": 250,
+        "travel_days": 6.844984430555554
+      },
+      {
+        "speed_kms": 400,
+        "travel_days": 4.2781152690972215
+      },
+      {
+        "speed_kms": 800,
+        "travel_days": 2.1390576345486108
+      }
+    ],
+    "used_to_shift_observations_or_optimize_a_lag": false
+  },
+  "historical_revision": {
+    "identical_query_parameters": true,
+    "issue_time_available": false,
+    "new_speed_kms": 348.39494949494946,
+    "original_speed_kms": 320.236,
+    "time_utc": "2026-10-13T00:00:00Z"
+  },
+  "limitations": [
+    "Three same-spacecraft point comparisons of a retrospective external AGONG ensemble product; no application prediction is compared.",
+    "The forecast source is ADAPT/GONG, not the retained GONG_Z map, and has no individual map or ensemble-member identity.",
+    "The historical API response changed between captures and supplies no forecast issuance time; operational lead-time skill is not established.",
+    "Changing the query start also changes a boundary timestamp's ensemble-average speed; the exact query and response bytes must be retained.",
+    "No speed acceptance budget was preregistered. These descriptive residuals do not define a pass.",
+    "A source-surface speed is not an independently observed speed at ACE. The application lacks an SCS/radius adapter, target ephemeris, and validated propagation.",
+    "The constant-speed travel calculation is an assumption audit, not an implemented forecast or an observational validation."
+  ],
+  "original_retained_comparison": {
+    "application_speed_calibrated": false,
+    "comparison_policy": "exact_UTC_same_spacecraft_quality_zero_no_time_shift_v1",
+    "input_map": "AGONG",
+    "invalid_observation_samples": 0,
+    "invalid_prediction_samples": 4,
+    "matched_samples": 0,
+    "metrics_kms": null,
+    "observation_active_policy": "explicit spacecraft; active flag is not a science-quality flag",
+    "other_spacecraft_samples": 2317,
+    "pairs": [],
+    "spacecraft": "ACE",
+    "unmatched_prediction_times_utc": [
+      "2026-10-10T00:00:00Z",
+      "2026-10-10T06:00:00Z",
+      "2026-10-10T12:00:00Z",
+      "2026-10-10T18:00:00Z",
+      "2026-10-11T00:00:00Z",
+      "2026-10-11T06:00:00Z",
+      "2026-10-11T12:00:00Z",
+      "2026-10-11T18:00:00Z",
+      "2026-10-12T00:00:00Z",
+      "2026-10-12T06:00:00Z",
+      "2026-10-12T12:00:00Z",
+      "2026-10-12T18:00:00Z",
+      "2026-10-13T00:00:00Z"
+    ],
+    "valid_observation_samples": 1245,
+    "valid_prediction_samples": 13
+  },
+  "query_window_sensitivity": {
+    "interpretation": "Same nominal point differs by query window; the API does not specify aggregation bin boundaries.",
+    "oct10_to_oct14_speed_kms": 348.39494949494946,
+    "oct13_to_oct14_speed_kms": 470.03999999999996,
+    "time_utc": "2026-10-13T00:00:00Z"
+  },
+  "retrospective_external_comparison": {
+    "application_speed_calibrated": false,
+    "comparison_policy": "exact_UTC_same_spacecraft_quality_zero_no_time_shift_v1",
+    "input_map": "AGONG",
+    "invalid_observation_samples": 0,
+    "invalid_prediction_samples": 1,
+    "matched_samples": 3,
+    "metrics_kms": {
+      "bias": -97.85178198612988,
+      "mae": 97.85178198612988,
+      "rmse": 118.98020945472285
+    },
+    "observation_active_policy": "explicit spacecraft; active flag is not a science-quality flag",
+    "other_spacecraft_samples": 2317,
+    "pairs": [
+      {
+        "observed_speed_kms": 506.88,
+        "predicted_speed_kms": 351.27362637362637,
+        "residual_kms": -155.60637362637362,
+        "time_utc": "2026-10-13T06:00:00Z"
+      },
+      {
+        "observed_speed_kms": 524.75,
+        "predicted_speed_kms": 389.66739130434775,
+        "residual_kms": -135.08260869565225,
+        "time_utc": "2026-10-13T12:00:00Z"
+      },
+      {
+        "observed_speed_kms": 632.83,
+        "predicted_speed_kms": 629.9636363636363,
+        "residual_kms": -2.866363636363758,
+        "time_utc": "2026-10-13T18:00:00Z"
+      }
+    ],
+    "spacecraft": "ACE",
+    "unmatched_prediction_times_utc": [
+      "2026-10-10T00:00:00Z",
+      "2026-10-10T06:00:00Z",
+      "2026-10-10T12:00:00Z",
+      "2026-10-10T18:00:00Z",
+      "2026-10-11T00:00:00Z",
+      "2026-10-11T06:00:00Z",
+      "2026-10-11T12:00:00Z",
+      "2026-10-11T18:00:00Z",
+      "2026-10-12T00:00:00Z",
+      "2026-10-12T06:00:00Z",
+      "2026-10-12T12:00:00Z",
+      "2026-10-12T18:00:00Z",
+      "2026-10-13T00:00:00Z"
+    ],
+    "valid_observation_samples": 1245,
+    "valid_prediction_samples": 16
+  },
+  "schema": "scn041_external_speed_and_travel_audit_v1",
+  "source_hashes": {
+    "narrow_query_forecast": "e863bd816f0027b57a60ddfc89981c828f8523e67c49aeeee816c2afd72d5def",
+    "new_forecast": "6960de2109f46e9f340b8d102e98f87ff71ca798a0c569004447df28e13fee19",
+    "observation": "12f89300b5c7dc67f3702fbd1ba459d8df3b531ff1d18b5f67ea915170e3fc3d",
+    "old_forecast": "3eeb807edca46fc8206387f40797de80aaf59ca4ff667ee60255a7b04c6755c0"
+  }
+}

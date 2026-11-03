@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="0.494" timestamp="2026-11-02T17:39:15.336270+00:00" hostname="Athena"><testcase classname="backend.tests.test_solar_observational_acceptance" name="test_forged_scaled_flux_snapshot_is_rejected[positive_scale_factor-0.001]" time="0.174"><failure message="AssertionError: SCN041-SCALED-FLUX-PROVENANCE&#10;assert False">observed_snapshot = MagnetogramSnapshot(snapshot_id=SnapshotId(schema_version='gong-snapshot-id-v1', product='NSO/GONG Zero Point Correcte...-17T19:07:29Z', retrieval_timeout_s=20.0, quality_flags=('complete-pixels', 'flux-balanced-bounded-polarity-scaling')))
+field_name = 'positive_scale_factor', delta = 0.001
+
+    @pytest.mark.parametrize(
+        "field_name,delta",
+        [
+            ("positive_scale_factor", 1e-3),
+            ("negative_scale_factor", 1e-3),
+            ("signed_imbalance_fraction", 1e-3),
+            ("scaled_correction_limit_fraction", 1e-3),
+        ],
+    )
+    def test_forged_scaled_flux_snapshot_is_rejected(observed_snapshot, field_name, delta) -&gt; None:
+        flux = observed_snapshot.provenance.flux
+        forged_flux = replace(flux, **{field_name: getattr(flux, field_name) + delta})
+        forged_provenance = replace(observed_snapshot.provenance, flux=forged_flux)
+        forged_snapshot = gong.MagnetogramSnapshot(
+            observed_snapshot.snapshot_id,
+            observed_snapshot.field_gauss,
+            observed_snapshot.grid,
+            forged_provenance,
+        )
+        with pytest.raises(ValueError):
+            PFSSCache(max_entries=1).get_or_compute(
+                jd=forged_snapshot.snapshot_id.reference_jd_tdb,
+                activity=0.5,
+                snapshot=forged_snapshot,
+                solution_config=PFSSSolutionConfig(
+                    line_count=8,
+                    lmax=1,
+                    source_surface_radii=2.51,
+                    wsa_n_lat=2,
+                    wsa_n_lon=4,
+                ),
+            )
+        try:
+            PFSSCache._validate_observed_flux(forged_snapshot.field_gauss, forged_flux)
+        except ValueError:
+            pass
+        else:
+&gt;           assert False, "SCN041-SCALED-FLUX-PROVENANCE"
+E           AssertionError: SCN041-SCALED-FLUX-PROVENANCE
+E           assert False
+
+backend/tests/test_solar_observational_acceptance.py:238: AssertionError</failure></testcase></testsuite></testsuites>

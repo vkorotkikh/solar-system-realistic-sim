@@ -115,6 +115,8 @@ class REBOUNDEngine(SimulationEngine):
         return (SUPPORTED_JD_MIN_TDB, SUPPORTED_JD_MAX_TDB)
 
     def cancel_pending_operation(self) -> None:
+        # Sticky and never re-armed: the runner stops its engine for good, and
+        # a stop() that lands before a seek starts must still cancel that seek.
         self._seek_cancel_event.set()
 
     def _raise_if_seek_cancelled(self) -> None:
@@ -611,7 +613,6 @@ class REBOUNDEngine(SimulationEngine):
         integrate forward to the requested epoch.
         """
         requested_jd = self._validate_supported_jd(jd)
-        self._seek_cancel_event.clear()
         if not self._stored_bodies:
             return
         if self.sim is None:

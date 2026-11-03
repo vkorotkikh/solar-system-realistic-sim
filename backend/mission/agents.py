@@ -570,6 +570,7 @@ class MissionPlannerAgent:
                 base_total_time_days=total_time_days,
                 base_returned_payload_kg=float(closure["returnedPayloadKg"]),
                 base_departure_cargo_kg=float(logistics.get("returnCargoKg", 0.0)),
+                departure_stock_kg=float(logistics["returnCargoAvailableKg"]),
                 base_arrival_jd=arrival_jd,
                 reclose=reclose,
                 samples=mission_inputs["risk_samples"],
