@@ -944,6 +944,10 @@ def parse_gong_fits(
     field_gauss = scaled * gauss_factor
     if not np.all(np.isfinite(field_gauss)):
         raise _reject("invalid_pixels", "unit conversion produced non-finite pixels")
+    # Owner policy 2026-11-03: an exactly all-zero map carries no field to
+    # extrapolate. Weak but real fields are not held to any floor.
+    if not np.any(field_gauss):
+        raise _reject("zero_field", "every science pixel is exactly zero")
     balanced, flux = _balance_flux(
         field_gauss,
         trusted_correction=_trusted_correction_for_artifact(context, expanded_fits),
