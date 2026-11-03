@@ -8,11 +8,15 @@ photographs, maps, fonts or downloaded textures.
 
 ## Important distribution limits
 
-- Solar System Scope / INOVE textures are distributed under
-  [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Credit the provider
-  and identify modifications. The provider describes enhanced colors and
-  fictional terrain in unmapped areas: these are illustrative maps, not a
-  blanket claim of measured surface fidelity.
+- No Solar System Scope / INOVE texture is distributed in the current tree.
+  Earlier revisions credited that pack
+  ([CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)) for the 2K planet
+  textures. The planet day maps were among the unused photographic files
+  removed on 2026-10-31; they remain only in Git history (see the
+  [distribution policy](docs/distribution-policy.md)). Restoring one requires
+  credit to the provider, a statement of modifications and a new rights review.
+  The provider describes enhanced colors and fictional terrain in unmapped
+  areas, so those maps are illustrative, not measured surface fidelity.
   [Source and terms](https://ssi.solarsystemscope.com/textures/).
 - SILSO sunspot data, World Data Center SILSO, Royal Observatory of Belgium,
   Brussels, use [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/).
