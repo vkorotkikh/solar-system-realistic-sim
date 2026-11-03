@@ -742,7 +742,9 @@ export function updateSunspotUniforms(sunSurfaceMaterial: ShaderMaterial | null 
 
 /** The shorter way round from longitude `a` to `b`, `t` of the way. */
 function lerpLongitude(a: number, b: number, t: number): number {
-  return a + Math.atan2(Math.sin(b - a), Math.cos(b - a)) * t;
+  const longitude = a + Math.atan2(Math.sin(b - a), Math.cos(b - a)) * t;
+  // The corona shader's one-step longitude wrap expects a centre in [-pi, pi].
+  return Math.atan2(Math.sin(longitude), Math.cos(longitude));
 }
 
 /** Sunspot seeds [lon, lat, angular radius, intensity] and pattern seeds as drawn now. */

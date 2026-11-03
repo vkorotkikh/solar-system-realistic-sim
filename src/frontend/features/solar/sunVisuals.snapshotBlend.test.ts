@@ -75,6 +75,23 @@ describe('coronal holes blend between snapshots (H2.9)', () => {
     return corona;
   }
 
+  it.each([1, -1])('preserves the hole boundary when crossing the longitude seam (direction %s)', direction => {
+    const corona = coronaWith([hole(direction * 3, 0.05)]);
+    const before = readCoronalHoles(corona)!;
+    updateSunMaterialUniforms({ sunCoronaMaterial: corona, coronalHoleData: { holes: [hole(direction * -3, 0.05)] } });
+    blendCoronalHoleUniforms(corona, before, 0.75);
+    const [centerLon, , extent] = readCoronalHoles(corona)!.holes[0];
+    const fragmentLon = direction * -Math.PI;
+    // The corona shader wraps abs(fragLon - hole.x) once. Its input must stay canonical:
+    // this seam pixel is 0.0708 rad from the centre, outside the 0.05 rad hole.
+    const delta = Math.abs(fragmentLon - centerLon);
+    const shaderDistance = Math.min(delta, 2 * Math.PI - delta);
+    const angularDistance = Math.acos(Math.cos(fragmentLon - centerLon));
+    expect(angularDistance).toBeGreaterThan(extent);
+    expect(shaderDistance).toBeCloseTo(angularDistance, 10);
+    expect(shaderDistance).toBeGreaterThan(extent);
+  });
+
   it('moves holes in slot order and grows an added one from its centre', () => {
     const corona = coronaWith([hole(0.2)]);
     const before = readCoronalHoles(corona)!;
