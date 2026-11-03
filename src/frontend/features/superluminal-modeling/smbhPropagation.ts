@@ -16,7 +16,7 @@
 
 import {
     C_CM_S, G_CGS, YR_S, MYR_S, EV_ERG, E_CHARGE,
-    ISM, HELIO, KPC_CM, AU_CM,
+    ISM, HELIO, KPC_CM, AU_CM, PC_CM,
     CHANNEL_DEFS, SGR_A
 } from './smbhPhysicsConstants';
 import type {
@@ -445,22 +445,28 @@ export function heliosphereEquilibriumTime(pressureFactor: number, inflowVelocit
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
- * GW memory strain — permanent spacetime displacement after burst passage.
- *   Δh_memory ≈ fraction × h_peak
- * Christodoulou (1991), Favata (2010).
+ * GW memory strain, the permanent displacement left after the burst passes:
+ *   Δh_memory ≈ G E_GW / (c⁴ d)
+ * in order of magnitude, omitting an angular factor of at most order one
+ * (Christodoulou 1991; Thorne 1992).
  */
-export function gwMemoryStrain(hPeak: number, fraction: number = 0.1): number {
-    return fraction * hPeak;
+export function gwMemoryStrain(energyGW_erg: number, distanceCm: number): number {
+    return (G_CGS * energyGW_erg) / (Math.pow(C_CM_S, 4) * distanceCm);
 }
 
 /**
- * GW strain at observer distance from burst energy.
- *   h ≈ (4G / c⁴) × E_GW / (d × c)  (order-of-magnitude)
- *
- * More precisely for quadrupole: h ≈ (2G E_GW) / (c⁴ d)
+ * Root-sum-square strain of a narrowband burst carrying E_GW near frequency f₀:
+ *   E_GW = (π² c³ / G) d² f₀² h_rss²   (Sutton et al., LIGO-P070105)
+ * h_rss is in Hz^-1/2. A dimensionless peak strain would also need the waveform,
+ * which the event model does not have.
  */
-export function gwStrainFromEnergy(energyGW_erg: number, distanceCm: number): number {
-    return (2 * G_CGS * energyGW_erg) / (Math.pow(C_CM_S, 4) * distanceCm);
+export function gwRootSumSquareStrain(energyGW_erg: number, distanceCm: number, frequencyHz: number): number {
+    return Math.sqrt((G_CGS * energyGW_erg) / (Math.PI * Math.PI * Math.pow(C_CM_S, 3))) / (distanceCm * frequencyHz);
+}
+
+/** Fundamental l = m = 2 quasi-normal-mode frequency of a Schwarzschild black hole (Mω = 0.37367). */
+export function schwarzschildRingdownFrequencyHz(massG: number): number {
+    return (0.37367 * Math.pow(C_CM_S, 3)) / (2 * Math.PI * G_CGS * massG);
 }
 
 /**
@@ -476,16 +482,28 @@ export function gwDisplacement(strain: number, baselineCm: number): number {
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
- * Gertsenshtein conversion probability (weak-field limit).
- *   P ≈ (π² G / c⁴) × (B × L)² × sin²(θ_B)
+ * Gertsenshtein graviton→photon conversion probability, weak mixing, without
+ * plasma or vacuum-birefringence refraction. Per coherent domain of length ℓ in a
+ * transverse field B (Gaussian units):
+ *   P = G B² ℓ² / c⁴
+ * from the mixing term Δ = κB/2 with κ² = 16πG in Heaviside-Lorentz units
+ * (Raffelt & Stodolsky 1988), since B_HL² = B_G²/4π. Across a path L of domains
+ * with random field orientation the domain probabilities add (cell model):
+ *   P ≈ G B² ℓ L / c⁴.
  *
- * @param {number} bFieldG - transverse magnetic field (Gauss)
- * @param {number} pathLengthCm - coherent path length (cm)
+ * @param {number} bFieldG - magnetic field magnitude (Gauss)
+ * @param {number} pathLengthCm - path length (cm)
+ * @param {number} coherenceLengthCm - field coherence length (cm); default: the whole path
  * @param {number} sinThetaB - sin of angle between B and propagation (default 1)
  */
-export function gertsenshteinProbability(bFieldG: number, pathLengthCm: number, sinThetaB: number = 1): number {
-    const prefactor = (Math.PI * Math.PI * G_CGS) / Math.pow(C_CM_S, 4);
-    return prefactor * Math.pow(bFieldG * pathLengthCm * sinThetaB, 2);
+export function gertsenshteinProbability(
+    bFieldG: number,
+    pathLengthCm: number,
+    coherenceLengthCm: number = pathLengthCm,
+    sinThetaB: number = 1
+): number {
+    const domainCm = Math.min(pathLengthCm, coherenceLengthCm);
+    return (G_CGS * Math.pow(bFieldG * sinThetaB, 2) * domainCm * pathLengthCm) / Math.pow(C_CM_S, 4);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -597,9 +615,10 @@ export function computeMultiMessengerTimeline(source: SmbhSource, energyErg: num
     const boost = fluxBoost(jetBeta, thetaObsRad);
     const tCompress = timeCompressionFactor(jetBeta, thetaObsRad);
 
-    const gwEnergyFraction = 0.01;
-    const hGW = gwStrainFromEnergy(energyErg * gwEnergyFraction, d);
-    const hMemory = gwMemoryStrain(hGW);
+    const gwEnergyErg = energyErg * 0.01;
+    const gwFrequencyHz = schwarzschildRingdownFrequencyHz(source.massG);
+    const hRss = gwRootSumSquareStrain(gwEnergyErg, d, gwFrequencyHz);
+    const hMemory = gwMemoryStrain(gwEnergyErg, d);
 
     const blastArrivalSec = sedovTaylorArrivalTime(energyErg * 0.44, rhoMedium, d);
     const blastVelocity = sedovTaylorVelocity(energyErg * 0.44, rhoMedium, blastArrivalSec);
@@ -623,9 +642,9 @@ export function computeMultiMessengerTimeline(source: SmbhSource, energyErg: num
         },
 
         gwPhysics: {
-            strainAtSun: hGW,
+            characteristicFrequencyHz: gwFrequencyHz,
+            rssStrainAtSunPerRootHz: hRss,
             memoryStrain: hMemory,
-            displacementAtAU_cm: gwDisplacement(hGW, AU_CM),
             memoryDisplacementAtAU_cm: gwDisplacement(hMemory, AU_CM)
         },
 
@@ -646,7 +665,7 @@ export function computeMultiMessengerTimeline(source: SmbhSource, energyErg: num
         },
 
         gertsenshtein: {
-            ismConversionProb: gertsenshteinProbability(ISM.bFieldDiskG, d),
+            ismConversionProb: gertsenshteinProbability(ISM.bFieldDiskG, d, ISM.bCoherencePc * PC_CM),
             nearSourceProb: gertsenshteinProbability(
                 source.bFieldHorizonG || 50,
                 (source.rSchwarzschildCm || 1e10) * 10

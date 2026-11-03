@@ -18,15 +18,17 @@
 // FUNDAMENTAL CONSTANTS (CGS unless noted)
 // ═══════════════════════════════════════════════════════════════════════════
 
+import { AU_KM, G_SI } from '../../../constants';
 import { SOURCE_COORDINATES, sourceEclipticDirection, intrinsicBetaForApparentSpeed, type SourceKey } from './sourceCoordinates';
 import type { ChannelDefinition, SmbhSource } from './smbhTypes';
 
-export const C_CM_S = 2.998e10;
-export const C_KM_S = 2.998e5;
-export const C_AU_YR = 63241.1;
+export const C_CM_S = 2.99792458e10;  // exact (SI)
+export const C_KM_S = C_CM_S / 1e5;
 
-export const G_CGS = 6.674e-8;       // cm³/(g·s²)
-export const M_SUN_G = 1.989e33;       // g
+export const G_CGS = G_SI * 1e3;     // CODATA 2018, cm³/(g·s²), shared with the simulation
+// IAU 2015 nominal solar mass parameter (GM)☉ over G. Source masses stay the
+// quoted approximate values; only the conversion to grams is exact.
+export const M_SUN_G = 1.3271244e26 / G_CGS;
 export const M_PROTON_G = 1.673e-24;      // g
 export const K_B_CGS = 1.381e-16;      // erg/K
 export const SIGMA_T = 6.652e-25;      // Thomson cross-section, cm²
@@ -38,12 +40,13 @@ export const HBAR_CGS = 1.055e-27;      // erg·s
 // UNIT CONVERSIONS
 // ═══════════════════════════════════════════════════════════════════════════
 
-export const PC_CM = 3.086e18;
-export const KPC_CM = 3.086e21;
-export const MPC_CM = 3.086e24;
-export const LY_CM = 9.461e17;
-export const AU_CM = 1.496e13;
-export const YR_S = 3.15576e7;
+export const AU_CM = AU_KM * 1e5;     // IAU 2012, exact
+export const PC_CM = AU_CM * 648_000 / Math.PI;  // IAU 2015 B2
+export const KPC_CM = PC_CM * 1e3;
+export const MPC_CM = PC_CM * 1e6;
+export const YR_S = 3.15576e7;       // Julian year
+export const LY_CM = C_CM_S * YR_S;
+export const C_AU_YR = C_CM_S * YR_S / AU_CM;
 export const MYR_S = 3.15576e13;
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -60,9 +63,9 @@ export const SGR_A = Object.freeze({
     type: 'quiescent SMBH',
 
     massMsun: 4.154e6,
-    massG: 4.154e6 * 1.989e33,
+    massG: 4.154e6 * M_SUN_G,
     distanceKpc: 8.178,
-    distanceCm: 8.178 * 3.086e21,
+    distanceCm: 8.178 * KPC_CM,
     distanceLy: 26_673,
 
     rSchwarzschildCm: schwarzschildRadiusCm(4.154e6),       // 1.23e12 cm = 0.082 AU
@@ -100,9 +103,9 @@ export const CEN_A = Object.freeze({
     type: 'active AGN (nearest)',
 
     massMsun: 5.5e7,
-    massG: 5.5e7 * 1.989e33,
+    massG: 5.5e7 * M_SUN_G,
     distanceMpc: 3.8,
-    distanceCm: 3.8 * 3.086e24,
+    distanceCm: 3.8 * MPC_CM,
     distanceLy: 12_400_000,
 
     jetBetaSpine: intrinsicBetaForApparentSpeed(2.7, 15),
@@ -136,9 +139,9 @@ export const MAFFEI_1 = Object.freeze({
     type: 'giant elliptical (Zone of Avoidance)',
 
     massMsun: 3e8,                  // M-σ estimate — NO direct measurement
-    massG: 3e8 * 1.989e33,
+    massG: 3e8 * M_SUN_G,
     distanceMpc: 2.85,
-    distanceCm: 2.85 * 3.086e24,
+    distanceCm: 2.85 * MPC_CM,
     distanceLy: 9_300_000,
 
     extinctionAv: 4.7,                  // visual magnitudes of extinction
@@ -161,9 +164,9 @@ export const M87 = Object.freeze({
     type: 'giant cD elliptical (educational)',
 
     massMsun: 6.5e9,
-    massG: 6.5e9 * 1.989e33,
+    massG: 6.5e9 * M_SUN_G,
     distanceMpc: 16.8,
-    distanceCm: 16.8 * 3.086e24,
+    distanceCm: 16.8 * MPC_CM,
     distanceLy: 54_700_000,
 
     rSchwarzschildCm: schwarzschildRadiusCm(6.5e9),         // 1.92e15 cm = 128 AU — bigger than Pluto's orbit
