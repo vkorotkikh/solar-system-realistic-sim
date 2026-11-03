@@ -350,6 +350,7 @@ The backend provides direct-transfer and multi-leg gravity-assist planning, incl
 
 - `POST /mission/plan` orchestrates TrajectoryAgent, MiningAgent, LogisticsAgent, and VerifierAgent
 - Includes explainability logs, payload-return closure, and Monte Carlo risk envelopes
+- Stock-aware risk samples cap the mined stock at the departure manifest, then apply transit survival to that cargo when reporting delivered-yield envelopes.
 
 ### Benchmark API
 
