@@ -174,6 +174,55 @@ def test_hard_timeout_kills_reaps_and_recovers_capacity(tmp_path: Path) -> None:
         runner.shutdown()
 
 
+def test_finished_result_survives_slow_child_exit_within_deadline() -> None:
+    # A loaded host can take longer than a fixed sub-second grace to tear down
+    # an interpreter holding numpy/scipy/astropy. That turned complete PFSS
+    # results into 503 solar_compute_timeout with most of the deadline unused.
+    from sim.process_supervisor import SupervisedProcessRunner
+
+    runner = SupervisedProcessRunner(TARGET, max_workers=1, max_queue=0)
+    try:
+        future = runner.submit(
+            {
+                "operation": "echo_then_slow_exit",
+                "exit_delay_seconds": 0.6,
+                "result": _result("late exit"),
+            },
+            timeout_seconds=5.0,
+        )
+        assert future.result(timeout=7.0)["value"] == "late exit"
+        assert runner.snapshot()["active_processes"] == 0
+        assert runner.snapshot()["in_flight"] == 0
+    finally:
+        runner.shutdown()
+
+
+def test_child_that_never_exits_after_its_result_still_times_out(tmp_path: Path) -> None:
+    from sim.process_supervisor import ProcessTimedOut, SupervisedProcessRunner
+
+    runner = SupervisedProcessRunner(TARGET, max_workers=1, max_queue=0)
+    started = tmp_path / "lingering.pid"
+    hard_timeout_seconds = 3.0
+    try:
+        future = runner.submit(
+            {
+                "operation": "echo_then_slow_exit",
+                "exit_delay_seconds": 30.0,
+                "started_path": str(started),
+                "result": _result(),
+            },
+            timeout_seconds=hard_timeout_seconds,
+        )
+        child_pid = _wait_for_pid(started)
+        with pytest.raises(ProcessTimedOut):
+            future.result(timeout=hard_timeout_seconds + 2.0)
+        assert not _pid_exists(child_pid)
+        assert runner.snapshot()["active_processes"] == 0
+        assert runner.snapshot()["in_flight"] == 0
+    finally:
+        runner.shutdown()
+
+
 def test_child_crash_reaps_and_recovers_without_permit_overcredit() -> None:
     from sim.process_supervisor import ProcessCrashed, SupervisedProcessRunner
 
