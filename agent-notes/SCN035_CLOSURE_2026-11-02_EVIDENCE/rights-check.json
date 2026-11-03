@@ -1,0 +1,10 @@
+{
+  "command": [
+    "/home/nomad/.npm/_npx/f4985f1adc097c41/node_modules/node/bin/node",
+    "scripts/distribution-inventory.mjs",
+    "--require-rights"
+  ],
+  "returncode": 1,
+  "stdout": "",
+  "stderr": "file:///home/nomad/ai/projects/worktrees/solar-four-closure-20261102/scripts/distribution-inventory.mjs:110\n    throw new Error(`distribution rights review incomplete: ${unresolvedProductIds.join(', ')}`);\n          ^\n\nError: distribution rights review incomplete: aia-094, aia-171, aia-193, aia-211, aia-304, celestrak-geo, celestrak-stations, d3-celestial-stars, gaia-dr3-tap, gibs-clouds, gong-zqs, google-fonts, horizons-solution:DE441, horizons-solution:jup347_merged_DE442, horizons-solution:jup365_merged, horizons-solution:mar099, horizons-solution:nep098_merged, horizons-solution:nep104_merged, horizons-solution:plu060_merged, horizons-solution:sat415_merged_DE437, horizons-solution:sat441l, horizons-solution:sat455_merged_DE440, horizons-solution:sat456_merged_DE440, horizons-solution:sat457_merged_DE440, horizons-solution:ura184_merged, jpl-horizons, jpl-satellite-elements, jpl-secular-planets, moon-texture:jupiter:callisto, moon-texture:jupiter:europa, moon-texture:jupiter:ganymede, moon-texture:mars:phobos, moon-texture:saturn:dione, moon-texture:saturn:enceladus, moon-texture:saturn:rhea, moon-texture:saturn:tethys, mpcorb, naif-kernels, nearby-source-family, noaa-mag, noaa-wind, repository-generated-metadata, sbdb-phase1\n    at verifyDistributionInventory (file:///home/nomad/ai/projects/worktrees/solar-four-closure-20261102/scripts/distribution-inventory.mjs:110:11)\n    at async file:///home/nomad/ai/projects/worktrees/solar-four-closure-20261102/scripts/distribution-inventory.mjs:118:18\n\nNode.js v22.23.2\n"
+}

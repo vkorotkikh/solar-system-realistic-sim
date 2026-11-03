@@ -1,0 +1,76 @@
+{
+  "base_commit": "359598a818ec45fa22e6d6a822d7aea0a5e0a0ec",
+  "baseline": {
+    "collected": 11,
+    "passed": 11
+  },
+  "baseline_worktree": "detached-head",
+  "manifest_path": "ci/r3-r4-science-verification.json",
+  "manifest_sha256": "066a2f69741a3a4a4cceb923ce2871fcdafa0107e8323bd0eca0fd4b5c75c336",
+  "mutations": [
+    {
+      "id": "old-legendre-recurrence",
+      "node": "backend/tests/test_pfss_harmonics.py::test_all_modes_against_immutable_oracle",
+      "status": "killed"
+    },
+    {
+      "id": "uniform-theta-area-weights",
+      "node": "backend/tests/test_pfss_decomposition.py::test_non_band_limited_fit_minimizes_correct_area_weighted_residual[equal_area_sine_latitude_grid]",
+      "status": "killed"
+    },
+    {
+      "id": "extra-m-normalization",
+      "node": "backend/tests/test_pfss_harmonics.py::test_schmidt_normalization_is_applied_once_in_projection[cosine]",
+      "status": "killed"
+    },
+    {
+      "id": "corrupt-source-surface-factor",
+      "node": "backend/tests/test_pfss_analytic_fields.py::test_source_surface_has_zero_tangential_field_and_nonzero_radial_flux[4-2-True]",
+      "status": "killed"
+    },
+    {
+      "id": "omit-exact-boundary-crossing",
+      "node": "backend/tests/test_pfss_tracing.py::test_open_endpoint_does_not_overshoot",
+      "status": "killed"
+    },
+    {
+      "id": "wsa-vector-magnitude-expansion",
+      "node": "backend/tests/test_wsa_semantics.py::test_expansion_uses_exact_radial_components_not_tangential_magnitude",
+      "status": "killed"
+    },
+    {
+      "id": "skip-scaled-flux-provenance-validation",
+      "node": "backend/tests/test_solar_observational_acceptance.py::test_forged_scaled_flux_snapshot_is_rejected[positive_scale_factor-0.001]",
+      "status": "killed"
+    },
+    {
+      "id": "reject-exact-scaled-flux-limit",
+      "node": "backend/tests/test_solar_observational_acceptance.py::test_scaled_monopole_policy_accepts_exact_limit",
+      "status": "killed"
+    }
+  ],
+  "python_socket_guard": true,
+  "requirements": {
+    "path": "ci/r3-r4-requirements.txt",
+    "sha256": "74d61522ae710cc068ad965ebd7ca9192b8ff89c9e65e5d7c898ff54c9d0c1f1"
+  },
+  "resolved_fixed_commits": {
+    "corrupt-source-surface-factor": "df8adc6ec24323866eb31713c7977599d59d32f2",
+    "extra-m-normalization": "df8adc6ec24323866eb31713c7977599d59d32f2",
+    "old-legendre-recurrence": "df8adc6ec24323866eb31713c7977599d59d32f2",
+    "omit-exact-boundary-crossing": "487a0efc13ceab74d769dd03f9a456f3772298ac",
+    "reject-exact-scaled-flux-limit": "d37a37a8f616e3a1abffa2ded3d9e4cee2446b93",
+    "skip-scaled-flux-provenance-validation": "d37a37a8f616e3a1abffa2ded3d9e4cee2446b93",
+    "uniform-theta-area-weights": "70af7c81ea40d0fd090423922d767949fb30c3e3",
+    "wsa-vector-magnitude-expansion": "8fd45d5fd20588edb7bcc7fcb585ce3ac3777799"
+  },
+  "schema_version": 1,
+  "scope_gaps": [
+    "independent-real-GONG-PFSS-corpus",
+    "playwright-and-load-lanes",
+    "global-typescript-zero-error-gate",
+    "multi-worker-global-coordinator-and-process-release-integration",
+    "immutable-action-container-and-os-network-attestation",
+    "github-required-check-and-branch-protection-configuration"
+  ]
+}

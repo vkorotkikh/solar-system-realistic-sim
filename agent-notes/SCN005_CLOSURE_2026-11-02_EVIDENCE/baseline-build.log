@@ -1,0 +1,19 @@
+vite v7.3.7 building client environment for production...
+transforming...
+✓ 81 modules transformed.
+
+(!) outDir /tmp/solar-scn005-baseline-dist-20261102 is not inside project root and will not be emptied.
+Use --emptyOutDir to override.
+
+rendering chunks...
+computing gzip size...
+../../../../../../tmp/solar-scn005-baseline-dist-20261102/index.html                         21.17 kB │ gzip:   4.81 kB
+../../../../../../tmp/solar-scn005-baseline-dist-20261102/assets/modelWorker-B4I096xc.js     30.43 kB
+../../../../../../tmp/solar-scn005-baseline-dist-20261102/assets/index-Ba7vuM9D.css          26.39 kB │ gzip:   5.96 kB
+../../../../../../tmp/solar-scn005-baseline-dist-20261102/assets/index-Pp4weFoU.js        1,003.86 kB │ gzip: 262.08 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 2.08s

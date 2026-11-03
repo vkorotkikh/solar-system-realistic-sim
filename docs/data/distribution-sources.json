@@ -1,0 +1,806 @@
+{
+  "schemaVersion": 1,
+  "reviewedDate": "2026-11-02",
+  "scope": "Current copied public tree, named retained scientific data, and configured runtime/offline providers; not a complete source/archive or Python dependency SBOM. Runtime responses are not captured by this inventory.",
+  "dataUseScope": "noncommercial research/evaluation",
+  "decisions": {
+    "originalCode": "Permission-required LICENSE selected; third-party rights remain separate.",
+    "deimos": "Removed from current source/acquisition catalog/public tree; no permission claimed.",
+    "silso": "Noncommercial-only data workflow adopted; no commercial grant."
+  },
+  "products": [
+    {
+      "id": "repository-generated-metadata",
+      "product": "Repository-authored manifests and compiled attribution metadata",
+      "use": "provenance-only",
+      "sourceUrls": [
+        "https://github.com/vkorotkikh/solar-system-realistic-sim/blob/main/LICENSE"
+      ],
+      "credit": "Original project authors; preserve upstream data attribution separately.",
+      "rightsStatus": "owner-permission-required",
+      "rightsEvidence": "LICENSE selects express-permission-required terms for original code/documents. No public redistribution permission is inferred.",
+      "evidencePaths": [
+        "NOTICE.md"
+      ]
+    },
+    {
+      "id": "sbdb-phase1",
+      "product": "JPL SBDB Query API, 100,000 diameter-bearing main-belt rows, largest-first selection",
+      "use": "offline-generation; derived bytes copied from public/",
+      "sourceUrls": [
+        "https://ssd-api.jpl.nasa.gov/sbdb_query.api?fields=spkid%2Cfull_name%2CH%2Cdiameter%2Calbedo%2Ce%2Ca%2Ci%2Com%2Cw%2Cma%2Cper%2Cepoch%2Cclass%2Cspec_B%2Cspec_T&full-prec=true&limit=100000&sb-cdata=%7B%22AND%22%3A%5B%22a%7CGE%7C2%22%2C%22a%7CLE%7C3.5%22%2C%22diameter%7CGT%7C0%22%5D%7D&sb-class=MBA%2CIMB%2COMB&sb-kind=a&sort=-diameter%2Cspkid"
+      ],
+      "credit": "NASA/JPL Solar System Dynamics / Caltech; retain the named numerical solution, query, capture provenance, reference frame/time scale/units and documented transformations. No endorsement.",
+      "rightsStatus": "review-required",
+      "rightsEvidence": "JPL SSD FAQ requests permission to republish site information. Applicability to these exact derived numerical products needs an owner/provider decision; no permission is recorded.",
+      "evidencePaths": [
+        "public/data/asteroid-phase1/asteroid_phase1_main_100000.meta.json",
+        "scripts/build_asteroid_phase1_dataset.py"
+      ],
+      "rightsPolicyUrls": [
+        "https://ssd.jpl.nasa.gov/faq.html"
+      ]
+    },
+    {
+      "id": "jpl-satellite-elements",
+      "product": "JPL SSD satellite mean-element table, 423 catalog records",
+      "use": "offline-generation; catalog JSON is imported by entry",
+      "sourceUrls": [
+        "https://ssd.jpl.nasa.gov/sats/elem/"
+      ],
+      "credit": "NASA/JPL Solar System Dynamics / Caltech; retain the named numerical solution, query, capture provenance, reference frame/time scale/units and documented transformations. No endorsement.",
+      "rightsStatus": "review-required",
+      "rightsEvidence": "JPL SSD FAQ requests permission to republish site information. Applicability to these exact derived numerical products needs an owner/provider decision; no permission is recorded.",
+      "evidencePaths": [
+        "scripts/update-moons-data.mjs",
+        "src/data/moons.json"
+      ],
+      "rightsPolicyUrls": [
+        "https://ssd.jpl.nasa.gov/faq.html"
+      ]
+    },
+    {
+      "id": "jpl-horizons",
+      "product": "JPL Horizons ELEMENTS/VECTORS, parent-relative moon models and barycentric planet initial conditions",
+      "use": "backend-runtime API; offline-generation source for local derived assets",
+      "sourceUrls": [
+        "https://ssd.jpl.nasa.gov/api/horizons.api"
+      ],
+      "credit": "NASA/JPL Solar System Dynamics / Caltech; retain the named numerical solution, query, capture provenance, reference frame/time scale/units and documented transformations. No endorsement.",
+      "rightsStatus": "review-required",
+      "rightsEvidence": "JPL SSD FAQ requests permission to republish site information. Applicability to these exact derived numerical products needs an owner/provider decision; no permission is recorded.",
+      "evidencePaths": [
+        "src/sim/loadMoonEphemerides.ts",
+        "backend/mission/ephemeris_service.py",
+        "scripts/moon-lazy-inputs/manifest.json"
+      ],
+      "rightsPolicyUrls": [
+        "https://ssd.jpl.nasa.gov/faq.html"
+      ]
+    },
+    {
+      "id": "jpl-secular-planets",
+      "product": "JPL approximate planetary positions Table 1; legacy Pluto coefficient qualification",
+      "use": "source-reference; coefficients statically imported, not remotely fetched",
+      "sourceUrls": [
+        "https://ssd.jpl.nasa.gov/planets/approx_pos.html"
+      ],
+      "credit": "NASA/JPL Solar System Dynamics / Caltech; retain the named numerical solution, query, capture provenance, reference frame/time scale/units and documented transformations. No endorsement.",
+      "rightsStatus": "review-required",
+      "rightsEvidence": "JPL SSD FAQ requests permission to republish site information. Applicability to these exact derived numerical products needs an owner/provider decision; no permission is recorded.",
+      "evidencePaths": [
+        "backend/data/ephemerides/planet_secular_model.json",
+        "src/data/planets.ts"
+      ],
+      "rightsPolicyUrls": [
+        "https://ssd.jpl.nasa.gov/faq.html"
+      ]
+    },
+    {
+      "id": "naif-kernels",
+      "product": "JPL NAIF PCK00011, GM DE440, URA184 part 2 and SAT393 Daphnis",
+      "use": "source-reference/offline-generation; not a runtime kernel download",
+      "sourceUrls": [
+        "https://naif.jpl.nasa.gov/pub/naif/generic_kernels/pck/pck00011.tpc",
+        "https://naif.jpl.nasa.gov/pub/naif/generic_kernels/pck/gm_de440.tpc",
+        "https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/satellites/ura184_part-2.bsp",
+        "https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/satellites/sat393_daphnis.bsp"
+      ],
+      "credit": "NASA/JPL Solar System Dynamics / Caltech; retain the named numerical solution, query, capture provenance, reference frame/time scale/units and documented transformations. No endorsement.",
+      "rightsStatus": "review-required",
+      "rightsEvidence": "Product-specific redistribution rights have not been established. Retaining source, bytes and credit does not grant permission.",
+      "evidencePaths": [
+        "src/data/planetaryRotation.ts",
+        "scripts/capture_moon_spk_oracle.py",
+        "scripts/capture_daphnis_spk_oracle.py",
+        "backend/data/initial_conditions.py"
+      ]
+    },
+    {
+      "id": "nearby-source-family",
+      "product": "Gaia EDR3 / VizieR J/A+A/650/A201 nearby systems, with per-manifest literature and NASA Exoplanet Archive claims",
+      "use": "generation provenance; local public manifests copied; retained renderer not imported by entry",
+      "sourceUrls": [
+        "https://vizier.cds.unistra.fr/viz-bin/asu-tsv?-source=J/A+A/650/A201/tablea1"
+      ],
+      "credit": "Preserve each file sources/notes. Gaia acknowledgment depends on actual release/product; NASA Exoplanet Archive and literature credits remain to be resolved per product.",
+      "rightsStatus": "review-required",
+      "rightsEvidence": "Product-specific redistribution rights have not been established. Retaining source, bytes and credit does not grant permission.",
+      "evidencePaths": [
+        "public/solar-systems/manifests/alpha-centauri.json",
+        "public/solar-systems/manifests/barnards-star.json",
+        "public/solar-systems/manifests/sirius.json",
+        "solar-systems/nearby_star_systems_ranked_full.md"
+      ]
+    },
+    {
+      "id": "d3-celestial-stars",
+      "product": "Reduced d3-celestial star catalog; optional Gaia DR3 enrichment claimed by README",
+      "use": "source-only retained data; no entry import",
+      "sourceUrls": [
+        "https://github.com/ofrohn/d3-celestial/blob/master/LICENSE"
+      ],
+      "credit": "Retain Olaf Frohn BSD-3-Clause notice for any redistributed upstream software; separately determine catalog provenance/credits. Current tuples alone do not establish Gaia enrichment.",
+      "rightsStatus": "review-required",
+      "rightsEvidence": "Product-specific redistribution rights have not been established. Retaining source, bytes and credit does not grant permission.",
+      "evidencePaths": [
+        "README.md",
+        "NOTICE.md",
+        "src/data/stars_catalog.json",
+        "scripts/fetch_gaia_catalog.py"
+      ]
+    },
+    {
+      "id": "gaia-dr3-tap",
+      "product": "Gaia DR3 gaiadr3.gaia_source acquisition, ESA TAP primary and VizieR TAP mirror",
+      "use": "optional acquisition script, not a browser runtime request",
+      "sourceUrls": [
+        "https://gea.esac.esa.int/tap-server/tap/sync",
+        "https://tapvizier.cds.unistra.fr/TAPVizieR/tap/sync"
+      ],
+      "credit": "Release/product-specific Gaia acknowledgments remain unresolved. Preserve query, source IDs, retrieval/mirror and processing. Prior note records unavailable credits-page evidence.",
+      "rightsStatus": "review-required",
+      "rightsEvidence": "Product-specific redistribution rights have not been established. Retaining source, bytes and credit does not grant permission.",
+      "evidencePaths": [
+        "scripts/fetch_gaia_catalog.py",
+        "agent-notes/REMEDIATION_PROVENANCE_2026-10-14.md"
+      ]
+    },
+    {
+      "id": "mpcorb",
+      "product": "Minor Planet Center MPCORB.DAT optional Phase 2 source",
+      "use": "optional acquisition script, not a shipped Phase 1 source",
+      "sourceUrls": [
+        "https://www.minorplanetcenter.net/iau/MPCORB/MPCORB.DAT"
+      ],
+      "credit": "Provider/product attribution and redistribution terms remain unknown; no Phase 2 public files currently present.",
+      "rightsStatus": "review-required",
+      "rightsEvidence": "Product-specific redistribution rights have not been established. Retaining source, bytes and credit does not grant permission.",
+      "evidencePaths": [
+        "scripts/asteroid/catalog_fetcher.ts"
+      ]
+    },
+    {
+      "id": "moon-texture:mars:phobos",
+      "product": "Phobos Viking Global Mosaic 5m",
+      "use": "ingestion source URLs only; retained runtime pipeline loads local publicPath, not downloadUrl",
+      "sourceUrls": [
+        "https://astrogeology.usgs.gov/search/map/phobos_viking_global_mosaic_5m",
+        "https://astrogeology.usgs.gov/ckan/dataset/85290c2c-7524-44ba-9251-61ea69fcd9dd/resource/876ae3aa-ac7b-434c-86f4-a2e50cc9826d/download/phobos_viking_mosaic_dlrcontrol_1024.jpg"
+      ],
+      "credit": "NASA/USGS; Phobos mosaic author Phil Stooke",
+      "rightsStatus": "provider-declared-public-domain",
+      "rightsEvidence": "Retained acquisition catalog labels this product Public domain. Fresh product API/page retrieval returned HTTP 403 on 2026-11-02; this is not a completed product rights review. USGS general policy excludes some third-party material.",
+      "evidencePaths": [
+        "public/textures/moons/moon_texture_attribution.json",
+        "src/frontend/features/planetary/moonTextureCatalog.ts",
+        "NOTICE.md"
+      ],
+      "rightsPolicyUrls": [
+        "https://www.usgs.gov/information-policies-and-instructions/copyrights-and-credits"
+      ]
+    },
+    {
+      "id": "moon-texture:jupiter:europa",
+      "product": "Europa Voyager - Galileo SSI Global Mosaic 500m",
+      "use": "ingestion source URLs only; retained runtime pipeline loads local publicPath, not downloadUrl",
+      "sourceUrls": [
+        "https://astrogeology.usgs.gov/search/map/europa_voyager_galileo_ssi_global_mosaic_500m",
+        "https://astrogeology.usgs.gov/ckan/dataset/4080036f-afc5-422e-abe9-1c0c8e4f98ea/resource/3647e7b3-425e-4dcf-951b-cc4a22fb0129/download/europa_voyager_galileossi_global_mosaic_500m_1024.jpg"
+      ],
+      "credit": "NASA/USGS",
+      "rightsStatus": "provider-declared-public-domain",
+      "rightsEvidence": "Retained acquisition catalog labels this product Public domain. Fresh product API/page retrieval returned HTTP 403 on 2026-11-02; this is not a completed product rights review. USGS general policy excludes some third-party material.",
+      "evidencePaths": [
+        "public/textures/moons/moon_texture_attribution.json",
+        "src/frontend/features/planetary/moonTextureCatalog.ts",
+        "NOTICE.md"
+      ],
+      "rightsPolicyUrls": [
+        "https://www.usgs.gov/information-policies-and-instructions/copyrights-and-credits"
+      ]
+    },
+    {
+      "id": "moon-texture:jupiter:ganymede",
+      "product": "Ganymede Voyager - Galileo SSI Global Mosaic 1km",
+      "use": "ingestion source URLs only; retained runtime pipeline loads local publicPath, not downloadUrl",
+      "sourceUrls": [
+        "https://astrogeology.usgs.gov/search/map/ganymede_voyager_galileo_ssi_global_mosaic_1km",
+        "https://astrogeology.usgs.gov/ckan/dataset/57cad6e2-ed52-4b99-9d44-afbb9def6450/resource/1d52d4a5-bc78-4ac1-a7d0-8d5254ebf1a8/download/ganymede_voyager_galileossi_global_mosaic_1024.jpg"
+      ],
+      "credit": "NASA/USGS",
+      "rightsStatus": "provider-declared-public-domain",
+      "rightsEvidence": "Retained acquisition catalog labels this product Public domain. Fresh product API/page retrieval returned HTTP 403 on 2026-11-02; this is not a completed product rights review. USGS general policy excludes some third-party material.",
+      "evidencePaths": [
+        "public/textures/moons/moon_texture_attribution.json",
+        "src/frontend/features/planetary/moonTextureCatalog.ts",
+        "NOTICE.md"
+      ],
+      "rightsPolicyUrls": [
+        "https://www.usgs.gov/information-policies-and-instructions/copyrights-and-credits"
+      ]
+    },
+    {
+      "id": "moon-texture:jupiter:callisto",
+      "product": "Callisto Galileo/Voyager Global Mosaic 1km",
+      "use": "ingestion source URLs only; retained runtime pipeline loads local publicPath, not downloadUrl",
+      "sourceUrls": [
+        "https://astrogeology.usgs.gov/search/map/callisto_galileo_voyager_global_mosaic_1km",
+        "https://astrogeology.usgs.gov/ckan/dataset/a80abd68-7ed9-440e-829a-76376779164f/resource/ac628525-cb1c-4742-928b-5a0a60f372cd/download/callisto_voyager_galileossi_global_mosaic_1024.jpg"
+      ],
+      "credit": "NASA/USGS",
+      "rightsStatus": "provider-declared-public-domain",
+      "rightsEvidence": "Retained acquisition catalog labels this product Public domain. Fresh product API/page retrieval returned HTTP 403 on 2026-11-02; this is not a completed product rights review. USGS general policy excludes some third-party material.",
+      "evidencePaths": [
+        "public/textures/moons/moon_texture_attribution.json",
+        "src/frontend/features/planetary/moonTextureCatalog.ts",
+        "NOTICE.md"
+      ],
+      "rightsPolicyUrls": [
+        "https://www.usgs.gov/information-policies-and-instructions/copyrights-and-credits"
+      ]
+    },
+    {
+      "id": "moon-texture:saturn:enceladus",
+      "product": "Enceladus Cassini Global Mosaic 110m",
+      "use": "ingestion source URLs only; retained runtime pipeline loads local publicPath, not downloadUrl",
+      "sourceUrls": [
+        "https://astrogeology.usgs.gov/search/map/enceladus_cassini_global_mosaic_110m",
+        "https://astrogeology.usgs.gov/ckan/dataset/30bff65e-56bb-4fd1-bd04-edd9bc2e77d0/resource/19ba2e14-9ceb-45e6-8cc8-e784e36ed4f0/download/full.jpg"
+      ],
+      "credit": "NASA/USGS",
+      "rightsStatus": "provider-declared-public-domain",
+      "rightsEvidence": "Retained acquisition catalog labels this product Public domain. Fresh product API/page retrieval returned HTTP 403 on 2026-11-02; this is not a completed product rights review. USGS general policy excludes some third-party material.",
+      "evidencePaths": [
+        "public/textures/moons/moon_texture_attribution.json",
+        "src/frontend/features/planetary/moonTextureCatalog.ts",
+        "NOTICE.md"
+      ],
+      "rightsPolicyUrls": [
+        "https://www.usgs.gov/information-policies-and-instructions/copyrights-and-credits"
+      ]
+    },
+    {
+      "id": "moon-texture:saturn:tethys",
+      "product": "Tethys Cassini Global Mosaic 293m",
+      "use": "ingestion source URLs only; retained runtime pipeline loads local publicPath, not downloadUrl",
+      "sourceUrls": [
+        "https://astrogeology.usgs.gov/search/map/tethys_cassini_global_mosaic_293m",
+        "https://astrogeology.usgs.gov/ckan/dataset/e40296c1-b4bf-46d8-86af-4b6cf0301b0c/resource/36d40203-d9b3-447e-9004-c3dc100bde04/download/full.jpg"
+      ],
+      "credit": "NASA/USGS",
+      "rightsStatus": "provider-declared-public-domain",
+      "rightsEvidence": "Retained acquisition catalog labels this product Public domain. Fresh product API/page retrieval returned HTTP 403 on 2026-11-02; this is not a completed product rights review. USGS general policy excludes some third-party material.",
+      "evidencePaths": [
+        "public/textures/moons/moon_texture_attribution.json",
+        "src/frontend/features/planetary/moonTextureCatalog.ts",
+        "NOTICE.md"
+      ],
+      "rightsPolicyUrls": [
+        "https://www.usgs.gov/information-policies-and-instructions/copyrights-and-credits"
+      ]
+    },
+    {
+      "id": "moon-texture:saturn:dione",
+      "product": "Dione Cassini - Voyager Global Mosaic 154m",
+      "use": "ingestion source URLs only; retained runtime pipeline loads local publicPath, not downloadUrl",
+      "sourceUrls": [
+        "https://astrogeology.usgs.gov/search/map/dione_cassini_voyager_global_mosaic_154m",
+        "https://astrogeology.usgs.gov/ckan/dataset/acb98ae6-ec50-42df-9a74-142d177bbe6d/resource/8a6a8ada-42e1-4b92-b13e-c63493133efc/download/full.jpg"
+      ],
+      "credit": "NASA/USGS",
+      "rightsStatus": "provider-declared-public-domain",
+      "rightsEvidence": "Retained acquisition catalog labels this product Public domain. Fresh product API/page retrieval returned HTTP 403 on 2026-11-02; this is not a completed product rights review. USGS general policy excludes some third-party material.",
+      "evidencePaths": [
+        "public/textures/moons/moon_texture_attribution.json",
+        "src/frontend/features/planetary/moonTextureCatalog.ts",
+        "NOTICE.md"
+      ],
+      "rightsPolicyUrls": [
+        "https://www.usgs.gov/information-policies-and-instructions/copyrights-and-credits"
+      ]
+    },
+    {
+      "id": "moon-texture:saturn:rhea",
+      "product": "Rhea Cassini - Voyager Global Mosaic 417m",
+      "use": "ingestion source URLs only; retained runtime pipeline loads local publicPath, not downloadUrl",
+      "sourceUrls": [
+        "https://astrogeology.usgs.gov/search/map/rhea_cassini_voyager_global_mosaic_417m",
+        "https://astrogeology.usgs.gov/ckan/dataset/22bc1015-d9c9-4212-86c3-e42061b204d4/resource/77fa77f8-6d6b-4072-9360-17138caa6e7d/download/full.jpg"
+      ],
+      "credit": "NASA/USGS",
+      "rightsStatus": "provider-declared-public-domain",
+      "rightsEvidence": "Retained acquisition catalog labels this product Public domain. Fresh product API/page retrieval returned HTTP 403 on 2026-11-02; this is not a completed product rights review. USGS general policy excludes some third-party material.",
+      "evidencePaths": [
+        "public/textures/moons/moon_texture_attribution.json",
+        "src/frontend/features/planetary/moonTextureCatalog.ts",
+        "NOTICE.md"
+      ],
+      "rightsPolicyUrls": [
+        "https://www.usgs.gov/information-policies-and-instructions/copyrights-and-credits"
+      ]
+    },
+    {
+      "id": "google-fonts",
+      "product": "Google Fonts CSS: Chakra Petch 500/600; Oxanium 500/600/700",
+      "use": "active entry CSS @import; browser requests remote CSS/font bytes",
+      "sourceUrls": [
+        "https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600&family=Oxanium:wght@500;600;700&display=swap"
+      ],
+      "credit": "Determine actual delivered font versions, font-specific licenses/notices and delivery terms; do not invent OFL/SPDX from family names.",
+      "rightsStatus": "review-required",
+      "rightsEvidence": "Product-specific redistribution rights have not been established. Retaining source, bytes and credit does not grant permission.",
+      "evidencePaths": [
+        "src/style.css"
+      ]
+    },
+    {
+      "id": "noaa-wind",
+      "product": "NOAA SWPC RTSW 1-minute wind",
+      "use": "backend runtime live context",
+      "sourceUrls": [
+        "https://services.swpc.noaa.gov/json/rtsw/rtsw_wind_1m.json"
+      ],
+      "credit": "Preserve NOAA SWPC product identity, observation/retrieval time, units, filtering and source status; exact product notice review open.",
+      "rightsStatus": "review-required",
+      "rightsEvidence": "Product-specific redistribution rights have not been established. Retaining source, bytes and credit does not grant permission.",
+      "evidencePaths": [
+        "backend/sim/solar_realtime_data.py"
+      ]
+    },
+    {
+      "id": "noaa-mag",
+      "product": "NOAA SWPC RTSW 1-minute magnetic field",
+      "use": "backend runtime live context",
+      "sourceUrls": [
+        "https://services.swpc.noaa.gov/json/rtsw/rtsw_mag_1m.json"
+      ],
+      "credit": "Preserve NOAA SWPC product identity, observation/retrieval time, units, filtering and source status; exact product notice review open.",
+      "rightsStatus": "review-required",
+      "rightsEvidence": "Product-specific redistribution rights have not been established. Retaining source, bytes and credit does not grant permission.",
+      "evidencePaths": [
+        "backend/sim/solar_realtime_data.py"
+      ]
+    },
+    {
+      "id": "silso-daily",
+      "product": "WDC-SILSO Daily total sunspot number V2.0",
+      "use": "backend runtime live context",
+      "sourceUrls": [
+        "https://www.sidc.be/SILSO/DATA/SN_d_tot_V2.0.csv",
+        "https://doi.org/10.24414/qnza-ac80",
+        "https://creativecommons.org/licenses/by-nc/4.0/"
+      ],
+      "credit": "WDC-SILSO, Royal Observatory of Belgium, Brussels. Daily total sunspot number V2.0; parsed values combined with model output. Processing is a modification, not endorsement.",
+      "rightsStatus": "noncommercial-only",
+      "rightsEvidence": "Existing project policy selects noncommercial research/evaluation. SILSO CC BY-NC 4.0 attribution and modification requirements remain; commercial use requires replacement or permission.",
+      "evidencePaths": [
+        "backend/sim/solar_realtime_data.py",
+        "NOTICE.md"
+      ],
+      "rightsPolicyUrls": [
+        "https://www.sidc.be/SILSO/infosndtot",
+        "https://creativecommons.org/licenses/by-nc/4.0/"
+      ]
+    },
+    {
+      "id": "aia-094",
+      "product": "SDO/AIA 094 Angstrom via Helioviewer",
+      "use": "backend runtime closest-image metadata and raw tile proxy; JP2 URL exposed as metadata; surface blending disabled",
+      "sourceUrls": [
+        "https://api.helioviewer.org/v2/getClosestImage/",
+        "https://api.helioviewer.org/v2/getTile/",
+        "https://api.helioviewer.org/v2/getJP2Image/"
+      ],
+      "credit": "Preserve SDO/AIA mission/instrument, Helioviewer, sourceId, exact image id/date, product credit/restrictions and processing; no blanket NASA rights grant.",
+      "rightsStatus": "review-required",
+      "rightsEvidence": "Product-specific redistribution rights have not been established. Retaining source, bytes and credit does not grant permission.",
+      "evidencePaths": [
+        "backend/sim/solar_realtime_data.py",
+        "src/frontend/features/solar/solarObservationTexture.ts",
+        "backend/server.py"
+      ]
+    },
+    {
+      "id": "aia-171",
+      "product": "SDO/AIA 171 Angstrom via Helioviewer",
+      "use": "backend runtime closest-image metadata and raw tile proxy; JP2 URL exposed as metadata; surface blending disabled",
+      "sourceUrls": [
+        "https://api.helioviewer.org/v2/getClosestImage/",
+        "https://api.helioviewer.org/v2/getTile/",
+        "https://api.helioviewer.org/v2/getJP2Image/"
+      ],
+      "credit": "Preserve SDO/AIA mission/instrument, Helioviewer, sourceId, exact image id/date, product credit/restrictions and processing; no blanket NASA rights grant.",
+      "rightsStatus": "review-required",
+      "rightsEvidence": "Product-specific redistribution rights have not been established. Retaining source, bytes and credit does not grant permission.",
+      "evidencePaths": [
+        "backend/sim/solar_realtime_data.py",
+        "src/frontend/features/solar/solarObservationTexture.ts",
+        "backend/server.py"
+      ]
+    },
+    {
+      "id": "aia-193",
+      "product": "SDO/AIA 193 Angstrom via Helioviewer",
+      "use": "backend runtime closest-image metadata and raw tile proxy; JP2 URL exposed as metadata; surface blending disabled",
+      "sourceUrls": [
+        "https://api.helioviewer.org/v2/getClosestImage/",
+        "https://api.helioviewer.org/v2/getTile/",
+        "https://api.helioviewer.org/v2/getJP2Image/"
+      ],
+      "credit": "Preserve SDO/AIA mission/instrument, Helioviewer, sourceId, exact image id/date, product credit/restrictions and processing; no blanket NASA rights grant.",
+      "rightsStatus": "review-required",
+      "rightsEvidence": "Product-specific redistribution rights have not been established. Retaining source, bytes and credit does not grant permission.",
+      "evidencePaths": [
+        "backend/sim/solar_realtime_data.py",
+        "src/frontend/features/solar/solarObservationTexture.ts",
+        "backend/server.py"
+      ]
+    },
+    {
+      "id": "aia-211",
+      "product": "SDO/AIA 211 Angstrom via Helioviewer",
+      "use": "backend runtime closest-image metadata and raw tile proxy; JP2 URL exposed as metadata; surface blending disabled",
+      "sourceUrls": [
+        "https://api.helioviewer.org/v2/getClosestImage/",
+        "https://api.helioviewer.org/v2/getTile/",
+        "https://api.helioviewer.org/v2/getJP2Image/"
+      ],
+      "credit": "Preserve SDO/AIA mission/instrument, Helioviewer, sourceId, exact image id/date, product credit/restrictions and processing; no blanket NASA rights grant.",
+      "rightsStatus": "review-required",
+      "rightsEvidence": "Product-specific redistribution rights have not been established. Retaining source, bytes and credit does not grant permission.",
+      "evidencePaths": [
+        "backend/sim/solar_realtime_data.py",
+        "src/frontend/features/solar/solarObservationTexture.ts",
+        "backend/server.py"
+      ]
+    },
+    {
+      "id": "aia-304",
+      "product": "SDO/AIA 304 Angstrom via Helioviewer",
+      "use": "backend runtime closest-image metadata and raw tile proxy; JP2 URL exposed as metadata; surface blending disabled",
+      "sourceUrls": [
+        "https://api.helioviewer.org/v2/getClosestImage/",
+        "https://api.helioviewer.org/v2/getTile/",
+        "https://api.helioviewer.org/v2/getJP2Image/"
+      ],
+      "credit": "Preserve SDO/AIA mission/instrument, Helioviewer, sourceId, exact image id/date, product credit/restrictions and processing; no blanket NASA rights grant.",
+      "rightsStatus": "review-required",
+      "rightsEvidence": "Product-specific redistribution rights have not been established. Retaining source, bytes and credit does not grant permission.",
+      "evidencePaths": [
+        "backend/sim/solar_realtime_data.py",
+        "src/frontend/features/solar/solarObservationTexture.ts",
+        "backend/server.py"
+      ]
+    },
+    {
+      "id": "gibs-clouds",
+      "product": "NASA GIBS MODIS_Terra_Cloud_Fraction_Day WMS",
+      "use": "retained config/pipeline; neither imported by shipped entry",
+      "sourceUrls": [
+        "https://gibs.earthdata.nasa.gov/wms/epsg4326/best/wms.cgi"
+      ],
+      "credit": "Retain GIBS and MODIS Terra product/layer, UTC day, spatial request and processing; per-product acknowledgment/rights not established.",
+      "rightsStatus": "review-required",
+      "rightsEvidence": "Product-specific redistribution rights have not been established. Retaining source, bytes and credit does not grant permission.",
+      "evidencePaths": [
+        "src/frontend/features/planetary/visualProfiles.ts",
+        "src/frontend/features/planetary/cloudDataPipeline.ts"
+      ]
+    },
+    {
+      "id": "celestrak-stations",
+      "product": "CelesTrak GP stations TLE group",
+      "use": "retained config/satellite module; not imported by shipped entry",
+      "sourceUrls": [
+        "https://celestrak.org/NORAD/elements/gp.php?GROUP=stations&FORMAT=tle"
+      ],
+      "credit": "Preserve CelesTrak/group, TLE epoch and retrieval time; exact provider terms and required notice remain unknown.",
+      "rightsStatus": "review-required",
+      "rightsEvidence": "Product-specific redistribution rights have not been established. Retaining source, bytes and credit does not grant permission.",
+      "evidencePaths": [
+        "src/frontend/features/planetary/visualProfiles.ts",
+        "src/frontend/features/planetary/satelliteSystem.ts"
+      ]
+    },
+    {
+      "id": "celestrak-geo",
+      "product": "CelesTrak GP geo TLE group",
+      "use": "retained config/satellite module; not imported by shipped entry",
+      "sourceUrls": [
+        "https://celestrak.org/NORAD/elements/gp.php?GROUP=geo&FORMAT=tle"
+      ],
+      "credit": "Preserve CelesTrak/group, TLE epoch and retrieval time; exact provider terms and required notice remain unknown.",
+      "rightsStatus": "review-required",
+      "rightsEvidence": "Product-specific redistribution rights have not been established. Retaining source, bytes and credit does not grant permission.",
+      "evidencePaths": [
+        "src/frontend/features/planetary/visualProfiles.ts",
+        "src/frontend/features/planetary/satelliteSystem.ts"
+      ]
+    },
+    {
+      "id": "gong-zqs",
+      "product": "NSO/GONG Zero Point Corrected QuickReduce zqs synoptic FITS",
+      "use": "retained archive acquisition capability; runtime reports disabled_unvalidated, attempted=false; no shipped observations",
+      "sourceUrls": [
+        "https://gong.nso.edu/data/magmap/QR/zqs/"
+      ],
+      "credit": "Retain NSO/GONG product, exact FITS filename/header/time, provider credits and normalization; specific reuse terms/acknowledgments unknown.",
+      "rightsStatus": "review-required",
+      "rightsEvidence": "Product-specific redistribution rights have not been established. Retaining source, bytes and credit does not grant permission.",
+      "evidencePaths": [
+        "backend/sim/gong_magnetogram.py",
+        "backend/sim/solar_realtime_data.py"
+      ]
+    },
+    {
+      "id": "horizons-solution:DE441",
+      "product": "JPL Horizons numerical solution DE441",
+      "use": "offline-derived moon shard in public copy; loader opt-in, no active entry fetch",
+      "sourceUrls": [
+        "https://ssd.jpl.nasa.gov/api/horizons.api"
+      ],
+      "credit": "NASA/JPL Solar System Dynamics / Caltech; retain the named numerical solution, query, capture provenance, reference frame/time scale/units and documented transformations. No endorsement.",
+      "rightsStatus": "review-required",
+      "rightsEvidence": "JPL SSD FAQ requests permission to republish site information. Applicability to these exact derived numerical products needs an owner/provider decision; no permission is recorded.",
+      "evidencePaths": [
+        "public/moon-ephemerides/manifest.json",
+        "scripts/moon-lazy-inputs/manifest.json"
+      ],
+      "rightsPolicyUrls": [
+        "https://ssd.jpl.nasa.gov/faq.html"
+      ]
+    },
+    {
+      "id": "horizons-solution:jup347_merged_DE442",
+      "product": "JPL Horizons numerical solution jup347_merged_DE442",
+      "use": "offline-derived moon shard in public copy; loader opt-in, no active entry fetch",
+      "sourceUrls": [
+        "https://ssd.jpl.nasa.gov/api/horizons.api"
+      ],
+      "credit": "NASA/JPL Solar System Dynamics / Caltech; retain the named numerical solution, query, capture provenance, reference frame/time scale/units and documented transformations. No endorsement.",
+      "rightsStatus": "review-required",
+      "rightsEvidence": "JPL SSD FAQ requests permission to republish site information. Applicability to these exact derived numerical products needs an owner/provider decision; no permission is recorded.",
+      "evidencePaths": [
+        "public/moon-ephemerides/manifest.json",
+        "scripts/moon-lazy-inputs/manifest.json"
+      ],
+      "rightsPolicyUrls": [
+        "https://ssd.jpl.nasa.gov/faq.html"
+      ]
+    },
+    {
+      "id": "horizons-solution:jup365_merged",
+      "product": "JPL Horizons numerical solution jup365_merged",
+      "use": "offline-derived moon shard in public copy; loader opt-in, no active entry fetch",
+      "sourceUrls": [
+        "https://ssd.jpl.nasa.gov/api/horizons.api"
+      ],
+      "credit": "NASA/JPL Solar System Dynamics / Caltech; retain the named numerical solution, query, capture provenance, reference frame/time scale/units and documented transformations. No endorsement.",
+      "rightsStatus": "review-required",
+      "rightsEvidence": "JPL SSD FAQ requests permission to republish site information. Applicability to these exact derived numerical products needs an owner/provider decision; no permission is recorded.",
+      "evidencePaths": [
+        "public/moon-ephemerides/manifest.json",
+        "scripts/moon-lazy-inputs/manifest.json"
+      ],
+      "rightsPolicyUrls": [
+        "https://ssd.jpl.nasa.gov/faq.html"
+      ]
+    },
+    {
+      "id": "horizons-solution:mar099",
+      "product": "JPL Horizons numerical solution mar099",
+      "use": "offline-derived moon shard in public copy; loader opt-in, no active entry fetch",
+      "sourceUrls": [
+        "https://ssd.jpl.nasa.gov/api/horizons.api"
+      ],
+      "credit": "NASA/JPL Solar System Dynamics / Caltech; retain the named numerical solution, query, capture provenance, reference frame/time scale/units and documented transformations. No endorsement.",
+      "rightsStatus": "review-required",
+      "rightsEvidence": "JPL SSD FAQ requests permission to republish site information. Applicability to these exact derived numerical products needs an owner/provider decision; no permission is recorded.",
+      "evidencePaths": [
+        "public/moon-ephemerides/manifest.json",
+        "scripts/moon-lazy-inputs/manifest.json"
+      ],
+      "rightsPolicyUrls": [
+        "https://ssd.jpl.nasa.gov/faq.html"
+      ]
+    },
+    {
+      "id": "horizons-solution:nep098_merged",
+      "product": "JPL Horizons numerical solution nep098_merged",
+      "use": "offline-derived moon shard in public copy; loader opt-in, no active entry fetch",
+      "sourceUrls": [
+        "https://ssd.jpl.nasa.gov/api/horizons.api"
+      ],
+      "credit": "NASA/JPL Solar System Dynamics / Caltech; retain the named numerical solution, query, capture provenance, reference frame/time scale/units and documented transformations. No endorsement.",
+      "rightsStatus": "review-required",
+      "rightsEvidence": "JPL SSD FAQ requests permission to republish site information. Applicability to these exact derived numerical products needs an owner/provider decision; no permission is recorded.",
+      "evidencePaths": [
+        "public/moon-ephemerides/manifest.json",
+        "scripts/moon-lazy-inputs/manifest.json"
+      ],
+      "rightsPolicyUrls": [
+        "https://ssd.jpl.nasa.gov/faq.html"
+      ]
+    },
+    {
+      "id": "horizons-solution:nep104_merged",
+      "product": "JPL Horizons numerical solution nep104_merged",
+      "use": "offline-derived moon shard in public copy; loader opt-in, no active entry fetch",
+      "sourceUrls": [
+        "https://ssd.jpl.nasa.gov/api/horizons.api"
+      ],
+      "credit": "NASA/JPL Solar System Dynamics / Caltech; retain the named numerical solution, query, capture provenance, reference frame/time scale/units and documented transformations. No endorsement.",
+      "rightsStatus": "review-required",
+      "rightsEvidence": "JPL SSD FAQ requests permission to republish site information. Applicability to these exact derived numerical products needs an owner/provider decision; no permission is recorded.",
+      "evidencePaths": [
+        "public/moon-ephemerides/manifest.json",
+        "scripts/moon-lazy-inputs/manifest.json"
+      ],
+      "rightsPolicyUrls": [
+        "https://ssd.jpl.nasa.gov/faq.html"
+      ]
+    },
+    {
+      "id": "horizons-solution:plu060_merged",
+      "product": "JPL Horizons numerical solution plu060_merged",
+      "use": "offline-derived moon shard in public copy; loader opt-in, no active entry fetch",
+      "sourceUrls": [
+        "https://ssd.jpl.nasa.gov/api/horizons.api"
+      ],
+      "credit": "NASA/JPL Solar System Dynamics / Caltech; retain the named numerical solution, query, capture provenance, reference frame/time scale/units and documented transformations. No endorsement.",
+      "rightsStatus": "review-required",
+      "rightsEvidence": "JPL SSD FAQ requests permission to republish site information. Applicability to these exact derived numerical products needs an owner/provider decision; no permission is recorded.",
+      "evidencePaths": [
+        "public/moon-ephemerides/manifest.json",
+        "scripts/moon-lazy-inputs/manifest.json"
+      ],
+      "rightsPolicyUrls": [
+        "https://ssd.jpl.nasa.gov/faq.html"
+      ]
+    },
+    {
+      "id": "horizons-solution:sat415_merged_DE437",
+      "product": "JPL Horizons numerical solution sat415_merged_DE437",
+      "use": "offline-derived moon shard in public copy; loader opt-in, no active entry fetch",
+      "sourceUrls": [
+        "https://ssd.jpl.nasa.gov/api/horizons.api"
+      ],
+      "credit": "NASA/JPL Solar System Dynamics / Caltech; retain the named numerical solution, query, capture provenance, reference frame/time scale/units and documented transformations. No endorsement.",
+      "rightsStatus": "review-required",
+      "rightsEvidence": "JPL SSD FAQ requests permission to republish site information. Applicability to these exact derived numerical products needs an owner/provider decision; no permission is recorded.",
+      "evidencePaths": [
+        "public/moon-ephemerides/manifest.json",
+        "scripts/moon-lazy-inputs/manifest.json"
+      ],
+      "rightsPolicyUrls": [
+        "https://ssd.jpl.nasa.gov/faq.html"
+      ]
+    },
+    {
+      "id": "horizons-solution:sat441l",
+      "product": "JPL Horizons numerical solution sat441l",
+      "use": "offline-derived moon shard in public copy; loader opt-in, no active entry fetch",
+      "sourceUrls": [
+        "https://ssd.jpl.nasa.gov/api/horizons.api"
+      ],
+      "credit": "NASA/JPL Solar System Dynamics / Caltech; retain the named numerical solution, query, capture provenance, reference frame/time scale/units and documented transformations. No endorsement.",
+      "rightsStatus": "review-required",
+      "rightsEvidence": "JPL SSD FAQ requests permission to republish site information. Applicability to these exact derived numerical products needs an owner/provider decision; no permission is recorded.",
+      "evidencePaths": [
+        "public/moon-ephemerides/manifest.json",
+        "scripts/moon-lazy-inputs/manifest.json"
+      ],
+      "rightsPolicyUrls": [
+        "https://ssd.jpl.nasa.gov/faq.html"
+      ]
+    },
+    {
+      "id": "horizons-solution:sat455_merged_DE440",
+      "product": "JPL Horizons numerical solution sat455_merged_DE440",
+      "use": "offline-derived moon shard in public copy; loader opt-in, no active entry fetch",
+      "sourceUrls": [
+        "https://ssd.jpl.nasa.gov/api/horizons.api"
+      ],
+      "credit": "NASA/JPL Solar System Dynamics / Caltech; retain the named numerical solution, query, capture provenance, reference frame/time scale/units and documented transformations. No endorsement.",
+      "rightsStatus": "review-required",
+      "rightsEvidence": "JPL SSD FAQ requests permission to republish site information. Applicability to these exact derived numerical products needs an owner/provider decision; no permission is recorded.",
+      "evidencePaths": [
+        "public/moon-ephemerides/manifest.json",
+        "scripts/moon-lazy-inputs/manifest.json"
+      ],
+      "rightsPolicyUrls": [
+        "https://ssd.jpl.nasa.gov/faq.html"
+      ]
+    },
+    {
+      "id": "horizons-solution:sat456_merged_DE440",
+      "product": "JPL Horizons numerical solution sat456_merged_DE440",
+      "use": "offline-derived moon shard in public copy; loader opt-in, no active entry fetch",
+      "sourceUrls": [
+        "https://ssd.jpl.nasa.gov/api/horizons.api"
+      ],
+      "credit": "NASA/JPL Solar System Dynamics / Caltech; retain the named numerical solution, query, capture provenance, reference frame/time scale/units and documented transformations. No endorsement.",
+      "rightsStatus": "review-required",
+      "rightsEvidence": "JPL SSD FAQ requests permission to republish site information. Applicability to these exact derived numerical products needs an owner/provider decision; no permission is recorded.",
+      "evidencePaths": [
+        "public/moon-ephemerides/manifest.json",
+        "scripts/moon-lazy-inputs/manifest.json"
+      ],
+      "rightsPolicyUrls": [
+        "https://ssd.jpl.nasa.gov/faq.html"
+      ]
+    },
+    {
+      "id": "horizons-solution:sat457_merged_DE440",
+      "product": "JPL Horizons numerical solution sat457_merged_DE440",
+      "use": "offline-derived moon shard in public copy; loader opt-in, no active entry fetch",
+      "sourceUrls": [
+        "https://ssd.jpl.nasa.gov/api/horizons.api"
+      ],
+      "credit": "NASA/JPL Solar System Dynamics / Caltech; retain the named numerical solution, query, capture provenance, reference frame/time scale/units and documented transformations. No endorsement.",
+      "rightsStatus": "review-required",
+      "rightsEvidence": "JPL SSD FAQ requests permission to republish site information. Applicability to these exact derived numerical products needs an owner/provider decision; no permission is recorded.",
+      "evidencePaths": [
+        "public/moon-ephemerides/manifest.json",
+        "scripts/moon-lazy-inputs/manifest.json"
+      ],
+      "rightsPolicyUrls": [
+        "https://ssd.jpl.nasa.gov/faq.html"
+      ]
+    },
+    {
+      "id": "horizons-solution:ura184_merged",
+      "product": "JPL Horizons numerical solution ura184_merged",
+      "use": "offline-derived moon shard in public copy; loader opt-in, no active entry fetch",
+      "sourceUrls": [
+        "https://ssd.jpl.nasa.gov/api/horizons.api"
+      ],
+      "credit": "NASA/JPL Solar System Dynamics / Caltech; retain the named numerical solution, query, capture provenance, reference frame/time scale/units and documented transformations. No endorsement.",
+      "rightsStatus": "review-required",
+      "rightsEvidence": "JPL SSD FAQ requests permission to republish site information. Applicability to these exact derived numerical products needs an owner/provider decision; no permission is recorded.",
+      "evidencePaths": [
+        "public/moon-ephemerides/manifest.json",
+        "scripts/moon-lazy-inputs/manifest.json"
+      ],
+      "rightsPolicyUrls": [
+        "https://ssd.jpl.nasa.gov/faq.html"
+      ]
+    },
+    {
+      "id": "three-runtime",
+      "product": "Three.js 0.182.0 runtime dependency",
+      "use": "bundled browser code",
+      "sourceUrls": [
+        "https://github.com/mrdoob/three.js/blob/r182/LICENSE"
+      ],
+      "credit": "Copyright Three.js authors; full MIT license packaged as legal/THREE-LICENSE.txt.",
+      "rightsStatus": "MIT",
+      "rightsEvidence": "Installed runtime license and package-lock.json declare MIT. Preserve the full notice.",
+      "evidencePaths": [
+        "package-lock.json",
+        "node_modules/three/LICENSE"
+      ]
+    }
+  ]
+}

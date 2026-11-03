@@ -1,0 +1,29 @@
+
+ RUN  v5.0.4 /home/nomad/ai/projects/worktrees/solar-four-closure-20261102
+
+ ❯ scripts/prepare-distribution.test.mjs (4 tests | 1 failed) 106ms
+   × unreviewed files outside moon maps fail before publishing notices 29ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  scripts/prepare-distribution.test.mjs > unreviewed files outside moon maps fail before publishing notices
+AssertionError: Missing expected rejection.
+
+simple
+
+ ❯ scripts/prepare-distribution.test.mjs:39:3
+     37| test('unreviewed files outside moon maps fail before publishing notice…
+     38|   await writeFile(path.join(root, 'public/unreviewed-dataset.json'), '…
+     39|   await assert.rejects(prepareDistribution(root), /unlisted public ass…
+       |   ^
+     40|   await assert.rejects(readdir(path.join(root, 'public/legal')), { cod…
+     41| }));
+ ❯ fixture scripts/prepare-distribution.test.mjs:17:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 3 passed (4)
+   Start at  12:23:41
+   Duration  234ms (tests 66%, transform 24%, import 8%, worker 2%)

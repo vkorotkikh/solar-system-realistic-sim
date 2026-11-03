@@ -1,0 +1,1521 @@
+{
+  "record_type": "NORMALIZED_PLAYWRIGHT_REPORT",
+  "raw_report": "a11y-reflow-final.json.gz",
+  "raw_uncompressed_sha256": "10c0c4692fe191aebab41fb6a7d16f5795a2fa457da4fa43bf2527b75363ee96",
+  "stats": {
+    "startTime": "2026-11-02T17:33:34.126Z",
+    "duration": 118939.09,
+    "expected": 51,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  },
+  "cases": [
+    {
+      "title": "desktop controls and expanded camera tools",
+      "project": "chromium",
+      "status": "passed",
+      "duration_ms": 1650,
+      "errors": [],
+      "attachments": [
+        {
+          "name": "axe-desktop-expanded",
+          "data": {
+            "state": "desktop-expanded",
+            "project": "chromium",
+            "browserVersion": "156.0.8078.4",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scope": "full document; production HTML/CSS with existing controller fixture",
+            "testEngine": {
+              "name": "axe-core",
+              "version": "4.11.1"
+            },
+            "passes": [
+              "aria-allowed-attr",
+              "aria-conditional-attr",
+              "aria-deprecated-role",
+              "aria-hidden-body",
+              "aria-hidden-focus",
+              "aria-prohibited-attr",
+              "aria-required-attr",
+              "aria-roles",
+              "aria-valid-attr-value",
+              "aria-valid-attr",
+              "autocomplete-valid",
+              "avoid-inline-spacing",
+              "button-name",
+              "color-contrast",
+              "definition-list",
+              "dlitem",
+              "document-title",
+              "duplicate-id-aria",
+              "form-field-multiple-labels",
+              "html-has-lang",
+              "html-lang-valid",
+              "label",
+              "meta-viewport",
+              "nested-interactive",
+              "scrollable-region-focusable",
+              "select-name",
+              "summary-name",
+              "target-size"
+            ],
+            "violations": [],
+            "incomplete": []
+          }
+        }
+      ]
+    },
+    {
+      "title": "mobile drawer closed exposes expanded camera tools",
+      "project": "chromium",
+      "status": "passed",
+      "duration_ms": 830,
+      "errors": [],
+      "attachments": [
+        {
+          "name": "axe-mobile-closed",
+          "data": {
+            "state": "mobile-closed",
+            "project": "chromium",
+            "browserVersion": "156.0.8078.4",
+            "viewport": {
+              "width": 390,
+              "height": 844
+            },
+            "scope": "full document; production HTML/CSS with existing controller fixture",
+            "testEngine": {
+              "name": "axe-core",
+              "version": "4.11.1"
+            },
+            "passes": [
+              "aria-allowed-attr",
+              "aria-conditional-attr",
+              "aria-deprecated-role",
+              "aria-hidden-body",
+              "aria-hidden-focus",
+              "aria-prohibited-attr",
+              "aria-required-attr",
+              "aria-roles",
+              "aria-valid-attr-value",
+              "aria-valid-attr",
+              "avoid-inline-spacing",
+              "button-name",
+              "color-contrast",
+              "document-title",
+              "duplicate-id-aria",
+              "html-has-lang",
+              "html-lang-valid",
+              "meta-viewport",
+              "nested-interactive",
+              "summary-name",
+              "target-size"
+            ],
+            "violations": [],
+            "incomplete": []
+          }
+        }
+      ]
+    },
+    {
+      "title": "mobile drawer open exposes all control disclosures",
+      "project": "chromium",
+      "status": "passed",
+      "duration_ms": 1343,
+      "errors": [],
+      "attachments": [
+        {
+          "name": "axe-mobile-open",
+          "data": {
+            "state": "mobile-open",
+            "project": "chromium",
+            "browserVersion": "156.0.8078.4",
+            "viewport": {
+              "width": 390,
+              "height": 844
+            },
+            "scope": "full document; production HTML/CSS with existing controller fixture",
+            "testEngine": {
+              "name": "axe-core",
+              "version": "4.11.1"
+            },
+            "passes": [
+              "aria-allowed-attr",
+              "aria-conditional-attr",
+              "aria-deprecated-role",
+              "aria-hidden-body",
+              "aria-hidden-focus",
+              "aria-prohibited-attr",
+              "aria-required-attr",
+              "aria-roles",
+              "aria-valid-attr-value",
+              "aria-valid-attr",
+              "autocomplete-valid",
+              "button-name",
+              "color-contrast",
+              "definition-list",
+              "dlitem",
+              "document-title",
+              "duplicate-id-aria",
+              "form-field-multiple-labels",
+              "html-has-lang",
+              "html-lang-valid",
+              "label",
+              "meta-viewport",
+              "nested-interactive",
+              "scrollable-region-focusable",
+              "select-name",
+              "summary-name",
+              "target-size"
+            ],
+            "violations": [],
+            "incomplete": [
+              {
+                "id": "color-contrast",
+                "impact": "serious",
+                "tags": [
+                  "cat.color",
+                  "wcag2aa",
+                  "wcag143",
+                  "TTv5",
+                  "TT13.c",
+                  "EN-301-549",
+                  "EN-9.1.4.3",
+                  "ACT",
+                  "RGAAv4",
+                  "RGAA-3.2.1"
+                ],
+                "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+                "help": "Elements must meet minimum color contrast ratio thresholds",
+                "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/color-contrast?application=playwright",
+                "nodes": [
+                  {
+                    "any": [
+                      {
+                        "id": "color-contrast",
+                        "data": {
+                          "contrastRatio": 0,
+                          "fontSize": "9.4pt (12.48px)",
+                          "fontWeight": "normal",
+                          "messageKey": "elmPartiallyObscuring",
+                          "expectedContrastRatio": "4.5:1"
+                        },
+                        "relatedNodes": [],
+                        "impact": "serious",
+                        "message": "Element's background color could not be determined because it partially overlaps other elements"
+                      }
+                    ],
+                    "all": [],
+                    "none": [],
+                    "impact": "serious",
+                    "html": "<p class=\"subtitle\">Real-time heliocentric model and solar observation workspace.</p>",
+                    "target": [
+                      ".subtitle"
+                    ],
+                    "failureSummary": "Fix any of the following:\n  Element's background color could not be determined because it partially overlaps other elements"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "contrast-disposition-mobile-open-subtitle",
+          "data": {
+            "rule": "color-contrast",
+            "target": [
+              ".subtitle"
+            ],
+            "rawReason": {
+              "contrastRatio": 0,
+              "fontSize": "9.4pt (12.48px)",
+              "fontWeight": "normal",
+              "messageKey": "elmPartiallyObscuring",
+              "expectedContrastRatio": "4.5:1"
+            },
+            "method": "Opaque ancestor bounds, all text-line corner/center hit tests, WCAG sRGB relative luminance; no tolerance",
+            "observation": {
+              "foreground": [
+                154,
+                168,
+                172,
+                1
+              ],
+              "background": [
+                9,
+                14,
+                18,
+                1
+              ],
+              "layers": [
+                {
+                  "selector": "subtitle",
+                  "image": "none",
+                  "opacity": "1",
+                  "filter": "none",
+                  "blend": "normal",
+                  "color": "rgba(0, 0, 0, 0)"
+                },
+                {
+                  "selector": "panel-header",
+                  "image": "none",
+                  "opacity": "1",
+                  "filter": "none",
+                  "blend": "normal",
+                  "color": "rgba(0, 0, 0, 0)"
+                },
+                {
+                  "selector": "control-panel",
+                  "image": "none",
+                  "opacity": "1",
+                  "filter": "none",
+                  "blend": "normal",
+                  "color": "rgb(9, 14, 18)"
+                }
+              ],
+              "lines": [
+                {
+                  "rect": {
+                    "x": 16,
+                    "y": 69.515625,
+                    "width": 242.015625,
+                    "height": 15,
+                    "top": 69.515625,
+                    "right": 258.015625,
+                    "bottom": 84.515625,
+                    "left": 16
+                  },
+                  "coveredByOpaqueSurface": true,
+                  "unobscured": true
+                },
+                {
+                  "rect": {
+                    "x": 16,
+                    "y": 88.234375,
+                    "width": 149.046875,
+                    "height": 15,
+                    "top": 88.234375,
+                    "right": 165.046875,
+                    "bottom": 103.234375,
+                    "left": 16
+                  },
+                  "coveredByOpaqueSurface": true,
+                  "unobscured": true
+                }
+              ],
+              "contrast": 7.91270822812218
+            }
+          }
+        }
+      ]
+    },
+    {
+      "title": "desktop-recovery exposes the recovery surface",
+      "project": "chromium",
+      "status": "passed",
+      "duration_ms": 1116,
+      "errors": [],
+      "attachments": [
+        {
+          "name": "axe-desktop-recovery",
+          "data": {
+            "state": "desktop-recovery",
+            "project": "chromium",
+            "browserVersion": "156.0.8078.4",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scope": "full document; production HTML/CSS with existing controller fixture",
+            "testEngine": {
+              "name": "axe-core",
+              "version": "4.11.1"
+            },
+            "passes": [
+              "aria-allowed-attr",
+              "aria-conditional-attr",
+              "aria-deprecated-role",
+              "aria-hidden-body",
+              "aria-hidden-focus",
+              "aria-prohibited-attr",
+              "aria-required-attr",
+              "aria-roles",
+              "aria-valid-attr-value",
+              "aria-valid-attr",
+              "button-name",
+              "color-contrast",
+              "definition-list",
+              "dlitem",
+              "document-title",
+              "duplicate-id-aria",
+              "form-field-multiple-labels",
+              "html-has-lang",
+              "html-lang-valid",
+              "label",
+              "meta-viewport",
+              "nested-interactive",
+              "scrollable-region-focusable",
+              "select-name",
+              "summary-name",
+              "target-size"
+            ],
+            "violations": [],
+            "incomplete": []
+          }
+        }
+      ]
+    },
+    {
+      "title": "mobile-closed-recovery exposes the recovery surface",
+      "project": "chromium",
+      "status": "passed",
+      "duration_ms": 747,
+      "errors": [],
+      "attachments": [
+        {
+          "name": "axe-mobile-closed-recovery",
+          "data": {
+            "state": "mobile-closed-recovery",
+            "project": "chromium",
+            "browserVersion": "156.0.8078.4",
+            "viewport": {
+              "width": 390,
+              "height": 844
+            },
+            "scope": "full document; production HTML/CSS with existing controller fixture",
+            "testEngine": {
+              "name": "axe-core",
+              "version": "4.11.1"
+            },
+            "passes": [
+              "aria-allowed-attr",
+              "aria-conditional-attr",
+              "aria-deprecated-role",
+              "aria-hidden-body",
+              "aria-hidden-focus",
+              "aria-prohibited-attr",
+              "aria-required-attr",
+              "aria-roles",
+              "aria-valid-attr-value",
+              "aria-valid-attr",
+              "button-name",
+              "color-contrast",
+              "document-title",
+              "duplicate-id-aria",
+              "html-has-lang",
+              "html-lang-valid",
+              "meta-viewport",
+              "nested-interactive",
+              "target-size"
+            ],
+            "violations": [],
+            "incomplete": []
+          }
+        }
+      ]
+    },
+    {
+      "title": "desktop controls and expanded camera tools",
+      "project": "firefox",
+      "status": "passed",
+      "duration_ms": 2132,
+      "errors": [],
+      "attachments": [
+        {
+          "name": "axe-desktop-expanded",
+          "data": {
+            "state": "desktop-expanded",
+            "project": "firefox",
+            "browserVersion": "157.0",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scope": "full document; production HTML/CSS with existing controller fixture",
+            "testEngine": {
+              "name": "axe-core",
+              "version": "4.11.1"
+            },
+            "passes": [
+              "aria-allowed-attr",
+              "aria-conditional-attr",
+              "aria-deprecated-role",
+              "aria-hidden-body",
+              "aria-hidden-focus",
+              "aria-prohibited-attr",
+              "aria-required-attr",
+              "aria-roles",
+              "aria-valid-attr-value",
+              "aria-valid-attr",
+              "autocomplete-valid",
+              "avoid-inline-spacing",
+              "button-name",
+              "color-contrast",
+              "definition-list",
+              "dlitem",
+              "document-title",
+              "duplicate-id-aria",
+              "form-field-multiple-labels",
+              "html-has-lang",
+              "html-lang-valid",
+              "label",
+              "meta-viewport",
+              "nested-interactive",
+              "scrollable-region-focusable",
+              "select-name",
+              "summary-name",
+              "target-size"
+            ],
+            "violations": [],
+            "incomplete": []
+          }
+        }
+      ]
+    },
+    {
+      "title": "mobile drawer closed exposes expanded camera tools",
+      "project": "firefox",
+      "status": "passed",
+      "duration_ms": 902,
+      "errors": [],
+      "attachments": [
+        {
+          "name": "axe-mobile-closed",
+          "data": {
+            "state": "mobile-closed",
+            "project": "firefox",
+            "browserVersion": "157.0",
+            "viewport": {
+              "width": 390,
+              "height": 844
+            },
+            "scope": "full document; production HTML/CSS with existing controller fixture",
+            "testEngine": {
+              "name": "axe-core",
+              "version": "4.11.1"
+            },
+            "passes": [
+              "aria-allowed-attr",
+              "aria-conditional-attr",
+              "aria-deprecated-role",
+              "aria-hidden-body",
+              "aria-hidden-focus",
+              "aria-prohibited-attr",
+              "aria-required-attr",
+              "aria-roles",
+              "aria-valid-attr-value",
+              "aria-valid-attr",
+              "avoid-inline-spacing",
+              "button-name",
+              "color-contrast",
+              "document-title",
+              "duplicate-id-aria",
+              "html-has-lang",
+              "html-lang-valid",
+              "meta-viewport",
+              "nested-interactive",
+              "summary-name",
+              "target-size"
+            ],
+            "violations": [],
+            "incomplete": []
+          }
+        }
+      ]
+    },
+    {
+      "title": "mobile drawer open exposes all control disclosures",
+      "project": "firefox",
+      "status": "passed",
+      "duration_ms": 1376,
+      "errors": [],
+      "attachments": [
+        {
+          "name": "axe-mobile-open",
+          "data": {
+            "state": "mobile-open",
+            "project": "firefox",
+            "browserVersion": "157.0",
+            "viewport": {
+              "width": 390,
+              "height": 844
+            },
+            "scope": "full document; production HTML/CSS with existing controller fixture",
+            "testEngine": {
+              "name": "axe-core",
+              "version": "4.11.1"
+            },
+            "passes": [
+              "aria-allowed-attr",
+              "aria-conditional-attr",
+              "aria-deprecated-role",
+              "aria-hidden-body",
+              "aria-hidden-focus",
+              "aria-prohibited-attr",
+              "aria-required-attr",
+              "aria-roles",
+              "aria-valid-attr-value",
+              "aria-valid-attr",
+              "autocomplete-valid",
+              "button-name",
+              "color-contrast",
+              "definition-list",
+              "dlitem",
+              "document-title",
+              "duplicate-id-aria",
+              "form-field-multiple-labels",
+              "html-has-lang",
+              "html-lang-valid",
+              "label",
+              "meta-viewport",
+              "nested-interactive",
+              "scrollable-region-focusable",
+              "select-name",
+              "summary-name",
+              "target-size"
+            ],
+            "violations": [],
+            "incomplete": [
+              {
+                "id": "color-contrast",
+                "impact": "serious",
+                "tags": [
+                  "cat.color",
+                  "wcag2aa",
+                  "wcag143",
+                  "TTv5",
+                  "TT13.c",
+                  "EN-301-549",
+                  "EN-9.1.4.3",
+                  "ACT",
+                  "RGAAv4",
+                  "RGAA-3.2.1"
+                ],
+                "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+                "help": "Elements must meet minimum color contrast ratio thresholds",
+                "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/color-contrast?application=playwright",
+                "nodes": [
+                  {
+                    "any": [
+                      {
+                        "id": "color-contrast",
+                        "data": {
+                          "contrastRatio": 0,
+                          "fontSize": "9.4pt (12.4844px)",
+                          "fontWeight": "normal",
+                          "messageKey": "elmPartiallyObscuring",
+                          "expectedContrastRatio": "4.5:1"
+                        },
+                        "relatedNodes": [],
+                        "impact": "serious",
+                        "message": "Element's background color could not be determined because it partially overlaps other elements"
+                      }
+                    ],
+                    "all": [],
+                    "none": [],
+                    "impact": "serious",
+                    "html": "<p class=\"subtitle\">Real-time heliocentric model and solar observation workspace.</p>",
+                    "target": [
+                      ".subtitle"
+                    ],
+                    "failureSummary": "Fix any of the following:\n  Element's background color could not be determined because it partially overlaps other elements"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "contrast-disposition-mobile-open-subtitle",
+          "data": {
+            "rule": "color-contrast",
+            "target": [
+              ".subtitle"
+            ],
+            "rawReason": {
+              "contrastRatio": 0,
+              "fontSize": "9.4pt (12.4844px)",
+              "fontWeight": "normal",
+              "messageKey": "elmPartiallyObscuring",
+              "expectedContrastRatio": "4.5:1"
+            },
+            "method": "Opaque ancestor bounds, all text-line corner/center hit tests, WCAG sRGB relative luminance; no tolerance",
+            "observation": {
+              "foreground": [
+                154,
+                168,
+                172,
+                1
+              ],
+              "background": [
+                9,
+                14,
+                18,
+                1
+              ],
+              "layers": [
+                {
+                  "selector": "subtitle",
+                  "image": "none",
+                  "opacity": "1",
+                  "filter": "none",
+                  "blend": "normal",
+                  "color": "rgba(0, 0, 0, 0)"
+                },
+                {
+                  "selector": "panel-header",
+                  "image": "none",
+                  "opacity": "1",
+                  "filter": "none",
+                  "blend": "normal",
+                  "color": "rgba(0, 0, 0, 0)"
+                },
+                {
+                  "selector": "control-panel",
+                  "image": "none",
+                  "opacity": "1",
+                  "filter": "none",
+                  "blend": "normal",
+                  "color": "rgb(9, 14, 18)"
+                }
+              ],
+              "lines": [
+                {
+                  "rect": {
+                    "x": 16,
+                    "y": 70.39999389648438,
+                    "width": 242.5,
+                    "height": 15,
+                    "top": 70.39999389648438,
+                    "right": 258.5,
+                    "bottom": 85.39999389648438,
+                    "left": 16
+                  },
+                  "coveredByOpaqueSurface": true,
+                  "unobscured": true
+                },
+                {
+                  "rect": {
+                    "x": 16,
+                    "y": 89.13333129882812,
+                    "width": 149.31666564941406,
+                    "height": 15,
+                    "top": 89.13333129882812,
+                    "right": 165.31666564941406,
+                    "bottom": 104.13333129882812,
+                    "left": 16
+                  },
+                  "coveredByOpaqueSurface": true,
+                  "unobscured": true
+                }
+              ],
+              "contrast": 7.91270822812218
+            }
+          }
+        }
+      ]
+    },
+    {
+      "title": "desktop-recovery exposes the recovery surface",
+      "project": "firefox",
+      "status": "passed",
+      "duration_ms": 1368,
+      "errors": [],
+      "attachments": [
+        {
+          "name": "axe-desktop-recovery",
+          "data": {
+            "state": "desktop-recovery",
+            "project": "firefox",
+            "browserVersion": "157.0",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scope": "full document; production HTML/CSS with existing controller fixture",
+            "testEngine": {
+              "name": "axe-core",
+              "version": "4.11.1"
+            },
+            "passes": [
+              "aria-allowed-attr",
+              "aria-conditional-attr",
+              "aria-deprecated-role",
+              "aria-hidden-body",
+              "aria-hidden-focus",
+              "aria-prohibited-attr",
+              "aria-required-attr",
+              "aria-roles",
+              "aria-valid-attr-value",
+              "aria-valid-attr",
+              "button-name",
+              "color-contrast",
+              "definition-list",
+              "dlitem",
+              "document-title",
+              "duplicate-id-aria",
+              "form-field-multiple-labels",
+              "html-has-lang",
+              "html-lang-valid",
+              "label",
+              "meta-viewport",
+              "nested-interactive",
+              "scrollable-region-focusable",
+              "select-name",
+              "summary-name",
+              "target-size"
+            ],
+            "violations": [],
+            "incomplete": []
+          }
+        }
+      ]
+    },
+    {
+      "title": "mobile-closed-recovery exposes the recovery surface",
+      "project": "firefox",
+      "status": "passed",
+      "duration_ms": 1082,
+      "errors": [],
+      "attachments": [
+        {
+          "name": "axe-mobile-closed-recovery",
+          "data": {
+            "state": "mobile-closed-recovery",
+            "project": "firefox",
+            "browserVersion": "157.0",
+            "viewport": {
+              "width": 390,
+              "height": 844
+            },
+            "scope": "full document; production HTML/CSS with existing controller fixture",
+            "testEngine": {
+              "name": "axe-core",
+              "version": "4.11.1"
+            },
+            "passes": [
+              "aria-allowed-attr",
+              "aria-conditional-attr",
+              "aria-deprecated-role",
+              "aria-hidden-body",
+              "aria-hidden-focus",
+              "aria-prohibited-attr",
+              "aria-required-attr",
+              "aria-roles",
+              "aria-valid-attr-value",
+              "aria-valid-attr",
+              "button-name",
+              "color-contrast",
+              "document-title",
+              "duplicate-id-aria",
+              "html-has-lang",
+              "html-lang-valid",
+              "meta-viewport",
+              "nested-interactive",
+              "target-size"
+            ],
+            "violations": [],
+            "incomplete": []
+          }
+        }
+      ]
+    },
+    {
+      "title": "desktop controls and expanded camera tools",
+      "project": "webkit",
+      "status": "passed",
+      "duration_ms": 1799,
+      "errors": [],
+      "attachments": [
+        {
+          "name": "axe-desktop-expanded",
+          "data": {
+            "state": "desktop-expanded",
+            "project": "webkit",
+            "browserVersion": "27.2",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scope": "full document; production HTML/CSS with existing controller fixture",
+            "testEngine": {
+              "name": "axe-core",
+              "version": "4.11.1"
+            },
+            "passes": [
+              "aria-allowed-attr",
+              "aria-conditional-attr",
+              "aria-deprecated-role",
+              "aria-hidden-body",
+              "aria-hidden-focus",
+              "aria-prohibited-attr",
+              "aria-required-attr",
+              "aria-roles",
+              "aria-valid-attr-value",
+              "aria-valid-attr",
+              "autocomplete-valid",
+              "avoid-inline-spacing",
+              "button-name",
+              "color-contrast",
+              "definition-list",
+              "dlitem",
+              "document-title",
+              "duplicate-id-aria",
+              "form-field-multiple-labels",
+              "html-has-lang",
+              "html-lang-valid",
+              "label",
+              "meta-viewport",
+              "nested-interactive",
+              "scrollable-region-focusable",
+              "select-name",
+              "summary-name",
+              "target-size"
+            ],
+            "violations": [],
+            "incomplete": []
+          }
+        }
+      ]
+    },
+    {
+      "title": "mobile drawer closed exposes expanded camera tools",
+      "project": "webkit",
+      "status": "passed",
+      "duration_ms": 949,
+      "errors": [],
+      "attachments": [
+        {
+          "name": "axe-mobile-closed",
+          "data": {
+            "state": "mobile-closed",
+            "project": "webkit",
+            "browserVersion": "27.2",
+            "viewport": {
+              "width": 390,
+              "height": 844
+            },
+            "scope": "full document; production HTML/CSS with existing controller fixture",
+            "testEngine": {
+              "name": "axe-core",
+              "version": "4.11.1"
+            },
+            "passes": [
+              "aria-allowed-attr",
+              "aria-conditional-attr",
+              "aria-deprecated-role",
+              "aria-hidden-body",
+              "aria-hidden-focus",
+              "aria-prohibited-attr",
+              "aria-required-attr",
+              "aria-roles",
+              "aria-valid-attr-value",
+              "aria-valid-attr",
+              "avoid-inline-spacing",
+              "button-name",
+              "color-contrast",
+              "document-title",
+              "duplicate-id-aria",
+              "html-has-lang",
+              "html-lang-valid",
+              "meta-viewport",
+              "nested-interactive",
+              "summary-name",
+              "target-size"
+            ],
+            "violations": [],
+            "incomplete": []
+          }
+        }
+      ]
+    },
+    {
+      "title": "mobile drawer open exposes all control disclosures",
+      "project": "webkit",
+      "status": "passed",
+      "duration_ms": 1731,
+      "errors": [],
+      "attachments": [
+        {
+          "name": "axe-mobile-open",
+          "data": {
+            "state": "mobile-open",
+            "project": "webkit",
+            "browserVersion": "27.2",
+            "viewport": {
+              "width": 390,
+              "height": 844
+            },
+            "scope": "full document; production HTML/CSS with existing controller fixture",
+            "testEngine": {
+              "name": "axe-core",
+              "version": "4.11.1"
+            },
+            "passes": [
+              "aria-allowed-attr",
+              "aria-conditional-attr",
+              "aria-deprecated-role",
+              "aria-hidden-body",
+              "aria-hidden-focus",
+              "aria-prohibited-attr",
+              "aria-required-attr",
+              "aria-roles",
+              "aria-valid-attr-value",
+              "aria-valid-attr",
+              "autocomplete-valid",
+              "button-name",
+              "color-contrast",
+              "definition-list",
+              "dlitem",
+              "document-title",
+              "duplicate-id-aria",
+              "form-field-multiple-labels",
+              "html-has-lang",
+              "html-lang-valid",
+              "label",
+              "meta-viewport",
+              "nested-interactive",
+              "scrollable-region-focusable",
+              "select-name",
+              "summary-name",
+              "target-size"
+            ],
+            "violations": [],
+            "incomplete": [
+              {
+                "id": "color-contrast",
+                "impact": "serious",
+                "tags": [
+                  "cat.color",
+                  "wcag2aa",
+                  "wcag143",
+                  "TTv5",
+                  "TT13.c",
+                  "EN-301-549",
+                  "EN-9.1.4.3",
+                  "ACT",
+                  "RGAAv4",
+                  "RGAA-3.2.1"
+                ],
+                "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+                "help": "Elements must meet minimum color contrast ratio thresholds",
+                "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/color-contrast?application=playwright",
+                "nodes": [
+                  {
+                    "any": [
+                      {
+                        "id": "color-contrast",
+                        "data": {
+                          "contrastRatio": 0,
+                          "fontSize": "9.4pt (12.48px)",
+                          "fontWeight": "normal",
+                          "messageKey": "elmPartiallyObscuring",
+                          "expectedContrastRatio": "4.5:1"
+                        },
+                        "relatedNodes": [],
+                        "impact": "serious",
+                        "message": "Element's background color could not be determined because it partially overlaps other elements"
+                      }
+                    ],
+                    "all": [],
+                    "none": [],
+                    "impact": "serious",
+                    "html": "<p class=\"subtitle\">Real-time heliocentric model and solar observation workspace.</p>",
+                    "target": [
+                      ".subtitle"
+                    ],
+                    "failureSummary": "Fix any of the following:\n  Element's background color could not be determined because it partially overlaps other elements"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "contrast-disposition-mobile-open-subtitle",
+          "data": {
+            "rule": "color-contrast",
+            "target": [
+              ".subtitle"
+            ],
+            "rawReason": {
+              "contrastRatio": 0,
+              "fontSize": "9.4pt (12.48px)",
+              "fontWeight": "normal",
+              "messageKey": "elmPartiallyObscuring",
+              "expectedContrastRatio": "4.5:1"
+            },
+            "method": "Opaque ancestor bounds, all text-line corner/center hit tests, WCAG sRGB relative luminance; no tolerance",
+            "observation": {
+              "foreground": [
+                154,
+                168,
+                172,
+                1
+              ],
+              "background": [
+                9,
+                14,
+                18,
+                1
+              ],
+              "layers": [
+                {
+                  "selector": "subtitle",
+                  "image": "none",
+                  "opacity": "1",
+                  "filter": "none",
+                  "blend": "normal",
+                  "color": "rgba(0, 0, 0, 0)"
+                },
+                {
+                  "selector": "panel-header",
+                  "image": "none",
+                  "opacity": "1",
+                  "filter": "none",
+                  "blend": "normal",
+                  "color": "rgba(0, 0, 0, 0)"
+                },
+                {
+                  "selector": "control-panel",
+                  "image": "none",
+                  "opacity": "1",
+                  "filter": "none",
+                  "blend": "normal",
+                  "color": "rgb(9, 14, 18)"
+                }
+              ],
+              "lines": [
+                {
+                  "rect": {
+                    "x": 16,
+                    "y": 70.3671875,
+                    "width": 242.00018310546875,
+                    "height": 15,
+                    "top": 70.3671875,
+                    "right": 258.00018310546875,
+                    "bottom": 85.3671875,
+                    "left": 16
+                  },
+                  "coveredByOpaqueSurface": true,
+                  "unobscured": true
+                },
+                {
+                  "rect": {
+                    "x": 16,
+                    "y": 89.0703125,
+                    "width": 149.0355224609375,
+                    "height": 15,
+                    "top": 89.0703125,
+                    "right": 165.0355224609375,
+                    "bottom": 104.0703125,
+                    "left": 16
+                  },
+                  "coveredByOpaqueSurface": true,
+                  "unobscured": true
+                }
+              ],
+              "contrast": 7.91270822812218
+            }
+          }
+        }
+      ]
+    },
+    {
+      "title": "desktop-recovery exposes the recovery surface",
+      "project": "webkit",
+      "status": "passed",
+      "duration_ms": 1504,
+      "errors": [],
+      "attachments": [
+        {
+          "name": "axe-desktop-recovery",
+          "data": {
+            "state": "desktop-recovery",
+            "project": "webkit",
+            "browserVersion": "27.2",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scope": "full document; production HTML/CSS with existing controller fixture",
+            "testEngine": {
+              "name": "axe-core",
+              "version": "4.11.1"
+            },
+            "passes": [
+              "aria-allowed-attr",
+              "aria-conditional-attr",
+              "aria-deprecated-role",
+              "aria-hidden-body",
+              "aria-hidden-focus",
+              "aria-prohibited-attr",
+              "aria-required-attr",
+              "aria-roles",
+              "aria-valid-attr-value",
+              "aria-valid-attr",
+              "button-name",
+              "color-contrast",
+              "definition-list",
+              "dlitem",
+              "document-title",
+              "duplicate-id-aria",
+              "form-field-multiple-labels",
+              "html-has-lang",
+              "html-lang-valid",
+              "label",
+              "meta-viewport",
+              "nested-interactive",
+              "scrollable-region-focusable",
+              "select-name",
+              "summary-name",
+              "target-size"
+            ],
+            "violations": [],
+            "incomplete": []
+          }
+        }
+      ]
+    },
+    {
+      "title": "mobile-closed-recovery exposes the recovery surface",
+      "project": "webkit",
+      "status": "passed",
+      "duration_ms": 827,
+      "errors": [],
+      "attachments": [
+        {
+          "name": "axe-mobile-closed-recovery",
+          "data": {
+            "state": "mobile-closed-recovery",
+            "project": "webkit",
+            "browserVersion": "27.2",
+            "viewport": {
+              "width": 390,
+              "height": 844
+            },
+            "scope": "full document; production HTML/CSS with existing controller fixture",
+            "testEngine": {
+              "name": "axe-core",
+              "version": "4.11.1"
+            },
+            "passes": [
+              "aria-allowed-attr",
+              "aria-conditional-attr",
+              "aria-deprecated-role",
+              "aria-hidden-body",
+              "aria-hidden-focus",
+              "aria-prohibited-attr",
+              "aria-required-attr",
+              "aria-roles",
+              "aria-valid-attr-value",
+              "aria-valid-attr",
+              "button-name",
+              "color-contrast",
+              "document-title",
+              "duplicate-id-aria",
+              "html-has-lang",
+              "html-lang-valid",
+              "meta-viewport",
+              "nested-interactive",
+              "target-size"
+            ],
+            "violations": [],
+            "incomplete": []
+          }
+        }
+      ]
+    },
+    {
+      "title": "mobile drawer isolates the viewport and restores focus",
+      "project": "chromium",
+      "status": "passed",
+      "duration_ms": 421,
+      "errors": [],
+      "attachments": []
+    },
+    {
+      "title": "195px viewport reflows the production page",
+      "project": "chromium",
+      "status": "passed",
+      "duration_ms": 310,
+      "errors": [],
+      "attachments": []
+    },
+    {
+      "title": "desktop camera hint remains above wrapped live status at 1101px",
+      "project": "chromium",
+      "status": "passed",
+      "duration_ms": 497,
+      "errors": [],
+      "attachments": []
+    },
+    {
+      "title": "desktop camera hint remains above wrapped live status at 1440px",
+      "project": "chromium",
+      "status": "passed",
+      "duration_ms": 422,
+      "errors": [],
+      "attachments": []
+    },
+    {
+      "title": "mobile drawer isolates the viewport and restores focus",
+      "project": "firefox",
+      "status": "passed",
+      "duration_ms": 469,
+      "errors": [],
+      "attachments": []
+    },
+    {
+      "title": "195px viewport reflows the production page",
+      "project": "firefox",
+      "status": "passed",
+      "duration_ms": 381,
+      "errors": [],
+      "attachments": []
+    },
+    {
+      "title": "desktop camera hint remains above wrapped live status at 1101px",
+      "project": "firefox",
+      "status": "passed",
+      "duration_ms": 437,
+      "errors": [],
+      "attachments": []
+    },
+    {
+      "title": "desktop camera hint remains above wrapped live status at 1440px",
+      "project": "firefox",
+      "status": "passed",
+      "duration_ms": 435,
+      "errors": [],
+      "attachments": []
+    },
+    {
+      "title": "mobile drawer isolates the viewport and restores focus",
+      "project": "webkit",
+      "status": "passed",
+      "duration_ms": 525,
+      "errors": [],
+      "attachments": []
+    },
+    {
+      "title": "195px viewport reflows the production page",
+      "project": "webkit",
+      "status": "passed",
+      "duration_ms": 392,
+      "errors": [],
+      "attachments": []
+    },
+    {
+      "title": "desktop camera hint remains above wrapped live status at 1101px",
+      "project": "webkit",
+      "status": "passed",
+      "duration_ms": 449,
+      "errors": [],
+      "attachments": []
+    },
+    {
+      "title": "desktop camera hint remains above wrapped live status at 1440px",
+      "project": "webkit",
+      "status": "passed",
+      "duration_ms": 474,
+      "errors": [],
+      "attachments": []
+    },
+    {
+      "title": "reflow and reachable controls at 195x422",
+      "project": "chromium",
+      "status": "passed",
+      "duration_ms": 2639,
+      "errors": [],
+      "attachments": []
+    },
+    {
+      "title": "reflow and reachable controls at 320x568",
+      "project": "chromium",
+      "status": "passed",
+      "duration_ms": 2471,
+      "errors": [],
+      "attachments": []
+    },
+    {
+      "title": "reflow and reachable controls at 390x844",
+      "project": "chromium",
+      "status": "passed",
+      "duration_ms": 2547,
+      "errors": [],
+      "attachments": []
+    },
+    {
+      "title": "reflow and reachable controls at 844x390",
+      "project": "chromium",
+      "status": "passed",
+      "duration_ms": 2484,
+      "errors": [],
+      "attachments": []
+    },
+    {
+      "title": "reflow and reachable controls at 1100x800",
+      "project": "chromium",
+      "status": "passed",
+      "duration_ms": 2765,
+      "errors": [],
+      "attachments": []
+    },
+    {
+      "title": "reflow and reachable controls at 1101x800",
+      "project": "chromium",
+      "status": "passed",
+      "duration_ms": 2908,
+      "errors": [],
+      "attachments": []
+    },
+    {
+      "title": "reflow and reachable controls at 1440x900",
+      "project": "chromium",
+      "status": "passed",
+      "duration_ms": 2478,
+      "errors": [],
+      "attachments": []
+    },
+    {
+      "title": "200 percent text sizing preserves access to the final action",
+      "project": "chromium",
+      "status": "passed",
+      "duration_ms": 468,
+      "errors": [],
+      "attachments": []
+    },
+    {
+      "title": "reflow and reachable controls at 195x422",
+      "project": "firefox",
+      "status": "passed",
+      "duration_ms": 4054,
+      "errors": [],
+      "attachments": []
+    },
+    {
+      "title": "reflow and reachable controls at 320x568",
+      "project": "firefox",
+      "status": "passed",
+      "duration_ms": 3130,
+      "errors": [],
+      "attachments": []
+    },
+    {
+      "title": "reflow and reachable controls at 390x844",
+      "project": "firefox",
+      "status": "passed",
+      "duration_ms": 3098,
+      "errors": [],
+      "attachments": []
+    },
+    {
+      "title": "reflow and reachable controls at 844x390",
+      "project": "firefox",
+      "status": "passed",
+      "duration_ms": 3067,
+      "errors": [],
+      "attachments": []
+    },
+    {
+      "title": "reflow and reachable controls at 1100x800",
+      "project": "firefox",
+      "status": "passed",
+      "duration_ms": 3357,
+      "errors": [],
+      "attachments": []
+    },
+    {
+      "title": "reflow and reachable controls at 1101x800",
+      "project": "firefox",
+      "status": "passed",
+      "duration_ms": 3388,
+      "errors": [],
+      "attachments": []
+    },
+    {
+      "title": "reflow and reachable controls at 1440x900",
+      "project": "firefox",
+      "status": "passed",
+      "duration_ms": 3423,
+      "errors": [],
+      "attachments": []
+    },
+    {
+      "title": "200 percent text sizing preserves access to the final action",
+      "project": "firefox",
+      "status": "passed",
+      "duration_ms": 715,
+      "errors": [],
+      "attachments": []
+    },
+    {
+      "title": "reflow and reachable controls at 195x422",
+      "project": "webkit",
+      "status": "passed",
+      "duration_ms": 9387,
+      "errors": [],
+      "attachments": []
+    },
+    {
+      "title": "reflow and reachable controls at 320x568",
+      "project": "webkit",
+      "status": "passed",
+      "duration_ms": 7038,
+      "errors": [],
+      "attachments": []
+    },
+    {
+      "title": "reflow and reachable controls at 390x844",
+      "project": "webkit",
+      "status": "passed",
+      "duration_ms": 5717,
+      "errors": [],
+      "attachments": []
+    },
+    {
+      "title": "reflow and reachable controls at 844x390",
+      "project": "webkit",
+      "status": "passed",
+      "duration_ms": 6724,
+      "errors": [],
+      "attachments": []
+    },
+    {
+      "title": "reflow and reachable controls at 1100x800",
+      "project": "webkit",
+      "status": "passed",
+      "duration_ms": 6951,
+      "errors": [],
+      "attachments": []
+    },
+    {
+      "title": "reflow and reachable controls at 1101x800",
+      "project": "webkit",
+      "status": "passed",
+      "duration_ms": 6428,
+      "errors": [],
+      "attachments": []
+    },
+    {
+      "title": "reflow and reachable controls at 1440x900",
+      "project": "webkit",
+      "status": "passed",
+      "duration_ms": 5074,
+      "errors": [],
+      "attachments": []
+    },
+    {
+      "title": "200 percent text sizing preserves access to the final action",
+      "project": "webkit",
+      "status": "passed",
+      "duration_ms": 1174,
+      "errors": [],
+      "attachments": []
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "command": [
+    "/home/nomad/.npm/_npx/f4985f1adc097c41/node_modules/node/bin/node",
+    "scripts/prepare-distribution.mjs"
+  ],
+  "returncode": 0,
+  "stdout": "Verified 8 curated maps, 426 public files and 438 data inputs; packaged 6 notices. 43 product rights reviews remain (not release clearance).\n",
+  "stderr": ""
+}

@@ -1,0 +1,489 @@
+
+ RUN  v5.0.4 /home/nomad/ai/projects/worktrees/solar-four-closure-20261102
+
+stdout | scripts/browser-diagnostic-launcher.test.mjs > control: testWarp.js parses under the native supported runtime
+{"kind":"TOOL045_OWNED_CLEANUP","root":"/tmp/solar-tool045-launcher-V2w69b","absent":true}
+
+stdout | scripts/browser-diagnostic-launcher.test.mjs > selected API: testWarp.js --help is safe without installed browser tooling
+{"kind":"TOOL045_OWNED_CLEANUP","root":"/tmp/solar-tool045-launcher-Q2ExAv","absent":true}
+
+stdout | scripts/verify-agn-frame-browser.lifecycle.test.mjs > control: actual CLI emits unchanged evidence fields and closes fake resources
+{"removedOwnedFixture":"/tmp/solar-tool102-fixture-3AMGjA","sharedInputsUntouched":true}
+
+stdout | scripts/browser-diagnostic-launcher.test.mjs > selected API: testWarp.js -h is safe without installed browser tooling
+{"kind":"TOOL045_OWNED_CLEANUP","root":"/tmp/solar-tool045-launcher-SciRjw","absent":true}
+
+stdout | scripts/verify-agn-frame-browser.lifecycle.test.mjs > preserves custom operator graphics environment at browser launch
+{"removedOwnedFixture":"/tmp/solar-tool102-fixture-yhSxa2","sharedInputsUntouched":true}
+
+stdout | scripts/browser-diagnostic-launcher.test.mjs > selected API: testWarp.js lists only its fixed scenario without startup
+{"kind":"TOOL045_OWNED_CLEANUP","root":"/tmp/solar-tool045-launcher-2qW96M","absent":true}
+
+stdout | scripts/verify-agn-frame-browser.lifecycle.test.mjs > reports actual custom selected graphics values without a fabricated prefix
+{"removedOwnedFixture":"/tmp/solar-tool102-fixture-wJaHoo","sharedInputsUntouched":true}
+
+stdout | scripts/verify-agn-frame-browser.lifecycle.test.mjs > preserves prior host explicitly selected operator graphics environment at browser launch
+{"removedOwnedFixture":"/tmp/solar-tool102-fixture-5wP14x","sharedInputsUntouched":true}
+
+stdout | scripts/browser-diagnostic-launcher.test.mjs > selected API: testWarp.js invokes fixed declared CLI from foreign cwd
+{"kind":"TOOL045_OWNED_CLEANUP","root":"/tmp/solar-tool045-launcher-4Z4s68","absent":true}
+
+stdout | scripts/verify-agn-frame-browser.lifecycle.test.mjs > reports actual prior host explicitly selected selected graphics values without a fabricated prefix
+{"removedOwnedFixture":"/tmp/solar-tool102-fixture-OF1D9v","sharedInputsUntouched":true}
+
+stdout | scripts/verify-agn-frame-browser.lifecycle.test.mjs > preserves absent operator graphics environment at browser launch
+{"removedOwnedFixture":"/tmp/solar-tool102-fixture-Kasxr8","sharedInputsUntouched":true}
+
+stdout | scripts/kepler-direct-stagnation.test.mjs > ordinary unattainable precision rejects repeated-state stagnation even with a huge valid budget
+{"args":[0.1,0.99,1e-20,9007199254740991],"pid":2296731,"exitCode":0,"signal":null,"error":null,"observations":[{"stage":"entered"},{"stage":"settled","isError":true,"name":"RangeError"}],"reaped":true,"pins":{"src/data/moons.json":"37215c9cf16f3a8a596a8541bc0f1ab55622baca6d3243ecd453abb2856f75cd","src/sim/moonEphemeris.ts":"3f44f60b79f8e8b038762ef4e03e7f10bf9e36777d26cb8613a83773d3b11ab1","src/sim/sourceFrameOrbit.ts":"e69f02a8f572323f6df8b50e2f48f25d25c7d11f28ed8e8dc25656e81a2a460a","src/sim/orbitMath.ts":"8caaa68fe6ca54831ff5380510b4404bf64ac9b2c8ec06d8d8d16d652b2a2e95"}}
+
+stdout | scripts/browser-diagnostic-launcher.test.mjs > selected API: testWarp.js uses fresh children of explicit output parent
+{"kind":"TOOL045_OWNED_CLEANUP","root":"/tmp/solar-tool045-launcher-irWk5U","absent":true}
+
+stdout | scripts/verify-agn-frame-browser.lifecycle.test.mjs > reports actual absent selected graphics values without a fabricated prefix
+{"removedOwnedFixture":"/tmp/solar-tool102-fixture-IwJ0Jf","sharedInputsUntouched":true}
+
+stdout | scripts/kepler-direct-stagnation.test.mjs > near-unity unattainable precision rejects repeated-state stagnation even with a huge valid budget
+{"args":[1e-20,0.9999999999999999,1e-30,9007199254740991],"pid":2296789,"exitCode":0,"signal":null,"error":null,"observations":[{"stage":"entered"},{"stage":"settled","isError":true,"name":"RangeError"}],"reaped":true,"pins":{"src/data/moons.json":"37215c9cf16f3a8a596a8541bc0f1ab55622baca6d3243ecd453abb2856f75cd","src/sim/moonEphemeris.ts":"3f44f60b79f8e8b038762ef4e03e7f10bf9e36777d26cb8613a83773d3b11ab1","src/sim/sourceFrameOrbit.ts":"e69f02a8f572323f6df8b50e2f48f25d25c7d11f28ed8e8dc25656e81a2a460a","src/sim/orbitMath.ts":"8caaa68fe6ca54831ff5380510b4404bf64ac9b2c8ec06d8d8d16d652b2a2e95"}}
+
+stdout | scripts/verify-agn-frame-browser.lifecycle.test.mjs > preserves empty operator graphics environment at browser launch
+{"removedOwnedFixture":"/tmp/solar-tool102-fixture-GANHnE","sharedInputsUntouched":true}
+
+stdout | scripts/browser-diagnostic-launcher.test.mjs > selected API: testWarp.js propagates declared CLI nonzero exit
+{"kind":"TOOL045_OWNED_CLEANUP","root":"/tmp/solar-tool045-launcher-ArlS1o","absent":true}
+
+stdout | scripts/kepler-direct-stagnation.test.mjs > control: large unrepresentable whole result rejects repeated-state stagnation even with a huge valid budget
+{"args":[1000000000,0.99,1e-9,9007199254740991],"pid":2296833,"exitCode":0,"signal":null,"error":null,"observations":[{"stage":"entered"},{"stage":"settled","isError":true,"name":"RangeError"}],"reaped":true,"pins":{"src/data/moons.json":"37215c9cf16f3a8a596a8541bc0f1ab55622baca6d3243ecd453abb2856f75cd","src/sim/moonEphemeris.ts":"3f44f60b79f8e8b038762ef4e03e7f10bf9e36777d26cb8613a83773d3b11ab1","src/sim/sourceFrameOrbit.ts":"e69f02a8f572323f6df8b50e2f48f25d25c7d11f28ed8e8dc25656e81a2a460a","src/sim/orbitMath.ts":"8caaa68fe6ca54831ff5380510b4404bf64ac9b2c8ec06d8d8d16d652b2a2e95"}}
+
+stdout | scripts/browser-diagnostic-launcher.test.mjs > control: testRealisticScale.mjs parses under the native supported runtime
+{"kind":"TOOL045_OWNED_CLEANUP","root":"/tmp/solar-tool045-launcher-PcuPOl","absent":true}
+
+stdout | scripts/verify-agn-frame-browser.lifecycle.test.mjs > reports actual empty selected graphics values without a fabricated prefix
+{"removedOwnedFixture":"/tmp/solar-tool102-fixture-XDq6kl","sharedInputsUntouched":true}
+
+stdout | scripts/browser-diagnostic-launcher.test.mjs > selected API: testRealisticScale.mjs --help is safe without installed browser tooling
+{"kind":"TOOL045_OWNED_CLEANUP","root":"/tmp/solar-tool045-launcher-GxbnP2","absent":true}
+
+stdout | scripts/verify-agn-frame-browser.lifecycle.test.mjs > control: missing AGN_PLAYWRIGHT_MODULE fails before fake resource acquisition
+{"removedOwnedFixture":"/tmp/solar-tool102-fixture-uIa7VM","sharedInputsUntouched":true}
+
+stdout | scripts/kepler-direct-stagnation.test.mjs > control: a huge valid budget still returns an accurate ordinary solution
+{"args":[0.1,0.99,1e-9,9007199254740991],"pid":2296877,"exitCode":0,"signal":null,"error":null,"observations":[{"stage":"entered"},{"stage":"settled","returned":0.8316604237910568,"finite":true}],"reaped":true,"pins":{"src/data/moons.json":"37215c9cf16f3a8a596a8541bc0f1ab55622baca6d3243ecd453abb2856f75cd","src/sim/moonEphemeris.ts":"3f44f60b79f8e8b038762ef4e03e7f10bf9e36777d26cb8613a83773d3b11ab1","src/sim/sourceFrameOrbit.ts":"e69f02a8f572323f6df8b50e2f48f25d25c7d11f28ed8e8dc25656e81a2a460a","src/sim/orbitMath.ts":"8caaa68fe6ca54831ff5380510b4404bf64ac9b2c8ec06d8d8d16d652b2a2e95"}}
+
+stdout | scripts/browser-diagnostic-launcher.test.mjs > selected API: testRealisticScale.mjs -h is safe without installed browser tooling
+{"kind":"TOOL045_OWNED_CLEANUP","root":"/tmp/solar-tool045-launcher-22TiOl","absent":true}
+
+stdout | scripts/verify-agn-frame-browser.lifecycle.test.mjs > control: missing AGN_CHROMIUM_EXECUTABLE fails before fake resource acquisition
+{"removedOwnedFixture":"/tmp/solar-tool102-fixture-SU14C9","sharedInputsUntouched":true}
+
+stdout | scripts/browser-diagnostic-launcher.test.mjs > selected API: testRealisticScale.mjs lists only its fixed scenario without startup
+{"kind":"TOOL045_OWNED_CLEANUP","root":"/tmp/solar-tool045-launcher-91aJuY","absent":true}
+
+stdout | scripts/verify-agn-frame-browser.lifecycle.test.mjs > control: missing AGN_EXPECT_GPU fails before fake resource acquisition
+{"removedOwnedFixture":"/tmp/solar-tool102-fixture-WgGosu","sharedInputsUntouched":true}
+
+stdout | scripts/kepler-direct-stagnation.test.mjs > control: a huge valid budget preserves the exact finite-boundary analytic return
+{"args":[1.7976931348623157e+308,0.99,1,9007199254740991],"pid":2296948,"exitCode":0,"signal":null,"error":null,"observations":[{"stage":"entered"},{"stage":"settled","returned":1.7976931348623157e+308,"finite":true}],"reaped":true,"pins":{"src/data/moons.json":"37215c9cf16f3a8a596a8541bc0f1ab55622baca6d3243ecd453abb2856f75cd","src/sim/moonEphemeris.ts":"3f44f60b79f8e8b038762ef4e03e7f10bf9e36777d26cb8613a83773d3b11ab1","src/sim/sourceFrameOrbit.ts":"e69f02a8f572323f6df8b50e2f48f25d25c7d11f28ed8e8dc25656e81a2a460a","src/sim/orbitMath.ts":"8caaa68fe6ca54831ff5380510b4404bf64ac9b2c8ec06d8d8d16d652b2a2e95"}}
+
+ ✓ scripts/kepler-direct-stagnation.test.mjs (5 tests) 375ms
+stdout | scripts/verify-agn-frame-browser.lifecycle.test.mjs > control: matching GPU regex still rejects synthetic SwiftShader renderer
+{"removedOwnedFixture":"/tmp/solar-tool102-fixture-ORLSPZ","sharedInputsUntouched":true}
+
+stdout | scripts/browser-diagnostic-launcher.test.mjs > selected API: testRealisticScale.mjs invokes fixed declared CLI from foreign cwd
+{"kind":"TOOL045_OWNED_CLEANUP","root":"/tmp/solar-tool045-launcher-JtZAJ4","absent":true}
+
+stdout | scripts/moon-review-evidence.test.mjs > explicit relative export retains all science and unrelated retained evidence
+{"root":"/tmp/solar-moon-review-evidence-julK2Z/fixture-ccywDg","override":"owned-review-output","exit":0,"passed":11,"failed":0,"sourceSha256":"c79ea801436e40cc5a5f05c5ef823e0424a9ed8c0ff53910f3e24f2624f5f8b8"}
+{"removedOwnedParent":"/tmp/solar-moon-review-evidence-julK2Z","copiedInputsUnchanged":11,"sharedSentinelUnchanged":true}
+
+ ✓ scripts/verify-agn-frame-browser.test.mjs (3 tests) 623ms
+stdout | scripts/verify-agn-frame-browser.lifecycle.test.mjs > control: matching GPU regex still rejects synthetic llvmpipe renderer
+{"removedOwnedFixture":"/tmp/solar-tool102-fixture-9Y8dd1","sharedInputsUntouched":true}
+
+stdout | scripts/verify-agn-frame-browser.lifecycle.test.mjs > control: matching GPU regex still rejects synthetic softpipe renderer
+{"removedOwnedFixture":"/tmp/solar-tool102-fixture-bgqvcr","sharedInputsUntouched":true}
+
+stdout | scripts/browser-diagnostic-launcher.test.mjs > selected API: testRealisticScale.mjs uses fresh children of explicit output parent
+{"kind":"TOOL045_OWNED_CLEANUP","root":"/tmp/solar-tool045-launcher-YtP13v","absent":true}
+
+ ✓ src/data/asteroidCatalogLoader.test.ts (27 tests) 526ms
+stdout | scripts/verify-agn-frame-browser.lifecycle.test.mjs > control: matching GPU regex still rejects synthetic software renderer
+{"removedOwnedFixture":"/tmp/solar-tool102-fixture-CNWkNS","sharedInputsUntouched":true}
+
+ ✓ scripts/assess_all_moon_oracle.test.mjs (28 tests) 490ms
+stdout | scripts/verify-agn-frame-browser.lifecycle.test.mjs > control: mismatched renderer is rejected and cleaned up
+{"removedOwnedFixture":"/tmp/solar-tool102-fixture-L6PL2w","sharedInputsUntouched":true}
+
+stdout | scripts/browser-diagnostic-launcher.test.mjs > selected API: testRealisticScale.mjs propagates declared CLI nonzero exit
+{"kind":"TOOL045_OWNED_CLEANUP","root":"/tmp/solar-tool045-launcher-yhn7FI","absent":true}
+
+stdout | scripts/browser-diagnostic-launcher.test.mjs > control: get_errors.mjs parses under the native supported runtime
+{"kind":"TOOL045_OWNED_CLEANUP","root":"/tmp/solar-tool045-launcher-oabITr","absent":true}
+
+stdout | scripts/verify-agn-frame-browser.lifecycle.test.mjs > control: existing check failure is retained {"oracleFailure":true}
+{"removedOwnedFixture":"/tmp/solar-tool102-fixture-Zb5UaF","sharedInputsUntouched":true}
+
+stdout | scripts/browser-diagnostic-launcher.test.mjs > selected API: get_errors.mjs --help is safe without installed browser tooling
+{"kind":"TOOL045_OWNED_CLEANUP","root":"/tmp/solar-tool045-launcher-tmKd9I","absent":true}
+
+stdout | scripts/verify-agn-frame-browser.lifecycle.test.mjs > control: existing check failure is retained {"glError":1280}
+{"removedOwnedFixture":"/tmp/solar-tool102-fixture-UQeFI3","sharedInputsUntouched":true}
+
+stdout | scripts/browser-diagnostic-launcher.test.mjs > selected API: get_errors.mjs -h is safe without installed browser tooling
+{"kind":"TOOL045_OWNED_CLEANUP","root":"/tmp/solar-tool045-launcher-ia7zu7","absent":true}
+
+ ✓ src/main.focusBody.test.ts (4 tests) 332ms
+ ✓ src/main.bodyInfo.test.ts (3 tests) 353ms
+stdout | scripts/browser-diagnostic-launcher.test.mjs > selected API: get_errors.mjs lists only its fixed scenario without startup
+{"kind":"TOOL045_OWNED_CLEANUP","root":"/tmp/solar-tool045-launcher-HCgSS1","absent":true}
+
+stdout | scripts/verify-agn-frame-browser.lifecycle.test.mjs > control: existing check failure is retained {"pageError":true}
+{"removedOwnedFixture":"/tmp/solar-tool102-fixture-N1cyTe","sharedInputsUntouched":true}
+
+ ✓ src/main.resizeRenderer.test.ts (15 tests) 511ms
+stdout | scripts/verify-agn-frame-browser.lifecycle.test.mjs > control: launch failure closes the acquired fake server
+{"removedOwnedFixture":"/tmp/solar-tool102-fixture-CdsL0e","sharedInputsUntouched":true}
+
+stdout | scripts/browser-diagnostic-launcher.test.mjs > selected API: get_errors.mjs invokes fixed declared CLI from foreign cwd
+{"kind":"TOOL045_OWNED_CLEANUP","root":"/tmp/solar-tool045-launcher-p4e4Hm","absent":true}
+
+ ✓ src/main.zoomStatus.test.ts (18 tests) 652ms
+stdout | scripts/verify-agn-frame-browser.lifecycle.test.mjs > control: evaluation failure closes both acquired fake resources
+{"removedOwnedFixture":"/tmp/solar-tool102-fixture-PHDT9o","sharedInputsUntouched":true}
+
+stdout | scripts/verify-agn-frame-browser.lifecycle.test.mjs
+{"evidenceKind":"ACTUAL_CLI_WITH_FAKE_VITE_AND_BROWSER_NOT_HARDWARE","sourceSha":"0447eea2d7b1ac22a0a1feb034df798960edf7549c0431a2bef1a940f64a8b50","revision":"359598a818ec45fa22e6d6a822d7aea0a5e0a0ec","fixtureRoots":["/tmp/solar-tool102-fixture-3AMGjA","/tmp/solar-tool102-fixture-yhSxa2","/tmp/solar-tool102-fixture-wJaHoo","/tmp/solar-tool102-fixture-5wP14x","/tmp/solar-tool102-fixture-OF1D9v","/tmp/solar-tool102-fixture-Kasxr8","/tmp/solar-tool102-fixture-IwJ0Jf","/tmp/solar-tool102-fixture-GANHnE","/tmp/solar-tool102-fixture-XDq6kl","/tmp/solar-tool102-fixture-uIa7VM","/tmp/solar-tool102-fixture-SU14C9","/tmp/solar-tool102-fixture-WgGosu","/tmp/solar-tool102-fixture-ORLSPZ","/tmp/solar-tool102-fixture-9Y8dd1","/tmp/solar-tool102-fixture-bgqvcr","/tmp/solar-tool102-fixture-CNWkNS","/tmp/solar-tool102-fixture-L6PL2w","/tmp/solar-tool102-fixture-Zb5UaF","/tmp/solar-tool102-fixture-UQeFI3","/tmp/solar-tool102-fixture-N1cyTe","/tmp/solar-tool102-fixture-CdsL0e","/tmp/solar-tool102-fixture-PHDT9o"],"children":"spawnSync returned/reaped each child; no server or browser processes created"}
+
+ ✓ scripts/verify-agn-frame-browser.lifecycle.test.mjs (22 tests) 1235ms
+ ✓ src/sim/catalog.identity.test.ts (40 tests) 287ms
+ ✓ scripts/gravitational-wave-metadata.test.mjs (8 tests) 687ms
+ ✓ src/sunController.events.test.ts (3 tests) 348ms
+stdout | scripts/browser-diagnostic-launcher.test.mjs > selected API: get_errors.mjs uses fresh children of explicit output parent
+{"kind":"TOOL045_OWNED_CLEANUP","root":"/tmp/solar-tool045-launcher-tLFc32","absent":true}
+
+ ✓ src/sunController.scaleActivity.test.ts (16 tests) 414ms
+stdout | scripts/browser-diagnostic-launcher.test.mjs > selected API: get_errors.mjs propagates declared CLI nonzero exit
+{"kind":"TOOL045_OWNED_CLEANUP","root":"/tmp/solar-tool045-launcher-5e6Qxa","absent":true}
+
+ ✓ scripts/asteroid/catalog_fetcher.period.test.mjs (14 tests) 1407ms
+stdout | scripts/browser-diagnostic-launcher.test.mjs > selected API: rejects unsupported arguments ["--output"] before effects
+{"kind":"TOOL045_OWNED_CLEANUP","root":"/tmp/solar-tool045-launcher-5K3fzr","absent":true}
+
+stdout | scripts/browser-diagnostic-launcher.test.mjs > selected API: rejects unsupported arguments ["--output",""] before effects
+{"kind":"TOOL045_OWNED_CLEANUP","root":"/tmp/solar-tool045-launcher-3iipHT","absent":true}
+
+ ✓ scripts/asteroid/catalog_fetcher.types.test.mjs (1 test) 1104ms
+   ✓ type-checks the retired catalog entrypoint without executing it 1102ms
+stdout | scripts/browser-diagnostic-launcher.test.mjs > selected API: rejects unsupported arguments ["--output","--list"] before effects
+{"kind":"TOOL045_OWNED_CLEANUP","root":"/tmp/solar-tool045-launcher-OuJLUe","absent":true}
+
+ ✓ src/frontend/features/superluminal-modeling/eventsRemediation.test.ts (15 tests) 247ms
+ ✓ scripts/validate-accessibility-evidence.test.mjs (19 tests) 853ms
+ ✓ src/sim/plutoSystemCentre.test.ts (22 tests) 439ms
+stdout | scripts/browser-diagnostic-launcher.test.mjs > selected API: rejects unsupported arguments ["--output","one","--output","two"] before effects
+{"kind":"TOOL045_OWNED_CLEANUP","root":"/tmp/solar-tool045-launcher-PeVN1F","absent":true}
+
+stdout | scripts/browser-diagnostic-launcher.test.mjs > selected API: rejects unsupported arguments ["--help","--list"] before effects
+{"kind":"TOOL045_OWNED_CLEANUP","root":"/tmp/solar-tool045-launcher-OVivVi","absent":true}
+
+ ✓ src/sunController.test.ts (11 tests) 761ms
+ ✓ scripts/phase1-catalog-artifacts.test.mjs (1 test) 556ms
+   ✓ loads the real 100k artifact and renders exactly its largest 50k source identities 554ms
+stdout | scripts/browser-diagnostic-launcher.test.mjs > selected API: rejects unsupported arguments ["--list","--output","unused"] before effects
+{"kind":"TOOL045_OWNED_CLEANUP","root":"/tmp/solar-tool045-launcher-1EltXh","absent":true}
+
+stdout | scripts/moon-review-evidence.test.mjs > explicit absolute export preserves filenames and deliberate replacement semantics
+{"root":"/tmp/solar-moon-review-evidence-kC3udO/fixture-H5m7VK","override":"/tmp/solar-moon-review-evidence-kC3udO/absolute-output-4GXuIK","exit":0,"passed":11,"failed":0,"sourceSha256":"c79ea801436e40cc5a5f05c5ef823e0424a9ed8c0ff53910f3e24f2624f5f8b8"}
+{"removedOwnedParent":"/tmp/solar-moon-review-evidence-kC3udO","copiedInputsUnchanged":11,"sharedSentinelUnchanged":true}
+
+ ✓ scripts/asteroid/retirement.test.mjs (5 tests) 372ms
+ ✓ scripts/distribution-inventory.test.mjs (9 tests) 289ms
+stdout | scripts/browser-diagnostic-launcher.test.mjs > selected API: rejects unsupported arguments ["--project","firefox"] before effects
+{"kind":"TOOL045_OWNED_CLEANUP","root":"/tmp/solar-tool045-launcher-LbieSA","absent":true}
+
+ ✓ src/sunController.forceRefresh.test.ts (18 tests) 727ms
+ ✓ scripts/gravitational-wave-orbital-text.test.mjs (6 tests) 524ms
+ ✓ src/sim/moonEphemeris.validation.test.ts (131 tests) 1222ms
+ ✓ scripts/satellite-propagation-worker.test.mjs (74 tests) 274ms
+stdout | scripts/browser-diagnostic-launcher.test.mjs > selected API: rejects unsupported arguments ["--pass-with-no-tests"] before effects
+{"kind":"TOOL045_OWNED_CLEANUP","root":"/tmp/solar-tool045-launcher-8fYWZB","absent":true}
+
+ ✓ src/frontend/features/solar/solarGeometryContract.test.ts (36 tests) 928ms
+   ✓ actual production Sun controller graph (6)
+     ✓ routes accepted layers without double spin at display epoch 2451545 309ms
+ ✓ scripts/dev-launchers.test.mjs (5 tests) 1968ms
+   ✓ development launcher child ownership (5)
+     ✓ dev:full invokes the local Vite CLI without npx 888ms
+     ✓ dev:full handles a missing backend executable and tears down its frontend sibling 908ms
+stdout | scripts/browser-diagnostic-launcher.test.mjs > selected API: rejects unsupported arguments ["unexpected-position"] before effects
+{"kind":"TOOL045_OWNED_CLEANUP","root":"/tmp/solar-tool045-launcher-TbQoOs","absent":true}
+
+stdout | scripts/browser-diagnostic-launcher.test.mjs > selected API: declared CLI signal is not reported as success
+{"kind":"TOOL045_OWNED_CLEANUP","root":"/tmp/solar-tool045-launcher-3z8Xvp","absent":true}
+
+ ✓ src/frontend/features/planetary/quadtreeLOD.test.ts (10 tests) 552ms
+stdout | scripts/browser-diagnostic-launcher.test.mjs > selected API supplement: relative output parent belongs to caller cwd
+{"kind":"TOOL045_OWNED_CLEANUP","root":"/tmp/solar-tool045-launcher-oywMF8","absent":true}
+
+ ✓ src/sim/catalogParentGraph.test.ts (68 tests) 1389ms
+   ✓ reachable duplicate cannot hang the actual constructor (bounded owned child) 867ms
+ ✓ scripts/satellite-worker-epoch-admission.test.mjs (36 tests) 203ms
+ ✓ src/frontend/features/superluminal-modeling/agnFrameOracle.test.ts (6 tests) 1465ms
+   ✓ SCN-042 independent fixed-J2000 sky -> scene -> screen oracle (6)
+     ✓ GW: unperturbed event grid lies in the canonical XY ecliptic with +Z normal 1317ms
+stdout | scripts/browser-diagnostic-launcher.test.mjs > selected API supplement: missing declared CLI fails before output allocation
+{"kind":"TOOL045_OWNED_CLEANUP","root":"/tmp/solar-tool045-launcher-nSbcHC","absent":true}
+
+ ✓ src/sim/moonPhysicalIntegrity.test.ts (3 tests) 204ms
+ ✓ src/sim/phase1AsteroidCatalog.assetBase.test.ts (20 tests) 200ms
+ ✓ scripts/asteroid/catalog_fetcher.test.mjs (2 tests) 162ms
+ ✓ scripts/main-label-direction.test.mjs (16 tests) 473ms
+ ✓ scripts/update-moons-data.test.mjs (12 tests) 114ms
+ ✓ scripts/prepare-distribution.test.mjs (4 tests) 163ms
+ ✓ src/sim/catalog.moonName.test.ts (41 tests) 1555ms
+   ✓ control real all-source assessment retains423 raw labels and parent/target identities 982ms
+ ✓ src/sim/moonSourceExceptionIndependentReview.test.ts (11 tests) 196ms
+ ✓ scripts/browser-diagnostic-launcher.test.mjs (35 tests) 2434ms
+stdout | src/main.quadtreeLighting.test.ts > reuses stage-owned math objects for 1 owners over 1 frames
+{"scope":"main lighting math only; excludes quadtree.update internals","owners":1,"frames":1,"observed":{"vectors":0,"matrices":0,"clones":0}}
+
+ ✓ src/sim/solarSystemModel.sampling.test.ts (31 tests) 278ms
+ ✓ src/frontend/features/solar/sunVisuals.blendAlpha.test.ts (18 tests) 142ms
+stdout | src/main.quadtreeLighting.test.ts > reuses stage-owned math objects for 1 owners over 12 frames
+{"scope":"main lighting math only; excludes quadtree.update internals","owners":1,"frames":12,"observed":{"vectors":0,"matrices":0,"clones":0}}
+
+stdout | src/main.quadtreeLighting.test.ts > reuses stage-owned math objects for 3 owners over 8 frames
+{"scope":"main lighting math only; excludes quadtree.update internals","owners":3,"frames":8,"observed":{"vectors":0,"matrices":0,"clones":0}}
+
+ ✓ scripts/asteroid/catalog_fetcher.priority.test.mjs (8 tests) 2432ms
+   ✓ missing and ambiguous science stays unknown at every belt radius 1716ms
+ ✓ src/frontend/features/solar/solarPhysicsClient.test.ts (158 tests) 370ms
+ ✓ src/main.quadtreeLighting.test.ts (15 tests) 529ms
+ ✓ scripts/satellite-primary-identity.test.mjs (12 tests) 125ms
+ ✓ src/frontend/features/solar/sunVisuals.solarWind.test.ts (19 tests) 138ms
+ ✓ src/workers/modelWorker.initialization.test.ts (10 tests) 89ms
+ ✓ src/frontend/app/simulationClient.subscription.test.ts (15 tests) 91ms
+ ✓ scripts/planet-velocity-cli.test.mjs (11 tests) 2649ms
+   ✓ Earth companion removal is rejected with actionable actual text diagnostics 303ms
+   ✓ Earth barycentre target3 cannot masquerade as Earth399 velocity truth 385ms
+   ✓ healthy control: missing target metadata remains check-cannot-run 324ms
+   ✓ healthy control: malformed velocity truth remains check-cannot-run 313ms
+   ✓ healthy control: catalog-missing Earth stays regression exit1 with old missing[] 345ms
+ ✓ src/main.catalogVisibility.test.ts (2 tests) 163ms
+stdout | scripts/moon-review-evidence.test.mjs > explicit export failure remains a test failure, not silent success
+{"root":"/tmp/solar-moon-review-evidence-MWtLZh/fixture-sf3Eu7","override":"/tmp/solar-moon-review-evidence-MWtLZh/fixture-sf3Eu7/not-a-directory","exit":1,"passed":8,"failed":3,"sourceSha256":"c79ea801436e40cc5a5f05c5ef823e0424a9ed8c0ff53910f3e24f2624f5f8b8"}
+{"removedOwnedParent":"/tmp/solar-moon-review-evidence-MWtLZh","copiedInputsUnchanged":11,"sharedSentinelUnchanged":true}
+
+ ✓ src/frontend/features/planetary/satelliteSystem.tle.test.ts (38 tests) 135ms
+ ✓ src/frontend/features/asteroids/kuiperPaused.test.ts (6 tests) 173ms
+ ✓ src/sim/catalog.test.ts (8 tests) 125ms
+ ✓ src/sim/phase1AsteroidCatalog.startup.test.ts (10 tests) 67ms
+ ✓ scripts/solar-epoch-range.test.mjs (38 tests) 79ms
+ ✓ src/sim/asteroidBelt.epochs.test.ts (13 tests) 48ms
+ ✓ src/workers/modelWorker.events.test.ts (1 test) 72ms
+ ✓ src/workers/modelWorkerContract.sourceIndex.test.ts (20 tests) 83ms
+ ✓ src/sunController.visualLifecycle.test.ts (16 tests) 1778ms
+ ✓ src/sim/phase1AsteroidCatalog.lifecycle.test.ts (8 tests) 98ms
+ ✓ src/frontend/app/simulationClient.lifecycleReview.test.ts (13 tests) 89ms
+ ✓ src/frontend/features/solar/solarMagnetics.test.ts (8 tests) 59ms
+ ✓ scripts/satellite-primary-fallback.test.mjs (16 tests) 43ms
+ ✓ src/frontend/app/simulationClient.kuiper.test.ts (13 tests) 54ms
+ ✓ src/frontend/features/trajectory/index.test.ts (14 tests) 49ms
+ ✓ src/sim/solarSystemModel.test.ts (4 tests) 60ms
+ ✓ src/main.asteroidRefresh.test.ts (4 tests) 306ms
+ ✓ src/frontend/app/simulationClient.engineCase.test.ts (13 tests) 62ms
+ ✓ scripts/main-label-scale-transition.test.mjs (12 tests) 338ms
+ ✓ src/sunController.frameReview.test.ts (17 tests) 1971ms
+   ✓ actual controller snapshot and decorative-clock ownership (7)
+     ✓ applies a newly admitted feature snapshot during pause 363ms
+     ✓ applies a newly admitted feature snapshot during reverse 316ms
+ ✓ src/frontend/features/solar/solarFlares.test.ts (11 tests) 45ms
+ ✓ src/sim/lazyMoonEphemerides.test.ts (64 tests) 2574ms
+   ✓ loads verified decoded shards from native br HTTP responses 1182ms
+ ✓ src/frontend/features/solar/solarRealtimeClient.test.ts (60 tests) 38ms
+ ✓ src/frontend/app/simulationClient.test.ts (23 tests) 51ms
+ ✓ scripts/solar-epoch-relative-base.test.mjs (5 tests) 26ms
+ ✓ scripts/solar-epoch-readiness-ownership.test.mjs (7 tests) 27ms
+ ✓ src/main.moonRadiusProvenance.test.ts (13 tests) 52ms
+ ✓ src/sim/catalogDisplay.test.ts (3 tests) 40ms
+ ✓ src/frontend/app/simulationClient.metadata.test.ts (103 tests) 48ms
+ ✓ src/workers/modelWorkerContract.test.ts (6 tests) 23ms
+ ✓ src/frontend/features/planetary/planetView.test.ts (2 tests) 25ms
+ ✓ scripts/generated-solar-period.test.mjs (18 tests) 35ms
+ ✓ src/frontend/features/solar/sunVisuals.eruptionAppearance.test.ts (7 tests) 37ms
+ ✓ src/sim/phase1AsteroidCatalog.test.ts (14 tests) 53ms
+ ✓ scripts/asteroid/catalog_fetcher.mpcAngles.test.mjs (28 tests) 3118ms
+ ✓ src/sim/loadMoonEphemerides.test.ts (1 test) 28ms
+ ✓ src/sim/moonSourceExceptions.test.ts (4 tests) 58ms
+ ✓ src/frontend/app/viewportCameraController.test.ts (14 tests) 23ms
+ ✓ src/frontend/features/solar/sunVisuals.granulation.test.ts (3 tests) 28ms
+ ✓ src/frontend/features/asteroids/startupBelt.test.ts (10 tests) 24ms
+ ✓ src/frontend/app/modelWorkerController.test.ts (8 tests) 17ms
+ ✓ src/main.orbitClosure.test.ts (14 tests) 56ms
+ ✓ src/frontend/features/trajectory/localPlanner.radius.test.ts (52 tests) 15ms
+ ✓ src/frontend/features/solar/solarRealtimeClient.lifecycle.test.ts (8 tests) 13ms
+ ✓ src/frontend/features/superluminal-modeling/metricDisplay.test.ts (7 tests) 18ms
+ ✓ src/frontend/features/solar/solarDataStatus.test.ts (24 tests) 13ms
+ ✓ src/sim/secularRemediation.test.ts (17 tests) 37ms
+ ✓ src/sunController.textureLifecycle.test.ts (11 tests) 21ms
+ ✓ src/frontend/app/rendererWarmup.test.ts (11 tests) 17ms
+ ✓ src/frontend/features/solar/solarObservationTexture.sameOrigin.test.ts (33 tests) 11ms
+ ✓ scripts/kuiper-binary-phase.test.mjs (26 tests) 16ms
+ ✓ src/frontend/features/solar/solarFrame.test.ts (10 tests) 18ms
+ ✓ scripts/kepler-direct-contract.test.mjs (28 tests) 10ms
+ ✓ src/frontend/app/runtimeLifetime.test.ts (13 tests) 11ms
+ ✓ src/sim/moonFrames.horizons.test.ts (28 tests) 26ms
+ ✓ src/frontend/features/trajectory/localPlanner.test.ts (12 tests) 11ms
+ ✓ src/frontend/features/planetary/satelliteSystem.interpolation.test.ts (9 tests) 13ms
+stdout | scripts/moon-review-evidence.test.mjs > default run keeps all science but creates no persistent evidence directory
+{"root":"/tmp/solar-moon-review-evidence-pFX4Tk/fixture-iDvAfd","override":"<unset>","exit":0,"passed":11,"failed":0,"sourceSha256":"c79ea801436e40cc5a5f05c5ef823e0424a9ed8c0ff53910f3e24f2624f5f8b8"}
+{"removedOwnedParent":"/tmp/solar-moon-review-evidence-pFX4Tk","copiedInputsUnchanged":11,"sharedSentinelUnchanged":true}
+
+ ✓ src/sim/orbitMath.accuracy.test.ts (37 tests) 11ms
+ ✓ scripts/kuiper-binary-origin.test.mjs (24 tests) 10ms
+stdout | scripts/moon-scene-hierarchy.test.mjs > contract: fallback plus repeated neutral metric display preserves canonical moon and parent positions
+{"path":"fallback","neutralMetricPasses":[{"pass":0,"moonErrorsAu":[{"id":"moon-earth-moon","error":0},{"id":"moon-jupiter-ganymede","error":0}],"parentErrorsAu":[{"id":"earth","error":0},{"id":"jupiter","error":0}]},{"pass":1,"moonErrorsAu":[{"id":"moon-earth-moon","error":0},{"id":"moon-jupiter-ganymede","error":0}],"parentErrorsAu":[{"id":"earth","error":0},{"id":"jupiter","error":0}]}]}
+
+stdout | scripts/moon-scene-hierarchy.test.mjs > contract: worker plus repeated neutral metric display preserves canonical moon and parent positions
+{"path":"worker","neutralMetricPasses":[{"pass":0,"moonErrorsAu":[{"id":"moon-earth-moon","error":0},{"id":"moon-jupiter-ganymede","error":0}],"parentErrorsAu":[{"id":"earth","error":0},{"id":"jupiter","error":0}]},{"pass":1,"moonErrorsAu":[{"id":"moon-earth-moon","error":0},{"id":"moon-jupiter-ganymede","error":0}],"parentErrorsAu":[{"id":"earth","error":0},{"id":"jupiter","error":0}]}]}
+
+ ✓ scripts/moon-scene-hierarchy.test.mjs (10 tests) 66ms
+ ✓ src/frontend/features/asteroids/beltRenderer.disposal.test.ts (3 tests) 9ms
+ ✓ src/sim/moonCatalogRepair.horizons.test.ts (424 tests) 189ms
+ ✓ src/sim/planetPositionCheck.earthVelocity.test.ts (12 tests) 13ms
+ ✓ src/frontend/app/frameLifecycle.test.ts (15 tests) 9ms
+ ✓ src/frontend/app/sceneAnnotations.test.ts (11 tests) 16ms
+ ✓ src/frontend/features/solar/solarRotation.test.ts (2 tests) 11ms
+stdout | scripts/moon-texture-cancellation.test.mjs > contract already-aborted cold consumer starts no work or subscription
+MOON037_FIXTURE {"label":"preaborted-cold","loads":0,"settled":0,"inFlight":0,"remainingAbortListeners":0,"pipelineDisposeEvents":0,"ownedCleanupDisposeEvents":0}
+
+stdout | scripts/moon-texture-cancellation.test.mjs > contract already-aborted cache request returns null without evicting shared texture
+MOON037_FIXTURE {"label":"preaborted-cache","loads":1,"settled":1,"inFlight":0,"remainingAbortListeners":0,"pipelineDisposeEvents":0,"ownedCleanupDisposeEvents":1}
+
+stdout | scripts/moon-texture-cancellation.test.mjs > contract pending abort withdraws only consumer callback and preserves foreign listener
+MOON037_FIXTURE {"label":"pending-abort","loads":1,"settled":1,"inFlight":0,"remainingAbortListeners":0,"pipelineDisposeEvents":0,"ownedCleanupDisposeEvents":1}
+
+stdout | scripts/moon-texture-cancellation.test.mjs > contract abort after loader completion still wins before delivery microtask
+MOON037_FIXTURE {"label":"completion-before-microtask","loads":1,"settled":1,"inFlight":0,"remainingAbortListeners":0,"pipelineDisposeEvents":0,"ownedCleanupDisposeEvents":1}
+
+stdout | scripts/moon-texture-cancellation.test.mjs > contract abort one of two shared consumers leaves the other delivery intact
+MOON037_FIXTURE {"label":"one-of-two","loads":1,"settled":1,"inFlight":0,"remainingAbortListeners":0,"pipelineDisposeEvents":0,"ownedCleanupDisposeEvents":1}
+
+stdout | scripts/moon-texture-cancellation.test.mjs > contract all consumers may cancel without aborting or disposing shared cache work
+MOON037_FIXTURE {"label":"all-cancel","loads":1,"settled":1,"inFlight":0,"remainingAbortListeners":0,"pipelineDisposeEvents":0,"ownedCleanupDisposeEvents":1}
+
+stdout | scripts/moon-texture-cancellation.test.mjs > contract synchronous setup abort is cleaned before an unresolved loader settles
+MOON037_FIXTURE {"label":"setup-abort","loads":1,"settled":1,"inFlight":0,"remainingAbortListeners":0,"pipelineDisposeEvents":0,"ownedCleanupDisposeEvents":1}
+
+stdout | scripts/moon-texture-cancellation.test.mjs > contract cleanup precedes reentrant delivery that cancels another queued consumer
+MOON037_FIXTURE {"label":"reentrant-callback","loads":1,"settled":1,"inFlight":0,"remainingAbortListeners":0,"pipelineDisposeEvents":0,"ownedCleanupDisposeEvents":1}
+
+stdout | scripts/moon-texture-cancellation.test.mjs > control healthy signal delivery preserves identity, configuration and pre-callback cleanup
+MOON037_FIXTURE {"label":"healthy-signal","loads":1,"settled":1,"inFlight":0,"remainingAbortListeners":0,"pipelineDisposeEvents":0,"ownedCleanupDisposeEvents":1}
+
+stdout | scripts/moon-texture-cancellation.test.mjs > control failed load cleans consumers and retains failed-key no-retry policy
+MOON037_FIXTURE {"label":"failed-load","loads":1,"settled":1,"inFlight":0,"remainingAbortListeners":0,"pipelineDisposeEvents":0,"ownedCleanupDisposeEvents":1}
+
+stdout | scripts/moon-texture-cancellation.test.mjs > control healthy cache hit returns synchronously and later abort cannot revoke it
+MOON037_FIXTURE {"label":"cache-hit","loads":1,"settled":1,"inFlight":0,"remainingAbortListeners":0,"pipelineDisposeEvents":0,"ownedCleanupDisposeEvents":1}
+
+stdout | scripts/moon-texture-cancellation.test.mjs > control preload coalesces keys and preserves curated source and attribution
+MOON037_FIXTURE {"label":"preload","loads":2,"settled":2,"inFlight":0,"remainingAbortListeners":0,"pipelineDisposeEvents":0,"ownedCleanupDisposeEvents":2}
+
+stdout | scripts/moon-texture-cancellation.test.mjs > control omitted and explicit null signals retain shared callback ordering
+MOON037_FIXTURE {"label":"legacy-signals","loads":1,"settled":1,"inFlight":0,"remainingAbortListeners":0,"pipelineDisposeEvents":0,"ownedCleanupDisposeEvents":1}
+
+stdout | scripts/moon-texture-cancellation.test.mjs > control missing source or loader returns null without listeners or transport
+MOON037_FIXTURE {"label":"missing-input-support","loads":0,"settled":0,"inFlight":0,"remainingAbortListeners":0,"pipelineDisposeEvents":0,"ownedCleanupDisposeEvents":0}
+
+stdout | scripts/moon-texture-cancellation.test.mjs > control default texture configuration remains unchanged on real Three texture
+MOON037_FIXTURE {"label":"default-configure","loads":1,"settled":1,"inFlight":0,"remainingAbortListeners":0,"pipelineDisposeEvents":0,"ownedCleanupDisposeEvents":1}
+
+stdout | scripts/moon-texture-cancellation.test.mjs > control no-callback live request keeps shared work without an owned abort listener
+MOON037_FIXTURE {"label":"no-callback","loads":1,"settled":1,"inFlight":0,"remainingAbortListeners":0,"pipelineDisposeEvents":0,"ownedCleanupDisposeEvents":1}
+
+ ✓ scripts/moon-texture-cancellation.test.mjs (16 tests) 13ms
+ ✓ src/sim/solarSystemModel.orbitless.test.ts (18 tests) 8ms
+ ✓ src/frontend/features/solar/sunVisuals.frames.test.ts (2 tests) 8ms
+ ✓ src/sim/planetPositions.horizons.test.ts (75 tests) 12ms
+ ✓ src/sim/moonEphemeris.test.ts (10 tests) 12ms
+ ✓ src/frontend/features/asteroids/beltRenderer.residuals.test.ts (5 tests) 9ms
+ ✓ scripts/moon-visual-identity.test.mjs (8 tests) 20ms
+ ✓ src/frontend/app/timeController.signal.test.ts (10 tests) 7ms
+stderr | src/frontend/app/localSystemRenderer.disposal.test.ts > local-system resource disposal > releases per-scene body, label, and glow resources while preserving shared caches
+THREE.Material: parameter 'map' has value of undefined.
+THREE.Material: parameter 'map' has value of undefined.
+
+stderr | src/frontend/app/localSystemRenderer.disposal.test.ts > local-system resource disposal > releases a quadtree material without disposing its shared patch geometry
+THREE.Material: parameter 'map' has value of undefined.
+
+ ✓ src/frontend/app/localSystemRenderer.disposal.test.ts (2 tests) 12ms
+ ✓ src/frontend/features/asteroids/beltPrecision.test.ts (4 tests) 16ms
+ ✓ src/frontend/features/solar/sunVisuals.sunspots.test.ts (5 tests) 7ms
+ ✓ src/frontend/app/rendererRecovery.test.ts (12 tests) 12ms
+ ✓ scripts/dev-full-config.test.mjs (15 tests) 9ms
+ ✓ src/frontend/features/solar/sunVisuals.corona.test.ts (5 tests) 6ms
+ ✓ src/frontend/features/solar/solarDisplayScale.test.ts (5 tests) 7ms
+ ✓ src/frontend/app/timeController.test.ts (7 tests) 6ms
+ ✓ src/frontend/app/plannerController.test.ts (16 tests) 10ms
+ ✓ src/frontend/app/runtimeConfig.test.ts (14 tests) 8ms
+ ✓ src/sim/orbitMath.test.ts (4 tests) 10ms
+ ✓ src/frontend/features/solar/solarCycle.test.ts (7 tests) 7ms
+ ✓ src/frontend/app/sceneSetup.test.ts (6 tests) 11ms
+ ✓ src/frontend/features/superluminal-modeling/smbhPhysics.test.ts (5 tests) 6ms
+ ✓ src/frontend/camera/transitions.test.ts (7 tests) 7ms
+ ✓ src/frontend/features/solar/solarFeatureBlending.test.ts (8 tests) 8ms
+ ✓ src/sim/moonCatalogIdentity.horizons.test.ts (3 tests) 6ms
+ ✓ src/sim/kuiperBelt.horizons.test.ts (4 tests) 4ms
+ ✓ scripts/check-ui-types.test.mjs (5 tests) 4ms
+ ✓ src/frontend/app/frameLifecycle.ownershipReview.test.ts (3 tests) 4ms
+ ✓ src/frontend/features/superluminal-modeling/smbhPropagation.types.test.ts (4 tests) 5ms
+ ✓ src/frontend/app/uiBindings.capabilities.test.ts (6 tests) 7ms
+ ✓ scripts/ci/typescript-error-ratchet.test.mjs (7 tests) 6ms
+ ✓ scripts/frontend-origin.test.mjs (2 tests) 4ms
+ ✓ scripts/solar-delivery-metrics.test.mjs (8 tests) 4ms
+ ✓ src/sim/moonCartesianEphemeris.test.ts (5 tests) 6ms
+ ✓ src/frontend/features/planetary/planetRotation.test.ts (13 tests) 7ms
+ ✓ src/sim/asteroids/asteroidDistributions.test.ts (2 tests) 8ms
+ ✓ src/frontend/features/solar/sunVisuals.pointSize.test.ts (3 tests) 6ms
+ ✓ src/sim/sourceFrameOrbit.test.ts (4 tests) 4ms
+ ✓ src/frontend/app/stateStore.test.ts (2 tests) 3ms
+ ✓ src/frontend/app/labelSystem.test.ts (1 test) 4ms
+ ✓ src/constants.test.ts (3 tests) 4ms
+ ✓ src/frontend/features/asteroids/beltRenderer.color.test.ts (1 test) 4ms
+ ✓ src/frontend/app/panelController.test.ts (1 test) 2ms
+ ✓ src/frontend/app/experimentController.test.ts (2 tests) 4ms
+ ✓ src/sim/alphaCentauriOrbit.test.ts (3 tests) 3ms
+ ↓ scripts/planetShaderGeometry.test.mjs (2 tests | 2 skipped)
+stdout | scripts/moon-review-evidence.test.mjs > default run leaves retained evidence bytes and mtime unchanged
+{"root":"/tmp/solar-moon-review-evidence-8KkfaT/fixture-8fv8FJ","override":"<unset>","exit":0,"passed":11,"failed":0,"sourceSha256":"c79ea801436e40cc5a5f05c5ef823e0424a9ed8c0ff53910f3e24f2624f5f8b8"}
+{"removedOwnedParent":"/tmp/solar-moon-review-evidence-8KkfaT","copiedInputsUnchanged":11,"sharedSentinelUnchanged":true}
+
+ ✓ scripts/satellite-worker-diagnostic.test.mjs (17 tests) 6ms
+stdout | scripts/moon-review-evidence.test.mjs > empty opt-in value disables output rather than exporting into project root
+{"root":"/tmp/solar-moon-review-evidence-ZXufDo/fixture-yWFUFv","override":"","exit":0,"passed":11,"failed":0,"sourceSha256":"c79ea801436e40cc5a5f05c5ef823e0424a9ed8c0ff53910f3e24f2624f5f8b8"}
+{"removedOwnedParent":"/tmp/solar-moon-review-evidence-ZXufDo","copiedInputsUnchanged":11,"sharedSentinelUnchanged":true}
+
+ ✓ scripts/moon-review-evidence.test.mjs (6 tests) 4644ms
+   ✓ explicit relative export retains all science and unrelated retained evidence 707ms
+   ✓ explicit absolute export preserves filenames and deliberate replacement semantics 1172ms
+   ✓ explicit export failure remains a test failure, not silent success 946ms
+   ✓ default run keeps all science but creates no persistent evidence directory 755ms
+   ✓ default run leaves retained evidence bytes and mtime unchanged 599ms
+   ✓ empty opt-in value disables output rather than exporting into project root 463ms
+ ✓ scripts/asteroid/catalog_fetcher.scorePublication.test.mjs (15 tests) 7492ms
+   ✓ magnitude-derived diameters cannot enter the published largest-first population 2198ms
+   ✓ extreme or missing H cannot overflow a score when SBDB supplies diameter 510ms
+   ✓ explicit builder publication emits a matching largest-diameter binary/metadata/sample bundle 1367ms
+   ✓ valid builder preview leaves an existing bundle unchanged:  1169ms
+   ✓ valid builder preview leaves an existing bundle unchanged: --dry-run 1217ms
+
+ Test Files  166 passed | 1 skipped (167)
+      Tests  3025 passed | 2 skipped (3027)
+   Start at  12:38:28
+   Duration  7.89s (tests 54%, transform 29%, import 16%, worker 1%)
+
+    Isolate  167 workers spawned · ~103ms startup each (spawn + environment, per file)
+             at least ~452ms faster with isolate: false — reuses workers across files instead of one per file
+
+JSON report written to /home/nomad/ai/projects/worktrees/solar-four-closure-20261102/agent-notes/FOUR_ISSUE_IMPLEMENTATION_2026-11-02_EVIDENCE/frontend.json

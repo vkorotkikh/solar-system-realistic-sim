@@ -3,9 +3,10 @@ import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { CURATED_MOON_TEXTURE_CATALOG } from '../src/frontend/features/planetary/moonTextureCatalog.ts';
+import { verifyDistributionInventory } from './distribution-inventory.mjs';
 
-/** Fail closed for the curated image boundary, then include notices in Vite's
- * copied public tree. Scientific bundle hashes have their own offline gates.
+/** Verify curated map provenance and the entire copied public tree, then include
+ * notices. Scientific accuracy and unresolved release rights remain separate.
  */
 export async function prepareDistribution(root) {
   const moonDirectory = path.join(root, 'public/textures/moons');
@@ -33,6 +34,7 @@ export async function prepareDistribution(root) {
       throw new Error(`moon asset integrity failed: ${entry.assetFile}`);
     }
   }
+  const inventory = await verifyDistributionInventory(root);
   const notices = [
     ['LICENSE', 'LICENSE.txt'], ['NOTICE.md', 'NOTICE.md'],
     ['docs/distribution-policy.md', 'DISTRIBUTION-POLICY.md'],
@@ -53,10 +55,14 @@ export async function prepareDistribution(root) {
       : contents[index];
     await writeFile(path.join(output, destination), content);
   }
-  return { textureCount: entries.length, notices: notices.length };
+  await writeFile(path.join(output, 'DISTRIBUTION-SOURCES.json'), inventory.catalogBytes);
+  await writeFile(path.join(output, 'DISTRIBUTION-FILES.json'), inventory.inventoryBytes);
+  return { textureCount: entries.length, notices: notices.length + 2,
+    publicFileCount: inventory.publicFileCount, inputFileCount: inventory.inputFileCount,
+    unresolvedRights: inventory.unresolvedProductIds.length };
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const result = await prepareDistribution(fileURLToPath(new URL('../', import.meta.url)));
-  console.log(`Verified ${result.textureCount} curated maps and packaged ${result.notices} notices.`);
+  console.log(`Verified ${result.textureCount} curated maps, ${result.publicFileCount} public files and ${result.inputFileCount} data inputs; packaged ${result.notices} notices. ${result.unresolvedRights} product rights reviews remain (not release clearance).`);
 }

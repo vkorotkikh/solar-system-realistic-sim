@@ -1,0 +1,372 @@
+{
+  "graphics": {
+    "renderer": "ANGLE (Microsoft Corporation, D3D12 (NVIDIA GeForce RTX 5090), OpenGL 4.6)",
+    "antialias": true,
+    "samples": 4
+  },
+  "pilot": false,
+  "referenceRevision": "4f97dce442cffb46fa9add8fb3a674534dd2333e",
+  "cases": [
+    {
+      "id": "earth",
+      "scale": "display",
+      "view": "equator",
+      "flat": false,
+      "maxChannelDifference": 0,
+      "changedChannels": 0,
+      "meanChannelDifference": 0,
+      "coveredPixels": 4988
+    },
+    {
+      "id": "earth",
+      "scale": "display",
+      "view": "equator",
+      "flat": true,
+      "maxChannelDifference": 0,
+      "changedChannels": 0,
+      "meanChannelDifference": 0,
+      "coveredPixels": 4968
+    },
+    {
+      "id": "earth",
+      "scale": "display",
+      "view": "pole",
+      "flat": false,
+      "maxChannelDifference": 0,
+      "changedChannels": 0,
+      "meanChannelDifference": 0,
+      "coveredPixels": 4999
+    },
+    {
+      "id": "earth",
+      "scale": "display",
+      "view": "pole",
+      "flat": true,
+      "maxChannelDifference": 0,
+      "changedChannels": 0,
+      "meanChannelDifference": 0,
+      "coveredPixels": 4968
+    },
+    {
+      "id": "earth",
+      "scale": "display",
+      "view": "tilted",
+      "flat": false,
+      "maxChannelDifference": 0,
+      "changedChannels": 0,
+      "meanChannelDifference": 0,
+      "coveredPixels": 4982
+    },
+    {
+      "id": "earth",
+      "scale": "display",
+      "view": "tilted",
+      "flat": true,
+      "maxChannelDifference": 0,
+      "changedChannels": 0,
+      "meanChannelDifference": 0,
+      "coveredPixels": 4968
+    },
+    {
+      "id": "earth",
+      "scale": "physical",
+      "view": "equator",
+      "flat": false,
+      "maxChannelDifference": 0,
+      "changedChannels": 0,
+      "meanChannelDifference": 0,
+      "coveredPixels": 4988
+    },
+    {
+      "id": "earth",
+      "scale": "physical",
+      "view": "equator",
+      "flat": true,
+      "maxChannelDifference": 0,
+      "changedChannels": 0,
+      "meanChannelDifference": 0,
+      "coveredPixels": 4968
+    },
+    {
+      "id": "earth",
+      "scale": "physical",
+      "view": "pole",
+      "flat": false,
+      "maxChannelDifference": 0,
+      "changedChannels": 0,
+      "meanChannelDifference": 0,
+      "coveredPixels": 4999
+    },
+    {
+      "id": "earth",
+      "scale": "physical",
+      "view": "pole",
+      "flat": true,
+      "maxChannelDifference": 0,
+      "changedChannels": 0,
+      "meanChannelDifference": 0,
+      "coveredPixels": 4968
+    },
+    {
+      "id": "earth",
+      "scale": "physical",
+      "view": "tilted",
+      "flat": false,
+      "maxChannelDifference": 0,
+      "changedChannels": 0,
+      "meanChannelDifference": 0,
+      "coveredPixels": 4982
+    },
+    {
+      "id": "earth",
+      "scale": "physical",
+      "view": "tilted",
+      "flat": true,
+      "maxChannelDifference": 0,
+      "changedChannels": 0,
+      "meanChannelDifference": 0,
+      "coveredPixels": 4968
+    },
+    {
+      "id": "moon",
+      "scale": "display",
+      "view": "equator",
+      "flat": false,
+      "maxChannelDifference": 0,
+      "changedChannels": 0,
+      "meanChannelDifference": 0,
+      "coveredPixels": 4984
+    },
+    {
+      "id": "moon",
+      "scale": "display",
+      "view": "equator",
+      "flat": true,
+      "maxChannelDifference": 0,
+      "changedChannels": 0,
+      "meanChannelDifference": 0,
+      "coveredPixels": 4968
+    },
+    {
+      "id": "moon",
+      "scale": "display",
+      "view": "pole",
+      "flat": false,
+      "maxChannelDifference": 0,
+      "changedChannels": 0,
+      "meanChannelDifference": 0,
+      "coveredPixels": 4983
+    },
+    {
+      "id": "moon",
+      "scale": "display",
+      "view": "pole",
+      "flat": true,
+      "maxChannelDifference": 0,
+      "changedChannels": 0,
+      "meanChannelDifference": 0,
+      "coveredPixels": 4968
+    },
+    {
+      "id": "moon",
+      "scale": "display",
+      "view": "tilted",
+      "flat": false,
+      "maxChannelDifference": 0,
+      "changedChannels": 0,
+      "meanChannelDifference": 0,
+      "coveredPixels": 4985
+    },
+    {
+      "id": "moon",
+      "scale": "display",
+      "view": "tilted",
+      "flat": true,
+      "maxChannelDifference": 1,
+      "changedChannels": 1,
+      "meanChannelDifference": 0.000009765625,
+      "coveredPixels": 4968
+    },
+    {
+      "id": "moon",
+      "scale": "physical",
+      "view": "equator",
+      "flat": false,
+      "maxChannelDifference": 0,
+      "changedChannels": 0,
+      "meanChannelDifference": 0,
+      "coveredPixels": 4984
+    },
+    {
+      "id": "moon",
+      "scale": "physical",
+      "view": "equator",
+      "flat": true,
+      "maxChannelDifference": 0,
+      "changedChannels": 0,
+      "meanChannelDifference": 0,
+      "coveredPixels": 4968
+    },
+    {
+      "id": "moon",
+      "scale": "physical",
+      "view": "pole",
+      "flat": false,
+      "maxChannelDifference": 0,
+      "changedChannels": 0,
+      "meanChannelDifference": 0,
+      "coveredPixels": 4983
+    },
+    {
+      "id": "moon",
+      "scale": "physical",
+      "view": "pole",
+      "flat": true,
+      "maxChannelDifference": 0,
+      "changedChannels": 0,
+      "meanChannelDifference": 0,
+      "coveredPixels": 4968
+    },
+    {
+      "id": "moon",
+      "scale": "physical",
+      "view": "tilted",
+      "flat": false,
+      "maxChannelDifference": 0,
+      "changedChannels": 0,
+      "meanChannelDifference": 0,
+      "coveredPixels": 4985
+    },
+    {
+      "id": "moon",
+      "scale": "physical",
+      "view": "tilted",
+      "flat": true,
+      "maxChannelDifference": 0,
+      "changedChannels": 0,
+      "meanChannelDifference": 0,
+      "coveredPixels": 4968
+    },
+    {
+      "id": "mars",
+      "scale": "display",
+      "view": "equator",
+      "flat": false,
+      "maxChannelDifference": 0,
+      "changedChannels": 0,
+      "meanChannelDifference": 0,
+      "coveredPixels": 5157
+    },
+    {
+      "id": "mars",
+      "scale": "display",
+      "view": "equator",
+      "flat": true,
+      "maxChannelDifference": 0,
+      "changedChannels": 0,
+      "meanChannelDifference": 0,
+      "coveredPixels": 4968
+    },
+    {
+      "id": "mars",
+      "scale": "display",
+      "view": "pole",
+      "flat": false,
+      "maxChannelDifference": 0,
+      "changedChannels": 0,
+      "meanChannelDifference": 0,
+      "coveredPixels": 5132
+    },
+    {
+      "id": "mars",
+      "scale": "display",
+      "view": "pole",
+      "flat": true,
+      "maxChannelDifference": 0,
+      "changedChannels": 0,
+      "meanChannelDifference": 0,
+      "coveredPixels": 4968
+    },
+    {
+      "id": "mars",
+      "scale": "display",
+      "view": "tilted",
+      "flat": false,
+      "maxChannelDifference": 0,
+      "changedChannels": 0,
+      "meanChannelDifference": 0,
+      "coveredPixels": 5134
+    },
+    {
+      "id": "mars",
+      "scale": "display",
+      "view": "tilted",
+      "flat": true,
+      "maxChannelDifference": 0,
+      "changedChannels": 0,
+      "meanChannelDifference": 0,
+      "coveredPixels": 4968
+    },
+    {
+      "id": "mars",
+      "scale": "physical",
+      "view": "equator",
+      "flat": false,
+      "maxChannelDifference": 0,
+      "changedChannels": 0,
+      "meanChannelDifference": 0,
+      "coveredPixels": 5157
+    },
+    {
+      "id": "mars",
+      "scale": "physical",
+      "view": "equator",
+      "flat": true,
+      "maxChannelDifference": 0,
+      "changedChannels": 0,
+      "meanChannelDifference": 0,
+      "coveredPixels": 4968
+    },
+    {
+      "id": "mars",
+      "scale": "physical",
+      "view": "pole",
+      "flat": false,
+      "maxChannelDifference": 0,
+      "changedChannels": 0,
+      "meanChannelDifference": 0,
+      "coveredPixels": 5132
+    },
+    {
+      "id": "mars",
+      "scale": "physical",
+      "view": "pole",
+      "flat": true,
+      "maxChannelDifference": 0,
+      "changedChannels": 0,
+      "meanChannelDifference": 0,
+      "coveredPixels": 4968
+    },
+    {
+      "id": "mars",
+      "scale": "physical",
+      "view": "tilted",
+      "flat": false,
+      "maxChannelDifference": 0,
+      "changedChannels": 0,
+      "meanChannelDifference": 0,
+      "coveredPixels": 5134
+    },
+    {
+      "id": "mars",
+      "scale": "physical",
+      "view": "tilted",
+      "flat": true,
+      "maxChannelDifference": 0,
+      "changedChannels": 0,
+      "meanChannelDifference": 0,
+      "coveredPixels": 4968
+    }
+  ],
+  "errors": []
+}

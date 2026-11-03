@@ -1,0 +1,28 @@
+<!doctype html><meta charset="utf-8"><title>Planet shader fidelity comparison</title>
+<script type="module">
+import {PerspectiveCamera, Scene, Vector3, WebGLRenderer, WebGLRenderTarget} from 'three';
+import {PlanetQuadtree} from '/src/frontend/features/planetary/quadtreeLOD.ts';
+import baseline from './planet-baseline-shaders.json';
+window.fidelity = (async () => {
+ const renderer=new WebGLRenderer({antialias:true,alpha:true});renderer.setSize(160,160);renderer.setClearColor(0,0);document.body.append(renderer.domElement);
+ const gl=renderer.getContext(),debug=gl.getExtension('WEBGL_debug_renderer_info');const graphics={renderer:gl.getParameter(debug.UNMASKED_RENDERER_WEBGL),antialias:gl.getContextAttributes().antialias,samples:gl.getParameter(gl.SAMPLES)};
+ const target=new WebGLRenderTarget(160,160,{samples:4});const pixels=new Uint8Array(160*160*4),reference=new Uint8Array(pixels.length),rows=[];
+ const query=new URLSearchParams(location.search),pilot=query.has('pilot');
+ for(const [id,type] of [['earth',0],['moon',1],['mars',2]]){
+  const camera=new PerspectiveCamera(58,1,.001,20000),scene=new Scene(),tree=new PlanetQuadtree(id,1,camera);scene.add(tree.group);
+  const candidate=tree.material,original=candidate.clone();original.vertexShader=baseline.vertexShader;original.fragmentShader=baseline.fragmentShader;original.defines={};original.uniforms.uPlanetType={value:type};
+  if(pilot){candidate.vertexShader='uniform int uNoiseOctaveLimit;\n'+candidate.vertexShader.replace('uniform int uPlanetType;',`const int uPlanetType = ${type};`).replaceAll('i < 12','i < uNoiseOctaveLimit');candidate.fragmentShader='uniform int uNoiseOctaveLimit;\n'+candidate.fragmentShader.replace('uniform int uPlanetType;',`const int uPlanetType = ${type};`).replaceAll('i < 12','i < uNoiseOctaveLimit');candidate.uniforms.uNoiseOctaveLimit={value:12};if(query.has('specialize-only')){candidate.vertexShader=candidate.vertexShader.replaceAll('i < uNoiseOctaveLimit','i < 12');candidate.fragmentShader=candidate.fragmentShader.replaceAll('i < uNoiseOctaveLimit','i < 12');}}
+  for(const [scale,radius] of [['display',1],['physical',.00004]])for(const [view,direction] of [['equator',[0,0,1]],['pole',[0,1,.001]],['tilted',[1,-.7,1]]])for(const flat of [false,true]){
+   tree.material=candidate;tree.setRadius(radius);const relief=candidate.uniforms.uDisplacementScale.value;if(flat)candidate.uniforms.uDisplacementScale.value=0;
+   camera.position.fromArray(direction).normalize().multiplyScalar(radius*3.8);camera.lookAt(0,0,0);camera.near=radius*.001;camera.updateProjectionMatrix();tree.update();tree.setLightDirection(new Vector3(.3,.5,1));
+   for(const key of Object.keys(candidate.uniforms)){const value=candidate.uniforms[key].value;original.uniforms[key]={value:value?.clone?value.clone():value};}original.uniforms.uPlanetType={value:type};
+   for(const [material,destination] of [[original,reference],[candidate,pixels]]){tree.material=material;tree.group.traverse(o=>{if(o.isMesh)o.material=material;});renderer.setRenderTarget(target);renderer.render(scene,camera);renderer.readRenderTargetPixels(target,0,0,160,160,destination);if(gl.getError()!==gl.NO_ERROR)throw Error('WebGL error');}
+   let max=0,sum=0,changed=0,coverage=0;for(let i=0;i<pixels.length;i++){const d=Math.abs(pixels[i]-reference[i]);max=Math.max(max,d);sum+=d;if(d)changed++;if(i%4===3&&pixels[i])coverage++;}
+   rows.push({id,scale,view,flat,maxChannelDifference:max,changedChannels:changed,meanChannelDifference:sum/pixels.length,coveredPixels:coverage});
+   candidate.uniforms.uDisplacementScale.value=relief;await new Promise(r=>setTimeout(r,0));
+  }
+  tree.dispose();original.dispose();
+ }
+ target.dispose();renderer.dispose();return {graphics,pilot,referenceRevision:baseline.revision,cases:rows};
+})();
+</script>

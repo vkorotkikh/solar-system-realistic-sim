@@ -1,0 +1,471 @@
+{
+  "record_type": "NORMALIZED_PLAYWRIGHT_REPORT",
+  "raw_report": "contrast-other-engines-final.json.gz",
+  "raw_uncompressed_sha256": "272cec9c5ef2601ddd103f24cefa237e58aea3868305a0a25317c3ab56564a1b",
+  "stats": {
+    "startTime": "2026-11-02T17:27:41.032Z",
+    "duration": 11974.233999999999,
+    "expected": 5,
+    "skipped": 0,
+    "unexpected": 5,
+    "flaky": 0
+  },
+  "cases": [
+    {
+      "title": "desktop controls and expanded camera tools",
+      "project": "firefox",
+      "status": "passed",
+      "duration_ms": 2543,
+      "errors": [],
+      "attachments": [
+        {
+          "name": "axe-desktop-expanded",
+          "data": {
+            "state": "desktop-expanded",
+            "project": "firefox",
+            "browserVersion": "157.0",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scope": "full document; production HTML/CSS with existing controller fixture",
+            "testEngine": {
+              "name": "axe-core",
+              "version": "4.11.1"
+            },
+            "passes": [
+              "aria-allowed-attr",
+              "aria-conditional-attr",
+              "aria-deprecated-role",
+              "aria-hidden-body",
+              "aria-hidden-focus",
+              "aria-prohibited-attr",
+              "aria-required-attr",
+              "aria-roles",
+              "aria-valid-attr-value",
+              "aria-valid-attr",
+              "autocomplete-valid",
+              "avoid-inline-spacing",
+              "button-name",
+              "color-contrast",
+              "definition-list",
+              "dlitem",
+              "document-title",
+              "duplicate-id-aria",
+              "form-field-multiple-labels",
+              "html-has-lang",
+              "html-lang-valid",
+              "label",
+              "meta-viewport",
+              "nested-interactive",
+              "scrollable-region-focusable",
+              "select-name",
+              "summary-name",
+              "target-size"
+            ],
+            "violations": [],
+            "incomplete": []
+          }
+        }
+      ]
+    },
+    {
+      "title": "mobile drawer closed exposes expanded camera tools",
+      "project": "firefox",
+      "status": "passed",
+      "duration_ms": 1091,
+      "errors": [],
+      "attachments": [
+        {
+          "name": "axe-mobile-closed",
+          "data": {
+            "state": "mobile-closed",
+            "project": "firefox",
+            "browserVersion": "157.0",
+            "viewport": {
+              "width": 390,
+              "height": 844
+            },
+            "scope": "full document; production HTML/CSS with existing controller fixture",
+            "testEngine": {
+              "name": "axe-core",
+              "version": "4.11.1"
+            },
+            "passes": [
+              "aria-allowed-attr",
+              "aria-conditional-attr",
+              "aria-deprecated-role",
+              "aria-hidden-body",
+              "aria-hidden-focus",
+              "aria-prohibited-attr",
+              "aria-required-attr",
+              "aria-roles",
+              "aria-valid-attr-value",
+              "aria-valid-attr",
+              "avoid-inline-spacing",
+              "button-name",
+              "color-contrast",
+              "document-title",
+              "duplicate-id-aria",
+              "html-has-lang",
+              "html-lang-valid",
+              "meta-viewport",
+              "nested-interactive",
+              "summary-name",
+              "target-size"
+            ],
+            "violations": [],
+            "incomplete": []
+          }
+        }
+      ]
+    },
+    {
+      "title": "mobile drawer open exposes all control disclosures",
+      "project": "firefox",
+      "status": "passed",
+      "duration_ms": 1592,
+      "errors": [],
+      "attachments": [
+        {
+          "name": "axe-mobile-open",
+          "data": {
+            "state": "mobile-open",
+            "project": "firefox",
+            "browserVersion": "157.0",
+            "viewport": {
+              "width": 390,
+              "height": 844
+            },
+            "scope": "full document; production HTML/CSS with existing controller fixture",
+            "testEngine": {
+              "name": "axe-core",
+              "version": "4.11.1"
+            },
+            "passes": [
+              "aria-allowed-attr",
+              "aria-conditional-attr",
+              "aria-deprecated-role",
+              "aria-hidden-body",
+              "aria-hidden-focus",
+              "aria-prohibited-attr",
+              "aria-required-attr",
+              "aria-roles",
+              "aria-valid-attr-value",
+              "aria-valid-attr",
+              "autocomplete-valid",
+              "button-name",
+              "color-contrast",
+              "definition-list",
+              "dlitem",
+              "document-title",
+              "duplicate-id-aria",
+              "form-field-multiple-labels",
+              "html-has-lang",
+              "html-lang-valid",
+              "label",
+              "meta-viewport",
+              "nested-interactive",
+              "scrollable-region-focusable",
+              "select-name",
+              "summary-name",
+              "target-size"
+            ],
+            "violations": [],
+            "incomplete": [
+              {
+                "id": "color-contrast",
+                "impact": "serious",
+                "tags": [
+                  "cat.color",
+                  "wcag2aa",
+                  "wcag143",
+                  "TTv5",
+                  "TT13.c",
+                  "EN-301-549",
+                  "EN-9.1.4.3",
+                  "ACT",
+                  "RGAAv4",
+                  "RGAA-3.2.1"
+                ],
+                "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+                "help": "Elements must meet minimum color contrast ratio thresholds",
+                "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/color-contrast?application=playwright",
+                "nodes": [
+                  {
+                    "any": [
+                      {
+                        "id": "color-contrast",
+                        "data": {
+                          "contrastRatio": 0,
+                          "fontSize": "9.4pt (12.4844px)",
+                          "fontWeight": "normal",
+                          "messageKey": "elmPartiallyObscuring",
+                          "expectedContrastRatio": "4.5:1"
+                        },
+                        "relatedNodes": [],
+                        "impact": "serious",
+                        "message": "Element's background color could not be determined because it partially overlaps other elements"
+                      }
+                    ],
+                    "all": [],
+                    "none": [],
+                    "impact": "serious",
+                    "html": "<p class=\"subtitle\">Real-time heliocentric model and solar observation workspace.</p>",
+                    "target": [
+                      ".subtitle"
+                    ],
+                    "failureSummary": "Fix any of the following:\n  Element's background color could not be determined because it partially overlaps other elements"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "contrast-disposition-mobile-open-subtitle",
+          "data": {
+            "rule": "color-contrast",
+            "target": [
+              ".subtitle"
+            ],
+            "rawReason": {
+              "contrastRatio": 0,
+              "fontSize": "9.4pt (12.4844px)",
+              "fontWeight": "normal",
+              "messageKey": "elmPartiallyObscuring",
+              "expectedContrastRatio": "4.5:1"
+            },
+            "method": "Opaque ancestor bounds, all text-line corner/center hit tests, WCAG sRGB relative luminance; no tolerance",
+            "observation": {
+              "foreground": [
+                154,
+                168,
+                172,
+                1
+              ],
+              "background": [
+                9,
+                14,
+                18,
+                1
+              ],
+              "layers": [
+                {
+                  "selector": "subtitle",
+                  "image": "none",
+                  "opacity": "1",
+                  "filter": "none",
+                  "blend": "normal",
+                  "color": "rgba(0, 0, 0, 0)"
+                },
+                {
+                  "selector": "panel-header",
+                  "image": "none",
+                  "opacity": "1",
+                  "filter": "none",
+                  "blend": "normal",
+                  "color": "rgba(0, 0, 0, 0)"
+                },
+                {
+                  "selector": "control-panel",
+                  "image": "none",
+                  "opacity": "1",
+                  "filter": "none",
+                  "blend": "normal",
+                  "color": "rgb(9, 14, 18)"
+                }
+              ],
+              "lines": [
+                {
+                  "rect": {
+                    "x": 16,
+                    "y": 70.39999389648438,
+                    "width": 242.5,
+                    "height": 15,
+                    "top": 70.39999389648438,
+                    "right": 258.5,
+                    "bottom": 85.39999389648438,
+                    "left": 16
+                  },
+                  "coveredByOpaqueSurface": true,
+                  "unobscured": true
+                },
+                {
+                  "rect": {
+                    "x": 16,
+                    "y": 89.13333129882812,
+                    "width": 149.31666564941406,
+                    "height": 15,
+                    "top": 89.13333129882812,
+                    "right": 165.31666564941406,
+                    "bottom": 104.13333129882812,
+                    "left": 16
+                  },
+                  "coveredByOpaqueSurface": true,
+                  "unobscured": true
+                }
+              ],
+              "contrast": 7.91270822812218
+            }
+          }
+        }
+      ]
+    },
+    {
+      "title": "desktop-recovery exposes the recovery surface",
+      "project": "firefox",
+      "status": "passed",
+      "duration_ms": 1517,
+      "errors": [],
+      "attachments": [
+        {
+          "name": "axe-desktop-recovery",
+          "data": {
+            "state": "desktop-recovery",
+            "project": "firefox",
+            "browserVersion": "157.0",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scope": "full document; production HTML/CSS with existing controller fixture",
+            "testEngine": {
+              "name": "axe-core",
+              "version": "4.11.1"
+            },
+            "passes": [
+              "aria-allowed-attr",
+              "aria-conditional-attr",
+              "aria-deprecated-role",
+              "aria-hidden-body",
+              "aria-hidden-focus",
+              "aria-prohibited-attr",
+              "aria-required-attr",
+              "aria-roles",
+              "aria-valid-attr-value",
+              "aria-valid-attr",
+              "button-name",
+              "color-contrast",
+              "definition-list",
+              "dlitem",
+              "document-title",
+              "duplicate-id-aria",
+              "form-field-multiple-labels",
+              "html-has-lang",
+              "html-lang-valid",
+              "label",
+              "meta-viewport",
+              "nested-interactive",
+              "scrollable-region-focusable",
+              "select-name",
+              "summary-name",
+              "target-size"
+            ],
+            "violations": [],
+            "incomplete": []
+          }
+        }
+      ]
+    },
+    {
+      "title": "mobile-closed-recovery exposes the recovery surface",
+      "project": "firefox",
+      "status": "passed",
+      "duration_ms": 1278,
+      "errors": [],
+      "attachments": [
+        {
+          "name": "axe-mobile-closed-recovery",
+          "data": {
+            "state": "mobile-closed-recovery",
+            "project": "firefox",
+            "browserVersion": "157.0",
+            "viewport": {
+              "width": 390,
+              "height": 844
+            },
+            "scope": "full document; production HTML/CSS with existing controller fixture",
+            "testEngine": {
+              "name": "axe-core",
+              "version": "4.11.1"
+            },
+            "passes": [
+              "aria-allowed-attr",
+              "aria-conditional-attr",
+              "aria-deprecated-role",
+              "aria-hidden-body",
+              "aria-hidden-focus",
+              "aria-prohibited-attr",
+              "aria-required-attr",
+              "aria-roles",
+              "aria-valid-attr-value",
+              "aria-valid-attr",
+              "button-name",
+              "color-contrast",
+              "document-title",
+              "duplicate-id-aria",
+              "html-has-lang",
+              "html-lang-valid",
+              "meta-viewport",
+              "nested-interactive",
+              "target-size"
+            ],
+            "violations": [],
+            "incomplete": []
+          }
+        }
+      ]
+    },
+    {
+      "title": "desktop controls and expanded camera tools",
+      "project": "webkit",
+      "status": "failed",
+      "duration_ms": 1,
+      "errors": [
+        "Error: browserType.launch: \n\u2554\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2557\n\u2551 Host system is missing dependencies to run browsers. \u2551\n\u2551 Missing libraries:                                   \u2551\n\u2551     libgtk-4.so.1                                    \u2551\n\u2551     libgraphene-1.0.so.0                             \u2551\n\u2551     libxslt.so.1                                     \u2551\n\u2551     libevent-2.1.so.7                                \u2551\n\u2551     libopus.so.0                                     \u2551\n\u2551     libgstallocators-1.0.so.0                        \u2551\n\u2551     libgstapp-1.0.so.0                               \u2551\n\u2551     libgstpbutils-1.0.so.0                           \u2551\n\u2551     libgstaudio-1.0.so.0                             \u2551\n\u2551     libgsttag-1.0.so.0                               \u2551\n\u2551     libgstvideo-1.0.so.0                             \u2551\n\u2551     libgstgl-1.0.so.0                                \u2551\n\u2551     libgstcodecparsers-1.0.so.0                      \u2551\n\u2551     libgstfft-1.0.so.0                               \u2551\n\u2551     libflite.so.1                                    \u2551\n\u2551     libflite_usenglish.so.1                          \u2551\n\u2551     libflite_cmu_grapheme_lang.so.1                  \u2551\n\u2551     libflite_cmu_grapheme_lex.so.1                   \u2551\n\u2551     libflite_cmu_indic_lang.so.1                     \u2551\n\u2551     libflite_cmu_indic_lex.so.1                      \u2551\n\u2551     libflite_cmulex.so.1                             \u2551\n\u2551     libflite_cmu_time_awb.so.1                       \u2551\n\u2551     libflite_cmu_us_awb.so.1                         \u2551\n\u2551     libflite_cmu_us_kal16.so.1                       \u2551\n\u2551     libflite_cmu_us_kal.so.1                         \u2551\n\u2551     libflite_cmu_us_rms.so.1                         \u2551\n\u2551     libflite_cmu_us_slt.so.1                         \u2551\n\u2551     libwebpdemux.so.2                                \u2551\n\u2551     libavif.so.16                                    \u2551\n\u2551     libharfbuzz-icu.so.0                             \u2551\n\u2551     libwebpmux.so.3                                  \u2551\n\u2551     libwayland-server.so.0                           \u2551\n\u2551     libmanette-0.2.so.0                              \u2551\n\u2551     libenchant-2.so.2                                \u2551\n\u2551     libsecret-1.so.0                                 \u2551\n\u2551     libhyphen.so.0                                   \u2551\n\u2551     libGLESv2.so.2                                   \u2551\n\u2551     libx264.so                                       \u2551\n\u255a\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u255d"
+      ],
+      "attachments": []
+    },
+    {
+      "title": "mobile drawer closed exposes expanded camera tools",
+      "project": "webkit",
+      "status": "failed",
+      "duration_ms": 2,
+      "errors": [
+        "Error: browserType.launch: \n\u2554\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2557\n\u2551 Host system is missing dependencies to run browsers. \u2551\n\u2551 Missing libraries:                                   \u2551\n\u2551     libgtk-4.so.1                                    \u2551\n\u2551     libgraphene-1.0.so.0                             \u2551\n\u2551     libxslt.so.1                                     \u2551\n\u2551     libevent-2.1.so.7                                \u2551\n\u2551     libopus.so.0                                     \u2551\n\u2551     libgstallocators-1.0.so.0                        \u2551\n\u2551     libgstapp-1.0.so.0                               \u2551\n\u2551     libgstpbutils-1.0.so.0                           \u2551\n\u2551     libgstaudio-1.0.so.0                             \u2551\n\u2551     libgsttag-1.0.so.0                               \u2551\n\u2551     libgstvideo-1.0.so.0                             \u2551\n\u2551     libgstgl-1.0.so.0                                \u2551\n\u2551     libgstcodecparsers-1.0.so.0                      \u2551\n\u2551     libgstfft-1.0.so.0                               \u2551\n\u2551     libflite.so.1                                    \u2551\n\u2551     libflite_usenglish.so.1                          \u2551\n\u2551     libflite_cmu_grapheme_lang.so.1                  \u2551\n\u2551     libflite_cmu_grapheme_lex.so.1                   \u2551\n\u2551     libflite_cmu_indic_lang.so.1                     \u2551\n\u2551     libflite_cmu_indic_lex.so.1                      \u2551\n\u2551     libflite_cmulex.so.1                             \u2551\n\u2551     libflite_cmu_time_awb.so.1                       \u2551\n\u2551     libflite_cmu_us_awb.so.1                         \u2551\n\u2551     libflite_cmu_us_kal16.so.1                       \u2551\n\u2551     libflite_cmu_us_kal.so.1                         \u2551\n\u2551     libflite_cmu_us_rms.so.1                         \u2551\n\u2551     libflite_cmu_us_slt.so.1                         \u2551\n\u2551     libwebpdemux.so.2                                \u2551\n\u2551     libavif.so.16                                    \u2551\n\u2551     libharfbuzz-icu.so.0                             \u2551\n\u2551     libwebpmux.so.3                                  \u2551\n\u2551     libwayland-server.so.0                           \u2551\n\u2551     libmanette-0.2.so.0                              \u2551\n\u2551     libenchant-2.so.2                                \u2551\n\u2551     libsecret-1.so.0                                 \u2551\n\u2551     libhyphen.so.0                                   \u2551\n\u2551     libGLESv2.so.2                                   \u2551\n\u2551     libx264.so                                       \u2551\n\u255a\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u255d"
+      ],
+      "attachments": []
+    },
+    {
+      "title": "mobile drawer open exposes all control disclosures",
+      "project": "webkit",
+      "status": "failed",
+      "duration_ms": 2,
+      "errors": [
+        "Error: browserType.launch: \n\u2554\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2557\n\u2551 Host system is missing dependencies to run browsers. \u2551\n\u2551 Missing libraries:                                   \u2551\n\u2551     libgtk-4.so.1                                    \u2551\n\u2551     libgraphene-1.0.so.0                             \u2551\n\u2551     libxslt.so.1                                     \u2551\n\u2551     libevent-2.1.so.7                                \u2551\n\u2551     libopus.so.0                                     \u2551\n\u2551     libgstallocators-1.0.so.0                        \u2551\n\u2551     libgstapp-1.0.so.0                               \u2551\n\u2551     libgstpbutils-1.0.so.0                           \u2551\n\u2551     libgstaudio-1.0.so.0                             \u2551\n\u2551     libgsttag-1.0.so.0                               \u2551\n\u2551     libgstvideo-1.0.so.0                             \u2551\n\u2551     libgstgl-1.0.so.0                                \u2551\n\u2551     libgstcodecparsers-1.0.so.0                      \u2551\n\u2551     libgstfft-1.0.so.0                               \u2551\n\u2551     libflite.so.1                                    \u2551\n\u2551     libflite_usenglish.so.1                          \u2551\n\u2551     libflite_cmu_grapheme_lang.so.1                  \u2551\n\u2551     libflite_cmu_grapheme_lex.so.1                   \u2551\n\u2551     libflite_cmu_indic_lang.so.1                     \u2551\n\u2551     libflite_cmu_indic_lex.so.1                      \u2551\n\u2551     libflite_cmulex.so.1                             \u2551\n\u2551     libflite_cmu_time_awb.so.1                       \u2551\n\u2551     libflite_cmu_us_awb.so.1                         \u2551\n\u2551     libflite_cmu_us_kal16.so.1                       \u2551\n\u2551     libflite_cmu_us_kal.so.1                         \u2551\n\u2551     libflite_cmu_us_rms.so.1                         \u2551\n\u2551     libflite_cmu_us_slt.so.1                         \u2551\n\u2551     libwebpdemux.so.2                                \u2551\n\u2551     libavif.so.16                                    \u2551\n\u2551     libharfbuzz-icu.so.0                             \u2551\n\u2551     libwebpmux.so.3                                  \u2551\n\u2551     libwayland-server.so.0                           \u2551\n\u2551     libmanette-0.2.so.0                              \u2551\n\u2551     libenchant-2.so.2                                \u2551\n\u2551     libsecret-1.so.0                                 \u2551\n\u2551     libhyphen.so.0                                   \u2551\n\u2551     libGLESv2.so.2                                   \u2551\n\u2551     libx264.so                                       \u2551\n\u255a\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u255d"
+      ],
+      "attachments": []
+    },
+    {
+      "title": "desktop-recovery exposes the recovery surface",
+      "project": "webkit",
+      "status": "failed",
+      "duration_ms": 1,
+      "errors": [
+        "Error: browserType.launch: \n\u2554\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2557\n\u2551 Host system is missing dependencies to run browsers. \u2551\n\u2551 Missing libraries:                                   \u2551\n\u2551     libgtk-4.so.1                                    \u2551\n\u2551     libgraphene-1.0.so.0                             \u2551\n\u2551     libxslt.so.1                                     \u2551\n\u2551     libevent-2.1.so.7                                \u2551\n\u2551     libopus.so.0                                     \u2551\n\u2551     libgstallocators-1.0.so.0                        \u2551\n\u2551     libgstapp-1.0.so.0                               \u2551\n\u2551     libgstpbutils-1.0.so.0                           \u2551\n\u2551     libgstaudio-1.0.so.0                             \u2551\n\u2551     libgsttag-1.0.so.0                               \u2551\n\u2551     libgstvideo-1.0.so.0                             \u2551\n\u2551     libgstgl-1.0.so.0                                \u2551\n\u2551     libgstcodecparsers-1.0.so.0                      \u2551\n\u2551     libgstfft-1.0.so.0                               \u2551\n\u2551     libflite.so.1                                    \u2551\n\u2551     libflite_usenglish.so.1                          \u2551\n\u2551     libflite_cmu_grapheme_lang.so.1                  \u2551\n\u2551     libflite_cmu_grapheme_lex.so.1                   \u2551\n\u2551     libflite_cmu_indic_lang.so.1                     \u2551\n\u2551     libflite_cmu_indic_lex.so.1                      \u2551\n\u2551     libflite_cmulex.so.1                             \u2551\n\u2551     libflite_cmu_time_awb.so.1                       \u2551\n\u2551     libflite_cmu_us_awb.so.1                         \u2551\n\u2551     libflite_cmu_us_kal16.so.1                       \u2551\n\u2551     libflite_cmu_us_kal.so.1                         \u2551\n\u2551     libflite_cmu_us_rms.so.1                         \u2551\n\u2551     libflite_cmu_us_slt.so.1                         \u2551\n\u2551     libwebpdemux.so.2                                \u2551\n\u2551     libavif.so.16                                    \u2551\n\u2551     libharfbuzz-icu.so.0                             \u2551\n\u2551     libwebpmux.so.3                                  \u2551\n\u2551     libwayland-server.so.0                           \u2551\n\u2551     libmanette-0.2.so.0                              \u2551\n\u2551     libenchant-2.so.2                                \u2551\n\u2551     libsecret-1.so.0                                 \u2551\n\u2551     libhyphen.so.0                                   \u2551\n\u2551     libGLESv2.so.2                                   \u2551\n\u2551     libx264.so                                       \u2551\n\u255a\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u255d"
+      ],
+      "attachments": []
+    },
+    {
+      "title": "mobile-closed-recovery exposes the recovery surface",
+      "project": "webkit",
+      "status": "failed",
+      "duration_ms": 1,
+      "errors": [
+        "Error: browserType.launch: \n\u2554\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2557\n\u2551 Host system is missing dependencies to run browsers. \u2551\n\u2551 Missing libraries:                                   \u2551\n\u2551     libgtk-4.so.1                                    \u2551\n\u2551     libgraphene-1.0.so.0                             \u2551\n\u2551     libxslt.so.1                                     \u2551\n\u2551     libevent-2.1.so.7                                \u2551\n\u2551     libopus.so.0                                     \u2551\n\u2551     libgstallocators-1.0.so.0                        \u2551\n\u2551     libgstapp-1.0.so.0                               \u2551\n\u2551     libgstpbutils-1.0.so.0                           \u2551\n\u2551     libgstaudio-1.0.so.0                             \u2551\n\u2551     libgsttag-1.0.so.0                               \u2551\n\u2551     libgstvideo-1.0.so.0                             \u2551\n\u2551     libgstgl-1.0.so.0                                \u2551\n\u2551     libgstcodecparsers-1.0.so.0                      \u2551\n\u2551     libgstfft-1.0.so.0                               \u2551\n\u2551     libflite.so.1                                    \u2551\n\u2551     libflite_usenglish.so.1                          \u2551\n\u2551     libflite_cmu_grapheme_lang.so.1                  \u2551\n\u2551     libflite_cmu_grapheme_lex.so.1                   \u2551\n\u2551     libflite_cmu_indic_lang.so.1                     \u2551\n\u2551     libflite_cmu_indic_lex.so.1                      \u2551\n\u2551     libflite_cmulex.so.1                             \u2551\n\u2551     libflite_cmu_time_awb.so.1                       \u2551\n\u2551     libflite_cmu_us_awb.so.1                         \u2551\n\u2551     libflite_cmu_us_kal16.so.1                       \u2551\n\u2551     libflite_cmu_us_kal.so.1                         \u2551\n\u2551     libflite_cmu_us_rms.so.1                         \u2551\n\u2551     libflite_cmu_us_slt.so.1                         \u2551\n\u2551     libwebpdemux.so.2                                \u2551\n\u2551     libavif.so.16                                    \u2551\n\u2551     libharfbuzz-icu.so.0                             \u2551\n\u2551     libwebpmux.so.3                                  \u2551\n\u2551     libwayland-server.so.0                           \u2551\n\u2551     libmanette-0.2.so.0                              \u2551\n\u2551     libenchant-2.so.2                                \u2551\n\u2551     libsecret-1.so.0                                 \u2551\n\u2551     libhyphen.so.0                                   \u2551\n\u2551     libGLESv2.so.2                                   \u2551\n\u2551     libx264.so                                       \u2551\n\u255a\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u255d"
+      ],
+      "attachments": []
+    }
+  ]
+}

@@ -35,7 +35,7 @@
           "spoken_output": null,
           "focus_destination": null,
           "evidence_paths": [],
-          "reason": "Not executed; see manual-protocol.md"
+          "reason": "Not executed; see docs/accessibility-acceptance.md"
         },
         {
           "id": "mobile_drawer_closed",
@@ -46,7 +46,7 @@
           "spoken_output": null,
           "focus_destination": null,
           "evidence_paths": [],
-          "reason": "Not executed; see manual-protocol.md"
+          "reason": "Not executed; see docs/accessibility-acceptance.md"
         },
         {
           "id": "mobile_drawer_open",
@@ -57,7 +57,7 @@
           "spoken_output": null,
           "focus_destination": null,
           "evidence_paths": [],
-          "reason": "Not executed; see manual-protocol.md"
+          "reason": "Not executed; see docs/accessibility-acceptance.md"
         },
         {
           "id": "search_and_announcements",
@@ -68,7 +68,7 @@
           "spoken_output": null,
           "focus_destination": null,
           "evidence_paths": [],
-          "reason": "Not executed; see manual-protocol.md"
+          "reason": "Not executed; see docs/accessibility-acceptance.md"
         },
         {
           "id": "real_app_recovery",
@@ -79,7 +79,7 @@
           "spoken_output": null,
           "focus_destination": null,
           "evidence_paths": [],
-          "reason": "Not executed; see manual-protocol.md"
+          "reason": "Not executed; see docs/accessibility-acceptance.md"
         },
         {
           "id": "native_zoom_and_text",
@@ -90,7 +90,7 @@
           "spoken_output": null,
           "focus_destination": null,
           "evidence_paths": [],
-          "reason": "Not executed; see manual-protocol.md"
+          "reason": "Not executed; see docs/accessibility-acceptance.md"
         },
         {
           "id": "physical_touch",
@@ -101,7 +101,7 @@
           "spoken_output": null,
           "focus_destination": null,
           "evidence_paths": [],
-          "reason": "Not executed; see manual-protocol.md"
+          "reason": "Not executed; see docs/accessibility-acceptance.md"
         },
         {
           "id": "axe_incomplete_review",
@@ -112,9 +112,13 @@
           "spoken_output": null,
           "focus_destination": null,
           "evidence_paths": [],
-          "reason": "Not executed; see manual-protocol.md"
+          "reason": "Not executed; see docs/accessibility-acceptance.md"
         }
-      ]
+      ],
+      "device_available": null,
+      "availability_notes": null,
+      "environment_kind": null,
+      "device_class": null
     },
     {
       "id": "voiceover_safari_macos",
@@ -139,7 +143,7 @@
           "spoken_output": null,
           "focus_destination": null,
           "evidence_paths": [],
-          "reason": "Not executed; see manual-protocol.md"
+          "reason": "Not executed; see docs/accessibility-acceptance.md"
         },
         {
           "id": "mobile_drawer_closed",
@@ -150,7 +154,7 @@
           "spoken_output": null,
           "focus_destination": null,
           "evidence_paths": [],
-          "reason": "Not executed; see manual-protocol.md"
+          "reason": "Not executed; see docs/accessibility-acceptance.md"
         },
         {
           "id": "mobile_drawer_open",
@@ -161,7 +165,7 @@
           "spoken_output": null,
           "focus_destination": null,
           "evidence_paths": [],
-          "reason": "Not executed; see manual-protocol.md"
+          "reason": "Not executed; see docs/accessibility-acceptance.md"
         },
         {
           "id": "search_and_announcements",
@@ -172,7 +176,7 @@
           "spoken_output": null,
           "focus_destination": null,
           "evidence_paths": [],
-          "reason": "Not executed; see manual-protocol.md"
+          "reason": "Not executed; see docs/accessibility-acceptance.md"
         },
         {
           "id": "real_app_recovery",
@@ -183,7 +187,7 @@
           "spoken_output": null,
           "focus_destination": null,
           "evidence_paths": [],
-          "reason": "Not executed; see manual-protocol.md"
+          "reason": "Not executed; see docs/accessibility-acceptance.md"
         },
         {
           "id": "native_zoom_and_text",
@@ -194,7 +198,7 @@
           "spoken_output": null,
           "focus_destination": null,
           "evidence_paths": [],
-          "reason": "Not executed; see manual-protocol.md"
+          "reason": "Not executed; see docs/accessibility-acceptance.md"
         },
         {
           "id": "physical_touch",
@@ -205,7 +209,7 @@
           "spoken_output": null,
           "focus_destination": null,
           "evidence_paths": [],
-          "reason": "Not executed; see manual-protocol.md"
+          "reason": "Not executed; see docs/accessibility-acceptance.md"
         },
         {
           "id": "axe_incomplete_review",
@@ -216,9 +220,13 @@
           "spoken_output": null,
           "focus_destination": null,
           "evidence_paths": [],
-          "reason": "Not executed; see manual-protocol.md"
+          "reason": "Not executed; see docs/accessibility-acceptance.md"
         }
-      ]
+      ],
+      "device_available": null,
+      "availability_notes": null,
+      "environment_kind": null,
+      "device_class": null
     },
     {
       "id": "physical_touch",
@@ -243,7 +251,7 @@
           "spoken_output": null,
           "focus_destination": null,
           "evidence_paths": [],
-          "reason": "Not executed; see manual-protocol.md"
+          "reason": "Not executed; see docs/accessibility-acceptance.md"
         },
         {
           "id": "mobile_drawer_closed",
@@ -254,7 +262,7 @@
           "spoken_output": null,
           "focus_destination": null,
           "evidence_paths": [],
-          "reason": "Not executed; see manual-protocol.md"
+          "reason": "Not executed; see docs/accessibility-acceptance.md"
         },
         {
           "id": "mobile_drawer_open",
@@ -265,7 +273,7 @@
           "spoken_output": null,
           "focus_destination": null,
           "evidence_paths": [],
-          "reason": "Not executed; see manual-protocol.md"
+          "reason": "Not executed; see docs/accessibility-acceptance.md"
         },
         {
           "id": "search_and_announcements",
@@ -276,7 +284,7 @@
           "spoken_output": null,
           "focus_destination": null,
           "evidence_paths": [],
-          "reason": "Not executed; see manual-protocol.md"
+          "reason": "Not executed; see docs/accessibility-acceptance.md"
         },
         {
           "id": "real_app_recovery",
@@ -287,7 +295,7 @@
           "spoken_output": null,
           "focus_destination": null,
           "evidence_paths": [],
-          "reason": "Not executed; see manual-protocol.md"
+          "reason": "Not executed; see docs/accessibility-acceptance.md"
         },
         {
           "id": "native_zoom_and_text",
@@ -298,7 +306,7 @@
           "spoken_output": null,
           "focus_destination": null,
           "evidence_paths": [],
-          "reason": "Not executed; see manual-protocol.md"
+          "reason": "Not executed; see docs/accessibility-acceptance.md"
         },
         {
           "id": "physical_touch",
@@ -309,7 +317,7 @@
           "spoken_output": null,
           "focus_destination": null,
           "evidence_paths": [],
-          "reason": "Not executed; see manual-protocol.md"
+          "reason": "Not executed; see docs/accessibility-acceptance.md"
         },
         {
           "id": "axe_incomplete_review",
@@ -320,9 +328,13 @@
           "spoken_output": null,
           "focus_destination": null,
           "evidence_paths": [],
-          "reason": "Not executed; see manual-protocol.md"
+          "reason": "Not executed; see docs/accessibility-acceptance.md"
         }
-      ]
+      ],
+      "device_available": null,
+      "availability_notes": null,
+      "environment_kind": null,
+      "device_class": null
     },
     {
       "id": "voiceover_touch_ios_optional",
@@ -347,7 +359,7 @@
           "spoken_output": null,
           "focus_destination": null,
           "evidence_paths": [],
-          "reason": "Not executed; see manual-protocol.md"
+          "reason": "Not executed; see docs/accessibility-acceptance.md"
         },
         {
           "id": "mobile_drawer_closed",
@@ -358,7 +370,7 @@
           "spoken_output": null,
           "focus_destination": null,
           "evidence_paths": [],
-          "reason": "Not executed; see manual-protocol.md"
+          "reason": "Not executed; see docs/accessibility-acceptance.md"
         },
         {
           "id": "mobile_drawer_open",
@@ -369,7 +381,7 @@
           "spoken_output": null,
           "focus_destination": null,
           "evidence_paths": [],
-          "reason": "Not executed; see manual-protocol.md"
+          "reason": "Not executed; see docs/accessibility-acceptance.md"
         },
         {
           "id": "search_and_announcements",
@@ -380,7 +392,7 @@
           "spoken_output": null,
           "focus_destination": null,
           "evidence_paths": [],
-          "reason": "Not executed; see manual-protocol.md"
+          "reason": "Not executed; see docs/accessibility-acceptance.md"
         },
         {
           "id": "real_app_recovery",
@@ -391,7 +403,7 @@
           "spoken_output": null,
           "focus_destination": null,
           "evidence_paths": [],
-          "reason": "Not executed; see manual-protocol.md"
+          "reason": "Not executed; see docs/accessibility-acceptance.md"
         },
         {
           "id": "native_zoom_and_text",
@@ -402,7 +414,7 @@
           "spoken_output": null,
           "focus_destination": null,
           "evidence_paths": [],
-          "reason": "Not executed; see manual-protocol.md"
+          "reason": "Not executed; see docs/accessibility-acceptance.md"
         },
         {
           "id": "physical_touch",
@@ -413,7 +425,7 @@
           "spoken_output": null,
           "focus_destination": null,
           "evidence_paths": [],
-          "reason": "Not executed; see manual-protocol.md"
+          "reason": "Not executed; see docs/accessibility-acceptance.md"
         },
         {
           "id": "axe_incomplete_review",
@@ -424,9 +436,13 @@
           "spoken_output": null,
           "focus_destination": null,
           "evidence_paths": [],
-          "reason": "Not executed; see manual-protocol.md"
+          "reason": "Not executed; see docs/accessibility-acceptance.md"
         }
-      ]
+      ],
+      "device_available": null,
+      "availability_notes": null,
+      "environment_kind": null,
+      "device_class": null
     }
   ],
   "axe_incomplete_dispositions": [],

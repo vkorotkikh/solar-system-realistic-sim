@@ -1,0 +1,35 @@
+{
+  "record_type": "NORMALIZED_PLAYWRIGHT_REPORT",
+  "raw_report": "wrapped-status-red.json.gz",
+  "raw_uncompressed_sha256": "94abbf534c46a8a1ea5618f91dd46a6c9f5665acee5189fbbc3304dae63f8fd5",
+  "stats": {
+    "startTime": "2026-11-02T17:32:47.050Z",
+    "duration": 3739.604,
+    "expected": 0,
+    "skipped": 0,
+    "unexpected": 2,
+    "flaky": 0
+  },
+  "cases": [
+    {
+      "title": "desktop camera hint remains above wrapped live status at 1101px",
+      "project": "chromium",
+      "status": "failed",
+      "duration_ms": 1084,
+      "errors": [
+        "Error: Wrapped status must not paint over camera instructions\n\nexpect(received).toBeLessThanOrEqual(expected)\n\nExpected: <= 787.703125\nReceived:    832\n\n  29 |     const status = await page.locator('#status-bar').boundingBox();\n  30 |     expect(hint).not.toBeNull(); expect(status).not.toBeNull();\n> 31 |     expect(hint!.y + hint!.height, 'Wrapped status must not paint over camera instructions').toBeLessThanOrEqual(status!.y);\n     |                                                                                              ^\n  32 |     await expect(page.locator('.pointer-hint')).toBeVisible();\n  33 |     await expect(page.locator('#status-catalog')).toBeVisible();\n  34 |   });\n    at /home/nomad/ai/projects/worktrees/solar-scn030-closure-20261102/tests/browser/accessibility.spec.ts:31:94"
+      ],
+      "attachments": []
+    },
+    {
+      "title": "desktop camera hint remains above wrapped live status at 1440px",
+      "project": "chromium",
+      "status": "failed",
+      "duration_ms": 1061,
+      "errors": [
+        "Error: Wrapped status must not paint over camera instructions\n\nexpect(received).toBeLessThanOrEqual(expected)\n\nExpected: <= 824.703125\nReceived:    832\n\n  29 |     const status = await page.locator('#status-bar').boundingBox();\n  30 |     expect(hint).not.toBeNull(); expect(status).not.toBeNull();\n> 31 |     expect(hint!.y + hint!.height, 'Wrapped status must not paint over camera instructions').toBeLessThanOrEqual(status!.y);\n     |                                                                                              ^\n  32 |     await expect(page.locator('.pointer-hint')).toBeVisible();\n  33 |     await expect(page.locator('#status-catalog')).toBeVisible();\n  34 |   });\n    at /home/nomad/ai/projects/worktrees/solar-scn030-closure-20261102/tests/browser/accessibility.spec.ts:31:94"
+      ],
+      "attachments": []
+    }
+  ]
+}
