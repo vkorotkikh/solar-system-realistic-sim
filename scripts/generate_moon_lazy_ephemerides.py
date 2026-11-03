@@ -25,7 +25,7 @@ PURPOSES=('source','held','endpoints')
 MAX_INPUT_BYTES=32*1024*1024
 BASE_HASHES={
  'moonEphemerisChebyshev.json':'9331771c6ae51983c21efcea2bb07191055c2d7891db5f702006487f54e0b9f4',
- 'moonEphemerisRepairs.json':'d65c466ce3fb84a46f15af89388abe34f0239df3382de4de59a9af3e6a8cb3d7',
+ 'moonEphemerisRepairs.json':'397bb3789bc055ffc3cb58a57f51557025a0109ed14af3fb01e8f6da040c76ff',
  'moonEphemerisSpkRepairs.json':'b3f2cff1db399908475129505dea7e317fada4c47f13e005aef95c66d79434f9',
  'moonEphemerisDaphnis.json':'d7709853c059884f20763ace6aacd50a34c38e26b924e20c9f5a6b943f02a7c8',
  'moonEphemerisS2023S38.json':'b3410184508f68eff0add063f4f7eb4f9a5ac349a61ecec8c6f324c39f06e1e8'}

@@ -424,13 +424,32 @@ New pins are added to that directory only by
 `python scripts/capture_catalog_sources.py --kind moons`, which fetches the Horizons responses that
 are not yet pinned, using `curl`. It is a separate, explicit maintenance step.
 
-The additional lazy models reproduce offline from committed source pins on the
-pinned Python/NumPy stack:
+The six-moon extension and 410 lazy models reproduce offline from committed
+source pins with Python 3.12.13, NumPy 2.5.2 and the remaining packages pinned in
+`ci/backend-test-requirements.txt`:
 
 ```bash
+export PYTHONHASHSEED=0 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1
+export MKL_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1 TZ=UTC
+uv run --python 3.12.13 --with-requirements ci/backend-test-requirements.txt \
+  python scripts/generate_moon_repairs.py --offline --check
 uv run --python 3.12.13 --with-requirements ci/backend-test-requirements.txt \
   python scripts/generate_moon_lazy_ephemerides.py --offline --check
 ```
+
+Their shared reconstruction uses scalar `math.atan2` for both node and
+periapsis angles, avoiding the observed NumPy `arctan2` CPU-dispatch rounding
+difference. CI retains strict byte-equality preflights with native dispatch and
+with `NPY_DISABLE_CPU_FEATURES=X86_V4`. This claim covers the supported pinned
+stack and tested dispatch configurations; other platforms or libm implementations
+require separate verification.
+
+The scalar-angle rebuild refreshes generated extension/shard bytes and their
+SHA-256 filenames or manifest references using the same immutable source pins,
+original timestamp qualifications and accuracy caps. Exact byte comparison and
+all held-out, endpoint and independent-vector gates remain required. See the
+[current rebuild contract](docs/moon-catalog-integrity.md) for publication and
+historical migration scope.
 
 Ingest the eight reviewed USGS-hosted moon maps (Deimos uses generated appearance):
 

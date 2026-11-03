@@ -1,9 +1,11 @@
 # Offline source pins for opt-in moon shards
 
-These 410 content-addressed archives represent 411 catalog records. Both Puck
-records remain in the denominator and share the same target-715 model, constrained
-by the stricter of their two catalog-derived limits. Together with the unchanged
-13 previously shipped models, the index accounts for all 424 records.
+These 410 content-addressed source archives support 410 active lazy moon
+identities. Together with 13 base models, the current index accounts for all
+423 unique active identities. The earlier 424-row catalog included two Puck
+records sharing target 715; its historical vector capture remains retained.
+The current identity projection keeps the newer Puck row 388 and applies the
+stricter published position cap of 86.004 km.
 
 The archives contain lossless parsed JPL Horizons `ElementRow` float64 values,
 not values reconstructed from fitted coefficients. Each archive is XZ-compressed
@@ -17,20 +19,38 @@ original generation time is not relabeled as an independently known retrieval ti
 All 410 compressed source archives total **330,929,304 bytes**. They are developer
 and test inputs only. Nothing under this directory is imported by browser code.
 No scientific limit is changed: every promoted record uses at most
-`min(500 km, 0.001 * catalog aKm)` and `10 m/s`. The original four models and the
-nine previously shipped repairs remain byte-for-byte unchanged. Interpolation
-agreement with a captured JPL solution is not an observational uncertainty claim.
+`min(500 km, 0.001 * catalog aKm)` and `10 m/s`, including any stricter retained
+per-body cap. The original lazy-model publication preserved the four original
+models and nine previously shipped repairs byte-for-byte. The later scalar-angle
+rebuild regenerates the six-moon repair extension and the lazy generation, so
+that historical byte-preservation comparison does not describe the new outputs.
+Interpolation agreement with a captured JPL solution is not an observational
+uncertainty claim.
 
 ## Rebuild and check
 
-Use Python 3.12.13 and the pinned `ci/backend-test-requirements.txt`, with BLAS and
-OpenMP thread counts set to 1 for deterministic fitting:
+Use Python 3.12.13, NumPy 2.5.2 and the complete pinned
+`ci/backend-test-requirements.txt`, with the declared single-thread settings:
 
 ```sh
-PYTHONHASHSEED=0 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 \
+export PYTHONHASHSEED=0 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1
+export MKL_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1 TZ=UTC
 uv run --python 3.12.13 --with-requirements ci/backend-test-requirements.txt \
-python scripts/generate_moon_lazy_ephemerides.py --offline --check
+  python scripts/generate_moon_lazy_ephemerides.py --offline --check
 ```
+
+The shared reconstruction evaluates node and periapsis angles using scalar
+`math.atan2`, avoiding the observed CPU-dispatch rounding difference in NumPy
+`arctan2`. The pinned stack's native and `NPY_DISABLE_CPU_FEATURES=X86_V4`
+configurations retain strict byte-equality gates; CI runs both on the six-moon
+extension before its full suites. Other platforms or libm versions require
+separate reproducibility checks.
+
+The scalar-angle rebuild retains these immutable source archives, source hashes
+and qualified historical timestamps. Generated shard bytes receive matching
+SHA-256 filenames and updated index metadata. The rebuilt six-moon extension's
+reviewed base hash must also be recorded before publishing the lazy generation;
+see the [current rebuild contract](../../docs/moon-catalog-integrity.md).
 
 Checking independently repeats every fit from these pins and compares every
 published shard and the index byte-for-byte. It does not need a candidate cache,

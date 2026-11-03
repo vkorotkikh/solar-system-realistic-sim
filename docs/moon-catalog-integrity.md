@@ -46,18 +46,50 @@ HTML, update the adjacent source manifest with its actual retrieval time, SHA-25
 and byte count, review source changes, then rebuild. The generator never fetches
 missing data and rejects changed source bytes before parsing.
 
-Rebuild lazy model artifacts from the lossless committed provider inputs:
+## Current fitted-model rebuild contract
+
+Use Python 3.12.13, NumPy 2.5.2 and the complete environment pinned in
+`ci/backend-test-requirements.txt`. Rebuild the six-moon extension before the
+lazy generation, whose manifest records its reviewed base-artifact hash:
 
 ```sh
-OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 \
-python3 scripts/generate_moon_lazy_ephemerides.py --offline --write
-OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 \
-python3 scripts/generate_moon_lazy_ephemerides.py --offline --check
+export PYTHONHASHSEED=0 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1
+export MKL_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1 TZ=UTC
+uv run --python 3.12.13 --with-requirements ci/backend-test-requirements.txt \
+  python scripts/generate_moon_repairs.py --offline --write
+# Review extension bytes, then update its BASE_HASHES entry in
+# scripts/generate_moon_lazy_ephemerides.py before rebuilding lazy models.
+uv run --python 3.12.13 --with-requirements ci/backend-test-requirements.txt \
+  python scripts/generate_moon_lazy_ephemerides.py --offline --write
+uv run --python 3.12.13 --with-requirements ci/backend-test-requirements.txt \
+  python scripts/generate_moon_repairs.py --offline --check
+uv run --python 3.12.13 --with-requirements ci/backend-test-requirements.txt \
+  python scripts/generate_moon_lazy_ephemerides.py --offline --check
 ```
 
-The supported Python environment is pinned by `ci/backend-test-requirements.txt`.
-Publication replaces the complete shard generation atomically, retiring old
-content-addressed files. The identity migration changes only Puck's shard and the
-index/input recipe metadata; 409 unrelated lazy shards and all five base artifacts
-remain byte-identical. Puck retains the stricter published position cap of
-86.004 km rather than relaxing to the newer row's 86.007 km ceiling.
+The shared reconstruction evaluates node and periapsis angles with scalar
+`math.atan2`. This avoids the observed rounding difference between NumPy
+`arctan2` CPU-dispatch paths. CI runs the strict six-moon byte-equality preflight
+with native dispatch and with `NPY_DISABLE_CPU_FEATURES=X86_V4` before the full
+backend and catalog suites. The reproducibility claim is scoped to this pinned
+stack and tested dispatch configurations; arbitrary platforms and libm versions
+need separate verification.
+
+The scalar-angle rebuild regenerates the six-moon extension and the 410-shard
+lazy generation from the same immutable provider inputs. Changed lazy shards
+receive new SHA-256 filenames; the extension hash and dependent manifest/base
+references are refreshed. Review the corresponding generated-byte entries in the
+[distribution file register](data/distribution-files.json) before distribution.
+Source hashes, historical timestamps and their qualifications retain their
+existing meaning. Publication atomically replaces the complete shard generation
+and retires obsolete content-addressed files. Strict byte equality, held-out
+and endpoint checks, independent-vector checks and every existing accuracy cap
+remain required. Sampled interpolation agreement retains the numerical-source
+qualification described above.
+
+In the earlier Puck identity migration, only Puck's shard and index/input recipe
+metadata changed: 409 unrelated lazy shards and all five base artifacts were
+byte-identical to that migration's baseline. That comparison describes the
+identity migration, not the later scalar-angle rebuild. Puck still uses the
+stricter published position cap of 86.004 km; the newer row's 86.007 km ceiling
+does not widen it.

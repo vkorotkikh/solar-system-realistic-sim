@@ -100,13 +100,20 @@ def test_backend_job_uses_pinned_python_and_runs_the_full_suite():
     commands = "\n".join(step.get("run", "") for step in steps)
     assert "python -m pip install -r ci/backend-test-requirements.txt" in commands
     assert "python -m pytest -q backend/tests" in commands
+    preflight = "python -m pytest -q scripts/test_moon_repairs.py::test_real_extension_rebuild_is_byte_identical_without_network"
+    runs = [step.get("run", "") for step in steps]
+    preflight_steps = [step for step in steps if step.get("run") == preflight]
+    assert [step.get("env", {}) for step in preflight_steps] == [{}, {"NPY_DISABLE_CPU_FEATURES": "X86_V4"}]
+    assert all(steps.index(step) < runs.index("python -m pytest -q backend/tests") for step in preflight_steps)
+    assert all("if" not in step for step in preflight_steps)
+    assert "np.show_config(); np.show_runtime()" in commands
     assert all(not step.get("continue-on-error", False) for step in steps)
 
 
 def test_backend_job_runs_catalog_script_guards_and_classifies_every_script_test():
     document = yaml.safe_load(WORKFLOW.read_text())
     commands = [step.get("run", "") for step in document["jobs"]["backend-tests"]["steps"]]
-    script_runs = [command for command in commands if "scripts/test_" in command]
+    script_runs = [command for command in commands if "scripts/test_" in command and "::" not in command]
     assert len(script_runs) == 1
     assert script_runs[0].startswith(
         "python -m pytest -v --durations=20 -o faulthandler_timeout=120 "
