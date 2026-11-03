@@ -982,11 +982,13 @@ export class OrbitalSatelliteSystem {
 
   private workerInterpolationLimitDays(): number {
     // A circular orbit's midpoint chord error is r*(1-cos(pi/256)),
-    // about 0.527 km at r=7000 km. Use the fastest satellite in the batch;
-    // outside this short interval update() propagates at the display epoch.
-    const periods = this.satellites.map(satellite => 1 / satellite.meanMotionRevDay)
-      .filter(period => Number.isFinite(period) && period > 0);
-    return periods.length ? Math.min(...periods) / 256 : 0;
+    // about 0.527 km at r=7000 km. An eccentric orbit sweeps fastest at
+    // periapsis, n*(1+e)^2/(1-e^2)^1.5 (just n when e=0), and that peak rate
+    // sets the interval. Use the fastest satellite in the batch; outside this
+    // short interval update() propagates at the display epoch.
+    const rates = this.satellites.map(({ meanMotionRevDay, e }) => meanMotionRevDay * (1 + e) ** 2 / (1 - e * e) ** 1.5)
+      .filter(rate => Number.isFinite(rate) && rate > 0);
+    return rates.length ? 1 / (256 * Math.max(...rates)) : 0;
   }
 
   requestWorkerSnapshot(jd: number): void {

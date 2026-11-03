@@ -1,6 +1,7 @@
 import { expect, it, vi } from 'vitest';
 import { AU_KM } from '../../../constants';
 import { OrbitalSatelliteSystem } from './satelliteSystem';
+import { PRIMARY_MODELS, createMutableVec3, meanMotionFromSemimajorAxis, propagateAroundPrimary } from './satellitePropagationCore';
 
 const epoch = 2451545;
 const radiusKm = 7000;
@@ -84,3 +85,50 @@ it.each(['short-start', 'short-end', 'nonfinite-start', 'nonfinite-end'])(
     expect(Array.from(value.currentPositionsAu).every(Number.isFinite)).toBe(true);
     expect(Array.from(value.currentPositionsAu.slice(0, 3))).toEqual(Array.from(value.currentPositionsAu.slice(3)));
   });
+
+type Satellite = OrbitalSatelliteSystem['satellites'][number];
+const orbit = (id: string, aKm: number, e: number): Satellite => {
+  const revPerDay = meanMotionFromSemimajorAxis(aKm, PRIMARY_MODELS.earth.muKm3S2);
+  return { id, name: id, category: 'science', epochJd: epoch, aKm, e, iRad: .5, raanRad: .3, argPeriapsisRad: .2,
+    meanAnomalyRad: 0, meanMotionRevDay: revPerDay, meanMotionRadSec: revPerDay * 2 * Math.PI / 86400, frame: 'equatorial' };
+};
+
+// The 0.55 km circular bound above assumes a constant sweep rate. An eccentric orbit sweeps fastest at periapsis,
+// so the same period/256 interval gave 29 km at e=0.74 and 25 km at e=0.73.
+it.each([
+  ['Molniya e=0.74', [orbit('molniya', 26562, .74)]],
+  ['GTO e=0.73', [orbit('gto', 24400, .73)]],
+  // The circular MEO has the shorter period, but Molniya has the higher peak sweep rate and must set the limit.
+  ['Molniya batched with a shorter-period circular MEO', [orbit('molniya', 26562, .74), orbit('meo', 10000, 0)]],
+])('keeps %s interpolation error below the circular bound at the requested lead', (_name, satellites) => {
+  const value = system();
+  value.satellites = satellites;
+  value.currentPositionsAu = new Float32Array(satellites.length * 3);
+  const postMessage = vi.fn();
+  value.worker = { postMessage } as unknown as Worker;
+  value.estimatedJdRate = 1e6; // far above any bound, so the request carries the interpolation limit itself
+  value.workerLastRequestAtMs = -Infinity;
+  value.requestWorkerSnapshot(epoch);
+  const lead = postMessage.mock.calls[0][0].jd1 - epoch;
+  const scratch = createMutableVec3();
+  const exact = (jd: number) => satellites.flatMap(satellite => {
+    const p = propagateAroundPrimary(satellite, jd, false, PRIMARY_MODELS.earth, scratch);
+    return [p.x, p.y, p.z];
+  });
+  // Periapsis is at the epoch: sample a window centred on it, one starting on it and later phases.
+  for (const start of [epoch - lead / 2, epoch, epoch + .05, epoch + .13, epoch + .31]) {
+    const end = start + lead;
+    value.workerSnapshot = { jd0: start, jd1: end, count: satellites.length, applyJ2: false,
+      positions0: new Float32Array(exact(start)), positions1: new Float32Array(exact(end)) };
+    for (const fraction of [0, .25, .5, .75, 1]) {
+      const jd = start + lead * fraction;
+      expect(value.applyWorkerSnapshot(jd)).toBe(true);
+      const expected = exact(jd);
+      for (let index = 0; index < satellites.length; index++) {
+        const errorKm = Math.hypot(...[0, 1, 2].map(axis =>
+          (value.currentPositionsAu[index * 3 + axis] - expected[index * 3 + axis]) * AU_KM));
+        expect(errorKm, `${satellites[index].id} start ${start - epoch} fraction ${fraction}`).toBeLessThan(.55);
+      }
+    }
+  }
+});
