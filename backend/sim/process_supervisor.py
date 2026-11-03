@@ -580,23 +580,26 @@ class SupervisedProcessRunner:
                             "worker result exceeded or broke the wire contract"
                         ) from exc
 
-                    # Interpreter teardown may exceed the reap grace on a
-                    # loaded host. Keep the completed result until the job's
-                    # original deadline, while still observing owner teardown.
+                    # A result received in time survives slow interpreter
+                    # teardown. Wait only until the original deadline, while
+                    # still observing owner cancellation, then reap the child.
+                    reaped_after_result = False
                     while True:
                         if cancel_event.is_set():
                             self._reap_or_quarantine(job_id, process)
                             raise ProcessCancelled("process job cancelled by its owner")
                         exit_remaining = absolute_deadline - time.monotonic()
                         if exit_remaining <= 0:
-                            self._reap_or_quarantine(job_id, process)
-                            raise ProcessTimedOut(
-                                "worker sent a result but did not exit before its deadline"
-                            )
+                            if process.is_alive():
+                                self._reap_or_quarantine(job_id, process)
+                                reaped_after_result = True
+                            break
                         process.join(min(_POLL_SECONDS, exit_remaining))
                         if not process.is_alive():
                             break
-                    if process.exitcode != 0:
+                    # A signal from our deadline reap must not be mistaken for
+                    # a worker crash; spontaneous nonzero exits still fail.
+                    if not reaped_after_result and process.exitcode != 0:
                         raise ProcessCrashed(process.exitcode)
                     return self._decode_result(encoded, payload)
 

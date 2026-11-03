@@ -197,12 +197,15 @@ def test_finished_result_survives_slow_child_exit_within_deadline() -> None:
         runner.shutdown()
 
 
-def test_child_that_never_exits_after_its_result_still_times_out(tmp_path: Path) -> None:
-    from sim.process_supervisor import ProcessTimedOut, SupervisedProcessRunner
+def test_result_received_before_deadline_survives_teardown_past_it(tmp_path: Path) -> None:
+    # Only the child's teardown overruns the deadline; its result is already
+    # complete. Discarding it returned 503 solar_compute_timeout for any result
+    # that arrived within one slow teardown of the deadline.
+    from sim.process_supervisor import SupervisedProcessRunner
 
     runner = SupervisedProcessRunner(TARGET, max_workers=1, max_queue=0)
     started = tmp_path / "lingering.pid"
-    hard_timeout_seconds = 3.0
+    hard_timeout_seconds = 5.0
     admitted_at = time.monotonic()
     try:
         future = runner.submit(
@@ -210,13 +213,14 @@ def test_child_that_never_exits_after_its_result_still_times_out(tmp_path: Path)
                 "operation": "echo_then_slow_exit",
                 "exit_delay_seconds": 30.0,
                 "started_path": str(started),
-                "result": _result(),
+                "result": _result("teardown overran"),
             },
             timeout_seconds=hard_timeout_seconds,
         )
         child_pid = _wait_for_pid(started)
-        with pytest.raises(ProcessTimedOut):
-            future.result(timeout=hard_timeout_seconds + 2.0)
+        # The 30 s teardown is cut off at the deadline, not waited out.
+        result = future.result(timeout=hard_timeout_seconds + 2.0)
+        assert result["value"] == "teardown overran"
         assert time.monotonic() - admitted_at >= hard_timeout_seconds
         assert not _pid_exists(child_pid)
         assert runner.snapshot()["active_processes"] == 0
