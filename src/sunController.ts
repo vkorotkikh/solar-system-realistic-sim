@@ -946,8 +946,10 @@ export function createSunController({
     const rangeReadiness = solarPhysicsClient.epochRangeReadiness(requestJd);
     if (solarDeliveryDisposed || entryGeneration !== solarPhysicsRefreshGeneration) return;
     if (!force && rangeReadiness?.blocked && !rangeReadiness.bypassCadence) return;
-    // A state dropped for lagging the clock asks for the current epoch now, not at the next poll.
-    const forcePhysics = force || (currentSolarStateWanted && !rangeReadiness?.blocked);
+    // A state dropped for lagging the clock asks for the current epoch now, not at the next poll,
+    // unless the client is backing off a failure (its error backoff or the server's Retry-After).
+    const forcePhysics = force
+      || (currentSolarStateWanted && !rangeReadiness?.blocked && solarPhysicsClient.lastFailure === null);
     if (!forcePhysics && !rangeReadiness?.bypassCadence && nowMs < solarPhysicsNextRefreshMs) return;
     currentSolarStateWanted = false;
 

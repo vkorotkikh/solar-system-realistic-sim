@@ -192,6 +192,11 @@ function frames(f: Awaited<ReturnType<typeof fixture>>, count: number) {
   for (let i = 0; i < count; i += 1) f.tick();
 }
 
+/** `/solar/physics` requests sent so far through the stubbed fetch. */
+function physicsFetches() {
+  return vi.mocked(globalThis.fetch).mock.calls.filter(([url]) => String(url).includes('/solar/physics')).length;
+}
+
 describe('snapshots blend over a fixed 1.5 s (H2.9)', () => {
   // smoothstep(0.7 / 1.5) = 0.450074; a 1.35 s blend would be at 0.527800.
   it('fades the first backend arrival in', async () => {
@@ -490,12 +495,24 @@ describe('a backend state is labelled with its lag, then cleared when too old (H
     f.state.timeScaleDaysPerSec = 4;
     f.tick(0.4);
     expect(shownEpoch(f)).toBeNull();
-    const physicsFetches = () => vi.mocked(globalThis.fetch).mock.calls
-      .filter(([url]) => String(url).includes('/solar/physics')).length;
     const before = physicsFetches();
     // The frame loop's ordinary refresh tick, 20 s before the next poll is due.
     f.controller.maybeRefreshPhysics(Date.now());
     await vi.waitFor(() => expect(physicsFetches()).toBe(before + 1));
+  });
+
+  it('waits out the error backoff before re-requesting a state that a lag clear dropped', async () => {
+    const f = await fixture();
+    f.state.timeScaleDaysPerSec = 120;
+    for (let i = 0; i < 100; i += 1) f.tick(12); // 10 s at 120 d/s: the state lags 1200 d
+    await f.fail(); // the client now backs off (Retry-After or its error backoff)
+    f.state.timeScaleDaysPerSec = 4;
+    f.tick(0.4); // the lower rate clears the state
+    expect(shownEpoch(f)).toBeNull();
+    const before = physicsFetches();
+    f.controller.maybeRefreshPhysics(Date.now());
+    await new Promise(resolve => setTimeout(resolve, 20));
+    expect(physicsFetches()).toBe(before);
   });
 
   it('keeps the backend state through one failed poll while the clock runs', async () => {
