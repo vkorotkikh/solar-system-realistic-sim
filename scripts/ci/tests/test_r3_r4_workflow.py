@@ -1,12 +1,24 @@
 """Repository wiring for the blocking R3/R4 science lane."""
 
 from pathlib import Path
+import re
 
 import yaml
 
 
 ROOT = Path(__file__).parents[3]
 WORKFLOW = ROOT / ".github/workflows/r3-r4-science.yml"
+
+# Script tests the pinned backend environment cannot run. Each needs a package
+# that ci/backend-test-requirements.txt does not install: the SpiceyPy tests
+# would only skip ("skipped is not a scientific pass"), the other fails at import.
+NOT_IN_CI = {
+    "test_moon_source_exception_independent_review.py": "needs SpiceyPy",
+    "test_moon_source_exceptions.py": "needs SpiceyPy",
+    "test_moon_spk_clean_checkout.py": "needs SpiceyPy",
+    "test_moon_spk_repairs.py": "needs SpiceyPy",
+    "test_solar_main_frame_verifier.py": "needs the Python playwright package",
+}
 
 
 def test_workflow_installs_pinned_environment_and_runs_exact_all_lane():
@@ -84,6 +96,20 @@ def test_backend_job_uses_pinned_python_and_runs_the_full_suite():
     assert "python -m pip install -r ci/backend-test-requirements.txt" in commands
     assert "python -m pytest -q backend/tests" in commands
     assert all(not step.get("continue-on-error", False) for step in steps)
+
+
+def test_backend_job_runs_catalog_script_guards_and_classifies_every_script_test():
+    document = yaml.safe_load(WORKFLOW.read_text())
+    commands = [step.get("run", "") for step in document["jobs"]["backend-tests"]["steps"]]
+    script_runs = [command for command in commands if "scripts/test_" in command]
+    assert len(script_runs) == 1 and script_runs[0].startswith("python -m pytest -q ")
+    wired = set(re.findall(r"scripts/(test_\w+\.py)", script_runs[0]))
+    present = {path.name for path in (ROOT / "scripts").glob("test_*.py")}
+    assert not wired & set(NOT_IN_CI)
+    assert present == wired | set(NOT_IN_CI), "wire every scripts/test_*.py into CI or list why not"
+    joined = "\n".join(commands)
+    assert "python scripts/generate_moon_physical_radii.py --check" in joined
+    assert "python scripts/build_asteroid_phase1_dataset.py --offline --check" in joined
 
 
 def test_workflow_is_blocking_on_push_and_pull_request():
