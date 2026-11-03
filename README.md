@@ -400,13 +400,18 @@ Refresh moon data:
 npm run update:moons
 ```
 
-Regenerate or independently re-check the fitted moon ephemeris (uses the JPL Horizons API and an
-external temporary response cache):
+Regenerate or independently re-check the fitted moon ephemeris. Both commands read the committed,
+hash-checked JPL Horizons responses in `scripts/source-snapshots/catalogs/` and make no network
+requests:
 
 ```bash
 npm run generate:moon-ephemeris
 npm run verify:moon-ephemeris
 ```
+
+New pins are added to that directory only by
+`python scripts/capture_catalog_sources.py --kind moons`, which fetches the Horizons responses that
+are not yet pinned, using `curl`. It is a separate, explicit maintenance step.
 
 The additional lazy models reproduce offline from committed source pins on the
 pinned Python/NumPy stack:
