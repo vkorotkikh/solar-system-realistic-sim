@@ -889,9 +889,9 @@ export function createSunController({
    * not count.
    */
   function solarStateUnrefreshed(nowMs: number) {
-    const status = solarPhysicsClient.status();
-    return status.consecutiveFailures >= 5
-      || (status.lastFailure !== null && nowMs - status.lastSuccessMs > 300_000);
+    // Read the counters directly: status() builds a fresh object and this runs every frame.
+    const { consecutiveFailures, lastFailure, lastSuccessMs } = solarPhysicsClient;
+    return consecutiveFailures >= 5 || (lastFailure !== null && nowMs - lastSuccessMs > 300_000);
   }
 
   /** Fade the backend state out and draw the procedural Sun until a usable snapshot arrives (H2.7). */

@@ -768,8 +768,9 @@ export function blendSunspotUniforms(
   from: ReturnType<typeof readSunspotSeeds>,
   alpha: number
 ): void {
+  if (!from || alpha >= 1) return;
   const to = readSunspotSeeds(material);
-  if (!material || !to || !from || alpha >= 1) return;
+  if (!material || !to) return;
   const matched = new Set<number>();
   const mix: Array<{ seed: number[]; pattern: number }> = [];
   to.seeds.forEach((seed, i) => {
@@ -815,8 +816,9 @@ export function blendCoronalHoleUniforms(
   from: ReturnType<typeof readCoronalHoles>,
   alpha: number
 ): void {
+  if (!from || alpha >= 1) return;
   const to = readCoronalHoles(material);
-  if (!material || !to || !from || alpha >= 1) return;
+  if (!material || !to) return;
   const count = Math.max(from.count, to.count);
   const holes = material.uniforms.coronalHoles.value as Vector4[];
   for (let i = 0; i < count; i += 1) {
