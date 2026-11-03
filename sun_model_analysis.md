@@ -1,3 +1,5 @@
+> Historical gap analysis of the early JavaScript Sun model. The `.js` files and "Current State" columns below predate the TypeScript solar modules, flares, magnetic-field geometry and the differential-rotation shader. For current scope see the README's [Solar model](README.md#solar-model) section; for the rotation profile see [solar rotation and display](docs/solar-rotation-and-display.md). The proposals below are dated design notes, not current specifications.
+
 # Ultra-Realistic Sun Simulation: Gap Analysis & Improvement Roadmap
 
 *A comprehensive technical analysis of the current solar model identifying weaknesses and prescribing physics-correct improvements, organized by subsystem.*
@@ -105,7 +107,7 @@ Replace generic FBM with 2D Voronoi-seeded cells (dark lane network between conv
 Add a latitude-dependent rotation rate to the UV offset in the surface shader:
 ```glsl
 float latDeg = degrees(asin(vWorldNormal.y));
-float rotRate = 14.44 - 2.87*sin(radians(latDeg))*sin(radians(latDeg)) - 0.36*pow(sin(radians(latDeg)),4.0); // Snodgrass formula (deg/day)
+float rotRate = 14.713 - 2.396*sin(radians(latDeg))*sin(radians(latDeg)) - 1.787*pow(sin(radians(latDeg)),4.0); // Snodgrass & Ulrich (1990), sidereal deg/day
 ```
 
 **A4: Sunspot Umbra/Penumbra Structure**
