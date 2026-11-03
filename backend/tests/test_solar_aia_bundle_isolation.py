@@ -275,7 +275,10 @@ def test_http_tile_preserves_headers_bytes_and_avoids_unrelated_acquisition(http
     assert response.headers["x-solar-aia-artifact"] == "helioviewer_viewport_tile/v1"
     assert response.headers["x-solar-aia-spatial-use"] == "disabled"
     assert response.headers["cache-control"] == "private, max-age=30, no-store"
-    assert response.headers["vary"] == "Authorization, X-API-Key"
+    # Credential-dependent tile bytes must vary on both credentials. Starlette 1.7's
+    # CORS middleware also adds Origin, so compare tokens, not the joined string.
+    vary = [token.strip() for token in response.headers["vary"].split(",")]
+    assert {"Authorization", "X-API-Key"} <= set(vary) and len(vary) == len(set(vary))
     assert events["unrelated"] == [], events
 
 

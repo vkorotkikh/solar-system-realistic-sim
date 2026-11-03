@@ -3,6 +3,7 @@ astropy==8.0.1
 astropy-iers-data==0.2026.9.21.0.56.25
 fastapi==0.141.1
 httpx==0.28.1
+httpx2==2.16.0
 iniconfig==2.3.0
 numpy==2.5.2
 packaging==26.3
@@ -15,7 +16,7 @@ pytest==9.1.1
 PyYAML==6.0.3
 rebound==5.1.1
 scipy==1.18.0
-starlette==1.6.0
+starlette==1.7.0
 typing_extensions==4.16.0
 uvicorn[standard]==0.52.4
 websockets==17.0.1
