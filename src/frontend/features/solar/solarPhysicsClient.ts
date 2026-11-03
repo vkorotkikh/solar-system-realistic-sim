@@ -307,6 +307,20 @@ function parseEpochRange(value: unknown): SolarEpochRange | null {
     ? { minJdTdb: min, maxJdTdb: max } : null;
 }
 
+/**
+ * The epoch actually requested for a clock reading: the start of its 0.01-day
+ * step (owner decision 2026-11-03, docs/solar-render-delivery.md). Polls inside
+ * one step then ask for the same epoch, so the backend's exact ready-result
+ * cache can serve them. The drawn state trails the clock by under 14.4
+ * simulated minutes, about 0.14 degrees of solar rotation.
+ */
+export function solarPhysicsRequestJd(jd: number): number {
+  // Whole 1e-8 d wire units are exact at these magnitudes, so an epoch already
+  // on the grid maps to itself despite binary rounding of jd * 100.
+  const units = Math.round(jd * 1e8);
+  return (units - (units % 1e6)) / 1e8;
+}
+
 function outsideEpochRange(jd: number, range: SolarEpochRange): boolean {
   // Admission follows the same eight-decimal identity as the actual request.
   const wireJd = Number(Number(jd).toFixed(8));
@@ -526,7 +540,7 @@ export class SolarPhysicsClient {
   /** Read-only: the controller can honor transitions before its outer cadence gate. */
   epochRangeReadiness(jd: number): SolarEpochRangeReadiness | null {
     if (this.disposed || !this.knownEpochRange) return null;
-    return this.epochRangeReadinessFor(jd, this.baseUrl());
+    return this.epochRangeReadinessFor(solarPhysicsRequestJd(jd), this.baseUrl());
   }
 
   private epochRangeReadinessFor(jd: number, baseUrl: string): SolarEpochRangeReadiness {
@@ -561,8 +575,9 @@ export class SolarPhysicsClient {
     this.inFlight = false;
   }
 
-  async maybeRefresh(jd: number, force = false, preparedRange?: SolarEpochRangeReadiness | null): Promise<boolean> {
+  async maybeRefresh(clockJd: number, force = false, preparedRange?: SolarEpochRangeReadiness | null): Promise<boolean> {
     const nowMs = Date.now();
+    const jd = solarPhysicsRequestJd(clockJd);
 
     if (this.disposed) return false;
     const entryReqId = this._reqId;
