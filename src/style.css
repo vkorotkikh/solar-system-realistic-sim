@@ -318,6 +318,23 @@ svg {
   padding: 0 var(--space-3) calc(var(--space-6) + env(safe-area-inset-bottom, 0px));
 }
 
+.panel-credits {
+  margin: var(--space-5) var(--space-2) 0;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-line);
+  color: var(--color-muted);
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+.panel-credits p {
+  margin: 0;
+}
+
+.panel-credits a {
+  color: var(--color-cyan);
+}
+
 .panel-scroll::-webkit-scrollbar {
   width: 9px;
 }
