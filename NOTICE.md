@@ -64,8 +64,10 @@ The [2026-10-30 distribution inventory](agent-notes/DISTRIBUTION_INVENTORY_2026-
 is a historical baseline. It is not a legal clearance, a current byte inventory
 or the release manifest. The build gate,
 [`scripts/prepare-distribution.mjs`](scripts/prepare-distribution.mjs), is the
-current authority for the curated moon maps: it fails the build for an unlisted,
-changed or unreviewed map and packages the notices. The current
+current authority for what ships from `public/`: it fails the build for any file
+there that is not hash-pinned by a reviewed manifest or by
+[`ci/public-asset-allowlist.json`](ci/public-asset-allowlist.json), verifies the
+curated moon maps against their attribution manifest, and packages the notices. The current
 [distribution policy](docs/distribution-policy.md) restricts the SILSO-enabled
 data workflow to noncommercial research/evaluation and removes the unresolved
 Deimos map. New products require their own source and rights review.
