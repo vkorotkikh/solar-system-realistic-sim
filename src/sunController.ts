@@ -44,6 +44,10 @@ import {
   setSunObservationTexture,
   updateSunMaterialUniforms,
   updateSunspotUniforms,
+  readSunspotSeeds,
+  blendSunspotUniforms,
+  readCoronalHoles,
+  blendCoronalHoleUniforms,
   updateSunFlaresUniforms,
   createChromosphereLayer,
   updateChromosphereLayer,
@@ -59,6 +63,7 @@ import {
   buildSolarFeatureBlendView as buildSolarFeatureBlendViewImpl,
   materializeSolarFeatureSetFromBlendView as materializeSolarFeatureSetFromBlendViewImpl,
   SolarEase,
+  solarBlendProgress,
   type SolarFeatureBlendView,
   type SolarFeatureSet
 } from './frontend/features/solar/solarFeatureBlending';
@@ -231,6 +236,10 @@ export function createSunController({
   const activityEase = new SolarEase();
   const observationBlendEase = new SolarEase();
   const observationEmissionEase = new SolarEase();
+  // Spot seeds and holes drawn when the snapshot last changed, blended from for SOLAR_BLEND_MS.
+  let spotSeedsBefore: ReturnType<typeof readSunspotSeeds> = null;
+  let coronalHolesBefore: ReturnType<typeof readCoronalHoles> = null;
+  let surfaceBlendStartMs = 0;
 
   const solarPhysicsClient = new SolarPhysicsClient({
     baseUrl: backendBaseUrl,
@@ -318,6 +327,14 @@ export function createSunController({
 
   function materializeSolarFeatureSetFromBlendView(blendView: SolarFeatureBlendView) {
     return materializeSolarFeatureSetFromBlendViewImpl(blendView, simState.julianDate);
+  }
+
+  /** The snapshot behind the Sun changed: ease activity, spots and holes from what is drawn now. */
+  function blendSnapshotFromShown() {
+    activityEase.restart(decorativeTimeSec * 1000);
+    spotSeedsBefore = readSunspotSeeds(sunSurfaceMaterial);
+    coronalHolesBefore = readCoronalHoles(sunCoronaMaterial);
+    surfaceBlendStartMs = decorativeTimeSec * 1000;
   }
 
   function applySunObservationTextureToMaterials() {
@@ -708,6 +725,10 @@ export function createSunController({
       coronalHoleData: solarHolesInSurfaceFrame(geometryStateFor('coronal_holes'), solarLayerFrames.coronal_holes)
     });
     updateSunspotUniforms(sunSurfaceMaterial, effectiveActivity, timeSec, spotState ?? undefined);
+    const surfaceBlend = skipBlend ? 1 : solarBlendProgress(surfaceBlendStartMs, blendNowMs, SOLAR_BLEND_MS);
+    blendSunspotUniforms(sunSurfaceMaterial, spotSeedsBefore, surfaceBlend);
+    blendCoronalHoleUniforms(sunCoronaMaterial, coronalHolesBefore, surfaceBlend);
+    if (surfaceBlend >= 1) spotSeedsBefore = coronalHolesBefore = null;
 
     if (solarFlareManager) {
       solarFlareManager.update(Math.min(0.1, dtSec), effectiveActivity, sunRadiusAu, cmeState, timeSec);
@@ -796,7 +817,7 @@ export function createSunController({
         const status = solarPhysicsClient.status();
         if (updated) {
           solarPhysicsState = solarPhysicsClient.latestState();
-          activityEase.restart(decorativeTimeSec * 1000);
+          blendSnapshotFromShown();
           const previousCmeFrame = solarLayerFrames.cme;
           solarLayerFrames = validatedSolarLayerFrames(solarPhysicsState);
           if (previousCmeFrame && !solarLayerFrames.cme) solarFlareManager?.dispose();

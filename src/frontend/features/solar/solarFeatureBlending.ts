@@ -73,6 +73,12 @@ export function lerpNumber(a: number, b: number, t: number): number {
   return a + (b - a) * t;
 }
 
+/** Smoothstep progress of a blend started at `startMs`; 1 once `durationMs` has passed. */
+export function solarBlendProgress(startMs: number, nowMs: number, durationMs: number): number {
+  const t = clampUnit((nowMs - startMs) / durationMs);
+  return t * t * (3 - 2 * t);
+}
+
 /**
  * A displayed value that, after each restart, eases (smoothstep) from what was shown to a
  * live target, then follows the target. Restart it when the snapshot or binding behind the
@@ -91,8 +97,8 @@ export class SolarEase {
   /** `instant` skips the current ease for good (paused or reduced motion). */
   step(target: number, nowMs: number, durationMs: number, instant = false): number {
     if (instant) this.startMs = Number.NEGATIVE_INFINITY;
-    const t = Number.isFinite(this.from) ? clampUnit((nowMs - this.startMs) / durationMs) : 1;
-    this.shown = t >= 1 ? target : lerpNumber(this.from, target, t * t * (3 - 2 * t));
+    const t = Number.isFinite(this.from) ? solarBlendProgress(this.startMs, nowMs, durationMs) : 1;
+    this.shown = t >= 1 ? target : lerpNumber(this.from, target, t);
     return this.shown;
   }
 }

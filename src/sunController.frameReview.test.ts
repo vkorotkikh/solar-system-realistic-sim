@@ -1,13 +1,13 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Group, Matrix4, Mesh, PerspectiveCamera, SphereGeometry, Texture, Vector3 } from 'three';
-import type { TextureLoader } from 'three';
+import type { ShaderMaterial, TextureLoader } from 'three';
 import captured from '../backend/tests/fixtures/solar_frames/synthetic_state_2451552.json';
 import reference from '../backend/tests/fixtures/solar_frames/cspice_solar_frame.json';
 import { createSunController } from './sunController';
 import { SOLAR_RADIUS_AU } from './frontend/features/solar/solarDisplayScale';
 import { validatedSolarLayerFrames } from './frontend/features/solar/solarGeometryContract';
 import type { SolarPhysicsStatePayload } from './frontend/features/solar/solarPhysicsClient';
-import { updateSunCoronalLoopsFromBlendView } from './frontend/features/solar/sunVisuals';
+import { readCoronalHoles, readSunspotSeeds, updateSunCoronalLoopsFromBlendView } from './frontend/features/solar/sunVisuals';
 
 vi.mock('./frontend/features/solar/sunVisuals', async importOriginal => {
   const actual = await importOriginal<typeof import('./frontend/features/solar/sunVisuals')>();
@@ -213,6 +213,30 @@ describe('snapshots blend over a fixed 1.5 s (H2.9)', () => {
     expect(f.material.uniforms.activity.value).toBeCloseTo(0.446361 + (0.9 - 0.446361) * 0.450074, 5);
     frames(f, 8);
     expect(f.material.uniforms.activity.value).toBe(0.9);
+  });
+
+  it('glides sunspot groups and coronal holes to a new snapshot instead of jumping', async () => {
+    const f = await fixture();
+    frames(f, 15);
+    const corona = f.spin.children.map(child => (child as Mesh).material as ShaderMaterial)
+      .find(material => material?.uniforms?.coronalHoles)!;
+    const spotsBefore = readSunspotSeeds(f.material)!;
+    const spotLon = () => {
+      const shown = readSunspotSeeds(f.material)!;
+      return shown.seeds[shown.patterns.indexOf(spotsBefore.patterns[0])][0];
+    };
+    const holeLon = () => readCoronalHoles(corona)!.holes[0][0];
+    const [spotStart, holeStart] = [spotLon(), holeLon()];
+    // Same captured coordinates read 1.5 days later: every group and hole moves on the surface.
+    await f.refresh(atEpoch(payload(), f.state.julianDate));
+    frames(f, 7);
+    const [spotMid, holeMid] = [spotLon(), holeLon()];
+    frames(f, 8);
+    const [spotEnd, holeEnd] = [spotLon(), holeLon()];
+    expect(Math.abs(spotEnd - spotStart)).toBeGreaterThan(0.2);
+    expect(spotMid).toBeCloseTo(spotStart + (spotEnd - spotStart) * 0.450074, 6);
+    expect(Math.abs(holeEnd - holeStart)).toBeGreaterThan(0.2);
+    expect(holeMid).toBeCloseTo(holeStart + (holeEnd - holeStart) * 0.450074, 6);
   });
 });
 
