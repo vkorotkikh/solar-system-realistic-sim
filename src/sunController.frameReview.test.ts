@@ -172,6 +172,37 @@ describe('actual controller snapshot and decorative-clock ownership', () => {
   });
 });
 
+/** Advance the decorative clock by `count` frames of 0.1 s with the simulation running forward. */
+function frames(f: Awaited<ReturnType<typeof fixture>>, count: number) {
+  for (let i = 0; i < count; i += 1) f.tick();
+}
+
+describe('snapshots blend over a fixed 1.5 s (H2.9)', () => {
+  // smoothstep(0.7 / 1.5) = 0.450074; a 1.35 s blend would be at 0.527800.
+  it('fades the first backend arrival in', async () => {
+    const f = await fixture();
+    expect(f.blend().blendAlpha).toBe(0);
+    expect(f.blend().entries.length).toBeGreaterThan(0);
+    expect(f.blend().entries.every(entry => entry.fromWeight === 0 && entry.toWeight === 1)).toBe(true);
+    frames(f, 7);
+    expect(f.blend().blendAlpha).toBeCloseTo(0.450074, 5);
+    frames(f, 7);
+    expect(f.blend().blendAlpha).toBeLessThan(1);
+    frames(f, 1);
+    expect(f.blend().blendAlpha).toBe(1);
+  });
+
+  it('cross-fades a later arrival over the same 1.5 s', async () => {
+    const f = await fixture();
+    frames(f, 15);
+    const next = atEpoch(payload(), f.state.julianDate);
+    next.corona.features[0].arc[0] = [1, 0, 0];
+    await f.refresh(next);
+    frames(f, 7);
+    expect(f.blend().blendAlpha).toBeCloseTo(0.450074, 5);
+  });
+});
+
 describe('field lines are rebuilt only when the drawn field changes (H2.8)', () => {
   it('keeps the backend field lines when only feature brightness changes', async () => {
     const f = await fixture();

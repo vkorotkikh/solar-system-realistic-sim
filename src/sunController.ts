@@ -92,6 +92,8 @@ export interface CreateSunControllerOptions {
 }
 
 const TWO_PI = Math.PI * 2;
+/** Every backend snapshot change eases in over this long, independent of the poll interval (H2.9). */
+const SOLAR_BLEND_MS = 1_500;
 
 /**
  * No global bypass: independently admitted synthetic layers use explicit frame contracts.
@@ -209,7 +211,6 @@ export function createSunController({
   let solarPhysicsFeatureSetCurrent: SolarFeatureSet | null = null;
   let solarPhysicsFeatureSetTarget: SolarFeatureSet | null = null;
   let solarPhysicsBlendStartMs = 0;
-  let solarPhysicsBlendDurationMs = 1_050;
   let solarPhysicsRefreshInFlight = false;
   let solarPhysicsRefreshGeneration = 0;
   let solarPhysicsNextRefreshMs = 0;
@@ -289,7 +290,7 @@ export function createSunController({
       currentFeatureSet: solarPhysicsFeatureSetCurrent,
       targetFeatureSet: solarPhysicsFeatureSetTarget,
       blendStartMs: solarPhysicsBlendStartMs,
-      blendDurationMs: solarPhysicsBlendDurationMs,
+      blendDurationMs: SOLAR_BLEND_MS,
       // Snapshot interpolation is decorative, not transport/freshness time.
       nowMs: decorativeTimeSec * 1000,
       featureLimit
@@ -792,28 +793,18 @@ export function createSunController({
             solarPhysicsFeatureSetTarget = null;
           }
           if (normalized) {
-            if (!solarPhysicsFeatureSetCurrent) {
-              solarPhysicsFeatureSetCurrent = normalized;
+            if (solarPhysicsFeatureSetTarget) {
+              const inFlightBlend = buildSolarFeatureBlendView(220);
+              const blendedSnapshot = materializeSolarFeatureSetFromBlendView(inFlightBlend);
+              solarPhysicsFeatureSetCurrent = blendedSnapshot ?? solarPhysicsFeatureSetTarget;
               solarPhysicsFeatureSetTarget = null;
-              solarPhysicsBlendStartMs = decorativeTimeSec * 1000;
-            } else {
-              if (solarPhysicsFeatureSetTarget) {
-                const inFlightBlend = buildSolarFeatureBlendView(220);
-                const blendedSnapshot = materializeSolarFeatureSetFromBlendView(inFlightBlend);
-                solarPhysicsFeatureSetCurrent = blendedSnapshot ?? solarPhysicsFeatureSetTarget;
-                solarPhysicsFeatureSetTarget = null;
-              }
-              solarPhysicsFeatureSetTarget = normalized;
-              solarPhysicsBlendStartMs = decorativeTimeSec * 1000;
-              const pollMs = Number(status['pollIntervalMs']);
-              solarPhysicsBlendDurationMs = Math.max(
-                520,
-                Math.min(
-                  1_350,
-                  (Number.isFinite(pollMs) ? pollMs : SOLAR_PHYSICS_POLL_INTERVAL_MS) * 0.9
-                )
-              );
             }
+            // The first arrival fades in from nothing, like later ones cross-fade (H2.9).
+            solarPhysicsFeatureSetCurrent ??= {
+              features: [], featureById: new Map(), activityIndex: null, epochJd: simState.julianDate
+            };
+            solarPhysicsFeatureSetTarget = normalized;
+            solarPhysicsBlendStartMs = decorativeTimeSec * 1000;
           }
           // Rebuilds only when the drawn field changed (see buildMagneticFieldSignature).
           rebuildMagneticFieldLines(false, solarPhysicsState?.activity_index);
