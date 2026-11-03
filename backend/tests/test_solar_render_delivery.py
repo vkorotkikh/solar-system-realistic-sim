@@ -116,3 +116,42 @@ def test_decoded_budget_rejects_compressible_oversize(endpoint, model_state):
     })
     assert response.status_code == 413
     assert response.json()['detail']['code'] == 'solar_delivery_budget_exceeded'
+
+
+def test_real_model_geometry_is_reused_only_at_the_identical_epoch(monkeypatch):
+    # The stub runner above returns the same geometry for every epoch. The real
+    # model's geometry is a function of the epoch, so only a repeated request
+    # for the same epoch (paused playback) can be answered without it.
+    model = SolarCoronaPhysicsModel(seed=17, base_tube_count=540)
+
+    class Runner:
+        async def run(self, payload, *, timeout_seconds):
+            return build_solar_physics_state(
+                model, epoch_jd_tdb=payload['epoch_jd_tdb'], wall_epoch_jd_tdb=payload['epoch_jd_tdb'],
+                fidelity=payload['fidelity'], max_features=payload['max_features'],
+                forcing=payload['forcing'], live_data=payload['live_data'],
+            )
+
+    monkeypatch.setattr(server, '_solar_physics_runner', Runner())
+    monkeypatch.setattr(server, '_solar_physics_rate_locks', {})
+    client = TestClient(server.app)
+    query = dict(fidelity='high', max_features=180, forcing='synthetic', live_data='false', delivery='render-v1')
+    epoch = 2461276.5
+
+    def poll(jd, geometry_version=None):
+        params = {**query, 'jd_tdb': jd}
+        if geometry_version:
+            params['geometry_version'] = geometry_version
+        response = client.get('/solar/physics', params=params)
+        assert response.status_code == 200
+        return response.json()['delivery'], int(response.headers['content-length'])
+
+    first, first_bytes = poll(epoch)
+    assert first['geometry_included'] is True
+    same, same_bytes = poll(epoch, first['geometry_version'])
+    assert same['geometry_included'] is False and same['geometry_version'] == first['geometry_version']
+    assert same_bytes < 16 * 1024 < first_bytes
+    for seconds in (1, 30):
+        later, later_bytes = poll(epoch + seconds / 86400, first['geometry_version'])
+        assert later['geometry_included'] is True and later['geometry_version'] != first['geometry_version']
+        assert later_bytes > 128 * 1024  # complete geometry on every playing poll
