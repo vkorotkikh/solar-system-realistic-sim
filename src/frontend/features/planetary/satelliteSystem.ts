@@ -973,17 +973,26 @@ export class OrbitalSatelliteSystem {
   applyWorkerSnapshot(jd: number): boolean {
     if (!this.workerSnapshot) return false;
     const snapshot = this.workerSnapshot;
-    if (!Number.isFinite(jd) || !Number.isFinite(snapshot.jd0) || !Number.isFinite(snapshot.jd1)) return false;
-    if (snapshot.count !== this.satellites.length) return false;
-    if (typeof snapshot.applyJ2 !== 'boolean' || snapshot.applyJ2 !== this.useJ2) return false;
+    if (!Number.isFinite(jd)) return false;
+    // A snapshot rejected for its own content can never become usable, and a
+    // non-finite jd0/jd1 also switches off the refresh test in
+    // shouldRequestWorkerSnapshot. Drop it so the next update asks for a fresh
+    // one. A display JD outside the window only means it is stale, so it stays.
+    const reject = () => {
+      this.workerSnapshot = null;
+      return false;
+    };
+    if (!Number.isFinite(snapshot.jd0) || !Number.isFinite(snapshot.jd1)) return reject();
+    if (snapshot.count !== this.satellites.length) return reject();
+    if (typeof snapshot.applyJ2 !== 'boolean' || snapshot.applyJ2 !== this.useJ2) return reject();
     // Validate the entire snapshot before touching any marker. A bad later
     // coordinate must not leave earlier markers at a partially applied epoch.
     if (!(snapshot.positions0 instanceof Float32Array) || !(snapshot.positions1 instanceof Float32Array)
       || snapshot.positions0.length !== snapshot.count * 3 || snapshot.positions1.length !== snapshot.count * 3
-      || !snapshot.positions0.every(Number.isFinite) || !snapshot.positions1.every(Number.isFinite)) return false;
+      || !snapshot.positions0.every(Number.isFinite) || !snapshot.positions1.every(Number.isFinite)) return reject();
 
     const span = snapshot.jd1 - snapshot.jd0;
-    if (Math.abs(span) > this.workerInterpolationLimitDays() + 1e-9) return false;
+    if (Math.abs(span) > this.workerInterpolationLimitDays() + 1e-9) return reject();
     if (jd < Math.min(snapshot.jd0, snapshot.jd1) || jd > Math.max(snapshot.jd0, snapshot.jd1)) return false;
     const alpha = Math.abs(span) < 1e-12 ? 0 : clamp01((jd - snapshot.jd0) / span);
 

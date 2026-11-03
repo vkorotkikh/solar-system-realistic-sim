@@ -132,3 +132,27 @@ it.each([
     }
   }
 });
+
+// A snapshot rejected for its own content used to stay installed. With a non-finite jd0 the refresh test
+// (NaN margin) never fired again, and a rejected snapshot whose window is centred on the display JD
+// asked for nothing until the JD travelled 35% of that window.
+it.each([
+  ['a non-finite jd0', { jd0: NaN }],
+  ['a non-finite jd1', { jd1: Infinity }],
+  ['a span beyond the interpolation limit', { jd0: epoch - 10, jd1: epoch + 10 }],
+  ['a different satellite count', { count: 2 }],
+  ['a different J2 setting', { applyJ2: true }]
+])('drops a snapshot with %s so the next update requests a fresh one', (_label, damage) => {
+  const value = system();
+  const postMessage = vi.fn();
+  value.worker = { postMessage } as unknown as Worker;
+  value.workerLastRequestAtMs = -Infinity;
+  const end = epoch + period / 256;
+  value.workerSnapshot = { jd0: epoch, jd1: end, count: 1, applyJ2: false,
+    positions0: new Float32Array(exact(epoch)), positions1: new Float32Array(exact(end)), ...damage };
+  const jd = epoch + period / 512; // inside the central 30% of the window, where no refresh is due
+  value.update(jd);
+  expect(value.workerSnapshot).toBeNull();
+  expect(postMessage).toHaveBeenCalledTimes(1);
+  expect(postMessage.mock.calls[0][0]).toMatchObject({ type: 'snapshot', jd0: jd, applyJ2: false });
+});
