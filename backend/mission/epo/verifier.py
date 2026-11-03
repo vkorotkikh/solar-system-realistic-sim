@@ -84,17 +84,20 @@ class DemoVerifier:
             reasons.append("planner_status_not_ok")
             reasons.append(f"planner_status_{status or 'unknown'}")
 
+        # An unregistered family is held to the default policy, not exempted from it.
+        gate = policy or EpisodeFamilyPolicy()
+
         mission_score = self._coerce_float(recommendation.get("missionScore") if recommendation else None)
         if mission_score is None:
             reasons.append("missing_mission_score")
-        elif policy and policy.min_mission_score is not None and mission_score < policy.min_mission_score:
+        elif gate.min_mission_score is not None and mission_score < gate.min_mission_score:
             reasons.append(f"mission_score_below_threshold_{mission_score:.2f}")
 
-        if policy and verification is not None:
+        if verification is not None:
             verifier_valid = verification.get("valid") is True
-            if policy.require_verifier_valid and not verifier_valid:
+            if gate.require_verifier_valid and not verifier_valid:
                 reasons.append("embedded_verifier_rejected")
-        elif policy and policy.require_verifier_valid and recommendation is not None:
+        elif gate.require_verifier_valid and recommendation is not None:
             # recommendation exists but no explicit verifier entry
             reasons.append("missing_embedded_verifier")
 
@@ -105,7 +108,7 @@ class DemoVerifier:
         )
         if risk_probability is None:
             reasons.append("missing_failure_probability")
-        elif policy and risk_probability > policy.max_failure_probability:
+        elif risk_probability > gate.max_failure_probability:
             reasons.append("failure_probability_exceeds_threshold")
 
         metrics = {

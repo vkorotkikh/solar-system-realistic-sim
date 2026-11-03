@@ -128,3 +128,22 @@ def test_malformed_negative_results_are_actionable_failed_records(real_negative,
     assert record.verifier_passed is False
     assert record.reasons
     assert record.as_dict()["passed"] is False
+
+
+@pytest.mark.parametrize("verification, passes, reason", [
+    ({"valid": False, "reasons": ["vehicle_budget_not_feasible"]}, False, "embedded_verifier_rejected"),
+    (None, False, "missing_embedded_verifier"),
+    ({"valid": True, "reasons": []}, True, None),
+], ids=["invalid-verification", "missing-verification", "valid-verification"])
+def test_verified_outcome_without_a_family_policy_fails_closed(monkeypatch, verification, passes, reason):
+    from mission.epo.runners import EpisodeRunner
+
+    # run_episode never registers a policy (only run_family does), so "unregistered" has none.
+    recommendation = {"missionScore": 5.0, "risk": {"failureProbability": 1.0 if not passes else 0.0}}
+    if verification is not None:
+        recommendation["verification"] = verification
+    runner = EpisodeRunner()
+    monkeypatch.setattr(runner.planner, "plan", lambda payload: {"status": "ok", "recommendation": recommendation})
+    record = runner.run_episode(EpisodeConfig("one", "unregistered", {}))
+    assert record.verifier_passed is passes
+    assert (reason in record.reasons) if reason else record.reasons == []
