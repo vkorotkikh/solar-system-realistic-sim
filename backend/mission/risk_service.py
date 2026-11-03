@@ -114,6 +114,11 @@ class RiskService:
             delivered = cargo
             if base_departure_cargo_kg is not None:
                 cargo = min(base_departure_cargo_kg, stock_kg * payload_factor)
+                if departure_stock_kg is not None:
+                    # Transit survival applies to the stock-limited cargo that
+                    # actually flies, rather than a second draw on the manifest.
+                    delivered = (cargo * (base_returned_payload_kg / base_departure_cargo_kg)
+                                 if base_departure_cargo_kg > 0.0 else 0.0)
             budget = reclose(dv_factor, cargo)
             margin = float(budget.get("propellantMarginKg", 0.0))
 

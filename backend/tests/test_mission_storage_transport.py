@@ -464,6 +464,24 @@ def test_selected_risk_departure_stock_limits_cargo_to_manifest_or_realized_stoc
     assert cargo == pytest.approx([min(1000.0, row[2]) for row in random_oracle(17, stock, 500.0)])
 
 
+def test_capacity_bound_risk_yield_uses_the_cargo_that_actually_flies(monkeypatch):
+    # Alternating mining draws leave either 500 kg or more than the 1000 kg
+    # manifest in stock. Fixed 50% transit survival delivers 250 or 500 kg.
+    class Draws:
+        def __init__(self, _seed):
+            self.draws = iter([0.0, 0.0, -0.9, 0.0, 0.0, 0.0] * 15)
+
+        def gauss(self, _mean, _sigma):
+            return next(self.draws)
+
+    monkeypatch.setattr("mission.risk_service.random.Random", Draws)
+    risk = RiskService().run_monte_carlo(
+        **RISK, base_departure_cargo_kg=1000.0, departure_stock_kg=5000.0,
+        reclose=lambda _factor, _cargo: {"feasible": True},
+    )
+    assert risk["envelopes"]["returnedPayloadKg"] == pytest.approx({"p05": 250.0, "p50": 375.0, "p95": 500.0})
+
+
 @pytest.mark.parametrize("stock, departure", [
     (math.nan, 1000.0), (math.inf, 1000.0), (-1.0, 1000.0), (999.0, 1000.0), ("x", 1000.0), (2000.0, None)])
 def test_selected_risk_invalid_departure_stock_before_rng_or_callback(monkeypatch, stock, departure):
