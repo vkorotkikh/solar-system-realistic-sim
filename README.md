@@ -291,11 +291,11 @@ Search and focus the major bodies rendered by the page. A catalog entry or retai
 ### Planet visuals
 
 - **Earth and Mars**: procedural quadtree surfaces with distance-based detail
-- **Moon assets (dormant)**: albedo + relief maps and LOD code are present, but the shipped entry does not load or render them
+- **Moon assets (dormant)**: eight USGS-hosted per-moon maps and the moon-texture modules are present, but the shipped entry does not load or render them
 - **Other planets and Pluto**: colored sphere materials
 - Axial tilt and spin use the rendered bodies' orientation metadata
 
-Retained day maps and cloud/satellite modules are not assembled by this entry. The page also has no Saturn-ring or oblate-body assembly. Repository assets and alternative renderers are not a claim that the page displays them.
+Retained cloud and satellite modules are not assembled by this entry. The page also has no Saturn-ring or oblate-body assembly. Repository assets and alternative renderers are not a claim that the page displays them.
 
 ### Solar model
 
