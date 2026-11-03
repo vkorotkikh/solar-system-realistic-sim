@@ -309,7 +309,7 @@ describe('field lines are rebuilt only when the drawn field changes (H2.8)', () 
 });
 
 describe('a backend state is labelled with its lag, then cleared when too old (H2.7)', () => {
-  // At 1 d/s with the 30 s poll the lag limit is max(30, 2 x 1 d/s x 30 s) = 60 simulated days.
+  // At 1 d/s the lag limit is max(30, 1 d/s x (30 s poll + 30 s error backoff + 20 s timeout)) = 80 simulated days.
   const shownEpoch = (f: Awaited<ReturnType<typeof fixture>>) => f.controller.getSolarDeliveryStatus().geometry.snapshotEpochJdTdb;
 
   it('keeps a backend state within the lag limit and labels its lag', async () => {
@@ -322,7 +322,7 @@ describe('a backend state is labelled with its lag, then cleared when too old (H
   it('clears a backend state beyond the lag limit, fading it out, and says which epoch it was for', async () => {
     const f = await fixture();
     frames(f, 15);
-    f.tick(60);
+    f.tick(80);
     expect(shownEpoch(f)).toBeNull();
     expect(f.lastStatus()).toMatchObject({ state: 'connecting', text: 'Sun: procedural fallback (last backend state was for 2000-01-08)' });
     expect(f.controller.magneticFieldGroup?.userData.solarGeometrySource).toBe('procedural');
@@ -351,7 +351,7 @@ describe('a backend state is labelled with its lag, then cleared when too old (H
   it('drops an arriving snapshot that is already too old for the clock', async () => {
     const f = await fixture();
     f.tick(5);
-    await f.refresh(atEpoch(payload(), f.state.julianDate), () => f.tick(70));
+    await f.refresh(atEpoch(payload(), f.state.julianDate), () => f.tick(90));
     expect(shownEpoch(f)).toBeNull();
     expect(f.lastStatus().text).toBe('Sun: procedural fallback (last backend state was for 2000-01-13)');
   });
@@ -381,6 +381,26 @@ describe('a backend state is labelled with its lag, then cleared when too old (H
     const f = await fixture();
     f.tick(0, 360);
     expect(shownEpoch(f)).toBe(2451552);
+  });
+
+  it('keeps the backend state through one failed poll while the clock runs', async () => {
+    const f = await fixture();
+    f.state.timeScaleDaysPerSec = 4;
+    let shown = true, clears = 0;
+    const run = (seconds: number) => {
+      for (let i = 0; i < seconds * 10; i += 1) {
+        f.tick(0.4);
+        const now = shownEpoch(f) !== null;
+        if (shown && !now) clears += 1;
+        shown = now;
+      }
+    };
+    run(30);
+    await f.fail(); // the poll at 30 s fails at once
+    run(30); // the 30 s error backoff
+    await f.refresh(atEpoch(payload(), f.state.julianDate), () => run(2)); // answered 2 s later
+    run(1);
+    expect(clears).toBe(0);
   });
 
   it('keeps one source through a minute of polls at 120 d/s', async () => {

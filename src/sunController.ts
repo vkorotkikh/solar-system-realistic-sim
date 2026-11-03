@@ -19,6 +19,7 @@ import type {
 } from 'three';
 import { J2000_JD } from './constants';
 import {
+  SOLAR_PHYSICS_ERROR_BACKOFF_MS,
   SOLAR_PHYSICS_POLL_INTERVAL_MS,
   SolarPhysicsClient,
   type SolarPhysicsStatePayload
@@ -257,7 +258,11 @@ export function createSunController({
   const solarRealtimeClient = new SolarRealtimeClient({
     baseUrl: backendBaseUrl
   });
-  const solarPhysicsPollSec = solarPhysicsClient.status().pollIntervalMs / 1000;
+  // The longest a running clock waits for its next snapshot through one failed poll:
+  // a poll, the error backoff (at least a poll) and a request timeout.
+  const solarReplacementGapSec = (({ pollIntervalMs, timeoutMs }) =>
+    (pollIntervalMs + Math.max(pollIntervalMs, SOLAR_PHYSICS_ERROR_BACKOFF_MS) + timeoutMs) / 1000
+  )(solarPhysicsClient.status());
 
   function publishSolarDataStatus() {
     const clientStatus = solarPhysicsClient.status();
@@ -844,13 +849,13 @@ export function createSunController({
   }
 
   /**
-   * Simulated days a backend state may lag the clock before it is cleared (H2.7): two polls'
-   * worth at the current rate, so a running clock never loses the state between polls, and
-   * at least 30 days.
+   * Simulated days a backend state may lag the clock before it is cleared (H2.7): the replacement
+   * gap at the current rate, so a running clock never loses the state between polls or through one
+   * failed poll, and at least 30 days.
    */
   function solarStateLagLimitDays() {
     const rate = simState.paused === true ? 0 : Math.abs(Number(simState.timeScaleDaysPerSec) || 0);
-    return Math.max(30, 2 * rate * solarPhysicsPollSec);
+    return Math.max(30, rate * solarReplacementGapSec);
   }
 
   function solarStateLagDays(state = solarPhysicsState) {
