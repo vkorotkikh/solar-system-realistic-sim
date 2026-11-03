@@ -52,7 +52,9 @@ export function applyViewportSizeOverride({
   viewportShell: HTMLElement | null;
   runtimeUiConfig: RuntimeUiConfig;
 }): void {
-  if (!viewportShell) return;
+  // Normal layouts use stylesheet page flow, including short/narrow screens.
+  // A viewport-height cap here would shrink and clip their camera controls.
+  if (!viewportShell || (runtimeUiConfig.uiWidth === null && runtimeUiConfig.uiHeight === null)) return;
   if (runtimeUiConfig.uiWidth) viewportShell.style.width = `${runtimeUiConfig.uiWidth}px`;
   if (runtimeUiConfig.uiHeight) viewportShell.style.height = `${runtimeUiConfig.uiHeight}px`;
   viewportShell.style.maxWidth = '100%';
