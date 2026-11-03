@@ -1,5 +1,5 @@
 import { Group } from 'three';
-import { applySolarGeometryFrame, solarSurfaceToEclipticMatrix } from './frontend/features/solar/solarFrame';
+import { applySolarGeometryFrame, solarSurfaceToEclipticMatrix, type SolarFrameContext } from './frontend/features/solar/solarFrame';
 import {
   validatedSolarLayerFrames, solarFeaturesInSurfaceFrame, solarFlareParamsInSurfaceFrame,
   solarHolesInSurfaceFrame, type SolarLayerFrames, type SolarGeometryLayer
@@ -194,6 +194,8 @@ export function createSunController({
   let solarFlareManager: SolarFlareManager | null = null;
   let sunMagneticFieldGroup: Group | null = null;
   let sunMagneticFieldSignature: string | null = null;
+  /** Frame of the backend lines the field group was built from; null for the analytic field. */
+  let sunMagneticFieldFrame: SolarFrameContext | null = null;
   let sunCoronalLoopGroup: Group | null = null;
   let sunParkerSpiralGroup: Group | null = null;
   let sunSolarWindLayer: Points | null = null;
@@ -354,18 +356,17 @@ export function createSunController({
     );
   }
 
+  /**
+   * What the field group draws (H2.8). Backend lines are keyed on their content and epoch,
+   * because a new solution may replace them at the same epoch and solution ids are not part
+   * of the layer contract. The analytic fallback depends only on activity, so it is keyed on
+   * the quantised activity: brightness-only snapshots and a running clock keep it.
+   */
   function buildMagneticFieldSignature(activity: number) {
-    const quantizedActivity = Math.round(clampUnit(activity) * 12);
-    const pfssSignature = solarPhysicsState?.pfss_field_lines
-      ? `pfss:${solarPhysicsState.pfss_field_lines.source}:${solarPhysicsState.pfss_field_lines.carrington_rotation}`
-      : 'analytical';
-    const topFeatures = Array.isArray(solarPhysicsState?.corona?.features)
-      ? solarPhysicsState.corona.features
-        .slice(0, 12)
-        .map((feature: Record<string, unknown>) => `${feature?.id ?? 'feature'}:${Number(feature?.brightness ?? 0).toFixed(2)}`)
-        .join('|')
-      : 'synthetic';
-    return `${quantizedActivity}:${pfssSignature}:${topFeatures}:${solarPhysicsState?.epoch_jd_tdb}:${!!solarLayerFrames.pfss}`;
+    const pfss = solarLayerFrames.pfss ? solarPhysicsState?.pfss_field_lines : null;
+    return pfss
+      ? `pfss:${solarPhysicsState?.epoch_jd_tdb}:${JSON.stringify(pfss.lines)}`
+      : `analytic:${Math.round(clampUnit(activity) * 12)}`;
   }
 
   function disposeMagneticFieldGroup(group: Object3D | null) {
@@ -402,9 +403,10 @@ export function createSunController({
     const nextGroup = createMagneticFieldLines(getSunRadiusAu(), activity, {
       physicsState: geometryStateFor('pfss')
     });
-    applySolarGeometryFrame(nextGroup, solarLayerFrames.pfss ?? {
+    sunMagneticFieldFrame = solarLayerFrames.pfss ?? null;
+    applySolarGeometryFrame(nextGroup, sunMagneticFieldFrame ?? {
       inputFrame: 'IAU_SUN', jdTdb: simState.julianDate
-    });
+    }, simState.julianDate);
     nextGroup.userData.solarLayer = 'pfss';
     nextGroup.userData.solarGeometrySource = solarLayerFrames.pfss ? 'backend_synthetic_uncalibrated' : 'procedural';
     nextGroup.visible = isMagneticFieldEnabled();
@@ -700,7 +702,9 @@ export function createSunController({
     }
 
     if (sunMagneticFieldGroup) {
-      if (!solarLayerFrames.pfss) applySolarGeometryFrame(sunMagneticFieldGroup, { inputFrame: 'IAU_SUN', jdTdb: julianDate });
+      // Analytic lines live in the turning body frame. Backend lines are frozen at their snapshot
+      // epoch and carried with the Sun's rotation, so they stay on the surface between snapshots.
+      applySolarGeometryFrame(sunMagneticFieldGroup, sunMagneticFieldFrame ?? { inputFrame: 'IAU_SUN', jdTdb: julianDate }, julianDate);
       sunMagneticFieldGroup.visible = isMagneticFieldEnabled();
       if (sunMagneticFieldGroup.visible) {
         updateMagneticFieldLines(sunMagneticFieldGroup, timeSec, effectiveActivity);
@@ -811,10 +815,8 @@ export function createSunController({
               );
             }
           }
-          // A newly admitted solution may replace geometry at the same epoch.
-          // Epoch/activity summaries are not a content identity, and solution
-          // IDs are not required by the layer contract. Honor each snapshot.
-          rebuildMagneticFieldLines(!!solarLayerFrames.pfss, solarPhysicsState?.activity_index);
+          // Rebuilds only when the drawn field changed (see buildMagneticFieldSignature).
+          rebuildMagneticFieldLines(false, solarPhysicsState?.activity_index);
         }
         const clientNextRefreshMs = Number(status['nextRefreshMs']);
         solarPhysicsNextRefreshMs = Number.isFinite(clientNextRefreshMs)
@@ -970,6 +972,7 @@ export function createSunController({
     sunMagneticFieldGroup?.removeFromParent();
     sunMagneticFieldGroup = null;
     sunMagneticFieldSignature = null;
+    sunMagneticFieldFrame = null;
     clearSunCoronalLoopsImpl(sunCoronalLoopGroup);
     sunCoronalLoopGroup?.removeFromParent();
     sunCoronalLoopGroup = null;

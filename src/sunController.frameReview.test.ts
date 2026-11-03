@@ -49,9 +49,30 @@ describe('solar frame review admission boundaries', () => {
   });
 });
 
-async function fixture() {
+/** The captured snapshot moved to another epoch; the client only accepts the epoch it asked for. */
+function atEpoch(state: ReturnType<typeof payload>, jdTdb: number) {
+  state.epoch_jd_tdb = jdTdb;
+  state.epoch_jd = jdTdb;
+  for (const frame of Object.values(state.geometry_frames)) frame.epoch_jd_tdb = jdTdb;
+  state.pfss_field_lines.geometry_frame.epoch_jd_tdb = jdTdb;
+  return state;
+}
+
+/** The captured snapshot without an admitted backend PFSS layer, so the analytic field is drawn. */
+function withoutPfss(state = payload()) {
+  delete (state.geometry_frames as Partial<typeof state.geometry_frames>).pfss;
+  return state;
+}
+
+/** Independent CSPICE rotation of the frozen SOLAR_EQUATORIAL_J2000 frame into ECLIPJ2000. */
+function frozenToEcliptic() {
+  const rows = reference.cases.find(c => c.input_frame === 'SOLAR_EQUATORIAL_J2000')!.matrix_row_major;
+  return new Matrix4().set(...[...rows[0], 0, ...rows[1], 0, ...rows[2], 0, 0, 0, 0, 1] as Parameters<Matrix4['set']>);
+}
+
+async function fixture(initial = payload()) {
   let nowMs = Date.UTC(2026, 9, 14), realtime = 0, reduced = false;
-  let response = payload();
+  let response = initial;
   vi.spyOn(Date, 'now').mockImplementation(() => nowMs);
   vi.stubGlobal('matchMedia', () => ({ matches: reduced }));
   vi.stubGlobal('document', { createElement: () => ({ width: 4, height: 4, getContext: () => null }) });
@@ -76,7 +97,7 @@ async function fixture() {
   }
   await refresh();
   controller.update(state.julianDate, realtime);
-  return { controller, root, state, material, refresh,
+  return { controller, root, spin, state, material, refresh,
     setReduced(value: boolean) { reduced = value; },
     tick(days = 0.1, elapsedSec = 0.1) {
       state.julianDate += days; realtime += elapsedSec; nowMs += elapsedSec * 1000;
@@ -148,5 +169,60 @@ describe('actual controller snapshot and decorative-clock ownership', () => {
     const rotation = new Matrix4().set(...[...rows[0], 0, ...rows[1], 0, ...rows[2], 0, 0, 0, 0, 1] as Parameters<Matrix4['set']>);
     const expected = new Vector3(1, 0, 0).applyMatrix4(rotation).multiplyScalar(SOLAR_RADIUS_AU);
     expect(actual.distanceTo(expected)).toBeLessThan(2e-9);
+  });
+});
+
+describe('field lines are rebuilt only when the drawn field changes (H2.8)', () => {
+  it('keeps the backend field lines when only feature brightness changes', async () => {
+    const f = await fixture();
+    const group = f.controller.magneticFieldGroup;
+    expect(group?.userData.solarGeometrySource).toBe('backend_synthetic_uncalibrated');
+    const next = payload();
+    next.corona.features[0].brightness = 0.123;
+    await f.refresh(next);
+    expect(f.controller.magneticFieldGroup).toBe(group);
+  });
+
+  it('keeps the analytic field lines across brightness and epoch changes in one activity bucket', async () => {
+    const f = await fixture(withoutPfss());
+    const group = f.controller.magneticFieldGroup;
+    expect(group?.userData.solarGeometrySource).toBe('procedural');
+    const brighter = withoutPfss();
+    brighter.corona.features[0].brightness = 0.123;
+    await f.refresh(brighter);
+    expect(f.controller.magneticFieldGroup).toBe(group);
+    f.state.julianDate = 2451553;
+    await f.refresh(withoutPfss(atEpoch(payload(), 2451553)));
+    expect(f.controller.magneticFieldGroup).toBe(group);
+  });
+
+  it('rebuilds the analytic field lines when the activity leaves its bucket', async () => {
+    const f = await fixture(withoutPfss());
+    const group = f.controller.magneticFieldGroup;
+    const active = withoutPfss();
+    active.activity_index = 0.9;
+    await f.refresh(active);
+    expect(f.controller.magneticFieldGroup).not.toBe(group);
+    expect(f.controller.magneticFieldGroup?.userData.activity).toBe(0.9);
+  });
+
+  it('turns the backend field lines with the Sun between snapshots', async () => {
+    const f = await fixture();
+    const linePoint = () => {
+      f.root.updateMatrixWorld(true);
+      const line = f.controller.magneticFieldGroup!.children[0] as Mesh;
+      return new Vector3().fromBufferAttribute(line.geometry.getAttribute('position'), 0).applyMatrix4(line.matrixWorld);
+    };
+    const toFrozen = frozenToEcliptic().invert();
+    const before = linePoint().applyMatrix4(toFrozen);
+    const onSurfaceBefore = f.spin.worldToLocal(linePoint());
+    f.tick(1, 0.1);
+    const after = linePoint().applyMatrix4(toFrozen);
+    // One day at the IAU rigid rate, 14.1844 deg, about the solar pole (+Z of the frozen frame).
+    const turnedDeg = (Math.atan2(after.y, after.x) - Math.atan2(before.y, before.x)) * 180 / Math.PI;
+    expect(((turnedDeg % 360) + 360) % 360).toBeCloseTo(14.1844, 3);
+    expect(after.z).toBeCloseTo(before.z, 12);
+    // Sunspots and holes are fixed on the turning surface; the field lines must stay with them.
+    expect(f.spin.worldToLocal(linePoint()).distanceTo(onSurfaceBefore)).toBeLessThan(1e-12);
   });
 });
