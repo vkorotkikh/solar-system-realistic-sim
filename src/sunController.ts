@@ -1,5 +1,7 @@
 import { Group } from 'three';
-import { applySolarGeometryFrame, solarSurfaceToEclipticMatrix, type SolarFrameContext } from './frontend/features/solar/solarFrame';
+import {
+  applySolarGeometryFrame, solarFrameToEclipticMatrix, solarSurfaceToEclipticMatrix, type SolarFrameContext
+} from './frontend/features/solar/solarFrame';
 import {
   validatedSolarLayerFrames, solarFeaturesInBodyFrame, solarFeaturesInSurfaceFrame, solarFlareParamsInSurfaceFrame,
   solarHolesInSurfaceFrame, type SolarLayerFrames, type SolarGeometryLayer
@@ -798,9 +800,12 @@ export function createSunController({
       }
     }
 
-    // Loops and eruption particles are drawn in the body frame: turn them with the Sun.
-    for (const layer of [sunCoronalLoopGroup, sunEruptionLayer]) {
-      if (layer) applySolarGeometryFrame(layer, { inputFrame: 'IAU_SUN', jdTdb: julianDate });
+    // Loops and eruption particles are drawn in the body frame: turn them with the Sun. One
+    // orientation serves both; their frame bookkeeping was set once in initSunVisuals.
+    if (sunCoronalLoopGroup || sunEruptionLayer) {
+      const bodyToEcliptic = solarFrameToEclipticMatrix('IAU_SUN', julianDate);
+      sunCoronalLoopGroup?.quaternion.setFromRotationMatrix(bodyToEcliptic);
+      sunEruptionLayer?.quaternion.setFromRotationMatrix(bodyToEcliptic);
     }
     updateSunCoronalLoopsFromBlendViewImpl(sunCoronalLoopGroup, geometryBlendView, sunRadiusAu, 144, timeSec, activeObservationChannel);
     updateSunParkerSpiralFromPhysicsStateImpl(sunParkerSpiralGroup, geometryStateFor('parker'), sunRadiusAu, 6, 120, timeSec, camera);
