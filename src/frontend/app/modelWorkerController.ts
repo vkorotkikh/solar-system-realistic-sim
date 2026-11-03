@@ -19,9 +19,13 @@ export interface OrbitalWorker {
 
 export type ModelWorkerStatus = 'idle' | 'starting' | 'ready' | 'fallback' | 'disposed';
 
+const RESTART_WINDOW_MS = 10 * 60_000;
+
 /** Owns the transport, deadlines and recovery; main retains scene application.
  * Local propagation remains authoritative whenever no current snapshot exists.
- * Two lifetime restarts bound resource churn even for intermittently bad workers.
+ * At most two restarts per rolling ten minutes bound resource churn even for
+ * intermittently bad workers, while a worker that stays healthy for the window
+ * earns its budget back instead of being lost to permanent fallback.
  */
 export function createModelWorkerController(options: {
   catalog: ModelWorkerCatalog;
@@ -41,7 +45,7 @@ export function createModelWorkerController(options: {
   let status: ModelWorkerStatus = 'idle';
   let deadline: ReturnType<typeof setTimeout> | undefined;
   let retry: ReturnType<typeof setTimeout> | undefined;
-  let restarts = 0;
+  let restartTimes: number[] = []; // performance.now() of each restart inside the window
   let sequence = 0;
   let pending: { sequence: number; jd: number } | null = null;
   let latestState: ModelWorkerStateMessage | null = null;
@@ -69,9 +73,11 @@ export function createModelWorkerController(options: {
     retire();
     clearTimeout(retry);
     setStatus('fallback', reason);
-    if (restarts < maxRestarts) {
-      restarts += 1;
-      retry = setTimeout(() => { retry = undefined; boot(); }, retryDelay * restarts);
+    const now = performance.now();
+    restartTimes = restartTimes.filter(at => now - at < RESTART_WINDOW_MS);
+    if (restartTimes.length < maxRestarts) {
+      restartTimes.push(now);
+      retry = setTimeout(() => { retry = undefined; boot(); }, retryDelay * restartTimes.length);
     }
   }
   function boot() {

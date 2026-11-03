@@ -13,7 +13,7 @@ page; this record describes ownership and retained integration surfaces.
 | Animation scheduling | `frameLifecycle.ts` | One RAF owner; hidden pages cancel frames; stage failure cannot starve later stages. |
 | Simulation JD and playback | `stateStore.ts`, `timeController.ts` | Fixed-step JD policy, distinct from bounded decorative time. No wall-time catch-up is implied. |
 | Canonical body states | `src/sim/solarSystemModel.ts`, `src/workers/modelWorkerContract.ts` | Float64 heliocentric J2000 vectors in AU and AU/day; unavailable states are explicit. |
-| Orbital worker transport | `modelWorkerController.ts` | Owns readiness, exact request/reply matching, deadlines, two bounded lifetime restarts and disposal. Main owns scene application and local fallback. |
+| Orbital worker transport | `modelWorkerController.ts` | Owns readiness, exact request/reply matching, deadlines, at most two restarts per rolling ten minutes and disposal. Main owns scene application and local fallback. |
 | Body scene and selection | `src/main.ts` composition, `bodyManager.ts`, `src/frontend/features/planetary/planetView.ts`, `viewportCameraController.ts` | View offsets cannot mutate canonical model vectors. Physical radii and display estimates remain distinct. |
 | Labels and decorative stars | `sceneAnnotations.ts` | Screen-size labels; stars are directions without astronomical distances. |
 | Asteroid/Kuiper display | `src/frontend/features/asteroids/beltRenderer.ts`, `src/frontend/features/asteroids/kuiperBeltUpdater.ts` | Fixed-element propagation; hidden/unchanged Kuiper epochs do no upload work. Candidate populations do not certify resonances. |
