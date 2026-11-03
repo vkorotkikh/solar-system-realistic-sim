@@ -9,6 +9,7 @@ import pytest
 import server
 from sim.solar_process_worker import build_solar_physics_state
 from sim.solar_physics import SolarCoronaPhysicsModel
+from solar_delivery import _gzip_accepted
 
 
 @pytest.fixture(scope='module')
@@ -68,6 +69,30 @@ def test_http_full_update_reuse_and_reconnect_preserve_latest_state(endpoint, mo
     assert reconnect['delivery']['geometry_included'] is True
     assert reconnect['fallback_reason'] == 'disabled_unvalidated'
     assert reconnect['forcing_status']['runtime_eligible'] is False
+
+
+@pytest.mark.parametrize('header, accepted', [
+    ('', False), ('deflate', False), ('identity', False),
+    ('gzip', True), ('GZIP', True), ('gzip, deflate, br', True), ('br;q=1.0, gzip;q=0.8', True),
+    ('gzip ;q=1', True), ('gzip; q=0.5', True), ('gzip;q=0', False), ('gzip;q=abc', False),
+    ('*', True), ('*;q=0', False), ('identity, *;q=0.5', True),
+    ('gzip;q=0, *', False), ('*;q=0, gzip', True),
+])
+def test_gzip_negotiation_follows_rfc_9110(header, accepted):
+    assert _gzip_accepted(header) is accepted
+
+
+@pytest.mark.parametrize('header, status, encoding', [
+    ('*', 200, 'gzip'), ('gzip ;q=1', 200, 'gzip'),
+    # docs/solar-render-delivery.md: without gzip the 512 KiB cap applies to plain JSON.
+    ('identity', 413, None),
+])
+def test_accept_encoding_variants_get_the_documented_budget(endpoint, header, status, encoding):
+    response = endpoint.get('/solar/physics', params=dict(
+        jd_tdb=2460000.5, fidelity='high', max_features=180, forcing='hybrid', delivery='render-v1',
+    ), headers={'Accept-Encoding': header})
+    assert response.status_code == status
+    assert response.headers.get('content-encoding') == encoding
 
 
 def test_delivery_rejects_unsupported_versions_before_computing(endpoint):
