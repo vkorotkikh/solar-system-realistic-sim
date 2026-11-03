@@ -147,3 +147,30 @@ def test_verified_outcome_without_a_family_policy_fails_closed(monkeypatch, veri
     record = runner.run_episode(EpisodeConfig("one", "unregistered", {}))
     assert record.verifier_passed is passes
     assert (reason in record.reasons) if reason else record.reasons == []
+
+
+def _complete_negative(**logistics):
+    search = {"configuredFrontierCompleted": True, "truncated": False,
+              "terminationReason": "configured_frontier_completed"}
+    return {"status": "no_verified_candidate", "recommendation": None, "alternatives": [{
+        "verification": {"valid": False, "reasons": ["vehicle_budget_not_feasible"]},
+        "logistics": {"feasible": False, "totalUnmetDeltaV_km_s": 5.0, "returnCargoKg": 0,
+                      "burns": [{"cargoAddedKg": 0}], **logistics},
+        "trajectorySearch": {"outbound": dict(search), "return": dict(search)}}],
+        "missionSearch": {"configuredCandidatesCompleted": True, "truncated": False,
+                          "terminationReason": "configured_candidates_completed", "candidatesEvaluated": 1}}
+
+
+@pytest.mark.parametrize("logistics, passes", [
+    ({}, True),
+    ({"totalUnmetDeltaV_km_s": 5, "returnCargoKg": 0.0, "burns": [{"cargoAddedKg": 0.0}]}, True),
+    ({"totalUnmetDeltaV_km_s": "5"}, False),
+    ({"totalUnmetDeltaV_km_s": True}, False),
+    ({"returnCargoKg": False}, False),
+    ({"burns": [{"cargoAddedKg": False}]}, False),
+], ids=["well-typed", "int-and-float", "string-unmet", "bool-unmet", "bool-return-cargo", "bool-cargo-added"])
+def test_physical_negative_evidence_requires_real_numbers(logistics, passes):
+    episode = EpisodeConfig("negative", "known", {}, expected_outcome="vehicle_infeasible")
+    verified, reasons, _ = DemoVerifier().verify(episode, _complete_negative(**logistics))
+    assert verified is passes
+    assert reasons == ([] if passes else ["missing_empty_vehicle_infeasibility_evidence"])

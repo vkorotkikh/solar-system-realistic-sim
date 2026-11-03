@@ -53,7 +53,7 @@ class DemoVerifier:
                 logistics = candidate.get("logistics")
                 if not isinstance(verification, dict) or not isinstance(logistics, dict):
                     return False, ["invalid_candidate_evidence"], {"mission_score": None}
-                unmet = self._coerce_float(logistics.get("totalUnmetDeltaV_km_s"))
+                unmet = self._real_number(logistics.get("totalUnmetDeltaV_km_s"))
                 burns = logistics.get("burns") or []
                 evidence = evidence and (
                     verification.get("valid") is False
@@ -61,9 +61,10 @@ class DemoVerifier:
                     and "vehicle_budget_not_feasible" in verification["reasons"]
                     and logistics.get("feasible") is False
                     and unmet is not None and unmet > 0
-                    and logistics.get("returnCargoKg") == 0
+                    and self._real_number(logistics.get("returnCargoKg")) == 0
                     and isinstance(burns, list) and bool(burns)
-                    and all(isinstance(burn, dict) and burn.get("cargoAddedKg") == 0 for burn in burns))
+                    and all(isinstance(burn, dict) and self._real_number(burn.get("cargoAddedKg")) == 0
+                            for burn in burns))
             if not evidence:
                 reasons.append("missing_empty_vehicle_infeasibility_evidence")
             if not self._completed_search_evidence(result, candidates):
@@ -154,6 +155,13 @@ class DemoVerifier:
                             for item in searches["returns"])):
                 return False
         return True
+
+    @classmethod
+    def _real_number(cls, value: Any) -> float | None:
+        """Finite float for a real int/float only; unlike _coerce_float it rejects bool and str."""
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            return None
+        return cls._coerce_float(value)
 
     @staticmethod
     def _coerce_float(value: Any) -> float | None:
