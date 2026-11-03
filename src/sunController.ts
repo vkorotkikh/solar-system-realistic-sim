@@ -717,8 +717,10 @@ export function createSunController({
         spatialUseEligible: observationTextureUsable
       }
     );
-    const observationBlend = observationBlendEase.step(observationControls.observationBlend, blendNowMs, SOLAR_BLEND_MS, skipBlend);
-    const observationEmission = observationEmissionEase.step(observationControls.observationEmission, blendNowMs, SOLAR_BLEND_MS, skipBlend);
+    // Revocation must close the spatial-control gate immediately, even while decorative time is frozen.
+    const skipObservationBlend = skipBlend || !observationTextureUsable;
+    const observationBlend = observationBlendEase.step(observationControls.observationBlend, blendNowMs, SOLAR_BLEND_MS, skipObservationBlend);
+    const observationEmission = observationEmissionEase.step(observationControls.observationEmission, blendNowMs, SOLAR_BLEND_MS, skipObservationBlend);
     const effectiveActivity = clampUnit(activity);
     const sunRadiusAu = getSunRadiusAu();
     // A cleared state's loops and eruptions keep drawing while they fade out (H2.7).

@@ -2015,7 +2015,7 @@ export function updateSunMaterialUniforms({
   coronalHoleData = undefined as { holes?: Array<{ center_lon_rad?: unknown; center_lat_rad?: unknown; extent_lon_rad?: unknown; extent_lat_rad?: unknown }> | null } | null | undefined
 }) {
   const obsBlend = clampUnit(Number(observationBlend) || 0);
-  const obsEmission = clampUnit(Number(observationEmission) || 0.25);
+  const obsEmission = clampUnit(Number(observationEmission) || 0);
   if (sunSurfaceMaterial?.uniforms) {
     sunSurfaceMaterial.uniforms.time.value = timeSec * 0.4;
     sunSurfaceMaterial.uniforms.activity.value = activity;
