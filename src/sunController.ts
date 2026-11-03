@@ -921,7 +921,9 @@ export function createSunController({
     clearedSolarEpochJdTdb = solarPhysicsState.epoch_jd_tdb;
     blendSnapshotFromShown();
     if (solarPhysicsFeatureSetCurrent) blendFeatureSetsTo(emptySolarFeatureSet());
-    // Active flares came from an admitted snapshot and live a few seconds: let them finish.
+    // Active flares came from an admitted snapshot and live a few seconds: let them finish. They
+    // only age while decorative time runs, so with it stopped they would hang: remove them now.
+    if (solarLayerFrames.cme && decorativeMotionSuppressed()) solarFlareManager?.dispose();
     fadingSolarLayerFrames = solarLayerFrames;
     solarPhysicsState = null;
     solarLayerFrames = {};

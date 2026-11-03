@@ -386,6 +386,16 @@ describe('a backend state is labelled with its lag, then cleared when too old (H
     expect(dispose).toHaveBeenCalledOnce();
   });
 
+  it('removes a cleared state\'s flares at once when time is stopped, since they cannot finish', async () => {
+    const dispose = vi.spyOn(SolarFlareManager.prototype, 'dispose');
+    const f = await fixture();
+    frames(f, 15);
+    f.setReduced(true); // reduced motion freezes the decorative clock, like a pause or 0 d/s
+    f.tick(200);
+    expect(shownEpoch(f)).toBeNull();
+    expect(dispose).toHaveBeenCalledOnce();
+  });
+
   it('removes flares still finishing from a cleared state when the next snapshot withdraws its CME frame', async () => {
     const dispose = vi.spyOn(SolarFlareManager.prototype, 'dispose');
     const f = await fixture();
