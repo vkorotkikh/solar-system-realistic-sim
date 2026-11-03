@@ -221,6 +221,8 @@ export function createSunController({
   /** Layer frames of a removed state whose loops and eruptions are still fading out. */
   let fadingSolarLayerFrames: SolarLayerFrames = {};
   let publishedLagLabelDays: number | null = null;
+  /** A state was dropped for lagging the clock: the next refresh tick asks for the current epoch. */
+  let currentSolarStateWanted = false;
   let solarPhysicsFeatureSetCurrent: SolarFeatureSet | null = null;
   let solarPhysicsFeatureSetTarget: SolarFeatureSet | null = null;
   let solarPhysicsBlendStartMs = 0;
@@ -684,7 +686,12 @@ export function createSunController({
     lastJulianDate = julianDate;
     decorativeTimeSec += dtSec;
     const timeSec = decorativeTimeSec;
-    if (solarPhysicsState && solarStateExpired(Date.now())) clearSolarPhysicsState();
+    if (solarPhysicsState && solarStateTooOld()) {
+      clearSolarPhysicsState();
+      currentSolarStateWanted = true;
+    } else if (solarPhysicsState && solarStateUnrefreshed(Date.now())) {
+      clearSolarPhysicsState();
+    }
     if (solarStateLagLabelDays(solarStateLagDays()) !== publishedLagLabelDays) publishSolarDataStatus();
     const fallbackActivity = fallbackSolarActivityFromJulianDate(julianDate);
     const solarBlendView = buildSolarFeatureBlendView(480);
@@ -832,6 +839,7 @@ export function createSunController({
   function applySolarPhysicsState(next: SolarPhysicsStatePayload) {
     solarPhysicsState = next;
     clearedSolarEpochJdTdb = null;
+    currentSolarStateWanted = false;
     fadingSolarLayerFrames = {};
     blendSnapshotFromShown();
     const previousCmeFrame = solarLayerFrames.cme;
@@ -851,10 +859,10 @@ export function createSunController({
   /**
    * Simulated days a backend state may lag the clock before it is cleared (H2.7): the replacement
    * gap at the current rate, so a running clock never loses the state between polls or through one
-   * failed poll, and at least 30 days.
+   * failed poll, and at least 30 days. Pausing freezes the lag, so the set rate still applies.
    */
   function solarStateLagLimitDays() {
-    const rate = simState.paused === true ? 0 : Math.abs(Number(simState.timeScaleDaysPerSec) || 0);
+    const rate = Math.abs(Number(simState.timeScaleDaysPerSec) || 0);
     return Math.max(30, rate * solarReplacementGapSec);
   }
 
@@ -862,15 +870,18 @@ export function createSunController({
     return state ? Math.abs(simState.julianDate - state.epoch_jd_tdb) : null;
   }
 
+  function solarStateTooOld(state = solarPhysicsState) {
+    return (solarStateLagDays(state) ?? 0) > solarStateLagLimitDays();
+  }
+
   /**
-   * Too old for the clock, or no longer refreshed: five failures in a row, or five minutes since
-   * the last success while the latest attempt failed. Time with no attempts (a hidden tab runs no
-   * frames, so no polls) does not count.
+   * No longer refreshed: five failures in a row, or five minutes since the last success while the
+   * latest attempt failed. Time with no attempts (a hidden tab runs no frames, so no polls) does
+   * not count.
    */
-  function solarStateExpired(nowMs: number) {
+  function solarStateUnrefreshed(nowMs: number) {
     const status = solarPhysicsClient.status();
-    return (solarStateLagDays() ?? 0) > solarStateLagLimitDays()
-      || status.consecutiveFailures >= 5
+    return status.consecutiveFailures >= 5
       || (status.lastFailure !== null && nowMs - status.lastSuccessMs > 300_000);
   }
 
@@ -905,24 +916,28 @@ export function createSunController({
     const rangeReadiness = solarPhysicsClient.epochRangeReadiness(requestJd);
     if (solarDeliveryDisposed || entryGeneration !== solarPhysicsRefreshGeneration) return;
     if (!force && rangeReadiness?.blocked && !rangeReadiness.bypassCadence) return;
-    if (!force && !rangeReadiness?.bypassCadence && nowMs < solarPhysicsNextRefreshMs) return;
+    // A state dropped for lagging the clock asks for the current epoch now, not at the next poll.
+    const forcePhysics = force || (currentSolarStateWanted && !rangeReadiness?.blocked);
+    if (!forcePhysics && !rangeReadiness?.bypassCadence && nowMs < solarPhysicsNextRefreshMs) return;
+    currentSolarStateWanted = false;
 
     solarPhysicsRefreshInFlight = true;
     const generation = ++solarPhysicsRefreshGeneration;
     const ownsRefresh = () => !solarDeliveryDisposed && generation === solarPhysicsRefreshGeneration;
 
-    void solarPhysicsClient.maybeRefresh(requestJd, force, rangeReadiness)
+    void solarPhysicsClient.maybeRefresh(requestJd, forcePhysics, rangeReadiness)
       .then((updated) => {
         if (!ownsRefresh()) return;
         const status = solarPhysicsClient.status();
         if (updated) {
           const arriving = solarPhysicsClient.latestState();
           // A snapshot already too old for the clock when it arrives is not drawn (H2.7).
-          if (arriving && (solarStateLagDays(arriving) ?? 0) <= solarStateLagLimitDays()) {
+          if (arriving && !solarStateTooOld(arriving)) {
             applySolarPhysicsState(arriving);
           } else {
             clearSolarPhysicsState();
             clearedSolarEpochJdTdb = arriving?.epoch_jd_tdb ?? clearedSolarEpochJdTdb;
+            currentSolarStateWanted = true;
           }
         }
         const clientNextRefreshMs = Number(status['nextRefreshMs']);

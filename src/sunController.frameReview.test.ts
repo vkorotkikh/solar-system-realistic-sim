@@ -383,6 +383,31 @@ describe('a backend state is labelled with its lag, then cleared when too old (H
     expect(shownEpoch(f)).toBe(2451552);
   });
 
+  it('keeps the backend state when the clock is paused', async () => {
+    const f = await fixture();
+    f.state.timeScaleDaysPerSec = 4;
+    for (let i = 0; i < 100; i += 1) f.tick(0.4); // 10 s at 4 d/s: the state lags 40 d
+    f.state.paused = true;
+    f.tick(0, 0.016);
+    expect(shownEpoch(f)).toBe(2451552);
+  });
+
+  it('asks for the current epoch at once when a lower rate clears the state', async () => {
+    const f = await fixture();
+    f.state.timeScaleDaysPerSec = 120;
+    for (let i = 0; i < 100; i += 1) f.tick(12); // 10 s at 120 d/s: the state lags 1200 d
+    expect(shownEpoch(f)).toBe(2451552);
+    f.state.timeScaleDaysPerSec = 4;
+    f.tick(0.4);
+    expect(shownEpoch(f)).toBeNull();
+    const physicsFetches = () => vi.mocked(globalThis.fetch).mock.calls
+      .filter(([url]) => String(url).includes('/solar/physics')).length;
+    const before = physicsFetches();
+    // The frame loop's ordinary refresh tick, 20 s before the next poll is due.
+    f.controller.maybeRefreshPhysics(Date.now());
+    await vi.waitFor(() => expect(physicsFetches()).toBe(before + 1));
+  });
+
   it('keeps the backend state through one failed poll while the clock runs', async () => {
     const f = await fixture();
     f.state.timeScaleDaysPerSec = 4;
