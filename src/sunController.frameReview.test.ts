@@ -9,6 +9,7 @@ import { validatedSolarLayerFrames } from './frontend/features/solar/solarGeomet
 import type { SolarPhysicsStatePayload } from './frontend/features/solar/solarPhysicsClient';
 import type { SolarDataSourceStatus } from './frontend/features/solar/solarDataStatus';
 import { readCoronalHoles, readSunspotSeeds, updateSunCoronalLoopsFromBlendView } from './frontend/features/solar/sunVisuals';
+import { SolarFlareManager } from './frontend/features/solar/solarFlares';
 
 vi.mock('./frontend/features/solar/sunVisuals', async importOriginal => {
   const actual = await importOriginal<typeof import('./frontend/features/solar/sunVisuals')>();
@@ -361,6 +362,32 @@ describe('a backend state is labelled with its lag, then cleared when too old (H
     await f.refresh(atEpoch(payload(), f.state.julianDate));
     frames(f, 7);
     expect(weight()).toBeCloseTo(1 - 0.450074, 5);
+  });
+
+  it('lets active flares finish when a state is cleared, but removes them when a snapshot withdraws its CME frame', async () => {
+    const dispose = vi.spyOn(SolarFlareManager.prototype, 'dispose');
+    const f = await fixture();
+    frames(f, 15);
+    f.tick(200);
+    expect(shownEpoch(f)).toBeNull();
+    expect(dispose).not.toHaveBeenCalled();
+    const withdrawn = atEpoch(payload(), f.state.julianDate);
+    await f.refresh(withdrawn);
+    expect(dispose).not.toHaveBeenCalled();
+    delete (withdrawn.geometry_frames as Partial<typeof withdrawn.geometry_frames>).cme;
+    await f.refresh(withdrawn);
+    expect(dispose).toHaveBeenCalledOnce();
+  });
+
+  it('removes flares still finishing from a cleared state when the next snapshot withdraws its CME frame', async () => {
+    const dispose = vi.spyOn(SolarFlareManager.prototype, 'dispose');
+    const f = await fixture();
+    frames(f, 15);
+    f.tick(200);
+    const withdrawn = atEpoch(payload(), f.state.julianDate);
+    delete (withdrawn.geometry_frames as Partial<typeof withdrawn.geometry_frames>).cme;
+    await f.refresh(withdrawn);
+    expect(dispose).toHaveBeenCalledOnce();
   });
 
   it('eases activity from the cleared backend value to the cycle model', async () => {

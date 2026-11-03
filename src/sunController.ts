@@ -852,12 +852,13 @@ export function createSunController({
   }
 
   function applySolarPhysicsState(next: SolarPhysicsStatePayload) {
+    // A cleared state's CME frame still counts: its flares may still be finishing.
+    const previousCmeFrame = solarLayerFrames.cme ?? fadingSolarLayerFrames.cme;
     solarPhysicsState = next;
     clearedSolarEpochJdTdb = null;
     currentSolarStateWanted = false;
     fadingSolarLayerFrames = {};
     blendSnapshotFromShown();
-    const previousCmeFrame = solarLayerFrames.cme;
     solarLayerFrames = validatedSolarLayerFrames(solarPhysicsState);
     if (previousCmeFrame && !solarLayerFrames.cme) solarFlareManager?.dispose();
     const normalized = normalizeSolarFeatureSetFromState(solarPhysicsState, 480);
@@ -906,8 +907,8 @@ export function createSunController({
     clearedSolarEpochJdTdb = solarPhysicsState.epoch_jd_tdb;
     blendSnapshotFromShown();
     if (solarPhysicsFeatureSetCurrent) blendFeatureSetsTo(emptySolarFeatureSet());
+    // Active flares came from an admitted snapshot and live a few seconds: let them finish.
     fadingSolarLayerFrames = solarLayerFrames;
-    if (solarLayerFrames.cme) solarFlareManager?.dispose();
     solarPhysicsState = null;
     solarLayerFrames = {};
     rebuildMagneticFieldLines(false, fallbackSolarActivityFromJulianDate(simState.julianDate));
