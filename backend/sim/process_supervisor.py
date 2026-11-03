@@ -580,16 +580,13 @@ class SupervisedProcessRunner:
                             "worker result exceeded or broke the wire contract"
                         ) from exc
 
-                    # The job's own deadline bounds the exit. A fixed sub-second
-                    # grace discarded finished results whenever a loaded host
-                    # took longer to tear down numpy/scipy/astropy.
+                    # The result arrived in time, so a slow teardown of
+                    # numpy/scipy/astropy on a loaded host must not discard it.
+                    # Wait for a clean exit until the deadline, then reap.
                     process.join(max(0.0, absolute_deadline - time.monotonic()))
                     if process.is_alive():
                         self._reap_or_quarantine(job_id, process)
-                        raise ProcessTimedOut(
-                            "worker sent a result but did not exit before its deadline"
-                        )
-                    if process.exitcode != 0:
+                    elif process.exitcode != 0:
                         raise ProcessCrashed(process.exitcode)
                     return self._decode_result(encoded, payload)
 
