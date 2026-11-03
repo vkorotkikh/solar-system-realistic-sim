@@ -131,7 +131,9 @@ async function routeAndObserve(page: Page, baseURL: string) {
           const top = transformed(projection, [labelView[0], labelView[1] + sprite.scale.y / 2, labelView[2]]);
           const bottom = transformed(projection, [labelView[0], labelView[1] - sprite.scale.y / 2, labelView[2]]);
           const pixelHeight = (top[1] - bottom[1]) * viewportHeight / 2;
-          const bodyTop = transformed(projection, [bodyView[0], bodyView[1] + geometryRadius * surface.scale.x, bodyView[2]]);
+          // The gap is measured from the sphere's limb, d*tan(asin(r/d)) in the centre's depth plane, not from r.
+          const bodyDepth = -bodyView[2], limbRadius = bodyDepth * Math.tan(Math.asin(geometryRadius * surface.scale.x / bodyDepth));
+          const bodyTop = transformed(projection, [bodyView[0], bodyView[1] + limbRadius, bodyView[2]]);
           const gapPixels = (bottom[1] - bodyTop[1]) * viewportHeight / 2;
           const image = map.image as HTMLCanvasElement;
           const draw: Draw = { pixelHeight, gapPixels, index: probe.draws, sunName: sun.name, candidates: candidates.length,
@@ -202,7 +204,7 @@ function sameRadiusPolicy(draw: Draw) {
   expect(draw.bodyRadiusAu).toBeGreaterThan(0);
   expect(draw.geometryRadius).toBe(1);
   expect(draw.meshScale).toEqual([draw.meshScale[0], draw.meshScale[0], draw.meshScale[0]]);
-  expect(draw.gapPixels, `draw ${draw.index}: CSS-pixel gap outside the current body radius`).toBeCloseTo(8, 6);
+  expect(draw.gapPixels, `draw ${draw.index}: CSS-pixel gap outside the current body limb`).toBeCloseTo(8, 6);
   expect(draw.worldMagnitude).toBeGreaterThan(draw.bodyRadiusAu);
   screenUp(draw);
 }
