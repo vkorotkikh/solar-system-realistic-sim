@@ -260,3 +260,62 @@ test('keeps the two-digit epoch year pivot: 57 is 1957 and 56 is 2056', () => {
   expect(epochJd('57')).toBeCloseTo(2435839.5, 2);
   expect(epochJd('56')).toBeCloseTo(2471998.5, 2);
 });
+
+// F-029 identity: a duplicate id keeps the newer epoch (the first record on a tie), and a catalog name
+// the ASCII slug cannot carry still gets its own stable id instead of colliding on "sat-".
+const olderRecord = `Older\n${withEpoch(tle(0), '20001.50000000')}`;
+const newerRecord = `Newer\n${withEpoch(tle(0), '24001.50000000')}`;
+
+it.each([
+  ['older feed first', { first: olderRecord, second: newerRecord }],
+  ['newer feed first', { first: newerRecord, second: olderRecord }]
+])('keeps the newer epoch for a duplicate NORAD id: %s', async (_label, feeds) => {
+  const result = await load(feeds);
+  expect(result.records.map(record => [record.id, record.name])).toEqual([['sat-norad-23455', 'Newer']]);
+});
+
+test('the newer duplicate takes the older record\'s place in feed order', async () => {
+  const result = await load({ first: `${olderRecord}\n${tle(1)}`, second: newerRecord });
+  expect(result.records.map(record => [record.id, record.name]))
+    .toEqual([['sat-norad-23455', 'Newer'], ['sat-norad-23456', 'Satellite 2']]);
+});
+
+async function initialized(options: NonNullable<ConstructorParameters<typeof OrbitalSatelliteSystem>[0]>) {
+  const system = new OrbitalSatelliteSystem({ useWorkerPropagation: false, showOrbits: false, maxOrbitLines: 1, ...options });
+  await system.initialize();
+  return system;
+}
+
+function release(system: OrbitalSatelliteSystem) {
+  system.group.traverse(object => {
+    const drawable = object as Object3D & { geometry?: BufferGeometry; material?: Material | Material[] };
+    drawable.geometry?.dispose();
+    for (const material of [drawable.material].flat()) material?.dispose();
+  });
+  system.markerGeometry.dispose();
+  system.group.clear();
+}
+
+it.each([[2460000.5, 'Catalog'], [2440000.5, 'Satellite 1']])(
+  'compares a catalog entry that reuses a TLE id by epoch: catalog epoch %s keeps %s', async (epochJd, kept) => {
+    vi.stubGlobal('fetch', async () => new Response(tle(0)));
+    const system = await initialized({ primaryId: 'moon', tleSources: { feed: '/feed' },
+      catalogSatellites: [{ id: 'sat-norad-23455', name: 'Catalog', epochJd, aKm: 3000, meanMotionRevDay: 10 }] });
+    try { expect(system.satellites.map(satellite => satellite.name)).toEqual([kept]); } finally { release(system); }
+  });
+
+test('keeps catalog satellites whose names have no ASCII slug under distinct, stable ids', async () => {
+  const names = ['Метеор-М', 'Ресурс-П', 'Метеор-М №2', 'Ресурс-П №2', 'ISS (ZARYA)', 'GPS BIIR-2'];
+  const idsByName = async (order: string[]) => {
+    const system = await initialized({ primaryId: 'moon',
+      catalogSatellites: order.map(name => ({ name, aKm: 3000, meanMotionRevDay: 10 })) });
+    try { return Object.fromEntries(system.satellites.map(satellite => [satellite.name, satellite.id])); } finally { release(system); }
+  };
+  const forward = await idsByName(names);
+  expect(Object.keys(forward).sort()).toEqual([...names].sort());
+  expect(new Set(Object.values(forward)).size).toBe(names.length);
+  expect(Object.values(forward).every(id => /^sat-[a-z0-9]+(-[a-z0-9]+)*$/.test(id))).toBe(true);
+  expect(forward['ISS (ZARYA)']).toBe('sat-iss-zarya');
+  expect(forward['GPS BIIR-2']).toBe('sat-gps-biir-2');
+  expect(await idsByName([...names].reverse())).toEqual(forward);
+});

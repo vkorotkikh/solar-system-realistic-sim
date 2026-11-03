@@ -159,8 +159,19 @@ function hasValidTleChecksum(line: string): boolean {
   return sum % 10 === line.charCodeAt(68) - 48;
 }
 
+/** FNV-1a over UTF-16 code units: short, ASCII and identical on every run. */
+function hashName(name: string): string {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < name.length; i += 1) hash = Math.imul(hash ^ name.charCodeAt(i), 0x01000193);
+  return (hash >>> 0).toString(16).padStart(8, '0');
+}
+
 function sanitizeId(name: string): string {
-  return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+  const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+  // The slug drops every non-ASCII letter, so "Метеор-М" and "Ресурс-П" would both
+  // become "sat-" and "Метеор-М №2" and "Ресурс-П №2" both "sat-2". A name the slug
+  // cannot carry gets a stable hash of the whole name; ASCII names are unchanged.
+  return slug && !/[^\x00-\x7f]/.test(name) ? slug : [slug, hashName(name)].filter(Boolean).join('-');
 }
 
 function normalizeCatalogSatellite(entry: SatelliteCatalogEntry, primaryModel: PrimaryModel): NormalizedSatellite | null {
@@ -680,13 +691,17 @@ export class OrbitalSatelliteSystem {
       .map((entry) => normalizeCatalogSatellite(entry, this.primaryModel))
       .filter((satellite): satellite is NormalizedSatellite => Boolean(satellite));
 
-    const merged = [...loaded, ...catalog];
+    // One record per id: the newer epoch wins and keeps the first record's place; a tie keeps the first.
     const deduped: NormalizedSatellite[] = [];
-    const seen = new Set<string>();
-    for (const sat of merged) {
-      if (seen.has(sat.id)) continue;
-      seen.add(sat.id);
-      deduped.push(sat);
+    const slotById = new Map<string, number>();
+    for (const sat of [...loaded, ...catalog]) {
+      const slot = slotById.get(sat.id);
+      if (slot === undefined) {
+        slotById.set(sat.id, deduped.length);
+        deduped.push(sat);
+      } else if (sat.epochJd > deduped[slot].epochJd) {
+        deduped[slot] = sat;
+      }
     }
 
     this.satellites = deduped;
