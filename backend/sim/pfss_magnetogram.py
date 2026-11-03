@@ -33,6 +33,8 @@ from .magnetogram_grid import MagnetogramGrid, equal_area_sine_latitude_grid
 from .pfss_tracing import safe_norm, trace_field, trace_field_batch
 from .pfss_evaluation import StreamingPFSS, schmidt_latitude_design
 from .solar_active_regions import (
+    CYCLE_25_START_JD,
+    CYCLE_DAYS,
     J2000_JD,
     ActiveRegionSeed,
     build_active_regions,
@@ -155,13 +157,17 @@ def synthetic_magnetogram(
     cos_theta = np.cos(theta_grid)
     sin_theta = np.sin(theta_grid)
 
-    # Dipole: g_1^0 (dominant at solar minimum)
-    g10 = 5.0 * (1.0 - activity * 0.6)  # Gauss, weakens at solar max
+    # Dipole, dominant at solar minimum and weaker at maximum. Its axis turns
+    # through the equator once per cycle, so the polar field reverses near each
+    # maximum. Each minimum's north polar field matches the incoming cycle's
+    # northern leaders: positive for cycle 25 (2020), negative for 24 and 26.
+    dipole = 5.0 * (1.0 - activity * 0.6)  # Gauss
+    axis_tilt = math.pi * (jd - CYCLE_25_START_JD) / CYCLE_DAYS
+    g10 = dipole * math.cos(axis_tilt)
     br = g10 * cos_theta
 
-    # Dipole tilt: g_1^1 (tilted component, increases at solar max)
-    tilt_angle = 0.2 * activity  # ~12° at solar max
-    g11 = g10 * math.sin(tilt_angle)
+    # Equatorial part g_1^1, largest while the axis crosses the equator.
+    g11 = dipole * math.sin(axis_tilt)
     tilt_phase = (
         math.radians(CARRINGTON_SIDEREAL_ROTATION_RATE_DEG_PER_DAY)
         * (jd - J2000_JD)
@@ -908,7 +914,7 @@ def wsa_velocity_at_source_surface(
 PFSS_SOLUTION_KEY_VERSION = "pfss-solution-key-v1"
 PFSS_SOLUTION_CONFIG_VERSION = "pfss-solution-config-v1"
 SYNTHETIC_SNAPSHOT_ID_VERSION = "synthetic-magnetogram-snapshot-v1"
-SYNTHETIC_TRANSFORM_VERSION = "synthetic-persistent-bipoles-v4"
+SYNTHETIC_TRANSFORM_VERSION = "synthetic-persistent-bipoles-v5"
 SYNTHETIC_FLUX_POLICY_VERSION = "synthetic-native-unbalanced-v1"
 PFSS_PREPROCESSING_POLICY_VERSION = "pfss-input-preprocessing-none-v1"
 PFSS_SOLVER_VERSION = "pfss-altschuler-newkirk-v1"
