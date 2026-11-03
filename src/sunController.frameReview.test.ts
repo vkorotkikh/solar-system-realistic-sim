@@ -390,6 +390,17 @@ describe('a backend state is labelled with its lag, then cleared when too old (H
     expect(dispose).toHaveBeenCalledOnce();
   });
 
+  it('keeps drawing the fading loops and the cleared field activity through a scale change', async () => {
+    const f = await fixture();
+    frames(f, 15);
+    f.tick(200);
+    vi.mocked(updateSunCoronalLoopsFromBlendView).mockClear();
+    f.controller.onScaleChange();
+    expect(vi.mocked(updateSunCoronalLoopsFromBlendView).mock.lastCall![1]?.entries.length).toBeGreaterThan(0);
+    expect(f.controller.magneticFieldGroup?.userData.activity)
+      .toBeCloseTo(fallbackSolarActivityFromJulianDate(f.state.julianDate), 6);
+  });
+
   it('eases activity from the cleared backend value to the cycle model', async () => {
     const state = payload();
     state.activity_index = 0.9;

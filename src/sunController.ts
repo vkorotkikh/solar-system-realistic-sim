@@ -1003,9 +1003,11 @@ export function createSunController({
       const trScale = sunTransitionRegionMesh.userData.surfaceScale ?? 1.006;
       sunTransitionRegionMesh.scale.setScalar(r * trScale);
     }
-    rebuildMagneticFieldLines(true);
+    // A scale change redraws the same field and loops: keep the field's activity (the cycle
+    // model's after a clear) and the loops a cleared state is still fading out.
+    rebuildMagneticFieldLines(true, sunMagneticFieldGroup?.userData.activity);
     const bv = buildSolarFeatureBlendView(220);
-    updateSunCoronalLoopsFromBlendViewImpl(sunCoronalLoopGroup, solarLayerFrames.loops ? bv : null, r, 144);
+    updateSunCoronalLoopsFromBlendViewImpl(sunCoronalLoopGroup, (solarLayerFrames.loops ?? fadingSolarLayerFrames.loops) ? bv : null, r, 144);
     updateSunParkerSpiralFromPhysicsStateImpl(
       sunParkerSpiralGroup, geometryStateFor('parker'), r, 6, 120, 0, camera
     );
