@@ -1,7 +1,7 @@
 import { Group } from 'three';
 import { applySolarGeometryFrame, solarSurfaceToEclipticMatrix, type SolarFrameContext } from './frontend/features/solar/solarFrame';
 import {
-  validatedSolarLayerFrames, solarFeaturesInSurfaceFrame, solarFlareParamsInSurfaceFrame,
+  validatedSolarLayerFrames, solarFeaturesInBodyFrame, solarFeaturesInSurfaceFrame, solarFlareParamsInSurfaceFrame,
   solarHolesInSurfaceFrame, type SolarLayerFrames, type SolarGeometryLayer
 } from './frontend/features/solar/solarGeometryContract';
 import type {
@@ -341,8 +341,10 @@ export function createSunController({
     physicsState: SolarPhysicsStatePayload | null,
     featureLimit = 220
   ) {
+    // Loops and eruptions are kept in the Sun's body frame, so they turn with it between snapshots
+    // and a blend never sweeps a region across the rotation between two snapshot epochs.
     return normalizeSolarFeatureSetFromStateImpl(
-      solarLayerFrames.loops || solarLayerFrames.cme ? physicsState : null,
+      solarFeaturesInBodyFrame(physicsState, solarLayerFrames.loops ?? solarLayerFrames.cme),
       simState.julianDate, featureLimit
     );
   }
@@ -586,7 +588,7 @@ export function createSunController({
     sunEruptionLayer.userData.rotationPeriodHours = sunBody.rotationPeriodHours ?? null;
     sunEruptionLayer.userData.rotationOffsetRad = meshRotationOffsetRad;
     node.add(sunEruptionLayer);
-    applySolarGeometryFrame(sunEruptionLayer, { inputFrame: 'SOLAR_EQUATORIAL_J2000', jdTdb: simState.julianDate });
+    applySolarGeometryFrame(sunEruptionLayer, { inputFrame: 'IAU_SUN', jdTdb: simState.julianDate });
     setSunEruptionBaseRadiusImpl(sunEruptionLayer, sunRadiusAu);
 
     sunChromosphereLayer = createChromosphereLayer(sunRadiusAu, 8000);
@@ -618,7 +620,7 @@ export function createSunController({
     sunCoronalLoopGroup = new Group();
     sunCoronalLoopGroup.userData.bodyId = 'sun-coronal-loops';
     node.add(sunCoronalLoopGroup);
-    applySolarGeometryFrame(sunCoronalLoopGroup, { inputFrame: 'SOLAR_EQUATORIAL_J2000', jdTdb: simState.julianDate });
+    applySolarGeometryFrame(sunCoronalLoopGroup, { inputFrame: 'IAU_SUN', jdTdb: simState.julianDate });
     const initialBlend = buildSolarFeatureBlendView(220);
     updateSunCoronalLoopsFromBlendViewImpl(sunCoronalLoopGroup, solarLayerFrames.loops ? initialBlend : null, sunRadiusAu, 144);
 
@@ -792,6 +794,10 @@ export function createSunController({
       }
     }
 
+    // Loops and eruption particles are drawn in the body frame: turn them with the Sun.
+    for (const layer of [sunCoronalLoopGroup, sunEruptionLayer]) {
+      if (layer) applySolarGeometryFrame(layer, { inputFrame: 'IAU_SUN', jdTdb: julianDate });
+    }
     updateSunCoronalLoopsFromBlendViewImpl(sunCoronalLoopGroup, geometryBlendView, sunRadiusAu, 144, timeSec, activeObservationChannel);
     updateSunParkerSpiralFromPhysicsStateImpl(sunParkerSpiralGroup, geometryStateFor('parker'), sunRadiusAu, 6, 120, timeSec, camera);
     updateSolarWindLayer(sunSolarWindLayer, geometryStateFor('parker'), sunRadiusAu, timeSec, camera);

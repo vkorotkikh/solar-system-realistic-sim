@@ -526,3 +526,67 @@ describe('a backend state is labelled with its lag, then cleared when too old (H
     expect(f.lastStatus().text).toContain(' · time-lapse: state lags ');
   });
 });
+
+describe('loops and eruptions turn with the Sun (H4.6 rotation)', () => {
+  /** The first loop point in the turning surface's own frame. */
+  function loopPointOnSurface(f: Awaited<ReturnType<typeof fixture>>) {
+    f.root.updateMatrixWorld(true);
+    const group = f.root.children.find(child => child.userData.bodyId === 'sun-coronal-loops')!;
+    const line = group.children[0] as Mesh;
+    const world = new Vector3().fromBufferAttribute(line.geometry.getAttribute('position'), 0).applyMatrix4(line.matrixWorld);
+    return f.spin.worldToLocal(world);
+  }
+
+  /** The backend's next snapshot of the same regions: their frozen coordinates carried rigidly by `degrees`. */
+  function turnedFeatures(state: ReturnType<typeof payload>, degrees: number) {
+    const c = Math.cos(degrees * Math.PI / 180), s = Math.sin(degrees * Math.PI / 180);
+    const turn = (v: number[]) => [v[0] * c - v[1] * s, v[0] * s + v[1] * c, v[2]];
+    for (const feature of state.corona.features) {
+      feature.arc = feature.arc.map(turn);
+      feature.base_dir = turn(feature.base_dir);
+      feature.paired_dir = turn(feature.paired_dir);
+      feature.tangent_dir = turn(feature.tangent_dir);
+      feature.binormal_dir = turn(feature.binormal_dir);
+    }
+    return state;
+  }
+
+  it('places the loops where the snapshot put them at its own epoch', async () => {
+    const f = await fixture();
+    f.setReduced(true); // draw the snapshot as it is, without the fade-in
+    f.tick(0, 0.1);
+    f.root.updateMatrixWorld(true);
+    const group = f.root.children.find(child => child.userData.bodyId === 'sun-coronal-loops')!;
+    const line = group.children[0] as Mesh;
+    // A loop's first vertex has no wobble, so it points along the feature's first arc point.
+    const drawn = new Vector3().fromBufferAttribute(line.geometry.getAttribute('position'), 0).applyMatrix4(line.matrixWorld);
+    const expected = new Vector3(...captured.corona.features[0].arc[0] as [number, number, number]).applyMatrix4(frozenToEcliptic());
+    expect(drawn.normalize().distanceTo(expected.normalize())).toBeLessThan(1e-6);
+  });
+
+  it('turns the loops and the eruption layer with the surface between snapshots', async () => {
+    const f = await fixture();
+    frames(f, 15);
+    const eruptions = f.root.children.find(child => child.userData.bodyId === 'sun-eruptions')!;
+    const eruptionPointOnSurface = () => {
+      f.root.updateMatrixWorld(true);
+      return f.spin.worldToLocal(new Vector3(0.01, 0, 0).applyMatrix4(eruptions.matrixWorld));
+    };
+    const [loopBefore, eruptionBefore] = [loopPointOnSurface(f), eruptionPointOnSurface()];
+    f.tick(1);
+    expect(loopPointOnSurface(f).distanceTo(loopBefore)).toBeLessThan(1e-12);
+    expect(eruptionPointOnSurface().distanceTo(eruptionBefore)).toBeLessThan(1e-12);
+  });
+
+  it('blends loops between snapshots of the same regions without sweeping them across the rotation', async () => {
+    const f = await fixture();
+    frames(f, 15);
+    const days = f.state.julianDate - 2451552;
+    await f.refresh(turnedFeatures(atEpoch(payload(), f.state.julianDate), 14.1844 * days));
+    const start = loopPointOnSurface(f);
+    frames(f, 7);
+    expect(f.blend().blendAlpha).toBeGreaterThan(0);
+    expect(f.blend().blendAlpha).toBeLessThan(1);
+    expect(loopPointOnSurface(f).distanceTo(start)).toBeLessThan(1e-12);
+  });
+});
