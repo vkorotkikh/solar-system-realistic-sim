@@ -117,7 +117,7 @@ def collect_profile():
               'platform': {'system': platform.system(), 'machine': platform.machine(),
                            'libc': list(platform.libc_ver())},
               'environment': {key: os.environ.get(key) for key in (
-                  'OPENBLAS_CORETYPE', 'OPENBLAS_NUM_THREADS', 'OMP_NUM_THREADS',
+                  'OPENBLAS_CORETYPE', 'OPENBLAS_NUM_THREADS', 'OPENBLAS_L2_SIZE', 'OMP_NUM_THREADS',
                   'MKL_NUM_THREADS', 'NUMEXPR_NUM_THREADS', 'NPY_DISABLE_CPU_FEATURES', 'GLIBC_TUNABLES')},
               'openblas': [], 'inspection_errors': []}
     try:
@@ -143,8 +143,12 @@ def collect_profile():
     return result
 
 
-def profile_errors(profile, required_core):
+def profile_errors(profile, required_core, required_l2_kib=None):
     errors = list(profile.get('inspection_errors', []))
+    if required_l2_kib is not None:
+        setting = profile.get('environment', {}).get('OPENBLAS_L2_SIZE')
+        if setting != str(required_l2_kib):
+            errors.append(f'Expected explicit OPENBLAS_L2_SIZE={required_l2_kib}; got {setting!r}')
     host = profile.get('platform', {})
     if host.get('system') != 'Linux' or host.get('machine') != 'x86_64':
         errors.append('Catalog numerical profile requires Linux x86-64')
@@ -166,11 +170,16 @@ def profile_errors(profile, required_core):
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--require-core', help='Require this actual selected OpenBLAS core and one thread')
+    parser.add_argument('--require-l2-kib', type=int,
+                        help='Require an explicit OPENBLAS_L2_SIZE environment setting in KiB')
     parser.add_argument('--probe-output', type=Path, help='Save read-only Dione fit diagnostics in this directory')
     args = parser.parse_args(argv)
+    if args.require_l2_kib is not None and args.require_l2_kib <= 0:
+        parser.error('--require-l2-kib must be positive')
     profile = collect_profile()
-    errors = profile_errors(profile, args.require_core)
-    profile.update(required_core=args.require_core, profile_errors=errors)
+    errors = profile_errors(profile, args.require_core, args.require_l2_kib)
+    profile.update(required_core=args.require_core, required_l2_kib=args.require_l2_kib,
+                   profile_errors=errors)
     if args.probe_output is not None:
         try:
             args.probe_output.mkdir(parents=True, exist_ok=True)

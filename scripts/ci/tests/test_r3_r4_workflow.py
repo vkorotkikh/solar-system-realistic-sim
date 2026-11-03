@@ -103,12 +103,13 @@ def test_backend_job_uses_pinned_python_and_runs_the_full_suite():
     preflight = "python -m pytest -q scripts/test_moon_repairs.py::test_real_extension_rebuild_is_byte_identical_without_network"
     runs = [step.get("run", "") for step in steps]
     preflight_steps = [step for step in steps if step.get("run") == preflight]
-    assert [step.get("env", {}) for step in preflight_steps] == [{}, {"NPY_DISABLE_CPU_FEATURES": "X86_V4"}]
+    assert [step.get("env", {}) for step in preflight_steps] == [{}, {"NPY_DISABLE_CPU_FEATURES": "X86_V4,AVX512_ICL,AVX512_SPR"}]
     assert all(steps.index(step) < runs.index("python -m pytest -q backend/tests") for step in preflight_steps)
     assert all("if" not in step for step in preflight_steps)
     assert job["env"]["OPENBLAS_CORETYPE"] == "Nehalem"
     assert job["env"]["OPENBLAS_NUM_THREADS"] == "1"
-    profile = 'python scripts/ci/catalog_numerical_profile.py --require-core Nehalem --probe-output "$RUNNER_TEMP/catalog-numerical"'
+    assert job["env"]["OPENBLAS_L2_SIZE"] == "256"
+    profile = 'python scripts/ci/catalog_numerical_profile.py --require-core Nehalem --require-l2-kib 256 --probe-output "$RUNNER_TEMP/catalog-numerical"'
     profile_index = _command_index(steps, profile)
     guard_tests = "python -m pytest --noconftest -q scripts/ci/tests/test_catalog_numerical_profile.py"
     assert _command_index(steps, guard_tests) < profile_index

@@ -9,14 +9,14 @@ They are numerical source records, not values reconstructed from fitted models.
 Regenerate or verify the separate extension on Linux x86-64 with glibc 2.39,
 Python 3.12.13, NumPy 2.5.2 and the complete pinned
 `ci/backend-test-requirements.txt` environment. Select the NumPy wheel's OpenBLAS
-0.3.34 Nehalem kernel and one thread before Python starts:
+0.3.34 Nehalem kernel, a 256 KiB cache-size hint and one thread before Python starts:
 
 ```sh
 export PYTHONHASHSEED=0 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1
 export MKL_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1 TZ=UTC
-export OPENBLAS_CORETYPE=Nehalem
+export OPENBLAS_CORETYPE=Nehalem OPENBLAS_L2_SIZE=256
 uv run --python 3.12.13 --with-requirements ci/backend-test-requirements.txt \
-  python scripts/ci/catalog_numerical_profile.py --require-core Nehalem
+  python scripts/ci/catalog_numerical_profile.py --require-core Nehalem --require-l2-kib 256
 uv run --python 3.12.13 --with-requirements ci/backend-test-requirements.txt \
   python scripts/generate_moon_repairs.py --offline --write
 uv run --python 3.12.13 --with-requirements ci/backend-test-requirements.txt \
@@ -27,10 +27,12 @@ uv run --python 3.12.13 --with-requirements ci/backend-test-requirements.txt \
 
 The shared reconstruction uses scalar `math.atan2` for both node and periapsis
 angles, avoiding the observed NumPy `arctan2` CPU-dispatch rounding difference.
-The fixed BLAS kernel prevents the observed least-squares differences between
-CPU kernels. CI verifies the actual Nehalem kernel and one thread, then requires
+The fixed BLAS kernel and cache-size hint prevent the observed least-squares
+differences between CPU kernels and OpenBLAS's separate Ryzen cache override.
+The hint fixes calculation order without requiring that physical cache size.
+CI verifies the actual Nehalem kernel, one thread and explicit hint, then requires
 exact extension bytes with native NumPy dispatch and with
-`NPY_DISABLE_CPU_FEATURES=X86_V4`, both using that BLAS kernel. This contract
+`NPY_DISABLE_CPU_FEATURES=X86_V4,AVX512_ICL,AVX512_SPR`, both using that BLAS kernel. This contract
 covers the pinned stack; other platforms, native library builds and libm
 implementations require separate verification.
 

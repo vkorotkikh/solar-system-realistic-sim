@@ -92,6 +92,7 @@ jobs:
       OMP_NUM_THREADS: "1"
       OPENBLAS_NUM_THREADS: "1"
       OPENBLAS_CORETYPE: Nehalem
+      OPENBLAS_L2_SIZE: "256"
       MKL_NUM_THREADS: "1"
       NUMEXPR_NUM_THREADS: "1"
       TZ: UTC
@@ -116,15 +117,15 @@ jobs:
         run: python -m pytest --noconftest -q scripts/ci/tests/test_catalog_numerical_profile.py
 
       - name: Record the numerical runtime
-        run: python scripts/ci/catalog_numerical_profile.py --require-core Nehalem --probe-output "$RUNNER_TEMP/catalog-numerical"
+        run: python scripts/ci/catalog_numerical_profile.py --require-core Nehalem --require-l2-kib 256 --probe-output "$RUNNER_TEMP/catalog-numerical"
 
       - name: Check catalog byte reproducibility before the full suite
         run: python -m pytest -q scripts/test_moon_repairs.py::test_real_extension_rebuild_is_byte_identical_without_network
 
-      - name: Verify baseline NumPy dispatch produces identical bytes with the pinned BLAS kernel
+      - name: Verify NumPy without AVX-512 produces identical bytes with the pinned BLAS settings
         run: python -m pytest -q scripts/test_moon_repairs.py::test_real_extension_rebuild_is_byte_identical_without_network
         env:
-          NPY_DISABLE_CPU_FEATURES: X86_V4
+          NPY_DISABLE_CPU_FEATURES: X86_V4,AVX512_ICL,AVX512_SPR
 
       - name: Run the complete backend test suite
         run: python -m pytest -q backend/tests

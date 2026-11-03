@@ -31,24 +31,26 @@ uncertainty claim.
 
 Use Linux x86-64 with glibc 2.39, Python 3.12.13, NumPy 2.5.2 and the complete
 pinned `ci/backend-test-requirements.txt`. Set the NumPy wheel's OpenBLAS 0.3.34
-kernel and single-thread settings before Python starts:
+kernel, 256 KiB cache-size hint and single-thread settings before Python starts:
 
 ```sh
 export PYTHONHASHSEED=0 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1
 export MKL_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1 TZ=UTC
-export OPENBLAS_CORETYPE=Nehalem
+export OPENBLAS_CORETYPE=Nehalem OPENBLAS_L2_SIZE=256
 uv run --python 3.12.13 --with-requirements ci/backend-test-requirements.txt \
-  python scripts/ci/catalog_numerical_profile.py --require-core Nehalem
+  python scripts/ci/catalog_numerical_profile.py --require-core Nehalem --require-l2-kib 256
 uv run --python 3.12.13 --with-requirements ci/backend-test-requirements.txt \
   python scripts/generate_moon_lazy_ephemerides.py --offline --check
 ```
 
 The shared reconstruction evaluates node and periapsis angles using scalar
 `math.atan2`, avoiding the observed CPU-dispatch rounding difference in NumPy
-`arctan2`. The fixed and checked Nehalem BLAS kernel prevents the observed
-least-squares differences between CPU kernels. CI requires that active kernel
-and one thread, then runs strict six-moon byte-equality gates with native NumPy
-dispatch and `NPY_DISABLE_CPU_FEATURES=X86_V4` before its full suites. Other
+`arctan2`. The fixed Nehalem kernel and 256 KiB cache-size hint prevent the
+observed least-squares differences from CPU kernels and OpenBLAS's separate
+Ryzen cache override. The hint fixes calculation order without requiring that
+physical cache size. CI checks the active kernel, one thread and explicit hint,
+then runs strict six-moon byte-equality gates with native NumPy
+dispatch and `NPY_DISABLE_CPU_FEATURES=X86_V4,AVX512_ICL,AVX512_SPR` before its full suites. Other
 platforms, native library builds or libm versions require separate verification.
 
 The numerical-runtime rebuild retains these immutable source archives, source hashes
