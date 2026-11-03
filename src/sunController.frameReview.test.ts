@@ -444,13 +444,23 @@ describe('a backend state is labelled with its lag, then cleared when too old (H
     expect(f.lastStatus().text).toMatch(/^Sun: procedural fallback \(last backend state was for 2000-01-08; refresh failing: /);
   });
 
-  it('clears the backend state five minutes after its last success once a refresh has failed', async () => {
+  it('clears the backend state once refreshes have been failing for five minutes', async () => {
     const f = await fixture();
     await f.fail();
     f.tick(2, 299);
     expect(shownEpoch(f)).toBe(2451552);
     f.tick(0.01, 2);
+    await f.fail(); // still failing 301 s after the last success
+    f.tick(0.01);
     expect(shownEpoch(f)).toBeNull();
+  });
+
+  it('does not count hidden time after a single failed refresh as five minutes of failing', async () => {
+    const f = await fixture();
+    f.tick(2); // the failure rules apply once the state lags the clock by more than a day
+    await f.fail();
+    f.tick(0, 360); // the tab is hidden for six minutes: no frames, no polls
+    expect(shownEpoch(f)).toBe(2451552);
   });
 
   it('keeps a state that is right for the paused date while refreshes fail, and says they fail', async () => {
