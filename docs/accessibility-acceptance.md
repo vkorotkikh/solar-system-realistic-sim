@@ -1,6 +1,6 @@
 # Manual accessibility protocol; all outcomes NOT_RUN
 
-This is a future test protocol, not an execution report. No deployed URL, AT device inventory, speech recording or physical-touch result is known. Use [`manual evidence template`](../agent-notes/ACCESSIBILITY_MANUAL_EVIDENCE_TEMPLATE_2026-10-30.json) to record the actual revision, local or authorized deployed URL, environment, operator and per-case outcome. Keep an unavailable platform NOT_RUN with its reason.
+This is a future test protocol, not an execution report. Windows + NVDA availability was confirmed on 2026-11-02; browser/version details and observed results remain pending. No deployed URL, speech recording or physical-touch result is known. Use [`manual evidence template`](../agent-notes/ACCESSIBILITY_MANUAL_EVIDENCE_TEMPLATE_2026-10-30.json) to record the actual revision, local or authorized deployed URL, environment, operator and per-case outcome. Keep an unavailable platform NOT_RUN with its reason.
 
 ## Environments and evidence
 
@@ -69,3 +69,20 @@ node scripts/validate-accessibility-evidence.mjs /path/to/record.json
 ```
 
 Exit 0 means the record contains all required observations and existing artifact references; it does **not** certify that the observations are true. Exit 1 means valid but NOT_RUN or FAIL; the JSON output lists pending/failed cases. Exit 2 means malformed, contradictory or insufficient evidence. This validator accepts honest partial records, rejects Linux WebKit as a macOS VoiceOver lane, and cannot convert missing devices into passes.
+
+## Current Windows/NVDA session
+
+The user confirmed Windows + NVDA availability on 2026-11-02. The separate
+[pending session record](../agent-notes/SCN030_MANUAL_SESSION_2026-11-02/evidence.json)
+preserves that answer without changing any outcome. Chrome is the protocol
+browser; its availability/version, Windows and NVDA versions remain to be recorded.
+Other device availability remains unconfirmed.
+
+Start with the search-and-announcements case in Windows Chrome at 100% zoom.
+Enable NVDA Speech Viewer, move focus back to the page, and reach Explorer's
+"Find a major body" field. Search Earth, replace it with Sun, replace it with
+`zzzz`, then clear it. Record actual speech, unchanged-count announcements,
+no-results guidance, restored picker usability, visible focus and repeated idle
+speech. Record whether NVDA intercepts Escape instead of assuming it reaches the
+page. Send those observations plus Windows/Chrome/NVDA versions. Leave all other
+cases pending; full lane acceptance still requires the remaining protocol cases.

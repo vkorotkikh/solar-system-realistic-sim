@@ -76,8 +76,8 @@ Use the exact integrated revision and copy the manual JSON template into a new
 evidence directory. Record available hardware/OS/browser/assistive technology,
 actual speech/focus/actions, OS text resizing and native zoom, and physical touch.
 The validator checks record completeness and artifact existence; it cannot verify
-that a human observation is true. Unavailable lanes remain NOT_RUN. The user has
-confirmed device checks are possible; specific device inventory/results are pending.
+that a human observation is true. Unavailable lanes remain NOT_RUN. The user confirmed Windows + NVDA availability on 2026-11-02; Chrome and version
+details/results remain pending. The separate [pending manual session](SCN030_MANUAL_SESSION_2026-11-02/evidence.json) records availability only. Other devices are unconfirmed.
 
 Readable log/JUnit copies have trailing whitespace normalized. Exact original
 bytes and SHA-256 mappings are preserved in the
