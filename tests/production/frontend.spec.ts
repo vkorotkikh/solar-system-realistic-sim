@@ -136,6 +136,7 @@ async function expectReachableTarget(target: Locator) {
   expect(rect.right).toBeLessThanOrEqual(viewport.x + viewport.width + 1);
   expect(rect.bottom).toBeLessThanOrEqual(viewport.y + viewport.height + 1);
   expect(hits, 'center and all four edge midpoints must receive pointer events').toEqual([true, true, true, true, true]);
+  return { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
 }
 
 test('compiled artifact loads real bundles, worker, verified catalog and legal notice', async ({ page, browser, baseURL }, testInfo) => {
@@ -405,7 +406,10 @@ test('compiled tiny reflow keeps final action and all camera controls reachable'
     for (const target of await page.locator('#camera-tools summary, #camera-tools button').all()) await expectReachableTarget(target);
     const beforeZoom = await page.locator('#status-zoom').textContent();
     const zoomOut = page.getByRole('button', { name: 'Zoom out', exact: true });
-    await zoomOut.click();
+    // Validate the current hit target, then send real pointer input without
+    // waiting for two canvas-starved animation frames in Locator.click().
+    const zoomPoint = await expectReachableTarget(zoomOut);
+    await page.mouse.click(zoomPoint.x, zoomPoint.y);
     await expect(zoomOut).toBeFocused();
     await expect(page.locator('#status-zoom')).not.toHaveText(beforeZoom!);
     const canvasBounds = await canvas.boundingBox();
