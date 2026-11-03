@@ -11,3 +11,7 @@ for (const args of [[], ['--dry-run'], ['--source', 'jpl'], ['--source', 'mpc']]
 it('removes the disconnected resolver that manufactured taxonomy and albedo', () => {
   expect(existsSync(new URL('../../src/data/asteroidTaxonomyResolver.ts', import.meta.url))).toBe(false);
 });
+
+it('removes the unreachable pipeline that assigned taxonomy by semi-major axis', () => {
+  expect(existsSync(new URL('../../src/sim/asteroids', import.meta.url))).toBe(false);
+});
