@@ -53,7 +53,7 @@ class DemoVerifier:
                 logistics = candidate.get("logistics")
                 if not isinstance(verification, dict) or not isinstance(logistics, dict):
                     return False, ["invalid_candidate_evidence"], {"mission_score": None}
-                unmet = self._coerce_float(logistics.get("totalUnmetDeltaV_km_s"))
+                unmet = self._real_number(logistics.get("totalUnmetDeltaV_km_s"))
                 burns = logistics.get("burns") or []
                 evidence = evidence and (
                     verification.get("valid") is False
@@ -61,9 +61,10 @@ class DemoVerifier:
                     and "vehicle_budget_not_feasible" in verification["reasons"]
                     and logistics.get("feasible") is False
                     and unmet is not None and unmet > 0
-                    and logistics.get("returnCargoKg") == 0
+                    and self._real_number(logistics.get("returnCargoKg")) == 0
                     and isinstance(burns, list) and bool(burns)
-                    and all(isinstance(burn, dict) and burn.get("cargoAddedKg") == 0 for burn in burns))
+                    and all(isinstance(burn, dict) and self._real_number(burn.get("cargoAddedKg")) == 0
+                            for burn in burns))
             if not evidence:
                 reasons.append("missing_empty_vehicle_infeasibility_evidence")
             if not self._completed_search_evidence(result, candidates):
@@ -84,17 +85,20 @@ class DemoVerifier:
             reasons.append("planner_status_not_ok")
             reasons.append(f"planner_status_{status or 'unknown'}")
 
+        # An unregistered family is held to the default policy, not exempted from it.
+        gate = policy or EpisodeFamilyPolicy()
+
         mission_score = self._coerce_float(recommendation.get("missionScore") if recommendation else None)
         if mission_score is None:
             reasons.append("missing_mission_score")
-        elif policy and policy.min_mission_score is not None and mission_score < policy.min_mission_score:
+        elif gate.min_mission_score is not None and mission_score < gate.min_mission_score:
             reasons.append(f"mission_score_below_threshold_{mission_score:.2f}")
 
-        if policy and verification is not None:
+        if verification is not None:
             verifier_valid = verification.get("valid") is True
-            if policy.require_verifier_valid and not verifier_valid:
+            if gate.require_verifier_valid and not verifier_valid:
                 reasons.append("embedded_verifier_rejected")
-        elif policy and policy.require_verifier_valid and recommendation is not None:
+        elif gate.require_verifier_valid and recommendation is not None:
             # recommendation exists but no explicit verifier entry
             reasons.append("missing_embedded_verifier")
 
@@ -105,7 +109,7 @@ class DemoVerifier:
         )
         if risk_probability is None:
             reasons.append("missing_failure_probability")
-        elif policy and risk_probability > policy.max_failure_probability:
+        elif risk_probability > gate.max_failure_probability:
             reasons.append("failure_probability_exceeds_threshold")
 
         metrics = {
@@ -151,6 +155,13 @@ class DemoVerifier:
                             for item in searches["returns"])):
                 return False
         return True
+
+    @classmethod
+    def _real_number(cls, value: Any) -> float | None:
+        """Finite float for a real int/float only; unlike _coerce_float it rejects bool and str."""
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            return None
+        return cls._coerce_float(value)
 
     @staticmethod
     def _coerce_float(value: Any) -> float | None:

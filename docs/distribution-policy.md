@@ -29,8 +29,11 @@ Restoring one requires a current consumer, exact source and reuse terms.
 
 ## Build boundary
 
-`npm run build` first validates the curated texture manifest and every file in
-the [current file register](data/distribution-files.json). It rejects changed or
+`npm run build` layers two independent checks. It first verifies curated moon
+textures, lazy moon shards and the Phase 1 asteroid binary against their source
+manifests, and all other public files against
+[`ci/public-asset-allowlist.json`](../ci/public-asset-allowlist.json). It then
+validates every file in the [current file register](data/distribution-files.json). It rejects changed or
 missing bytes, unknown source products, symlinks and unlisted public files before
 writing notices. The six generated files under `public/legal` are regenerated;
 any other file in that directory is rejected. Vite copies the public directory,

@@ -8,11 +8,15 @@ photographs, maps, fonts or downloaded textures.
 
 ## Important distribution limits
 
-- Solar System Scope / INOVE textures are distributed under
-  [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Credit the provider
-  and identify modifications. The provider describes enhanced colors and
-  fictional terrain in unmapped areas: these are illustrative maps, not a
-  blanket claim of measured surface fidelity.
+- No Solar System Scope / INOVE texture is distributed in the current tree.
+  Earlier revisions credited that pack
+  ([CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)) for the 2K planet
+  textures. The planet day maps were among the unused photographic files
+  removed on 2026-10-31; they remain only in Git history (see the
+  [distribution policy](docs/distribution-policy.md)). Restoring one requires
+  credit to the provider, a statement of modifications and a new rights review.
+  The provider describes enhanced colors and fictional terrain in unmapped
+  areas, so those maps are illustrative, not measured surface fidelity.
   [Source and terms](https://ssi.solarsystemscope.com/textures/).
 - SILSO sunspot data, World Data Center SILSO, Royal Observatory of Belgium,
   Brussels, use [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/).
@@ -65,6 +69,8 @@ that inventory. The [2026-10-30 inventory](agent-notes/DISTRIBUTION_INVENTORY_20
 is historical.
 The current [distribution policy](docs/distribution-policy.md) restricts the
 SILSO-enabled data workflow to noncommercial research/evaluation and removes
-the unresolved Deimos map. The build validates all inventoried input bytes and
-packages six notices/registers. This current byte inventory is not legal
+the unresolved Deimos map. The build first checks public assets against their
+reviewed manifests and
+[`ci/public-asset-allowlist.json`](ci/public-asset-allowlist.json), then validates
+all inventoried input bytes and packages six notices/registers. This current byte inventory is not legal
 clearance; new products require their own source and rights review.

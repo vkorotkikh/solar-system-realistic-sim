@@ -67,3 +67,33 @@ describe('current label owner orientation and scale transitions', () => {
       } finally { sprite.material.dispose(); }
     });
 });
+
+describe('label clearance at close zoom', () => {
+  const radius = 6371 / 149597870.7; // Earth, in AU
+  const viewport = 900;
+  const fov = 58;
+  function labelAt(radii: number) {
+    const camera = new PerspectiveCamera(fov, 1.5, 5e-9, 120);
+    camera.up.set(0, 0, 1); camera.position.set(0, -radii * radius, 0); camera.lookAt(0, 0, 0); camera.updateMatrixWorld(true);
+    const node = new Group(); const sprite = new Sprite(new SpriteMaterial()); node.add(sprite); node.updateMatrixWorld(true);
+    return { camera, sprite, visible: updateBodyLabel(sprite, new Vector3(), radius, camera, viewport) };
+  }
+
+  // The sphere's limb sits at its angular radius asin(r/d), which projects further out than r as d/r falls.
+  // The label's bottom edge must stay 8 CSS pixels above it (the 8 in the 8 + 20 offset; 20 is half the label).
+  it.each([20, 5, 3, 2, 1.1])('keeps the label bottom 8 px above the limb at %s radii', radii => {
+    const { camera, sprite, visible } = labelAt(radii);
+    try {
+      expect(visible).toBe(true);
+      const bottom = sprite.position.clone().addScaledVector(new Vector3(0, 0, 1), -sprite.scale.y / 2);
+      const bottomPx = bottom.project(camera).y * viewport / 2;
+      const limbPx = (viewport / 2) * Math.tan(Math.asin(1 / radii)) / Math.tan(fov * Math.PI / 360);
+      expect(bottomPx - limbPx).toBeCloseTo(8, 6);
+    } finally { sprite.material.dispose(); }
+  });
+
+  it.each([1, 0.5])('hides the label when the camera is %s radii from the centre', radii => {
+    const { sprite, visible } = labelAt(radii);
+    try { expect(visible).toBe(false); } finally { sprite.material.dispose(); }
+  });
+});
