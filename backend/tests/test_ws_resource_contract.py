@@ -103,6 +103,23 @@ def test_rebound_seek_observes_cancellation_between_segments(start_years, target
     assert abs(simulation.t - target_years) > SEEK_EPSILON_YEARS
 
 
+@pytest.mark.parametrize("start_years,target_years", [(0.0, 30.0), (1.0, 0.0)])
+def test_rebound_seek_honours_cancellation_requested_before_it_starts(start_years, target_years) -> None:
+    engine = REBOUNDEngine()
+    simulation = _CopyableSimulation()
+    simulation.t = start_years
+    engine.sim = simulation
+    engine._stored_bodies = [{"id": "sun"}]
+    # SimulationRunner.stop() can land after the runner dequeued the seek but
+    # before it integrates; that request must not be discarded.
+    engine.cancel_pending_operation()
+
+    with pytest.raises(SeekCancelledError):
+        engine.set_julian_date(J2000_JD + (target_years * DAYS_PER_YEAR))
+
+    assert simulation.integrate_history == []
+
+
 def test_rebound_seek_subsegments_keep_sparse_checkpoint_copies() -> None:
     engine = REBOUNDEngine(checkpoint_limit=2)
     simulation = _CopyableSimulation()

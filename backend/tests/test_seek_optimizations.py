@@ -353,6 +353,21 @@ def test_tudat_long_seek_rolls_back_after_between_chunk_cancellation(monkeypatch
     _assert_live_tudat_arc_unchanged(engine, before)
 
 
+def test_tudat_seek_honours_cancellation_requested_before_it_starts(monkeypatch) -> None:
+    engine, trace = _tudat_solver_double(monkeypatch)
+    before = _capture_live_tudat_arc(engine)
+    call_count = len(trace.calls)
+    # SimulationRunner.stop() can land after the runner dequeued the seek but
+    # before it propagates; that request must not be discarded.
+    engine.cancel_pending_operation()
+
+    with pytest.raises(RuntimeError, match="cancelled"):
+        engine.set_julian_date(J2000_JD + 35.0)
+
+    assert len(trace.calls) == call_count
+    _assert_live_tudat_arc_unchanged(engine, before)
+
+
 @pytest.mark.parametrize(
     "invalid_jd",
     [SUPPORTED_JD_MIN_TDB - 1e-6, SUPPORTED_JD_MAX_TDB + 1e-6],
