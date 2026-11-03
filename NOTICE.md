@@ -60,10 +60,12 @@ that software license does not, by itself, settle every underlying astronomical
 catalog's terms. [Upstream license](https://github.com/ofrohn/d3-celestial/blob/master/LICENSE).
 Gaia acknowledgments depend on the particular release/product actually used.
 
-The current local/static release inventory is recorded in
-[`DISTRIBUTION_INVENTORY_2026-10-30.md`](agent-notes/DISTRIBUTION_INVENTORY_2026-10-30.md).
-The current [distribution policy](docs/distribution-policy.md) restricts the
-SILSO-enabled data workflow to noncommercial research/evaluation and removes
-the unresolved Deimos map. The build validates curated image provenance and
-packages notices. The historical inventory is not a legal clearance or a
-current byte inventory; new products require their own source and rights review.
+The [2026-10-30 distribution inventory](agent-notes/DISTRIBUTION_INVENTORY_2026-10-30.md)
+is a historical baseline. It is not a legal clearance, a current byte inventory
+or the release manifest. The build gate,
+[`scripts/prepare-distribution.mjs`](scripts/prepare-distribution.mjs), is the
+current authority for the curated moon maps: it fails the build for an unlisted,
+changed or unreviewed map and packages the notices. The current
+[distribution policy](docs/distribution-policy.md) restricts the SILSO-enabled
+data workflow to noncommercial research/evaluation and removes the unresolved
+Deimos map. New products require their own source and rights review.
