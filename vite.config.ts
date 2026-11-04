@@ -2,14 +2,15 @@ import { defineConfig } from 'vite';
 
 export default defineConfig({
   build: {
-    // three.js is a single ~533 kB minified module that cannot be split further.
-    // Every app chunk stays under Vite's 500 kB default; this limit only admits
-    // the vendor chunk, so app growth beyond it still warns.
+    // three.js is one ~533 kB minified module even after tree-shaking (the app
+    // uses 48 of its exports; the whole library is 715 kB) and cannot be split
+    // further. 550 kB admits that chunk; any chunk growing past it still warns.
     chunkSizeWarningLimit: 550,
     rollupOptions: {
       output: {
-        // Long-lived chunks change far less often than app code, so returning
-        // visitors keep them cached across deploys; they also download in parallel.
+        // Splitting does not change first-load bytes: every chunk below is
+        // module-preloaded. Long-lived chunks stay cached across deploys of app
+        // code and download in parallel.
         manualChunks(id) {
           if (id.includes('/node_modules/three/')) return 'three';
           if (id.endsWith('/src/data/moons.json')) return 'moon-catalog';
