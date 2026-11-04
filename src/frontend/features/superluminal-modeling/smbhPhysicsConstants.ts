@@ -23,18 +23,13 @@ import { SOURCE_COORDINATES, sourceEclipticDirection, intrinsicBetaForApparentSp
 import type { ChannelDefinition, SmbhSource } from './smbhTypes';
 
 export const C_CM_S = 2.99792458e10;  // exact (SI)
-export const C_KM_S = C_CM_S / 1e5;
 
 export const G_CGS = G_SI * 1e3;     // CODATA 2018, cm³/(g·s²), shared with the simulation
 // IAU 2015 nominal solar mass parameter (GM)☉ over G. Source masses stay the
 // quoted approximate values; only the conversion to grams is exact.
 export const M_SUN_G = 1.3271244e26 / G_CGS;
-export const M_PROTON_G = 1.673e-24;      // g
-export const K_B_CGS = 1.381e-16;      // erg/K
-export const SIGMA_T = 6.652e-25;      // Thomson cross-section, cm²
 export const E_CHARGE = 4.803e-10;      // elementary charge, esu
 export const EV_ERG = 1.602e-12;      // erg per eV
-export const HBAR_CGS = 1.055e-27;      // erg·s
 
 // ═══════════════════════════════════════════════════════════════════════════
 // UNIT CONVERSIONS
@@ -45,9 +40,6 @@ export const PC_CM = AU_CM * 648_000 / Math.PI;  // IAU 2015 B2
 export const KPC_CM = PC_CM * 1e3;
 export const MPC_CM = PC_CM * 1e6;
 export const YR_S = 3.15576e7;       // Julian year
-export const LY_CM = C_CM_S * YR_S;
-export const C_AU_YR = C_CM_S * YR_S / AU_CM;
-export const MYR_S = 3.15576e13;
 
 // ═══════════════════════════════════════════════════════════════════════════
 // SMBH SOURCE CATALOG

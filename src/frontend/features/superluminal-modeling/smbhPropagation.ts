@@ -15,7 +15,7 @@
  */
 
 import {
-    C_CM_S, G_CGS, YR_S, MYR_S, EV_ERG, E_CHARGE,
+    C_CM_S, G_CGS, YR_S, EV_ERG, E_CHARGE,
     ISM, HELIO, KPC_CM, AU_CM, PC_CM,
     CHANNEL_DEFS, SGR_A
 } from './smbhPhysicsConstants';
@@ -444,6 +444,9 @@ export function heliosphereEquilibriumTime(pressureFactor: number, inflowVelocit
 // GW MEMORY EFFECT
 // ═══════════════════════════════════════════════════════════════════════════
 
+/** Share of an event's energy radiated as gravitational waves (model assumption). */
+const GW_ENERGY_FRACTION = 0.01;
+
 /**
  * GW memory strain, the permanent displacement left after the burst passes:
  *   Δh_memory ≈ G E_GW / (c⁴ d)
@@ -615,7 +618,9 @@ export function computeMultiMessengerTimeline(source: SmbhSource, energyErg: num
     const boost = fluxBoost(jetBeta, thetaObsRad);
     const tCompress = timeCompressionFactor(jetBeta, thetaObsRad);
 
-    const gwEnergyErg = energyErg * 0.01;
+    // Model assumptions, not derived quantities: the GW share of the event energy,
+    // radiated near the source black hole's ringdown frequency.
+    const gwEnergyErg = energyErg * GW_ENERGY_FRACTION;
     const gwFrequencyHz = schwarzschildRingdownFrequencyHz(source.massG);
     const hRss = gwRootSumSquareStrain(gwEnergyErg, d, gwFrequencyHz);
     const hMemory = gwMemoryStrain(gwEnergyErg, d);
@@ -665,6 +670,8 @@ export function computeMultiMessengerTimeline(source: SmbhSource, energyErg: num
         },
 
         gertsenshtein: {
+            // The whole path is treated as Galactic ISM, as the blast and dispersion
+            // terms do; for extragalactic sources this overstates the ISM leg.
             ismConversionProb: gertsenshteinProbability(ISM.bFieldDiskG, d, ISM.bCoherencePc * PC_CM),
             nearSourceProb: gertsenshteinProbability(
                 source.bFieldHorizonG || 50,
