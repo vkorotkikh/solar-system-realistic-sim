@@ -1334,13 +1334,13 @@ For an exact Python package set, use the retained `python-freeze.txt` instead of
 
 ### October 7 — 10. Source documents and provenance
 
-- [September 24 audit](CODEBASE_AUDIT_2026-09-24.md) and its retained evidence: principal historical ID baseline; includes its own corrections and the `bd48a7d` addendum. Pre-existing untracked material.
+- [September 24 audit](HISTORICAL_SOURCE_ARCHIVE_2026-10-30/sources/agent-notes/CODEBASE_AUDIT_2026-09-24.md) and its retained evidence: principal historical ID baseline; includes its own corrections and the `bd48a7d` addendum. Pre-existing untracked material.
 - [September 7 audit](CODEBASE_AUDIT_2026-09-07.md) and [September 6 physics audit](CODEBASE_AUDIT_2026-09-06.md): historical hypotheses and physics leads, not current status authority.
 - [August 24 reconciliation](MAJOR_ISSUE_REPORT_2026-08-24.md) and [Report C / R01–R56 ledger](MAJOR_ISSUE_REPORT_C_SUNFOCUS_HUNT_2026-08-23.md): prior root-cause and branch history.
 - [September 25 consolidated status/plan](SUNFOCUS_REGRESSION_STATUS_AND_FIX_PLAN_2026-09-25.md): branch-aware preservation and release gates; not a scan of this exact HEAD.
 - [Trajectory amplification plan](TRAJECTORY_AMPLIFICATION_DEFENSE_IN_DEPTH_PLAN_2026-09-25.md): compare with the actual September 26 implementation and passing tests.
 - [R3/R4 PFSS work order](R3R4_PFSS_IMPLEMENTATION_PROMPT_2026-09-25.md): solver/input/delivery acceptance design.
-- [H1 solar delivery plan](H1_SOLAR_DELIVERY_PLAN_2026-09-25.md) and [digest](H1_SOLAR_DELIVERY_PLAN_2026-09-25_EVIDENCE/h1/digest.md): historical delivery/upstream mechanisms; pre-existing untracked material.
+- [H1 solar delivery plan](H1_SOLAR_DELIVERY_PLAN_2026-09-25.md) and [digest](HISTORICAL_SOURCE_ARCHIVE_2026-10-30/sources/agent-notes/H1_SOLAR_DELIVERY_PLAN_2026-09-25_EVIDENCE/h1/digest.md): historical delivery/upstream mechanisms; pre-existing untracked material.
 - [October 7 accessibility design](../docs/superpowers/specs/2026-10-07-frontend-accessibility-remediation-design.md): approved design only at audited HEAD.
 - [JPL approximate planetary elements](https://ssd.jpl.nasa.gov/planets/approx_pos.html): primary-source identity/time-scale check, accessed in this scan. JPL labels the matching Earth row as the Earth/Moon barycentre and specifies JDTDB for the formula. No new live Horizons truth vectors were downloaded.
 
