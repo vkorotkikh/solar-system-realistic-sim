@@ -495,6 +495,37 @@ export function propagateKeplerOrbit(
   return true;
 }
 
+const loopPosition = new Vector3();
+
+/**
+ * Write `segments` positions (xyz triples) for one revolution of `orbit` into `out`,
+ * spaced uniformly in eccentric anomaly from perihelion. Equal time steps crowd
+ * aphelion and leave the perihelion arc coarse. The samples span one turn of mean
+ * longitude at the propagator's own rates, after which the body is back in place;
+ * a rounded `periodDays` or the anomalistic period would leave a gap at the seam.
+ * Returns false, leaving `out` partly written, when any state is unavailable.
+ */
+export function sampleOrbitLoop(orbit: KeplerOrbit, segments: number, out: Float32Array): boolean {
+  const e = clampEccentricity(orbit.e ?? 0);
+  const epochMeanAnomaly = degToRad(orbit.meanAnomalyDeg ?? 0);
+  const rates = orbit.secularRates;
+  const apsisRateRadPerDay = degToRad(
+    (rates?.ascendingNodeDegPerCentury ?? 0) + (rates?.argPeriapsisDegPerCentury ?? 0)
+  ) / JULIAN_CENTURY_DAYS;
+  const revolutionDays =
+    TWO_PI / (resolveKeplerOrbitAtElapsedDays(orbit, 0).meanMotionRadPerDay + apsisRateRadPerDay);
+  for (let k = 0; k < segments; k++) {
+    const eccentricAnomaly = (k / segments) * TWO_PI;
+    const meanAnomaly = eccentricAnomaly - e * Math.sin(eccentricAnomaly);
+    const fraction = ((((meanAnomaly - epochMeanAnomaly) / TWO_PI) % 1) + 1) % 1;
+    if (!propagateKeplerOrbit(orbit, fraction * revolutionDays, loopPosition)) return false;
+    out[k * 3] = loopPosition.x;
+    out[k * 3 + 1] = loopPosition.y;
+    out[k * 3 + 2] = loopPosition.z;
+  }
+  return true;
+}
+
 const pluralBaryPosition = new Vector3();
 const pluralBaryVelocity = new Vector3();
 const pluralCompanionPosition = new Vector3();

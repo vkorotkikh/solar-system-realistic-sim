@@ -50,7 +50,7 @@ import {
   createSolarSystemCatalog,
   type MoonEphemerisMap
 } from './sim/catalog';
-import { propagateKeplerOrbit } from './sim/orbitMath';
+import { sampleOrbitLoop } from './sim/orbitMath';
 import { SolarSystemModel } from './sim/solarSystemModel';
 import { applyMetricDisplayOffsets } from './frontend/features/superluminal-modeling/metricDisplay';
 import { resolveAgnSelection, type AgnEventOptions } from './frontend/features/superluminal-modeling/agnShockwaveEngine';
@@ -471,18 +471,10 @@ function createBodyNode(body: CatalogBody) {
 
 function createOrbitLine(body: CatalogBody) {
   if (!body.orbit || body.type === 'star') return null;
-  const segments = body.type === 'moon' ? 64 : 128;
+  // 512 keeps the largest chord error of every planetary loop below 3e-3 AU.
+  const segments = body.type === 'moon' ? 256 : 512;
   const positions = new Float32Array(segments * 3);
-  const tmpVec = new Vector3();
-
-  for (let i = 0; i < segments; i++) {
-    const fraction = i / segments;
-    const elapsed = fraction * body.orbit.periodDays;
-    if (!propagateKeplerOrbit(body.orbit, elapsed, tmpVec)) return null;
-    positions[i * 3] = tmpVec.x;
-    positions[i * 3 + 1] = tmpVec.y;
-    positions[i * 3 + 2] = tmpVec.z;
-  }
+  if (!sampleOrbitLoop(body.orbit, segments, positions)) return null;
 
   const geo = ownDisposable(new BufferGeometry());
   geo.setAttribute('position', new Float32BufferAttribute(positions, 3));

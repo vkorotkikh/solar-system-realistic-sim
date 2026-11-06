@@ -1,8 +1,10 @@
 import { Vector3 } from 'three';
 import { describe, expect, it } from 'vitest';
+import { createSolarSystemCatalog } from './catalog';
 import {
   propagateKeplerOrbit,
   resolveKeplerOrbitAtElapsedDays,
+  sampleOrbitLoop,
   solveKeplerFast,
   type KeplerOrbit
 } from './orbitMath';
@@ -82,5 +84,45 @@ describe('solveKeplerFast', () => {
       }
     }
     expect(worst).toBeLessThan(1e-9);
+  });
+});
+
+describe('orbit loop sampling', () => {
+  it('spaces vertices uniformly in eccentric anomaly, starting at perihelion', () => {
+    // a = 2, e = 0.6 in the reference plane, periapsis on +x, epoch away from perihelion.
+    const orbit: KeplerOrbit = { epochJd: 2_451_545, aAu: 2, periodDays: 1_000, e: 0.6, meanAnomalyDeg: 75 };
+    const segments = 8;
+    const out = new Float32Array(segments * 3);
+
+    expect(sampleOrbitLoop(orbit, segments, out)).toBe(true);
+    for (let k = 0; k < segments; k++) {
+      const eccentricAnomaly = (k / segments) * 2 * Math.PI;
+      expect(out[k * 3]).toBeCloseTo(2 * (Math.cos(eccentricAnomaly) - 0.6), 5);
+      expect(out[k * 3 + 1]).toBeCloseTo(1.6 * Math.sin(eccentricAnomaly), 5);
+      expect(out[k * 3 + 2]).toBeCloseTo(0, 6);
+    }
+  });
+
+  it('closes every Sun-orbiting catalog loop without a jump at its seam', () => {
+    const segments = 512;
+    const out = new Float32Array(segments * 3);
+    for (const body of createSolarSystemCatalog({ moonsVisible: false }).bodies) {
+      if (!body.orbit || body.type === 'star' || body.type === 'moon') continue;
+      expect(sampleOrbitLoop(body.orbit, segments, out), body.id).toBe(true);
+      const chord = (k: number) => {
+        const i = ((k % segments) + segments) % segments;
+        const j = (i + 1) % segments;
+        return Math.hypot(out[j * 3] - out[i * 3], out[j * 3 + 1] - out[i * 3 + 1], out[j * 3 + 2] - out[i * 3 + 2]);
+      };
+      // Chords change smoothly around a closed loop. Spanning a rounded periodDays
+      // leaves Saturn 0.023 AU apart next to 0.12 AU chords (about 20%), and the
+      // anomalistic period leaves Neptune 0.28 AU apart (about 75%). Pluto's own
+      // apsidal precession over one revolution keeps 0.037 AU (8%) at its seam.
+      let worst = 0;
+      for (let k = 0; k < segments; k++) {
+        worst = Math.max(worst, Math.abs(chord(k) / ((chord(k - 1) + chord(k + 1)) / 2) - 1));
+      }
+      expect(worst, body.id).toBeLessThan(0.1);
+    }
   });
 });
