@@ -1,4 +1,5 @@
 """Explicit, reproducible Horizons captures for SCN-074/080; never used by tests online."""
+import argparse
 from datetime import datetime, timezone
 import csv
 import hashlib
@@ -6,7 +7,6 @@ import io
 import json
 from pathlib import Path
 import re
-import sys
 import urllib.parse
 import urllib.request
 
@@ -79,7 +79,14 @@ def capture_moon_elements():
 
 
 if __name__ == '__main__':
-    if '--moon-elements' in sys.argv:
+    parser = argparse.ArgumentParser(
+        description=__doc__,
+        epilog='Downloads from JPL Horizons and overwrites backend/tests/fixtures/'
+               '{fallback,secular}_horizons_remediation.json, or with --moon-elements '
+               'the Carme and Himalia element captures.')
+    parser.add_argument('--moon-elements', action='store_true',
+                        help='capture the Carme and Himalia element tables instead')
+    if parser.parse_args().moon_elements:
         capture_moon_elements()
         raise SystemExit
     for group, (commands, epochs) in GROUPS.items():

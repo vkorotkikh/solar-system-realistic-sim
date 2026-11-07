@@ -78,7 +78,7 @@
   ],
   "expanded_fits_sha256": "aeb39566e5c739717e65a7505a1eee203bfaca8165568a603fe7a74f38c2b9f8",
   "filename": "mrzqs260925t2304c2316_301.fits.gz",
-  "generator_sha256": "3324837b034a8ba6d67448bbed226c70c30ab3157b7dc92383ebbf7edb9f2447",
+  "generator_sha256": "9478dfc82cbc1323a0d7147b8fd94241aed5c80351542c2b9dacb0768390e095",
   "header": {
     "BLANK": -32768,
     "BSCALE": 0.25,
