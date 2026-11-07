@@ -54,7 +54,7 @@
     },
     {
       "path": "backend/sim/pfss_magnetogram.py",
-      "sha256": "aada87526b748d350028c659dacbc28a7aad0cc02f96eb93690e951fdc390aa8"
+      "sha256": "abde078f1e2ad02b0d8ce3ffe27ca27b63c4c2a44d6b2ee3a5c8ba98fa1c3f07"
     },
     {
       "path": "backend/sim/pfss_tracing.py",
@@ -66,7 +66,7 @@
     },
     {
       "path": "backend/tests/test_pfss_decomposition.py",
-      "sha256": "c6d5efc0970acef4d2a80a5c5798add21a574d1697afdcaf7b4b6d86948d5a04"
+      "sha256": "deb1be20faa674aa25a9fdc5aa199aa822e05fe41619d0689a379335b6c6864e"
     },
     {
       "path": "backend/tests/test_pfss_analytic_fields.py",
@@ -106,7 +106,7 @@
     },
     {
       "path": "backend/tests/solar_observational_acceptance.py",
-      "sha256": "91cbe2aabc54b8aa6036c1366aa991c468683745243b4b510112b3d8aa480f96"
+      "sha256": "df7f2a5e097a7373021096cf2285a6f92285c22ca57c4a745f1f3cc7322561bc"
     },
     {
       "path": "backend/tests/test_solar_observational_acceptance.py",
