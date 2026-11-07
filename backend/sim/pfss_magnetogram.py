@@ -215,6 +215,8 @@ def decompose_spherical_harmonics(
     weighted least squares (NumPy SVD, no normal equations). Each design's
     2-norm condition number must be finite and <= condition_limit. The m=0
     fit includes the monopole; flux-balance policy is outside this projection.
+    The solve does not use this: above degree ~40 on real maps it collapses
+    despite the gate (see project_spherical_harmonics and ADR 0007).
     """
     br_map = grid.validate_map(br_map)
     # Validate degree before dimensions/allocation; retain the existing SVD gate.
