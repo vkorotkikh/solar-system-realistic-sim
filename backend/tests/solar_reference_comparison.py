@@ -131,13 +131,16 @@ def _stats(values):
 
 
 def comparison(*, degree=15, fits_path=None, lines_path=None,
-               fits_sha256=FITS_SHA, lines_sha256=LINES_SHA):
+               fits_sha256=FITS_SHA, lines_sha256=LINES_SHA, boundary=None):
+    """Score NASA's coefficients, or ``boundary`` (same layout), against NASA's lines."""
     if degree not in (15, 30, 64, 90):
         raise ValueError("Comparison degree must be 15, 30, 64, or 90")
     header, coefficients, points, starts, counts, labels, epoch = load_reference(
         fits_path=fits_path, lines_path=lines_path,
         fits_sha256=fits_sha256, lines_sha256=lines_sha256,
     )
+    if boundary is not None:
+        coefficients = np.asarray(boundary, dtype=float)
     rss = float(header["RADSS"])
     # At most five deterministic segment samples per line, covering every line.
     indices = np.unique(np.concatenate([
