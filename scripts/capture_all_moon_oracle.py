@@ -3,6 +3,7 @@
 One serial request per target respects the Horizons service. Existing successful
 captures are resumable. This records oracle availability, not model accuracy.
 """
+import argparse
 from datetime import datetime, timezone
 import json
 from pathlib import Path
@@ -58,4 +59,8 @@ def main():
 
 
 if __name__ == '__main__':
+    argparse.ArgumentParser(
+        description=__doc__,
+        epilog=f'Downloads from JPL Horizons and updates {DESTINATION.relative_to(ROOT)} in place.',
+    ).parse_args()
     main()
