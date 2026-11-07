@@ -26,7 +26,7 @@
   },
   "generated_report": {
     "file": "report.json",
-    "sha256": "4372c088bfea15c8da421eb28ab737a2aa52131e0fcda230ef078d42d736a53d",
+    "sha256": "a0af9ae509c24f521553258518d762961c0f4ab5d2e659b23fe65b458d13f916",
     "generator": "backend/tests/solar_observational_acceptance.py",
     "acceptance_passed": true
   },
@@ -42,13 +42,14 @@
     "No independent provider speed output exists in this corpus; application speed is not an observational acceptance measure.",
     "No Schatten current-sheet stage, 1 AU propagation, arrival-time calibration, live-provider availability, or scene-frame rendering calibration is established.",
     "The public data_driven route remains fail-closed.",
-    "The retained 180x360 map is rejected by the unchanged degree-90 latitude-design condition limit; the highest admitted diagnostic degree is 64 and is reported separately from native provider degree-90 acceptance."
+    "The production projection (ADR 0007) reproduces NASA's method on this map; it does not recover unobserved polar information. The least-squares fit rejects this map at degree 90 under its condition limit and collapses above degree ~40."
   ],
   "real_map_application_diagnostic": {
     "file": "real_map_application_diagnostic.json",
-    "sha256": "731a2103f288e950efe4319af3481ac2f1ee1f1c422ead9a2689433f78e9723a",
-    "required_degree90_admitted": false,
+    "sha256": "231d00e41cade063866d6c20c3df38f8f7c6f7c1ebb2a32ca7c455ac91b8aafc",
+    "required_degree90_admitted": true,
     "admitted_degree_feature_budget_results": {
+      "90": true,
       "64": false,
       "30": false,
       "15": false
