@@ -956,7 +956,7 @@ PFSS_PREPROCESSING_POLICY_VERSION = "pfss-input-preprocessing-none-v1"
 PFSS_SOLVER_VERSION = "pfss-altschuler-newkirk-v1"
 PFSS_TRACER_VERSION = "rk4-three-state-v1"
 PFSS_SEEDING_POLICY_VERSION = "importance-abs-br-exact-area-v1"
-PFSS_DECOMPOSITION_VERSION = "weighted-schmidt-least-squares-v1"
+PFSS_DECOMPOSITION_VERSION = "wsa-area-overlap-midpoint-quadrature-v1"
 WSA_BOUNDARY_DISTANCE_VERSION = "adjacent-open-closed-edge-midpoints-v1"
 _SNAPSHOT_TIME_ATOL_DAYS = 5e-10
 _SNAPSHOT_ROTATION_ATOL = 5e-7
@@ -1949,8 +1949,8 @@ class PFSSCache:
         br_map = snapshot.field_gauss
         grid = snapshot.grid
 
-        # Decompose into spherical harmonics
-        g_lm, h_lm = decompose_spherical_harmonics(
+        # Project onto spherical harmonics
+        g_lm, h_lm = project_spherical_harmonics(
             br_map, lmax=config.lmax, grid=grid
         )
 
