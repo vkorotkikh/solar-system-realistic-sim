@@ -38,7 +38,10 @@ def origin():
                 try:
                     buffer = b''
                     while b'\r\n\r\n' not in buffer:
-                        buffer += conn.recv(4096)
+                        chunk = conn.recv(4096)
+                        if not chunk:
+                            raise ConnectionError('client left before finishing its request')
+                        buffer += chunk
                     conn.sendall(b'HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nOK')
                 except OSError:
                     pass
