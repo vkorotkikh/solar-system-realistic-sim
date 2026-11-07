@@ -103,12 +103,12 @@
     "wrong_frame_negative_control": true
   },
   "coefficient_frame_acceptance": {
-    "constant_monopole_normalized_rmse": 0.05189610458469901,
-    "correlation": 0.9999712887106362,
+    "constant_monopole_normalized_rmse": 0.050463871323173266,
+    "correlation": 0.9999999511699524,
     "degree": 15,
     "frame_adapter": "absolute_carrington_to_provider_native_minus_long0_v1",
-    "max_abs_gauss": 0.05582740312250167,
-    "normalized_rmse": 0.007983229718697919,
+    "max_abs_gauss": 0.011467126561180763,
+    "normalized_rmse": 0.0016304134781286149,
     "provider_correction": {
       "derived_post_mean_g": 2.3686516006266995e-16,
       "derived_pre_mean_g": 0.1971407661918085,
@@ -122,7 +122,7 @@
       "retained_observation_product": "zqs"
     },
     "samples": 270,
-    "wrong_frame_correlation": 0.02829590680816537
+    "wrong_frame_correlation": 0.02813515697752675
   },
   "corpus": "nso-gong-zqs-wsa-v6.2-20261012T1744",
   "expanded_observation_sha256": "e93f2c4daec232b5c98583d15a589130c3bc588201c25e980455db9aa8144efd",
@@ -152,7 +152,7 @@
     "No independent provider speed output exists in this corpus; application speed is not an observational acceptance measure.",
     "No Schatten current-sheet stage, 1 AU propagation, arrival-time calibration, live-provider availability, or scene-frame rendering calibration is established.",
     "The public data_driven route remains fail-closed.",
-    "The retained 180x360 map is rejected by the unchanged degree-90 latitude-design condition limit; the highest admitted diagnostic degree is 64 and is reported separately from native provider degree-90 acceptance."
+    "The production projection (ADR 0007) reproduces NASA's method on this map; it does not recover unobserved polar information. The least-squares fit rejects this map at degree 90 under its condition limit and collapses above degree ~40."
   ],
   "observation_sha256": "e405550e1f8844bf5556419e7137aa6eb9bce79e0292a628df2c1ece28872ee8",
   "observed_snapshot_sha256": "a559fca910175cae2fa4b26d27baacdd678172786be3c9210f9f7e74e4402d25",
