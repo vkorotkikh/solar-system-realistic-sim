@@ -61,6 +61,14 @@ class StreamingPFSS:
         l = self.orders
         self.denominators = l + 1 + l * self.rss**(-2*l - 1)
 
+        # Per-degree views, so the recurrence loop does not re-slice them per call.
+        self._steps = [
+            (l, self.a[l, :l-1, None], self.b[l, :l-1, None],
+             1 if l == 1 else math.sqrt((2*l - 1) / (2*l)), math.sqrt(2*l - 1),
+             self.g[l, :l+1, None], self.h[l, :l+1, None], self.orders[:l+1, None], self.denominators[l])
+            for l in range(1, degree + 1)
+        ]
+
     def evaluate(self, r, theta, phi):
         # Coordinate values, not their caller-selected storage dtype, determine
         # the floating-point recurrence and radial scratch buffers.
@@ -96,25 +104,31 @@ class StreamingPFSS:
         reflected = np.full_like(r, self.rss**-3)
         reflected_ratio = r / self.rss**2
         poles = st == 0
-        for l in range(1, self.degree + 1):
-            a, b = self.a[l, :l-1, None], self.b[l, :l-1, None]
-            p[:l-1] = a * mu * p1[:l-1] - b * p2[:l-1]
-            dp[:l-1] = a * (-st * p1[:l-1] + mu * d1[:l-1]) - b * d2[:l-1]
-            diagonal = 1 if l == 1 else math.sqrt((2*l - 1) / (2*l))
-            p[l] = diagonal * st * p1[l-1]
-            dp[l] = diagonal * (mu * p1[l-1] + st * d1[l-1])
-            subdiagonal = math.sqrt(2*l - 1)
-            p[l-1] = subdiagonal * mu * p1[l-1]
-            dp[l-1] = subdiagonal * (-st * p1[l-1] + mu * d1[l-1])
-            gh = self.g[l, :l+1, None] * cosine[:l+1] + self.h[l, :l+1, None] * sine[:l+1]
-            dgh = -self.g[l, :l+1, None] * sine[:l+1] + self.h[l, :l+1, None] * cosine[:l+1]
-            radial_factor = ((l + 1) * radial + l * reflected) / self.denominators[l]
-            tangent_factor = -(radial - reflected) / self.denominators[l]
-            br += radial_factor * np.sum(p[:l+1] * gh, axis=0)
-            bt += tangent_factor * np.sum(dp[:l+1] * gh, axis=0)
-            azimuthal = np.sum(self.orders[:l+1, None] * p[:l+1] * dgh, axis=0)
-            np.divide(azimuthal, st, out=azimuthal, where=~poles)
-            azimuthal[poles] = dp[1, poles] * mu[poles] * dgh[1, poles]
+        any_pole = poles.any()
+        for l, a, b, diagonal, subdiagonal, g, h, m, denominator in self._steps:
+            below = l - 1
+            p1_low, d1_low = p1[:below], d1[:below]
+            top_p, top_d = p1[below], d1[below]
+            p[:below] = a * mu * p1_low - b * p2[:below]
+            dp[:below] = a * (-st * p1_low + mu * d1_low) - b * d2[:below]
+            p[l] = diagonal * st * top_p
+            dp[l] = diagonal * (mu * top_p + st * top_d)
+            p[below] = subdiagonal * mu * top_p
+            dp[below] = subdiagonal * (-st * top_p + mu * top_d)
+            c, s = cosine[:l+1], sine[:l+1]
+            gh = g * c + h * s
+            dgh = -g * s + h * c
+            radial_factor = ((l + 1) * radial + l * reflected) / denominator
+            tangent_factor = -(radial - reflected) / denominator
+            modes = p[:l+1]
+            br += radial_factor * np.add.reduce(modes * gh, axis=0)
+            bt += tangent_factor * np.add.reduce(dp[:l+1] * gh, axis=0)
+            azimuthal = np.add.reduce(m * modes * dgh, axis=0)
+            if any_pole:
+                np.divide(azimuthal, st, out=azimuthal, where=~poles)
+                azimuthal[poles] = dp[1, poles] * mu[poles] * dgh[1, poles]
+            else:
+                azimuthal /= st
             bp += tangent_factor * azimuthal
             radial *= inverse
             reflected *= reflected_ratio
