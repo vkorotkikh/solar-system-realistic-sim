@@ -47,6 +47,8 @@ export interface ServerStateUpdateMessage {
   bodies: Record<string, ServerBodyState>;
   kuiper?: ServerKuiperSnapshot | number[][] | null;
   kuiper_subscription_id?: string;
+  /** Last seek id the server had processed when it produced this frame. */
+  seek_id?: number;
 }
 
 interface ConnectedMessage {
@@ -55,6 +57,8 @@ interface ConnectedMessage {
   protocol_version?: number;
   kuiper_subscription_version?: number;
   kuiper_activation_error_version?: number;
+  /** 1: seek commands may carry `seek_id`, echoed on state_update/orbital_elements. */
+  seek_id_version?: number;
   jd_time_scale?: 'TDB' | string;
   warnings?: string[];
 }
@@ -71,6 +75,8 @@ export interface ServerOrbitalElementsMessage {
   type: 'orbital_elements';
   body_id: string;
   elements: { a: number; e: number; inc: number; Omega: number; omega: number; M: number; f?: number; P?: number };
+  /** Last seek id the server had processed when it produced this reply. */
+  seek_id?: number;
 }
 
 type IncomingMessage = ServerStateUpdateMessage | ConnectedMessage | ErrorMessage | ServerOrbitalElementsMessage;
@@ -208,6 +214,10 @@ function decodeMessage(data: string): IncomingMessage {
   if (message.jd_time_scale !== undefined && message.jd_time_scale !== 'TDB') {
     throw new Error('Unsupported WebSocket epoch time scale: expected TDB');
   }
+  if (message.seek_id !== undefined && (message.type === 'state_update' || message.type === 'orbital_elements')
+    && !(typeof message.seek_id === 'number' && Number.isSafeInteger(message.seek_id) && message.seek_id >= 0)) {
+    throw new Error(`Invalid WebSocket ${message.type} seek_id`);
+  }
   return message as unknown as IncomingMessage;
 }
 
@@ -218,6 +228,11 @@ export class SimulationClient {
 
   private socketGeneration = 0;
   private epochOperationGeneration = 0;
+
+  // Id of the latest seek sent on this socket (0: none) and whether the server
+  // echoes ids. A frame echoing an older id was produced before that seek.
+  private seekId = 0;
+  private seekTaggingSupported = false;
 
   private connected: boolean;
 
@@ -370,6 +385,8 @@ export class SimulationClient {
         return;
       }
       if (msg.type === 'state_update') this.reconnectAttempt = 0;
+      // Not markFresh: a seek the server never acknowledges must go stale.
+      if (msg.type !== 'connected' && msg.seek_id !== undefined && msg.seek_id < this.seekId) return;
       const epochOperationGeneration = this.epochOperationGeneration;
       const firstReady = msg.type === 'connected' && !this.serverReady;
       // Commit transport readiness and incoming caches before any observers.
@@ -377,6 +394,7 @@ export class SimulationClient {
       if (msg.type === 'connected' && firstReady) {
         this.kuiperSubscriptionSupported = msg.kuiper_subscription_version === 1;
         this.kuiperActivationErrorsCorrelated = msg.kuiper_activation_error_version === 1;
+        this.seekTaggingSupported = msg.seek_id_version === 1;
         this.serverReady = true;
       }
       if (msg.type === 'orbital_elements') {
@@ -535,6 +553,8 @@ export class SimulationClient {
     this.serverReady = false;
     this.kuiperSubscriptionSupported = false;
     this.kuiperActivationErrorsCorrelated = false;
+    this.seekTaggingSupported = false;
+    this.seekId = 0;
     this.kuiperSubscriptionId = null;
     this.latestState = null;
     this.latestJulianDate = null;
@@ -617,7 +637,10 @@ export class SimulationClient {
   /** Explicit TDB seek; false means invalid input or no ready transport. No offline replay. */
   setJulianDate(jd: number): boolean {
     if (!Number.isFinite(jd) || !this.serverReady) return false;
-    if (!this.send({ type: 'set_julian_date', jd, jd_time_scale: 'TDB' })) return false;
+    const seekId = this.seekId + 1;
+    if (!this.send({ type: 'set_julian_date', jd, jd_time_scale: 'TDB',
+      ...(this.seekTaggingSupported && { seek_id: seekId }) })) return false;
+    if (this.seekTaggingSupported) this.seekId = seekId;
     this.epochOperationGeneration++;
     // Cached positions/elements belong to the previous epoch. A subsequent
     // server message supplies the confirmed epoch; send is not a seek ack.
