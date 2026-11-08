@@ -196,7 +196,8 @@ describe('describeSolarDataStatus', () => {
 describe('describeSolarDataStatus stale-state policy (H2.7)', () => {
   it.each([
     [0.9, null],
-    [1.4, '1.4'],
+    [1.4, '1'],
+    [9.6, '10'],
     [37.4, '37'],
     [137, '140'],
     [3_842, '3800'],

@@ -9,6 +9,7 @@ import { validatedSolarLayerFrames } from './frontend/features/solar/solarGeomet
 import type { SolarPhysicsStatePayload } from './frontend/features/solar/solarPhysicsClient';
 import type { SolarDataSourceStatus } from './frontend/features/solar/solarDataStatus';
 import { readCoronalHoles, readSunspotSeeds, updateSunCoronalLoopsFromBlendView } from './frontend/features/solar/sunVisuals';
+import { SolarFlareManager } from './frontend/features/solar/solarFlares';
 
 vi.mock('./frontend/features/solar/sunVisuals', async importOriginal => {
   const actual = await importOriginal<typeof import('./frontend/features/solar/sunVisuals')>();
@@ -72,10 +73,12 @@ function frozenToEcliptic() {
 }
 
 async function fixture(initial = payload()) {
-  let nowMs = Date.UTC(2026, 9, 14), realtime = 0, reduced = false;
+  let nowMs = Date.UTC(2026, 9, 14), realtime = 0, reduced = false, wallOffsetMs = 0;
   let response: ReturnType<typeof payload> | null = initial;
   const statuses: SolarDataSourceStatus[] = [];
-  vi.spyOn(Date, 'now').mockImplementation(() => nowMs);
+  // nowMs is monotonic test time; the wall clock can be stepped apart from it.
+  vi.spyOn(Date, 'now').mockImplementation(() => nowMs + wallOffsetMs);
+  vi.spyOn(performance, 'now').mockImplementation(() => nowMs);
   vi.stubGlobal('matchMedia', () => ({ matches: reduced }));
   vi.stubGlobal('document', { createElement: () => ({ width: 4, height: 4, getContext: () => null }) });
   vi.stubGlobal('fetch', vi.fn(async (url: unknown) => String(url).includes('/solar/physics') && response
@@ -99,19 +102,21 @@ async function fixture(initial = payload()) {
     whileInFlight?.();
     await vi.waitFor(() => expect(controller.getSolarDeliveryStatus().physics.lastSuccessMs).toBeGreaterThanOrEqual(requestedAt));
   }
-  /** One forced refresh that the backend answers with HTTP 503. */
-  async function fail() {
+  /** One forced refresh that the backend answers with HTTP 503, after `whileInFlight` has run. */
+  async function fail(whileInFlight?: () => void) {
     response = null;
     nowMs += 1;
     const failures = controller.getSolarDeliveryStatus().physics.consecutiveFailures;
     controller.maybeRefreshPhysics(nowMs, true);
+    whileInFlight?.();
     await vi.waitFor(() => expect(controller.getSolarDeliveryStatus().physics.consecutiveFailures).toBe(failures + 1));
   }
   await refresh();
   controller.update(state.julianDate, realtime);
-  return { controller, root, spin, state, material, refresh, fail,
+  return { controller, root, spin, state, material, refresh, fail, statuses,
     lastStatus: () => statuses[statuses.length - 1],
     setReduced(value: boolean) { reduced = value; },
+    stepWallClock(ms: number) { wallOffsetMs += ms; },
     tick(days = 0.1, elapsedSec = 0.1) {
       state.julianDate += days; realtime += elapsedSec; nowMs += elapsedSec * 1000;
       controller.update(state.julianDate, realtime);
@@ -188,6 +193,11 @@ describe('actual controller snapshot and decorative-clock ownership', () => {
 /** Advance the decorative clock by `count` frames of 0.1 s with the simulation running forward. */
 function frames(f: Awaited<ReturnType<typeof fixture>>, count: number) {
   for (let i = 0; i < count; i += 1) f.tick();
+}
+
+/** `/solar/physics` requests sent so far through the stubbed fetch. */
+function physicsFetches() {
+  return vi.mocked(globalThis.fetch).mock.calls.filter(([url]) => String(url).includes('/solar/physics')).length;
 }
 
 describe('snapshots blend over a fixed 1.5 s (H2.9)', () => {
@@ -309,12 +319,31 @@ describe('field lines are rebuilt only when the drawn field changes (H2.8)', () 
 });
 
 describe('a backend state is labelled with its lag, then cleared when too old (H2.7)', () => {
-  // At 1 d/s with the 30 s poll the lag limit is max(30, 2 x 1 d/s x 30 s) = 60 simulated days.
+  // At 1 d/s the lag limit is max(30, 1 d/s x (30 s poll + 24 s failed request + 30 s error backoff
+  // + 20 s replacement latency)) = 104 simulated days.
   const shownEpoch = (f: Awaited<ReturnType<typeof fixture>>) => f.controller.getSolarDeliveryStatus().geometry.snapshotEpochJdTdb;
+
+  it('republishes the moving lag label at most twice a second', async () => {
+    const f = await fixture();
+    f.state.timeScaleDaysPerSec = 4;
+    const published = () => f.statuses.length;
+    const before = published();
+    for (let i = 0; i < 60; i += 1) f.tick(4 / 60, 1 / 60); // one second at 60 fps: the lag grows 0 -> 4 d
+    expect(published() - before).toBeLessThanOrEqual(3);
+    expect(f.lastStatus().text).toMatch(/ · time-lapse: state lags [34] d · /);
+  });
+
+  it('keeps republishing the moving lag label after the wall clock steps backwards', async () => {
+    const f = await fixture();
+    f.state.timeScaleDaysPerSec = 4;
+    f.stepWallClock(-3_600_000); // an NTP or time-zone correction
+    for (let i = 0; i < 60; i += 1) f.tick(4 / 60, 1 / 60);
+    expect(f.lastStatus().text).toMatch(/ · time-lapse: state lags [34] d · /);
+  });
 
   it('keeps a backend state within the lag limit and labels its lag', async () => {
     const f = await fixture();
-    f.tick(10);
+    f.tick(10, 0.5); // the label republishes at most twice a second
     expect(shownEpoch(f)).toBe(2451552);
     expect(f.lastStatus().text).toContain(' · time-lapse: state lags 10 d · updated ');
   });
@@ -322,7 +351,7 @@ describe('a backend state is labelled with its lag, then cleared when too old (H
   it('clears a backend state beyond the lag limit, fading it out, and says which epoch it was for', async () => {
     const f = await fixture();
     frames(f, 15);
-    f.tick(60);
+    f.tick(110);
     expect(shownEpoch(f)).toBeNull();
     expect(f.lastStatus()).toMatchObject({ state: 'connecting', text: 'Sun: procedural fallback (last backend state was for 2000-01-08)' });
     expect(f.controller.magneticFieldGroup?.userData.solarGeometrySource).toBe('procedural');
@@ -331,6 +360,73 @@ describe('a backend state is labelled with its lag, then cleared when too old (H
     expect(f.blend().entries.every(entry => entry.toWeight === 0)).toBe(true);
     frames(f, 15);
     expect(f.blend().entries).toHaveLength(0);
+  });
+
+  it('cross-fades the procedural polar holes with the backend holes on a clear and a new arrival', async () => {
+    const f = await fixture();
+    frames(f, 15);
+    const corona = f.spin.children.map(child => (child as Mesh).material as ShaderMaterial)
+      .find(material => material?.uniforms?.coronalHoles)!;
+    const weight = () => corona.uniforms.proceduralHoleWeight?.value;
+    expect(weight()).toBe(0);
+    f.tick(200);
+    frames(f, 7);
+    // smoothstep(0.7 / 1.5) of the way in, while the backend holes are still shrinking.
+    expect(weight()).toBeCloseTo(0.450074, 5);
+    expect(readCoronalHoles(corona)!.count).toBeGreaterThan(0);
+    frames(f, 8);
+    expect(weight()).toBe(1);
+    expect(readCoronalHoles(corona)!.count).toBe(0);
+    await f.refresh(atEpoch(payload(), f.state.julianDate));
+    frames(f, 7);
+    expect(weight()).toBeCloseTo(1 - 0.450074, 5);
+  });
+
+  it('lets active flares finish when a state is cleared, but removes them when a snapshot withdraws its CME frame', async () => {
+    const dispose = vi.spyOn(SolarFlareManager.prototype, 'dispose');
+    const f = await fixture();
+    frames(f, 15);
+    f.tick(200);
+    expect(shownEpoch(f)).toBeNull();
+    expect(dispose).not.toHaveBeenCalled();
+    const withdrawn = atEpoch(payload(), f.state.julianDate);
+    await f.refresh(withdrawn);
+    expect(dispose).not.toHaveBeenCalled();
+    delete (withdrawn.geometry_frames as Partial<typeof withdrawn.geometry_frames>).cme;
+    await f.refresh(withdrawn);
+    expect(dispose).toHaveBeenCalledOnce();
+  });
+
+  it('removes a cleared state\'s flares at once when time is stopped, since they cannot finish', async () => {
+    const dispose = vi.spyOn(SolarFlareManager.prototype, 'dispose');
+    const f = await fixture();
+    frames(f, 15);
+    f.setReduced(true); // reduced motion freezes the decorative clock, like a pause or 0 d/s
+    f.tick(200);
+    expect(shownEpoch(f)).toBeNull();
+    expect(dispose).toHaveBeenCalledOnce();
+  });
+
+  it('removes flares still finishing from a cleared state when the next snapshot withdraws its CME frame', async () => {
+    const dispose = vi.spyOn(SolarFlareManager.prototype, 'dispose');
+    const f = await fixture();
+    frames(f, 15);
+    f.tick(200);
+    const withdrawn = atEpoch(payload(), f.state.julianDate);
+    delete (withdrawn.geometry_frames as Partial<typeof withdrawn.geometry_frames>).cme;
+    await f.refresh(withdrawn);
+    expect(dispose).toHaveBeenCalledOnce();
+  });
+
+  it('keeps drawing the fading loops and the cleared field activity through a scale change', async () => {
+    const f = await fixture();
+    frames(f, 15);
+    f.tick(200);
+    vi.mocked(updateSunCoronalLoopsFromBlendView).mockClear();
+    f.controller.onScaleChange();
+    expect(vi.mocked(updateSunCoronalLoopsFromBlendView).mock.lastCall![1]?.entries.length).toBeGreaterThan(0);
+    expect(f.controller.magneticFieldGroup?.userData.activity)
+      .toBeCloseTo(fallbackSolarActivityFromJulianDate(f.state.julianDate), 6);
   });
 
   it('eases activity from the cleared backend value to the cycle model', async () => {
@@ -351,13 +447,14 @@ describe('a backend state is labelled with its lag, then cleared when too old (H
   it('drops an arriving snapshot that is already too old for the clock', async () => {
     const f = await fixture();
     f.tick(5);
-    await f.refresh(atEpoch(payload(), f.state.julianDate), () => f.tick(70));
+    await f.refresh(atEpoch(payload(), f.state.julianDate), () => f.tick(120));
     expect(shownEpoch(f)).toBeNull();
     expect(f.lastStatus().text).toBe('Sun: procedural fallback (last backend state was for 2000-01-13)');
   });
 
   it('clears the backend state after five failed refreshes in a row', async () => {
     const f = await fixture();
+    f.tick(2); // the failure rules apply once the state lags the clock by more than a day
     for (let i = 0; i < 4; i += 1) await f.fail();
     f.tick(0.01);
     expect(shownEpoch(f)).toBe(2451552);
@@ -368,12 +465,125 @@ describe('a backend state is labelled with its lag, then cleared when too old (H
     expect(f.lastStatus().text).toMatch(/^Sun: procedural fallback \(last backend state was for 2000-01-08; refresh failing: /);
   });
 
-  it('clears the backend state after five minutes without a successful refresh', async () => {
+  it('clears the backend state once refreshes have been failing for five minutes', async () => {
     const f = await fixture();
-    f.tick(0.01, 299);
+    await f.fail();
+    f.tick(2, 299);
     expect(shownEpoch(f)).toBe(2451552);
     f.tick(0.01, 2);
+    await f.fail(); // still failing 301 s after the last success
+    f.tick(0.01);
     expect(shownEpoch(f)).toBeNull();
+  });
+
+  it('does not count hidden time after a single failed refresh as five minutes of failing', async () => {
+    const f = await fixture();
+    f.tick(2); // the failure rules apply once the state lags the clock by more than a day
+    await f.fail();
+    f.tick(0, 360); // the tab is hidden for six minutes: no frames, no polls
+    expect(shownEpoch(f)).toBe(2451552);
+  });
+
+  it('keeps a state that is right for the paused date while refreshes fail, and says they fail', async () => {
+    const f = await fixture();
+    f.state.paused = true;
+    for (let i = 0; i < 5; i += 1) await f.fail();
+    f.tick(0, 360);
+    expect(shownEpoch(f)).toBe(2451552);
+    expect(f.lastStatus()).toMatchObject({ state: 'stale' });
+    expect(f.lastStatus().text).toMatch(/^Sun: backend state from \d\d:\d\d UTC \(refresh failing: /);
+  });
+
+  it('keeps the backend state after five quiet minutes with nothing failed, as when a tab was hidden', async () => {
+    const f = await fixture();
+    f.tick(0, 360);
+    expect(shownEpoch(f)).toBe(2451552);
+  });
+
+  it('keeps the backend state when the clock is paused', async () => {
+    const f = await fixture();
+    f.state.timeScaleDaysPerSec = 4;
+    for (let i = 0; i < 100; i += 1) f.tick(0.4); // 10 s at 4 d/s: the state lags 40 d
+    f.state.paused = true;
+    f.tick(0, 0.016);
+    expect(shownEpoch(f)).toBe(2451552);
+  });
+
+  it('keeps the backend state when the speed slider stops the clock at 0 d/s', async () => {
+    const f = await fixture();
+    f.state.timeScaleDaysPerSec = 4;
+    for (let i = 0; i < 100; i += 1) f.tick(0.4); // 10 s at 4 d/s: the state lags 40 d
+    f.state.timeScaleDaysPerSec = 0;
+    f.tick(0, 0.016);
+    expect(shownEpoch(f)).toBe(2451552);
+  });
+
+  it('asks for the current epoch at once when a lower rate clears the state', async () => {
+    const f = await fixture();
+    f.state.timeScaleDaysPerSec = 120;
+    for (let i = 0; i < 100; i += 1) f.tick(12); // 10 s at 120 d/s: the state lags 1200 d
+    expect(shownEpoch(f)).toBe(2451552);
+    f.state.timeScaleDaysPerSec = 4;
+    f.tick(0.4);
+    expect(shownEpoch(f)).toBeNull();
+    const before = physicsFetches();
+    // The frame loop's ordinary refresh tick, 20 s before the next poll is due.
+    f.controller.maybeRefreshPhysics(Date.now());
+    await vi.waitFor(() => expect(physicsFetches()).toBe(before + 1));
+  });
+
+  it('waits out the error backoff before re-requesting a state that a lag clear dropped', async () => {
+    const f = await fixture();
+    f.state.timeScaleDaysPerSec = 120;
+    for (let i = 0; i < 100; i += 1) f.tick(12); // 10 s at 120 d/s: the state lags 1200 d
+    await f.fail(); // the client now backs off (Retry-After or its error backoff)
+    f.state.timeScaleDaysPerSec = 4;
+    f.tick(0.4); // the lower rate clears the state
+    expect(shownEpoch(f)).toBeNull();
+    const before = physicsFetches();
+    f.controller.maybeRefreshPhysics(Date.now());
+    await new Promise(resolve => setTimeout(resolve, 20));
+    expect(physicsFetches()).toBe(before);
+  });
+
+  it('keeps the backend state through one failed poll while the clock runs', async () => {
+    const f = await fixture();
+    f.state.timeScaleDaysPerSec = 4;
+    let shown = true, clears = 0;
+    const run = (seconds: number) => {
+      for (let i = 0; i < seconds * 10; i += 1) {
+        f.tick(0.4);
+        const now = shownEpoch(f) !== null;
+        if (shown && !now) clears += 1;
+        shown = now;
+      }
+    };
+    run(30);
+    await f.fail(); // the poll at 30 s fails at once
+    run(30); // the 30 s error backoff
+    await f.refresh(atEpoch(payload(), f.state.julianDate), () => run(2)); // answered 2 s later
+    run(1);
+    expect(clears).toBe(0);
+  });
+
+  it('keeps the backend state through one poll that fails 19 s after it was sent', async () => {
+    const f = await fixture();
+    f.state.timeScaleDaysPerSec = 4;
+    let shown = true, clears = 0;
+    const run = (seconds: number) => {
+      for (let i = 0; i < seconds * 10; i += 1) {
+        f.tick(0.4);
+        const now = shownEpoch(f) !== null;
+        if (shown && !now) clears += 1;
+        shown = now;
+      }
+    };
+    run(30);
+    await f.fail(() => run(19)); // the backend's compute deadline: HTTP 503 after 19 s
+    run(30); // the 30 s error backoff
+    await f.refresh(atEpoch(payload(), f.state.julianDate), () => run(5)); // answered 5 s later
+    run(1);
+    expect(clears).toBe(0);
   });
 
   it('keeps one source through a minute of polls at 120 d/s', async () => {
@@ -393,5 +603,69 @@ describe('a backend state is labelled with its lag, then cleared when too old (H
     }
     expect(clears).toBe(0);
     expect(f.lastStatus().text).toContain(' · time-lapse: state lags ');
+  });
+});
+
+describe('loops and eruptions turn with the Sun (H4.6 rotation)', () => {
+  /** The first loop point in the turning surface's own frame. */
+  function loopPointOnSurface(f: Awaited<ReturnType<typeof fixture>>) {
+    f.root.updateMatrixWorld(true);
+    const group = f.root.children.find(child => child.userData.bodyId === 'sun-coronal-loops')!;
+    const line = group.children[0] as Mesh;
+    const world = new Vector3().fromBufferAttribute(line.geometry.getAttribute('position'), 0).applyMatrix4(line.matrixWorld);
+    return f.spin.worldToLocal(world);
+  }
+
+  /** The backend's next snapshot of the same regions: their frozen coordinates carried rigidly by `degrees`. */
+  function turnedFeatures(state: ReturnType<typeof payload>, degrees: number) {
+    const c = Math.cos(degrees * Math.PI / 180), s = Math.sin(degrees * Math.PI / 180);
+    const turn = (v: number[]) => [v[0] * c - v[1] * s, v[0] * s + v[1] * c, v[2]];
+    for (const feature of state.corona.features) {
+      feature.arc = feature.arc.map(turn);
+      feature.base_dir = turn(feature.base_dir);
+      feature.paired_dir = turn(feature.paired_dir);
+      feature.tangent_dir = turn(feature.tangent_dir);
+      feature.binormal_dir = turn(feature.binormal_dir);
+    }
+    return state;
+  }
+
+  it('places the loops where the snapshot put them at its own epoch', async () => {
+    const f = await fixture();
+    f.setReduced(true); // draw the snapshot as it is, without the fade-in
+    f.tick(0, 0.1);
+    f.root.updateMatrixWorld(true);
+    const group = f.root.children.find(child => child.userData.bodyId === 'sun-coronal-loops')!;
+    const line = group.children[0] as Mesh;
+    // A loop's first vertex has no wobble, so it points along the feature's first arc point.
+    const drawn = new Vector3().fromBufferAttribute(line.geometry.getAttribute('position'), 0).applyMatrix4(line.matrixWorld);
+    const expected = new Vector3(...captured.corona.features[0].arc[0] as [number, number, number]).applyMatrix4(frozenToEcliptic());
+    expect(drawn.normalize().distanceTo(expected.normalize())).toBeLessThan(1e-6);
+  });
+
+  it('turns the loops and the eruption layer with the surface between snapshots', async () => {
+    const f = await fixture();
+    frames(f, 15);
+    const eruptions = f.root.children.find(child => child.userData.bodyId === 'sun-eruptions')!;
+    const eruptionPointOnSurface = () => {
+      f.root.updateMatrixWorld(true);
+      return f.spin.worldToLocal(new Vector3(0.01, 0, 0).applyMatrix4(eruptions.matrixWorld));
+    };
+    const [loopBefore, eruptionBefore] = [loopPointOnSurface(f), eruptionPointOnSurface()];
+    f.tick(1);
+    expect(loopPointOnSurface(f).distanceTo(loopBefore)).toBeLessThan(1e-12);
+    expect(eruptionPointOnSurface().distanceTo(eruptionBefore)).toBeLessThan(1e-12);
+  });
+
+  it('blends loops between snapshots of the same regions without sweeping them across the rotation', async () => {
+    const f = await fixture();
+    frames(f, 15);
+    const days = f.state.julianDate - 2451552;
+    await f.refresh(turnedFeatures(atEpoch(payload(), f.state.julianDate), 14.1844 * days));
+    const start = loopPointOnSurface(f);
+    frames(f, 7);
+    expect(f.blend().blendAlpha).toBeGreaterThan(0);
+    expect(f.blend().blendAlpha).toBeLessThan(1);
+    expect(loopPointOnSurface(f).distanceTo(start)).toBeLessThan(1e-12);
   });
 });

@@ -1,7 +1,9 @@
 import { Group } from 'three';
-import { applySolarGeometryFrame, solarSurfaceToEclipticMatrix, type SolarFrameContext } from './frontend/features/solar/solarFrame';
 import {
-  validatedSolarLayerFrames, solarFeaturesInSurfaceFrame, solarFlareParamsInSurfaceFrame,
+  applySolarGeometryFrame, solarFrameToEclipticMatrix, solarSurfaceToEclipticMatrix, type SolarFrameContext
+} from './frontend/features/solar/solarFrame';
+import {
+  validatedSolarLayerFrames, solarFeaturesInBodyFrame, solarFeaturesInSurfaceFrame, solarFlareParamsInSurfaceFrame,
   solarHolesInSurfaceFrame, type SolarLayerFrames, type SolarGeometryLayer
 } from './frontend/features/solar/solarGeometryContract';
 import type {
@@ -19,6 +21,8 @@ import type {
 } from 'three';
 import { J2000_JD } from './constants';
 import {
+  HEALTH_PROBE_TIMEOUT_MS,
+  SOLAR_PHYSICS_ERROR_BACKOFF_MS,
   SOLAR_PHYSICS_POLL_INTERVAL_MS,
   SolarPhysicsClient,
   type SolarPhysicsStatePayload
@@ -178,7 +182,8 @@ export function resolveMagneticFieldActivity(
  *   observationTextureLoader   – THREE.TextureLoader instance
  *   getSunRadiusAu             – () => number (current sun render radius)
  *   isMagneticFieldEnabled     – () => boolean
- *   onSolarDataStatus          – (status) => void, called after every refresh attempt and image load
+ *   onSolarDataStatus          – (status) => void, called after every refresh attempt and image load,
+ *                                and at most twice a second while the drawn state's lag label changes
  */
 export function createSunController({
   camera,
@@ -220,6 +225,10 @@ export function createSunController({
   /** Layer frames of a removed state whose loops and eruptions are still fading out. */
   let fadingSolarLayerFrames: SolarLayerFrames = {};
   let publishedLagLabelDays: number | null = null;
+  let lastStatusPublishMs = Number.NEGATIVE_INFINITY;
+  let lagLimitRateDaysPerSec = 0;
+  /** A state was dropped for lagging the clock: the next refresh tick asks for the current epoch. */
+  let currentSolarStateWanted = false;
   let solarPhysicsFeatureSetCurrent: SolarFeatureSet | null = null;
   let solarPhysicsFeatureSetTarget: SolarFeatureSet | null = null;
   let solarPhysicsBlendStartMs = 0;
@@ -242,6 +251,7 @@ export function createSunController({
   const activityEase = new SolarEase();
   const observationBlendEase = new SolarEase();
   const observationEmissionEase = new SolarEase();
+  const proceduralHoleEase = new SolarEase();
   // Spot seeds and holes drawn when the snapshot last changed, blended from for SOLAR_BLEND_MS.
   let spotSeedsBefore: ReturnType<typeof readSunspotSeeds> = null;
   let coronalHolesBefore: ReturnType<typeof readCoronalHoles> = null;
@@ -257,12 +267,19 @@ export function createSunController({
   const solarRealtimeClient = new SolarRealtimeClient({
     baseUrl: backendBaseUrl
   });
-  const solarPhysicsPollSec = solarPhysicsClient.status().pollIntervalMs / 1000;
+  // The longest a running clock waits for its next snapshot through one failed poll: a poll, the
+  // failed request itself (its timeout and up to two /health probes), the error backoff (at least a
+  // poll) and the replacement's own latency (up to a timeout). 104 s with the defaults.
+  const solarReplacementGapSec = (({ pollIntervalMs, timeoutMs }) => (
+    pollIntervalMs + timeoutMs + 2 * HEALTH_PROBE_TIMEOUT_MS
+      + Math.max(pollIntervalMs, SOLAR_PHYSICS_ERROR_BACKOFF_MS) + timeoutMs
+  ) / 1000)(solarPhysicsClient.status());
 
   function publishSolarDataStatus() {
     const clientStatus = solarPhysicsClient.status();
     const stateLagDays = solarStateLagDays();
     publishedLagLabelDays = solarStateLagLabelDays(stateLagDays);
+    lastStatusPublishMs = performance.now();
     const status = describeSolarDataStatus({
       lastSuccessMs: clientStatus.lastSuccessMs,
       lastFailure: clientStatus.lastFailure,
@@ -330,8 +347,10 @@ export function createSunController({
     physicsState: SolarPhysicsStatePayload | null,
     featureLimit = 220
   ) {
+    // Loops and eruptions are kept in the Sun's body frame, so they turn with it between snapshots
+    // and a blend never sweeps a region across the rotation between two snapshot epochs.
     return normalizeSolarFeatureSetFromStateImpl(
-      solarLayerFrames.loops || solarLayerFrames.cme ? physicsState : null,
+      solarFeaturesInBodyFrame(physicsState, solarLayerFrames.loops ?? solarLayerFrames.cme),
       simState.julianDate, featureLimit
     );
   }
@@ -343,6 +362,7 @@ export function createSunController({
   /** The snapshot behind the Sun changed: ease activity, spots and holes from what is drawn now. */
   function blendSnapshotFromShown() {
     activityEase.restart(decorativeTimeSec * 1000);
+    proceduralHoleEase.restart(decorativeTimeSec * 1000);
     spotSeedsBefore = readSunspotSeeds(sunSurfaceMaterial);
     coronalHolesBefore = readCoronalHoles(sunCoronaMaterial);
     surfaceBlendStartMs = decorativeTimeSec * 1000;
@@ -574,7 +594,7 @@ export function createSunController({
     sunEruptionLayer.userData.rotationPeriodHours = sunBody.rotationPeriodHours ?? null;
     sunEruptionLayer.userData.rotationOffsetRad = meshRotationOffsetRad;
     node.add(sunEruptionLayer);
-    applySolarGeometryFrame(sunEruptionLayer, { inputFrame: 'SOLAR_EQUATORIAL_J2000', jdTdb: simState.julianDate });
+    applySolarGeometryFrame(sunEruptionLayer, { inputFrame: 'IAU_SUN', jdTdb: simState.julianDate });
     setSunEruptionBaseRadiusImpl(sunEruptionLayer, sunRadiusAu);
 
     sunChromosphereLayer = createChromosphereLayer(sunRadiusAu, 8000);
@@ -606,7 +626,7 @@ export function createSunController({
     sunCoronalLoopGroup = new Group();
     sunCoronalLoopGroup.userData.bodyId = 'sun-coronal-loops';
     node.add(sunCoronalLoopGroup);
-    applySolarGeometryFrame(sunCoronalLoopGroup, { inputFrame: 'SOLAR_EQUATORIAL_J2000', jdTdb: simState.julianDate });
+    applySolarGeometryFrame(sunCoronalLoopGroup, { inputFrame: 'IAU_SUN', jdTdb: simState.julianDate });
     const initialBlend = buildSolarFeatureBlendView(220);
     updateSunCoronalLoopsFromBlendViewImpl(sunCoronalLoopGroup, solarLayerFrames.loops ? initialBlend : null, sunRadiusAu, 144);
 
@@ -679,8 +699,18 @@ export function createSunController({
     lastJulianDate = julianDate;
     decorativeTimeSec += dtSec;
     const timeSec = decorativeTimeSec;
-    if (solarPhysicsState && solarStateExpired(Date.now())) clearSolarPhysicsState();
-    if (solarStateLagLabelDays(solarStateLagDays()) !== publishedLagLabelDays) publishSolarDataStatus();
+    if (solarPhysicsState && solarStateTooOld()) {
+      clearSolarPhysicsState();
+      currentSolarStateWanted = true;
+    } else if (solarPhysicsState && (solarStateLagDays() ?? 0) > 1 && solarStateUnrefreshed()) {
+      // Within a day of the clock the state is still right for the displayed date: while
+      // refreshes fail it stays, and the 'stale' chip says they are failing.
+      clearSolarPhysicsState();
+    }
+    // The lag label is the one part of the chip that moves with the clock: republish it at most twice a second.
+    if (solarStateLagLabelDays(solarStateLagDays()) !== publishedLagLabelDays && performance.now() - lastStatusPublishMs >= 500) {
+      publishSolarDataStatus();
+    }
     const fallbackActivity = fallbackSolarActivityFromJulianDate(julianDate);
     const solarBlendView = buildSolarFeatureBlendView(480);
     // Snapshot and image changes ease in on the same decorative clock as the feature blend.
@@ -730,6 +760,7 @@ export function createSunController({
     const spotState = solarFeaturesInSurfaceFrame(geometryStateFor('spots'), solarLayerFrames.spots);
     const cmeState = solarFeaturesInSurfaceFrame(geometryStateFor('cme'), solarLayerFrames.cme);
 
+    const coronalHoleData = solarHolesInSurfaceFrame(geometryStateFor('coronal_holes'), solarLayerFrames.coronal_holes);
     updateSunMaterialUniforms({
       sunSurfaceMaterial,
       sunCoronaMaterial,
@@ -740,13 +771,19 @@ export function createSunController({
       coronaHue: observationControls.coronaHue ?? undefined,
       sunDisplayRadius: sunRadiusAu,
       activeChannel: activeObservationChannel ?? undefined,
-      coronalHoleData: solarHolesInSurfaceFrame(geometryStateFor('coronal_holes'), solarLayerFrames.coronal_holes)
+      coronalHoleData
     });
     updateSunspotUniforms(sunSurfaceMaterial, effectiveActivity, timeSec, spotState ?? undefined);
     const surfaceBlend = skipBlend ? 1 : solarBlendProgress(surfaceBlendStartMs, blendNowMs, SOLAR_BLEND_MS);
     blendSunspotUniforms(sunSurfaceMaterial, spotSeedsBefore, surfaceBlend);
     blendCoronalHoleUniforms(sunCoronaMaterial, coronalHolesBefore, surfaceBlend);
     if (surfaceBlend >= 1) spotSeedsBefore = coronalHolesBefore = null;
+    // The procedural polar holes fade out under backend holes and back in after a clear.
+    if (sunCoronaMaterial?.uniforms.proceduralHoleWeight) {
+      sunCoronaMaterial.uniforms.proceduralHoleWeight.value = proceduralHoleEase.step(
+        coronalHoleData?.holes?.length ? 0 : 1, blendNowMs, SOLAR_BLEND_MS, skipBlend
+      );
+    }
 
     if (solarFlareManager) {
       solarFlareManager.update(Math.min(0.1, dtSec), effectiveActivity, sunRadiusAu, cmeState, timeSec);
@@ -763,6 +800,13 @@ export function createSunController({
       }
     }
 
+    // Loops and eruption particles are drawn in the body frame: turn them with the Sun. One
+    // orientation serves both; their frame bookkeeping was set once in initSunVisuals.
+    if (sunCoronalLoopGroup || sunEruptionLayer) {
+      const bodyToEcliptic = solarFrameToEclipticMatrix('IAU_SUN', julianDate);
+      sunCoronalLoopGroup?.quaternion.setFromRotationMatrix(bodyToEcliptic);
+      sunEruptionLayer?.quaternion.setFromRotationMatrix(bodyToEcliptic);
+    }
     updateSunCoronalLoopsFromBlendViewImpl(sunCoronalLoopGroup, geometryBlendView, sunRadiusAu, 144, timeSec, activeObservationChannel);
     updateSunParkerSpiralFromPhysicsStateImpl(sunParkerSpiralGroup, geometryStateFor('parker'), sunRadiusAu, 6, 120, timeSec, camera);
     updateSolarWindLayer(sunSolarWindLayer, geometryStateFor('parker'), sunRadiusAu, timeSec, camera);
@@ -825,11 +869,13 @@ export function createSunController({
   }
 
   function applySolarPhysicsState(next: SolarPhysicsStatePayload) {
+    // A cleared state's CME frame still counts: its flares may still be finishing.
+    const previousCmeFrame = solarLayerFrames.cme ?? fadingSolarLayerFrames.cme;
     solarPhysicsState = next;
     clearedSolarEpochJdTdb = null;
+    currentSolarStateWanted = false;
     fadingSolarLayerFrames = {};
     blendSnapshotFromShown();
-    const previousCmeFrame = solarLayerFrames.cme;
     solarLayerFrames = validatedSolarLayerFrames(solarPhysicsState);
     if (previousCmeFrame && !solarLayerFrames.cme) solarFlareManager?.dispose();
     const normalized = normalizeSolarFeatureSetFromState(solarPhysicsState, 480);
@@ -844,25 +890,34 @@ export function createSunController({
   }
 
   /**
-   * Simulated days a backend state may lag the clock before it is cleared (H2.7): two polls'
-   * worth at the current rate, so a running clock never loses the state between polls, and
-   * at least 30 days.
+   * Simulated days a backend state may lag the clock before it is cleared (H2.7): the replacement
+   * gap at the running rate, so a running clock never loses the state between polls or through one
+   * failed poll, and at least 30 days. Pausing or stopping the clock at 0 d/s freezes the lag, so
+   * the last running rate still applies.
    */
   function solarStateLagLimitDays() {
-    const rate = simState.paused === true ? 0 : Math.abs(Number(simState.timeScaleDaysPerSec) || 0);
-    return Math.max(30, 2 * rate * solarPhysicsPollSec);
+    const rate = Math.abs(Number(simState.timeScaleDaysPerSec) || 0);
+    if (rate > 0) lagLimitRateDaysPerSec = rate;
+    return Math.max(30, lagLimitRateDaysPerSec * solarReplacementGapSec);
   }
 
   function solarStateLagDays(state = solarPhysicsState) {
     return state ? Math.abs(simState.julianDate - state.epoch_jd_tdb) : null;
   }
 
-  /** Too old for the clock, or no longer refreshed: five failures in a row or five minutes without success. */
-  function solarStateExpired(nowMs: number) {
-    const status = solarPhysicsClient.status();
-    return (solarStateLagDays() ?? 0) > solarStateLagLimitDays()
-      || status.consecutiveFailures >= 5
-      || nowMs - status.lastSuccessMs > 300_000;
+  function solarStateTooOld(state = solarPhysicsState) {
+    return (solarStateLagDays(state) ?? 0) > solarStateLagLimitDays();
+  }
+
+  /**
+   * No longer refreshed: five failures in a row, or attempts failing for five minutes (the latest
+   * failure more than five minutes after the last success). Time with no attempts (a hidden tab
+   * runs no frames, so no polls) does not count.
+   */
+  function solarStateUnrefreshed() {
+    // Read the counters directly: status() builds a fresh object and this runs every frame.
+    const { consecutiveFailures, lastFailure, lastSuccessMs } = solarPhysicsClient;
+    return consecutiveFailures >= 5 || (lastFailure !== null && lastFailure.atMs - lastSuccessMs > 300_000);
   }
 
   /** Fade the backend state out and draw the procedural Sun until a usable snapshot arrives (H2.7). */
@@ -871,8 +926,10 @@ export function createSunController({
     clearedSolarEpochJdTdb = solarPhysicsState.epoch_jd_tdb;
     blendSnapshotFromShown();
     if (solarPhysicsFeatureSetCurrent) blendFeatureSetsTo(emptySolarFeatureSet());
+    // Active flares came from an admitted snapshot and live a few seconds: let them finish. They
+    // only age while decorative time runs, so with it stopped they would hang: remove them now.
+    if (solarLayerFrames.cme && decorativeMotionSuppressed()) solarFlareManager?.dispose();
     fadingSolarLayerFrames = solarLayerFrames;
-    if (solarLayerFrames.cme) solarFlareManager?.dispose();
     solarPhysicsState = null;
     solarLayerFrames = {};
     rebuildMagneticFieldLines(false, fallbackSolarActivityFromJulianDate(simState.julianDate));
@@ -896,24 +953,30 @@ export function createSunController({
     const rangeReadiness = solarPhysicsClient.epochRangeReadiness(requestJd);
     if (solarDeliveryDisposed || entryGeneration !== solarPhysicsRefreshGeneration) return;
     if (!force && rangeReadiness?.blocked && !rangeReadiness.bypassCadence) return;
-    if (!force && !rangeReadiness?.bypassCadence && nowMs < solarPhysicsNextRefreshMs) return;
+    // A state dropped for lagging the clock asks for the current epoch now, not at the next poll,
+    // unless the client is backing off a failure (its error backoff or the server's Retry-After).
+    const forcePhysics = force
+      || (currentSolarStateWanted && !rangeReadiness?.blocked && solarPhysicsClient.lastFailure === null);
+    if (!forcePhysics && !rangeReadiness?.bypassCadence && nowMs < solarPhysicsNextRefreshMs) return;
+    currentSolarStateWanted = false;
 
     solarPhysicsRefreshInFlight = true;
     const generation = ++solarPhysicsRefreshGeneration;
     const ownsRefresh = () => !solarDeliveryDisposed && generation === solarPhysicsRefreshGeneration;
 
-    void solarPhysicsClient.maybeRefresh(requestJd, force, rangeReadiness)
+    void solarPhysicsClient.maybeRefresh(requestJd, forcePhysics, rangeReadiness)
       .then((updated) => {
         if (!ownsRefresh()) return;
         const status = solarPhysicsClient.status();
         if (updated) {
           const arriving = solarPhysicsClient.latestState();
           // A snapshot already too old for the clock when it arrives is not drawn (H2.7).
-          if (arriving && (solarStateLagDays(arriving) ?? 0) <= solarStateLagLimitDays()) {
+          if (arriving && !solarStateTooOld(arriving)) {
             applySolarPhysicsState(arriving);
           } else {
             clearSolarPhysicsState();
             clearedSolarEpochJdTdb = arriving?.epoch_jd_tdb ?? clearedSolarEpochJdTdb;
+            currentSolarStateWanted = true;
           }
         }
         const clientNextRefreshMs = Number(status['nextRefreshMs']);
@@ -963,9 +1026,11 @@ export function createSunController({
       const trScale = sunTransitionRegionMesh.userData.surfaceScale ?? 1.006;
       sunTransitionRegionMesh.scale.setScalar(r * trScale);
     }
-    rebuildMagneticFieldLines(true);
+    // A scale change redraws the same field and loops: keep the field's activity (the cycle
+    // model's after a clear) and the loops a cleared state is still fading out.
+    rebuildMagneticFieldLines(true, sunMagneticFieldGroup?.userData.activity);
     const bv = buildSolarFeatureBlendView(220);
-    updateSunCoronalLoopsFromBlendViewImpl(sunCoronalLoopGroup, solarLayerFrames.loops ? bv : null, r, 144);
+    updateSunCoronalLoopsFromBlendViewImpl(sunCoronalLoopGroup, (solarLayerFrames.loops ?? fadingSolarLayerFrames.loops) ? bv : null, r, 144);
     updateSunParkerSpiralFromPhysicsStateImpl(
       sunParkerSpiralGroup, geometryStateFor('parker'), r, 6, 120, 0, camera
     );

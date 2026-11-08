@@ -1,5 +1,5 @@
 import type { SolarPhysicsStatePayload } from './solarPhysicsClient';
-import { solarVectorToSurfaceLocal, type SolarFrameContext } from './solarFrame';
+import { solarVectorToBody, solarVectorToSurfaceLocal, type SolarFrameContext } from './solarFrame';
 
 export const SOLAR_GEOMETRY_LAYERS = ['pfss', 'loops', 'spots', 'parker', 'cme', 'coronal_holes'] as const;
 export type SolarGeometryLayer = typeof SOLAR_GEOMETRY_LAYERS[number];
@@ -69,13 +69,28 @@ export function validatedSolarLayerFrames(state: SolarPhysicsStatePayload | null
   return accepted;
 }
 
-/** Copy coordinate fields; never mutate the accepted backend snapshot. */
+/** Feature coordinates in the rotating surface's local frame (+Y north), for the spin group. */
 export function solarFeaturesInSurfaceFrame(
   state: SolarPhysicsStatePayload | null, context: SolarFrameContext | undefined
 ): SolarPhysicsStatePayload | null {
+  return solarFeaturesConverted(state, context, solarVectorToSurfaceLocal);
+}
+
+/** Feature coordinates in the Sun's z-up body frame, for groups oriented as IAU_SUN at the display epoch. */
+export function solarFeaturesInBodyFrame(
+  state: SolarPhysicsStatePayload | null, context: SolarFrameContext | undefined
+): SolarPhysicsStatePayload | null {
+  return solarFeaturesConverted(state, context, solarVectorToBody);
+}
+
+/** Copy coordinate fields; never mutate the accepted backend snapshot. */
+function solarFeaturesConverted(
+  state: SolarPhysicsStatePayload | null, context: SolarFrameContext | undefined,
+  toFrame: typeof solarVectorToBody
+): SolarPhysicsStatePayload | null {
   if (!state || !context) return null;
   const convert = (value: unknown) => vector(value)
-    ? solarVectorToSurfaceLocal(value, context.inputFrame, context.jdTdb).toArray() : value;
+    ? toFrame(value, context.inputFrame, context.jdTdb).toArray() : value;
   return {
     ...state,
     corona: { ...state.corona, features: state.corona?.features?.map(feature => ({
