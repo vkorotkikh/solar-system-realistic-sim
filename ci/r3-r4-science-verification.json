@@ -54,7 +54,7 @@
     },
     {
       "path": "backend/sim/pfss_magnetogram.py",
-      "sha256": "99510ecb349280a401bda4890114d080b28ce8d84692205627c1368cce22be7c"
+      "sha256": "dffd0d656608115ad7ed69c9545e1ed2d25e49bf585d2a84339cd0778b93c7f9"
     },
     {
       "path": "backend/sim/pfss_tracing.py",
@@ -66,7 +66,11 @@
     },
     {
       "path": "backend/tests/test_pfss_decomposition.py",
-      "sha256": "9f6a8bdfdcee7a38355583da0804bf4032f003fc8523370e8b646739b5337eb0"
+      "sha256": "de93c428745cba332411f76a2e557eadd0f35921c5085cc8a1b6f4464a42d383"
+    },
+    {
+      "path": "backend/tests/test_pfss_projection.py",
+      "sha256": "d6446a0efda86497616082302728edd693bb3bf1ddca16b016dfa30027f7ffed"
     },
     {
       "path": "backend/tests/test_pfss_analytic_fields.py",
@@ -106,7 +110,7 @@
     },
     {
       "path": "backend/tests/solar_observational_acceptance.py",
-      "sha256": "91cbe2aabc54b8aa6036c1366aa991c468683745243b4b510112b3d8aa480f96"
+      "sha256": "df7f2a5e097a7373021096cf2285a6f92285c22ca57c4a745f1f3cc7322561bc"
     },
     {
       "path": "backend/tests/test_solar_observational_acceptance.py",
@@ -115,6 +119,14 @@
     {
       "path": "backend/tests/fixtures/solar/observational_20261012/nso_gong_zqs_202610121744.fits.gz",
       "sha256": "e405550e1f8844bf5556419e7137aa6eb9bce79e0292a628df2c1ece28872ee8"
+    },
+    {
+      "path": "backend/tests/solar_reference_comparison.py",
+      "sha256": "a8882767c969344a2a3adbd94ed07e31e21ee300d6e2debfd7f00c139e67d910"
+    },
+    {
+      "path": "agent-notes/solar-reference-2026-10-14/nasa_wsa_gongz_202610121744.fits",
+      "sha256": "5b8f1da9e8bcf057b1c86ecd80207166e3362e1ecb92db7a54499ec7bf192035"
     },
     {
       "path": "scripts/ci/tests/test_verify_r3_r4_runner.py",
@@ -133,6 +145,9 @@
     "required_nodes": [
       "backend/tests/test_pfss_harmonics.py::test_all_modes_against_immutable_oracle",
       "backend/tests/test_pfss_decomposition.py::test_non_band_limited_fit_minimizes_correct_area_weighted_residual[equal_area_sine_latitude_grid]",
+      "backend/tests/test_pfss_projection.py::test_unit_dipole_keeps_its_amplitude[equal_area_sine_latitude_grid-180]",
+      "backend/tests/test_pfss_projection.py::test_each_mode_lands_on_its_own_coefficient_with_cell_averaging_attenuation[north_to_south-3-2]",
+      "backend/tests/test_pfss_projection.py::test_matches_nasa_coefficients_from_the_same_map[90]",
       "backend/tests/test_pfss_harmonics.py::test_schmidt_normalization_is_applied_once_in_projection[cosine]",
       "backend/tests/test_pfss_analytic_fields.py::test_source_surface_has_zero_tangential_field_and_nonzero_radial_flux[4-2-True]",
       "backend/tests/test_pfss_tracing.py::test_open_endpoint_does_not_overshoot",
@@ -180,6 +195,30 @@
       "node": "backend/tests/test_pfss_harmonics.py::test_schmidt_normalization_is_applied_once_in_projection[cosine]",
       "expected_assertion_regex": "R4-M-NORMALIZATION",
       "fixed_commit": "df8adc6ec24323866eb31713c7977599d59d32f2",
+      "oracle_class": "analytic-isolated-real-harmonic"
+    },
+    {
+      "id": "wsa-projection-uniform-cell-weights",
+      "patch": "scripts/ci/mutations/wsa-projection-uniform-cell-weights.patch",
+      "patch_sha256": "1d0e819e4bff3fd0e67805d4a3b26fe06d56794972057eb3e5d3390f67082140",
+      "production_files": [
+        "backend/sim/pfss_magnetogram.py"
+      ],
+      "node": "backend/tests/test_pfss_projection.py::test_unit_dipole_keeps_its_amplitude[equal_area_sine_latitude_grid-180]",
+      "expected_assertion_regex": "R4-WSA-PROJECTION-AREA-WEIGHTS",
+      "fixed_commit": "f1da1235a7a4a6fc396fd535ea59f409e3f9fd0c",
+      "oracle_class": "analytic-area-integral"
+    },
+    {
+      "id": "wsa-projection-extra-m-normalization",
+      "patch": "scripts/ci/mutations/wsa-projection-extra-m-normalization.patch",
+      "patch_sha256": "1c42473d6e75e4cfde529bd8d7e80090840bc1403febad58fa1aa68fa8490965",
+      "production_files": [
+        "backend/sim/pfss_magnetogram.py"
+      ],
+      "node": "backend/tests/test_pfss_projection.py::test_each_mode_lands_on_its_own_coefficient_with_cell_averaging_attenuation[north_to_south-3-2]",
+      "expected_assertion_regex": "R4-WSA-PROJECTION-M-NORMALIZATION",
+      "fixed_commit": "f1da1235a7a4a6fc396fd535ea59f409e3f9fd0c",
       "oracle_class": "analytic-isolated-real-harmonic"
     },
     {

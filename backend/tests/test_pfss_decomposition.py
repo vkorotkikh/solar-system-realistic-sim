@@ -198,7 +198,7 @@ def test_validated_provider_snapshot_crosses_pfss_boundary_without_reorientation
         captured["grid"] = grid
         return np.zeros((lmax + 1, lmax + 1)), np.zeros((lmax + 1, lmax + 1))
 
-    monkeypatch.setattr(pfss, "decompose_spherical_harmonics", decompose)
+    monkeypatch.setattr(pfss, "project_spherical_harmonics", decompose)
     monkeypatch.setattr(pfss, "trace_field_lines", lambda *a, **k: [])
     monkeypatch.setattr(
         pfss,
@@ -234,6 +234,7 @@ def test_validated_provider_snapshot_crosses_pfss_boundary_without_reorientation
     )
     assert result["solution_config"]["lmax"] == 1
     assert result["solution_config"]["line_count"] == 8
+    assert result["solution_config"]["decomposition_version"] == "wsa-area-overlap-midpoint-quadrature-v1"
     assert result["magnetogram_provenance"]["request_jd_tdb"] == (
         snapshot.provenance.request_jd_tdb
     )
