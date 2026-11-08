@@ -71,6 +71,18 @@ def test_http_full_update_reuse_and_reconnect_preserve_latest_state(endpoint, mo
     assert reconnect['forcing_status']['runtime_eligible'] is False
 
 
+def test_render_v1_marks_its_format_and_cors_exposes_the_marker(endpoint):
+    query = dict(jd_tdb=2460000.5, fidelity='high', max_features=180,
+                 forcing='hybrid', delivery='render-v1')
+    origin = {'Origin': 'http://localhost:3000'}
+    render = endpoint.get('/solar/physics', params=query, headers=origin)
+    assert render.headers['x-solar-delivery'] == 'render-v1'
+    assert 'X-Solar-Delivery' in render.headers['access-control-expose-headers'].split(', ')
+    # A complete legacy response must stay unmarked: its size is bounded by 2 MiB.
+    legacy = endpoint.get('/solar/physics', params={k: v for k, v in query.items() if k != 'delivery'})
+    assert 'x-solar-delivery' not in legacy.headers
+
+
 @pytest.mark.parametrize('header, accepted', [
     ('', False), ('deflate', False), ('identity', False),
     ('gzip', True), ('GZIP', True), ('gzip, deflate, br', True), ('br;q=1.0, gzip;q=0.8', True),

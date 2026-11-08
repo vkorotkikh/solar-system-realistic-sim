@@ -498,7 +498,7 @@ def test_solar_realtime_rate_limits_before_second_provider_call(monkeypatch, ori
     if origin == "http://localhost:3000":
         assert rejected.headers["access-control-allow-origin"] == origin
         assert rejected.headers["access-control-allow-credentials"] == "true"
-        assert rejected.headers["access-control-expose-headers"] == "Retry-After"
+        assert rejected.headers["access-control-expose-headers"] == "Retry-After, X-Solar-Delivery"
     else:
         assert "access-control-allow-origin" not in rejected.headers
         if origin is None:

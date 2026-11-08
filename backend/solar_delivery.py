@@ -14,6 +14,8 @@ from fastapi import HTTPException, Response
 
 MAX_ENCODED_BYTES = 512 * 1024
 MAX_DECODED_BYTES = 2 * 1024 * 1024
+# Lets a client apply the encoded cap from headers alone; CORS exposes it in server.py.
+DELIVERY_HEADER = 'X-Solar-Delivery'
 
 
 def _gzip_accepted(accept_encoding: str) -> bool:
@@ -71,7 +73,7 @@ def render_solar_response(
             'message': 'Solar rendering state exceeds the delivery byte budget.',
             'retryable': False,
         })
-    headers = {'Cache-Control': 'no-store', 'Vary': 'Accept-Encoding'}
+    headers = {'Cache-Control': 'no-store', 'Vary': 'Accept-Encoding', DELIVERY_HEADER: 'render-v1'}
     if compressed:
         headers['Content-Encoding'] = 'gzip'
     return Response(encoded, media_type='application/json', headers=headers)

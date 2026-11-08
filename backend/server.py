@@ -67,7 +67,7 @@ from pydantic import (
 )
 from starlette.responses import JSONResponse, PlainTextResponse
 
-from solar_delivery import render_solar_response
+from solar_delivery import DELIVERY_HEADER, render_solar_response
 
 from benchmark import (
     InvalidReportOutputPathError,
@@ -1461,7 +1461,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type", "X-API-Key"],
-    expose_headers=["Retry-After"],
+    expose_headers=["Retry-After", DELIVERY_HEADER],
 )
 app.add_middleware(
     NetworkRequestShapeMiddleware,
