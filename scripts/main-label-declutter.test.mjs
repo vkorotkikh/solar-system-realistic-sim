@@ -37,7 +37,7 @@ function mulberry32(seed) {
 }
 
 /** Builds the scene at `distanceAu` from the Sun and runs one real updateLabels. */
-function scene({ distanceAu = 40, phases, focusedBodyId = 'sun', labelsOn = true }) {
+function scene({ distanceAu = 40, phases, focusedBodyId = 'sun', labelsOn = true, hiddenLastFrame = [] }) {
   const camera = new THREE.PerspectiveCamera(58, ASPECT, 1e-4, 20000);
   camera.up.set(0, 0, 1);
   const elevation = 35 * Math.PI / 180;
@@ -49,6 +49,7 @@ function scene({ distanceAu = 40, phases, focusedBodyId = 'sun', labelsOn = true
     const a = body.orbit?.aAu ?? 0;
     node.position.set(a * Math.cos(phases[i]), a * Math.sin(phases[i]), 0);
     node.add(sprite); node.updateMatrixWorld(true);
+    sprite.visible = !hiddenLastFrame.includes(body.id); // previous frame's final state
     bodyById.set(body.id, body); bodyNodes.set(body.id, node); labels.push({ bodyId: body.id, sprite });
   });
   const bindings = { Vector3: THREE.Vector3, updateBodyLabel, labelScreenRect, declutterLabels, labels, bodyById, bodyNodes, camera,
@@ -98,6 +99,28 @@ test('the focused body keeps its label even when it overlaps the Sun label', () 
   const { boxes } = stats(40, fixedPhases, { focusedBodyId: 'earth' });
   assert.equal(overlapping(boxes.filter(b => b.bodyId === 'sun' || b.bodyId === 'earth')), 1, 'Earth and Sun boxes overlap here');
   assert.equal(boxes.find(b => b.bodyId === 'sun').visible, false, 'the lower-priority Sun label yields to the focused body');
+});
+
+test('a label hidden last frame stays hidden until it clears a higher-priority label by the margin', () => {
+  // Find real layouts where a shown label sits 0-8 px from a higher-priority
+  // shown label (Sun focused): the hysteresis band.
+  const rank = id => id === 'sun' ? Infinity : (b => b.realRadiusAu ?? b.displayRadiusAu)(labelled.find(b => b.id === id));
+  const gap = (a, b) => Math.max(b.x0 - a.x1, a.x0 - b.x1, b.y0 - a.y1, a.y0 - b.y1);
+  let checked = 0;
+  for (const distanceAu of [12, 40, 100]) for (let seed = 1; seed <= 200 && checked < 5; seed++) {
+    const phases = randomPhases(seed);
+    const shown = scene({ distanceAu, phases }).filter(b => b.visible);
+    for (const x of shown) {
+      if (x.bodyId === 'sun') continue;
+      const near = shown.some(y => rank(y.bodyId) > rank(x.bodyId) && gap(x, y) >= 0 && gap(x, y) < 8);
+      if (!near) continue;
+      const again = scene({ distanceAu, phases, hiddenLastFrame: [x.bodyId] });
+      assert.equal(again.find(b => b.bodyId === x.bodyId).visible, false,
+        `${distanceAu} AU seed ${seed}: ${x.bodyId} reappeared inside the hysteresis margin`);
+      checked++;
+    }
+  }
+  assert.ok(checked >= 3, `found only ${checked} layouts inside the hysteresis band`);
 });
 
 test('labels toggled off: nothing is shown, even for the focused body', () => {

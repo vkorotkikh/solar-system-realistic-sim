@@ -514,11 +514,13 @@ function updateLabels() {
     const node = bodyNodes.get(bodyId);
     if (!body || !node) continue;
     node.getWorldPosition(labelWorldPosition);
+    // Last frame's final visibility drives the declutter hysteresis.
+    const wasShown = sprite.visible;
     sprite.visible = dom.toggleLabels.checked && updateBodyLabel(sprite, labelWorldPosition,
       bodyBaseRadiusAu(body), camera, viewportHeight);
     // Declutter ranks by physical size, so the order survives the scale toggle.
     if (sprite.visible) placed.push({ id: bodyId, rect: labelScreenRect(sprite, camera, viewportHeight),
-      radiusAu: body.realRadiusAu ?? body.displayRadiusAu });
+      radiusAu: body.realRadiusAu ?? body.displayRadiusAu, wasShown });
   }
   const shown = declutterLabels(placed, simState.focusedBodyId);
   for (const { bodyId, sprite } of labels) if (sprite.visible && !shown.has(bodyId)) sprite.visible = false;
