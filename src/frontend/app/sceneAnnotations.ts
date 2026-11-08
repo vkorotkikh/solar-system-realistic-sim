@@ -37,7 +37,11 @@ export function updateBodyLabel(sprite: Sprite, worldCenter: Vector3, radiusAu: 
 }
 
 export interface LabelRect { x0: number; y0: number; x1: number; y1: number }
-export interface ProjectedLabel { id: string; rect: LabelRect; radiusAu: number }
+/** `wasShown` is the label's visibility in the previous frame; omit it when unknown. */
+export interface ProjectedLabel { id: string; rect: LabelRect; radiusAu: number; wasShown?: boolean }
+
+/** Clearance a hidden label needs before it reappears (see declutterLabels). */
+const LABEL_HYSTERESIS_PX = 8;
 
 /** Screen rectangle (CSS pixels, y down) that a label's text occupies, read
  * from the sprite's position after updateBodyLabel has placed it. The sprite is
@@ -63,16 +67,20 @@ export function labelScreenRect(sprite: Sprite, camera: PerspectiveCamera, viewp
  *   3. every other body by physical radius, largest first, then by input
  *      (catalog) order. Radius is the real one, so the order does not change
  *      when the scale mode is toggled.
- * Greedy and stateless: the result depends only on this frame's rectangles, so
- * labels may flip as bodies move past each other; there is no hysteresis.
+ * Greedy, with spatial hysteresis against flicker: a label shown last frame
+ * stays shown until its box actually overlaps a placed one, but a label hidden
+ * last frame returns only once it clears every placed box by
+ * LABEL_HYSTERESIS_PX. A label hovering at an edge therefore changes state at
+ * most once per crossing instead of every frame.
  */
 export function declutterLabels(labels: readonly ProjectedLabel[], focusedId?: string | null): Set<string> {
   const tier = (id: string) => (id === focusedId ? 0 : id === 'sun' ? 1 : 2);
   const ranked = [...labels].sort((a, b) => tier(a.id) - tier(b.id) || b.radiusAu - a.radiusAu); // stable
   const placed: LabelRect[] = [];
   const shown = new Set<string>();
-  for (const { id, rect } of ranked) {
-    if (placed.some(p => rect.x0 < p.x1 && p.x0 < rect.x1 && rect.y0 < p.y1 && p.y0 < rect.y1)) continue;
+  for (const { id, rect, wasShown } of ranked) {
+    const m = wasShown === false ? LABEL_HYSTERESIS_PX : 0;
+    if (placed.some(p => rect.x0 - m < p.x1 && p.x0 < rect.x1 + m && rect.y0 - m < p.y1 && p.y0 < rect.y1 + m)) continue;
     placed.push(rect);
     shown.add(id);
   }
