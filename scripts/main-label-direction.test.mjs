@@ -82,7 +82,7 @@ function harness({ realistic = false, axialTiltDeg = 0, type = 'planet', id = 'o
     catalog: { bodies: [body] }, bodyById: new Map([[body.id, body]]), showMoons: true,
     sunCtrl: { createSunMaterial: () => null, initSunVisuals: noop, update: noop, getWarpState: () => null, maybeRefreshPhysics: noop },
     timeController: { advanceLocalTime: noop, updateHud: noop }, updateModelState: noop, updateBodyRotations: noop,
-    syncAsteroidBeltInputs: noop, kuiperBeltUpdater: { update: noop }, applyMetricDisplayOffsets: noop, applyMoonAltitudeDisplay: noop, faceMoonTowardEarth: noop, surfaceMaps: { update: noop },
+    syncAsteroidBeltInputs: noop, kuiperBeltUpdater: { update: noop }, applyMetricDisplayOffsets: noop, applyMoonAltitudeDisplay: noop, faceMoonTowardEarth: noop, surfaceMaps: { update: noop }, updateEarthSatellites: noop,
     model: { update: noop }, updateFollowTarget: noop, viewportCamera: { applyPendingActions: noop },
     backgroundStars: { position: new THREE.Vector3() }, controls: { target: new THREE.Vector3(), update: () => onControls() },
     updateCameraClipPlanes: noop, renderer, refreshBodyInfoDistance: noop, dom: { statusZoom: null, toggleLabels: { checked: true }, toggleOrbits: { checked: false } }, AU_KM: 149597870.7,

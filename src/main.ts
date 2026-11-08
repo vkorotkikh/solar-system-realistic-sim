@@ -59,6 +59,7 @@ import { generateMoonTexture, generatePlanetTexture } from './textures';
 import { updateSceneBodiesFromModel } from './frontend/app/bodyManager';
 import { createBodyIdResolver, createSimulationState } from './frontend/app/stateStore';
 import { MoonTexturePipeline } from './frontend/features/planetary/moonTexturePipeline';
+import { OrbitalSatelliteSystem } from './frontend/features/planetary/satelliteSystem';
 import { createPlanetSurfaceMaps } from './frontend/features/planetary/planetSurfaceMaps';
 import { PlanetQuadtree } from './frontend/features/planetary/quadtreeLOD';
 import { applyBodySpin } from './frontend/features/planetary/bodySpin';
@@ -131,6 +132,7 @@ const dom = {
   toggleMoons: elementById<HTMLInputElement>('toggle-moons'),
   toggleAsteroids: elementById<HTMLInputElement>('toggle-asteroids'),
   toggleKuiper: elementById<HTMLInputElement>('toggle-kuiper'),
+  toggleEarthSatellites: elementById<HTMLInputElement>('toggle-earth-satellites'),
   toggleRealisticScale: elementById<HTMLInputElement>('toggle-realistic-scale'),
   aiaChannel: elementById<HTMLSelectElement>('aia-channel'),
   bodySearch: elementById<HTMLInputElement>('body-search'),
@@ -690,9 +692,9 @@ syncAsteroidBeltInputs();
 
 // ── Moons ────────────────────────────────────────────────────────────────────
 
-/** Enlarged planets would swallow their moons, so a moon keeps its true altitude above the drawn surface. */
-function moonDisplayOffsetAu(body: CatalogBody): number {
-  const parent = body.parentId ? bodyById.get(body.parentId) : undefined;
+/** Enlarged planets would swallow what orbits them, so satellites keep their true altitude above the drawn surface. */
+function surfaceOffsetAu(parentId: string | null | undefined): number {
+  const parent = parentId ? bodyById.get(parentId) : undefined;
   if (!parent) return 0;
   return Math.max(0, bodyBaseRadiusAu(parent) - (parent.realRadiusAu ?? bodyBaseRadiusAu(parent)));
 }
@@ -703,7 +705,7 @@ function applyMoonAltitudeDisplay() {
   for (const body of moonBodies) {
     const node = bodyNodes.get(body.id);
     const distanceAu = node?.position.length();
-    if (distanceAu) node.position.multiplyScalar(1 + moonDisplayOffsetAu(body) / distanceAu);
+    if (distanceAu) node.position.multiplyScalar(1 + surfaceOffsetAu(body.parentId) / distanceAu);
   }
 }
 
@@ -713,7 +715,7 @@ function applyMoonOrbitLineDisplay() {
     if (!body) continue;
     const attribute = line.geometry.getAttribute('position');
     const trueLoop: Float32Array = line.userData.trueLoop ??= Float32Array.from(attribute.array);
-    const offsetAu = moonDisplayOffsetAu(body);
+    const offsetAu = surfaceOffsetAu(body.parentId);
     for (let i = 0; i < attribute.count; i++) {
       const x = trueLoop[i * 3], y = trueLoop[i * 3 + 1], z = trueLoop[i * 3 + 2];
       const scale = 1 + offsetAu / (Math.hypot(x, y, z) || 1);
@@ -877,6 +879,41 @@ function refillBodyList() {
   dom.statusBodies.textContent = `Bodies · ${totalBodies.toLocaleString()}`;
 }
 
+// ── Earth Satellites ─────────────────────────────────────────────────────────
+
+let earthSatellites: OrbitalSatelliteSystem | null = null;
+
+function applySatelliteScale() {
+  earthSatellites?.applyScaleMode(simState.useRealisticScale);
+  earthSatellites?.setRadialOffsetAu(surfaceOffsetAu('earth'));
+}
+
+/** Built on first use: it downloads current orbits from CelesTrak. */
+async function applySatelliteVisibility() {
+  if (dom.toggleEarthSatellites.checked && !earthSatellites) {
+    const system = new OrbitalSatelliteSystem({
+      primaryId: 'earth', useInstancing: false, markerPixelSize: { preferred: 3, min: 2, max: 5 },
+    });
+    earthSatellites = system;
+    startup.defer(() => system.dispose());
+    system.attachTo(bodyNodes.get('earth'));
+    await system.initialize();
+    if (startup.signal.aborted) return;
+    if (system.lastError) console.warn('[satellites] using fallback orbits:', system.lastError);
+    applySatelliteScale();
+  }
+  earthSatellites?.setVisible(dom.toggleEarthSatellites.checked);
+  earthSatellites?.setOrbitVisibility(dom.toggleOrbits.checked);
+}
+
+void applySatelliteVisibility(); // Browsers may restore the switch on reload.
+
+function updateEarthSatellites() {
+  if (earthSatellites?.group.visible) {
+    earthSatellites.update(simState.julianDate, { camera, viewportHeight: renderer.domElement.clientHeight });
+  }
+}
+
 // ── Moon Quick Views ─────────────────────────────────────────────────────────
 
 /** Keeps the camera above the Moon's highest terrain, 10.8 km over the reference sphere. */
@@ -893,6 +930,7 @@ function viewMoonAtAltitude(altitudeKm: number) {
     dom.toggleRealisticScale.checked = true;
     simState.useRealisticScale = true;
     applyScaleMode();
+    applySatelliteScale();
   }
   explorer.setPreferredBody(earthMoon.id);
   simState.focusedBodyId = simState.followBodyId = earthMoon.id;
@@ -1224,6 +1262,8 @@ dom.toggleLabels.addEventListener('change', () => {
 }, { signal: startup.signal });
 
 dom.toggleMoons.addEventListener('change', applyMoonVisibility, { signal: startup.signal });
+dom.toggleEarthSatellites.addEventListener('change', () => void applySatelliteVisibility(), { signal: startup.signal });
+dom.toggleOrbits.addEventListener('change', () => void applySatelliteVisibility(), { signal: startup.signal });
 for (const [button, altitudeKm] of [[dom.focusMoonSkim, 15], [dom.focusMoonLlo, 100], [dom.focusMoonNrho, 30_000]] as const) {
   button.addEventListener('click', () => viewMoonAtAltitude(altitudeKm), { signal: startup.signal });
 }
@@ -1235,6 +1275,8 @@ dom.toggleRealisticScale.addEventListener('change', () => {
   simState.useRealisticScale = dom.toggleRealisticScale.checked;
   applyScaleMode();
 }, { signal: startup.signal });
+
+dom.toggleRealisticScale.addEventListener('change', applySatelliteScale, { signal: startup.signal });
 
 dom.aiaChannel.addEventListener('change', () => {
   sunCtrl.setAiaChannelOverride(dom.aiaChannel.value);
@@ -1334,6 +1376,7 @@ const frameLifecycle = createFrameLifecycle({
       };
     }),
     { name: 'surface-maps', run: () => surfaceMaps.update() },
+    { name: 'satellites', run: updateEarthSatellites },
     { name: 'background', run: () => { backgroundStars.position.copy(camera.position); } },
     { name: 'controls', run: () => { controls.update(); } },
     { name: 'clip-planes', run: updateCameraClipPlanes },

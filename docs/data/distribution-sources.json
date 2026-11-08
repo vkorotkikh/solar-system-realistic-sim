@@ -536,7 +536,7 @@
     {
       "id": "celestrak-stations",
       "product": "CelesTrak GP stations TLE group",
-      "use": "retained config/satellite module; not imported by shipped entry",
+      "use": "browser fetch when the user switches on Earth satellites; not bundled or cached by the app",
       "sourceUrls": [
         "https://celestrak.org/NORAD/elements/gp.php?GROUP=stations&FORMAT=tle"
       ],
@@ -551,7 +551,7 @@
     {
       "id": "celestrak-geo",
       "product": "CelesTrak GP geo TLE group",
-      "use": "retained config/satellite module; not imported by shipped entry",
+      "use": "browser fetch when the user switches on Earth satellites; not bundled or cached by the app",
       "sourceUrls": [
         "https://celestrak.org/NORAD/elements/gp.php?GROUP=geo&FORMAT=tle"
       ],
