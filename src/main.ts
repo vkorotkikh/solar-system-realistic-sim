@@ -89,6 +89,7 @@ import {
   PHASE1_LOAD_LATENCY_BUDGET_MS
 } from './sim/phase1AsteroidCatalog';
 import { createKuiperBeltRenderer } from './frontend/features/asteroids/beltRenderer';
+import { beltSurfaceDensity, createBeltDensityBand } from './frontend/features/asteroids/beltDensityBand';
 import { createStartupAsteroidBelt } from './frontend/features/asteroids/startupBelt';
 import {
   failedAsteroidCatalogStatus,
@@ -126,6 +127,8 @@ const dom = {
   toggleOrbits: elementById<HTMLInputElement>('toggle-orbits'),
   toggleMagneticField: elementById<HTMLInputElement>('toggle-magnetic-field'),
   toggleLabels: elementById<HTMLInputElement>('toggle-labels'),
+  toggleAsteroids: elementById<HTMLInputElement>('toggle-asteroids'),
+  toggleKuiper: elementById<HTMLInputElement>('toggle-kuiper'),
   toggleRealisticScale: elementById<HTMLInputElement>('toggle-realistic-scale'),
   aiaChannel: elementById<HTMLSelectElement>('aia-channel'),
   bodySearch: elementById<HTMLInputElement>('body-search'),
@@ -600,6 +603,18 @@ function syncAsteroidBeltInputs() {
 }
 
 const phaseOneCatalog = asteroidStartup.catalog;
+// Only the verified catalog may draw a band that claims to show measured density.
+const asteroidDensityBand = asteroidStartup.source === 'catalog' && phaseOneCatalog
+  ? ownDisposable(createBeltDensityBand(beltSurfaceDensity(phaseOneCatalog.asteroids.map(({ orbit }) => orbit))))
+  : null;
+if (asteroidDensityBand) solarSystemGroup.add(asteroidDensityBand.group);
+
+function applyBeltVisibility() {
+  asteroidBeltRenderer.setVisible(dom.toggleAsteroids.checked);
+  if (asteroidDensityBand) asteroidDensityBand.group.visible = dom.toggleAsteroids.checked;
+  kuiperBeltRenderer.setVisible(dom.toggleKuiper.checked);
+}
+applyBeltVisibility();
 if (asteroidStartup.source === 'catalog' && phaseOneCatalog) {
   const gate = phaseOneCatalog.acceptance;
   if (!gate.latency.passed && gate.latency.reason) {
@@ -1074,6 +1089,9 @@ dom.toggleLabels.addEventListener('change', () => {
   const vis = dom.toggleLabels.checked;
   for (const entry of labels) entry.sprite.visible = vis;
 }, { signal: startup.signal });
+
+dom.toggleAsteroids.addEventListener('change', applyBeltVisibility, { signal: startup.signal });
+dom.toggleKuiper.addEventListener('change', applyBeltVisibility, { signal: startup.signal });
 
 dom.toggleRealisticScale.addEventListener('change', () => {
   simState.useRealisticScale = dom.toggleRealisticScale.checked;
