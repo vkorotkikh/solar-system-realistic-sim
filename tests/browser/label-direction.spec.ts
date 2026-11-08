@@ -20,8 +20,6 @@ interface Probe {
 }
 interface ProbeWindow extends Window { __labelProbe: Probe; __THREE_DEVTOOLS__: EventTarget }
 const BACKEND = 'http://127.0.0.1:9142';
-const FONT_CSS = 'https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600&family=Oxanium:wght@500;600;700&display=swap';
-
 async function routeAndObserve(page: Page, baseURL: string) {
   const consoleErrors: string[] = [], pageErrors: string[] = [], messages: string[] = [], unexpectedRequests: string[] = [];
   const origin = new URL(baseURL).origin;
@@ -33,9 +31,6 @@ async function routeAndObserve(page: Page, baseURL: string) {
   await page.route('**/*', async route => {
     const request = route.request(), url = new URL(request.url());
     if (url.origin === origin) return route.continue();
-    if (request.method() === 'GET' && url.href === new URL(FONT_CSS).href) {
-      return route.fulfill({ status: 200, contentType: 'text/css', body: '' });
-    }
     let payload: unknown;
     if (request.method() === 'GET' && url.origin === BACKEND && url.pathname === '/solar/realtime' && url.search === '') {
       const unavailable = () => ({ ok: false, error: 'FE041 synthetic fixture: no observed input delivered' });

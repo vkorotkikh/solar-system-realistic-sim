@@ -80,6 +80,9 @@ const TWOTINO_RESONANCE_AU = 47.8;
 // ── Binary KBO parameters (Noll+ 2008, Fraser+ 2017, Parker+ 2011) ──────────
 // Binary fraction by dynamical class:
 //   Cold classical: ~30%, Hot classical: ~10%, Resonant/Scattered/Detached: ~5%
+// Population policy: each fraction applies to every generated KBO of its class.
+// The surveys resolved binaries among large objects (D >~ 100 km); the model
+// extends those fractions to all sizes, as the backend Kuiper model does.
 
 const BINARY_FRACTION: Record<KBOClass, number> = {
   [KBOClass.Classical]: 0.22, // weighted avg cold (30%) + hot (10%)
@@ -392,7 +395,7 @@ export function generateKuiperBelt(
 
     // Binary assignment based on dynamical class fraction (Noll+ 2008)
     const binaryFrac = BINARY_FRACTION[dynClass];
-    const binary = (rand() < binaryFrac && diameterKm > 40)
+    const binary = rand() < binaryFrac
       ? generateBinaryCompanion(diameterKm, sc, rand)
       : null;
 

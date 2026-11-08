@@ -56,7 +56,11 @@ def test_forged_scaled_flux_is_rejected_by_both_contracts(observed_snapshot, fie
         PFSSCache._validate_observed_flux(observed_snapshot.field_gauss, flux)
 
 
-def test_roundoff_zero_field_still_passes_pfss_flux_validation():
-    snapshot = gong.parse_gong_fits(
-        rewrite_fits(data=np.zeros((180, 360), dtype=np.float32)), context=context())
+def test_roundoff_policy_snapshot_passes_pfss_flux_validation():
+    # A weak balanced field takes the roundoff policy. An all-zero map is now
+    # refused at admission (owner policy 2026-11-03), so it cannot stand in.
+    weak = np.zeros((180, 360), dtype=np.float32)
+    weak[90, 0], weak[90, 1] = 1e-6, -1e-6
+    snapshot = gong.parse_gong_fits(rewrite_fits(data=weak), context=context())
+    assert snapshot.provenance.flux.policy_version == gong.FLUX_BALANCE_POLICY_VERSION
     PFSSCache._validate_observed_snapshot_contract(snapshot)

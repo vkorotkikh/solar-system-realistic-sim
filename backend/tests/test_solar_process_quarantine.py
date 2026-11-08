@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
+import gc
 import multiprocessing
 import os
 from pathlib import Path
@@ -237,6 +238,11 @@ def harnesses(monkeypatch):
     yield make
     for harness in owned:
         harness.cleanup()
+    # Harnesses sit in reference cycles that own spawn-context Events. Collect them
+    # here: collected later, inside another test's resource-tracker call, their
+    # semaphore finalizers make Python warn that a semaphore might leak.
+    owned.clear()
+    gc.collect()
 
 
 def _idle(runner):
