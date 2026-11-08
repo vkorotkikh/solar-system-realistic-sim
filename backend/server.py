@@ -14,7 +14,8 @@ Protocol (WebSocket /ws/sim):
         {"type": "set_time_scale", "days_per_sec": 10}
         {"type": "pause"}
         {"type": "resume"}
-        {"type": "set_julian_date", "jd": 2460000.5, "jd_time_scale": "TDB"}
+        {"type": "set_julian_date", "jd": 2460000.5, "jd_time_scale": "TDB",
+         "seek_id": 1}   # seek_id optional; sent when `connected.seek_id_version` == 1
         {"type": "activate_kuiper", "center": [42, 0, 0], "spread": 5}
         {"type": "deactivate_kuiper"}
         {"type": "get_orbital_elements", "body_id": "earth"}
@@ -23,6 +24,7 @@ Protocol (WebSocket /ws/sim):
         {"type": "state_update", "engine": "rebound", "jd": ..., "bodies": {...}}
         {"type": "state_update", ..., "kuiper": [[x,y,z], ...]}
         {"type": "orbital_elements", "body_id": "earth", "elements": {...}}
+        # Both carry "seek_id": the last seek id processed (0 = none) when produced.
         {"type": "error", "message": "..."}
 """
 
@@ -890,6 +892,9 @@ SUPPORTED_INTEGRATORS = ("ias15", "whfast", "mercurius")
 DEFAULT_INTEGRATOR = "ias15"
 DEFAULT_ENGINE = "rebound"
 WS_PROTOCOL_VERSION = 1
+# Additive capability: the server echoes the client's last `seek_id` in every
+# state_update/orbital_elements. Bounded to what a JSON/JS number holds exactly.
+MAX_SEEK_ID = 2**53 - 1
 MAX_COMMAND_QUEUE = 1_024
 MAX_RESPONSE_QUEUE = 1_024
 MAX_COMMANDS_PER_FRAME = 128
@@ -912,7 +917,7 @@ _WS_SIM_COMMAND_FIELDS: dict[str, tuple[str, ...]] = {
     "set_time_scale": ("days_per_sec",),
     "pause": (),
     "resume": (),
-    "set_julian_date": ("jd", "jd_time_scale"),
+    "set_julian_date": ("jd", "jd_time_scale", "seek_id"),
     "activate_kuiper": ("center", "spread"),
     "deactivate_kuiper": (),
     "get_orbital_elements": ("body_id",),
@@ -4729,6 +4734,7 @@ class SimulationRunner:
         self.engine = engine
         self.kuiper = KuiperBeltEngine(particle_count=3_000)
         self._kuiper_subscription_id: str | None = None
+        self._seek_id: int = 0  # Last client seek id processed; 0 = none yet.
         self._latest_kuiper_payload: dict | None = None
         self._kuiper_refresh_pending: bool = False
         self.command_queue: queue.Queue = queue.Queue(maxsize=MAX_COMMAND_QUEUE)
@@ -4976,6 +4982,8 @@ class SimulationRunner:
                 },
             )
 
+            state["seek_id"] = self._seek_id
+
             if kuiper_particles:
                 state["kuiper"] = kuiper_particles
                 if self._kuiper_subscription_id is not None:
@@ -5028,6 +5036,17 @@ class SimulationRunner:
             self.paused = False
 
         elif action == "set_julian_date":
+            if "seek_id" in cmd:
+                seek_id = cmd["seek_id"]
+                if type(seek_id) is not int or not 0 <= seek_id <= MAX_SEEK_ID:
+                    self._push_error(
+                        f"`set_julian_date` `seek_id` must be an integer in [0, {MAX_SEEK_ID}]",
+                        action=action,
+                    )
+                    return
+                # Acknowledge even a rejected seek: a client that drops frames
+                # older than its latest id would otherwise discard all of them.
+                self._seek_id = seek_id
             jd = self._coerce_finite_float(cmd.get("jd"))
             if jd is None:
                 self._push_error("`set_julian_date` requires numeric `jd`", action=action)
@@ -5157,6 +5176,7 @@ class SimulationRunner:
                         "type": "orbital_elements",
                         "body_id": body_lookup,
                         "elements": elems,
+                        "seek_id": self._seek_id,
                     })
                 else:
                     self._push_error(
@@ -5569,6 +5589,7 @@ async def _serve_simulation_websocket(websocket: WebSocket) -> None:
         "protocol_version_requested": protocol_requested,
         "kuiper_subscription_version": 1,
         "kuiper_activation_error_version": 1,
+        "seek_id_version": 1,
         "engine": engine.engine_name,
         "engine_requested": engine_requested,
         "integrator": integrator,
