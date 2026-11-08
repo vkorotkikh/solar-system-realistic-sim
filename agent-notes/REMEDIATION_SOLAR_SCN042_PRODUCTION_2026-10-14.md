@@ -94,7 +94,8 @@ the planned `sunOrientation.ts`.
 - `validatedSolarLayerFrames` (`src/frontend/features/solar/solarGeometryContract.ts`) admits six layers
   independently: PFSS, loops, spots, the Parker spiral, CMEs and coronal holes. Its contract requires
   `source_kind: synthetic` and `calibration_status: unvalidated`; observed or untagged geometry is refused.
-  The local backend declared all six for a default request on 2026-11-04, so all six render from the model.
+  The local backend declared all six for a default request on 2026-11-04. Five draw from the model by default;
+  PFSS lines also draw once the "Solar magnetic field" switch is on (it starts off).
 - One difference from the plan matters. H5.1 kept backend PFSS lines hidden until they were validated. The
   contract now admits them because they are labelled synthetic and unvalidated.
 - Observed inputs stay off: forcing is synthetic, and the chip reads "Sun: backend solar model (synthetic
