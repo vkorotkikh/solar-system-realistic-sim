@@ -6,17 +6,19 @@ import { describe, expect, it } from 'vitest';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 
-function loadProductionConfig(port) {
+function loadProductionConfig(port, hardwareWebGL) {
   const env = { ...process.env };
   delete env.UI_PRODUCTION_PORT;
+  delete env.UI_HARDWARE_WEBGL;
   if (port !== undefined) env.UI_PRODUCTION_PORT = port;
+  if (hardwareWebGL !== undefined) env.UI_HARDWARE_WEBGL = hardwareWebGL;
   return spawnSync(process.execPath, ['--input-type=module', '-e',
     "const { default: config } = await import('./playwright.production.config.ts'); console.log(JSON.stringify(config));"],
   { cwd: root, env, encoding: 'utf8', timeout: 10_000 });
 }
 
-function configFor(port) {
-  const result = loadProductionConfig(port);
+function configFor(port, hardwareWebGL) {
+  const result = loadProductionConfig(port, hardwareWebGL);
   expect(result.status, `Compiled-artifact config must load: ${result.stderr}`).toBe(0);
   return JSON.parse(result.stdout);
 }
@@ -46,11 +48,20 @@ describe('compiled frontend acceptance gate', () => {
     expect(config.outputDir).toBe('test-results/production-4185');
     expect(config.projects.map(project => project.name)).toEqual(['production-chromium']);
     expect(config.projects[0].use).toMatchObject({ browserName: 'chromium', channel: 'chromium' });
-    expect(config).toMatchObject({ workers: 1, retries: 0, timeout: 90_000 });
+    expect(config).toMatchObject({ workers: 1, retries: 0 });
     expect(config.use).toMatchObject({ trace: 'retain-on-failure', screenshot: 'only-on-failure' });
     expect(config.reporter).toEqual([
       ['line'], ['html', { outputFolder: 'playwright-report/production-4185', open: 'never' }],
     ]);
+  });
+
+  it('gives software-GL tests teardown headroom without loosening assertion waits', () => {
+    // Hosted runners render through SwiftShader, where afterEach WebGL teardown alone took
+    // 31-34 s of a 90 s test under a 2-core squeeze. Assertions keep their strict wait.
+    expect(configFor()).toMatchObject({ timeout: 180_000, expect: { timeout: 8_000 } });
+    expect(configFor(undefined, '1')).toMatchObject({ timeout: 90_000, expect: { timeout: 8_000 } });
+    const spec = readFileSync(new URL('../tests/production/frontend.spec.ts', import.meta.url), 'utf8');
+    expect(spec, 'a spec-level timeout would silently override the renderer-aware config').not.toMatch(/describe\.configure\(\{[^}]*timeout/);
   });
 
   it.each(['1024', '4197', '65535'])('uses validated override %s for preview, browser and artifacts', port => {
