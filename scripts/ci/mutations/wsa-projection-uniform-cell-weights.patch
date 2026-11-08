@@ -1,0 +1,13 @@
+diff --git a/backend/sim/pfss_magnetogram.py b/backend/sim/pfss_magnetogram.py
+--- a/backend/sim/pfss_magnetogram.py
++++ b/backend/sim/pfss_magnetogram.py
+@@ -285,7 +285,8 @@ def project_spherical_harmonics(
+     )
+     cells = overlap @ ((br_map[:, 0::2] + br_map[:, 1::2]) / 2) / overlap.sum(axis=1, keepdims=True)
+     phi = (grid.phi_rad[0::2] + grid.phi_rad[1::2]) / 2
+-    weights = np.sin(theta) * (edges[1] - edges[0])
++    # Defect: weight the uniform-latitude cells as if they were equal-area.
++    weights = np.full(theta.shape, edges[1] - edges[0])
+     g_lm = np.zeros((lmax + 1, lmax + 1))
+     h_lm = np.zeros((lmax + 1, lmax + 1))
+     for m in range(lmax + 1):

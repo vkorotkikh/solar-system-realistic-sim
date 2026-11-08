@@ -34,7 +34,9 @@ def nasa_native(observed):
 def test_matches_nasa_coefficients_from_the_same_map(nasa_native, degree):
     expected = _coefficient_vectors(_provider_reference()[2], degree)
     actual = _coefficient_vectors(nasa_native, degree)
-    assert np.linalg.norm(actual - expected) / np.linalg.norm(expected) < 0.003
+    assert np.linalg.norm(actual - expected) / np.linalg.norm(expected) < 0.003, (
+        f"R4-WSA-PROJECTION-NASA-MATCH degree={degree}"
+    )
 
 
 @pytest.mark.parametrize("degree", [15, 64, 72, 90])
@@ -62,7 +64,7 @@ def test_meets_the_feature_budget_at_degree_90_on_the_retained_epoch(nasa_native
 def test_unit_dipole_keeps_its_amplitude(factory, n_lat):
     grid = factory(n_lat, 360)
     g, h = pfss.project_spherical_harmonics(np.broadcast_to(grid.mu[:, None], (n_lat, 360)), 15, grid=grid)
-    assert g[1, 0] == pytest.approx(1, abs=3e-4)
+    assert g[1, 0] == pytest.approx(1, abs=3e-4), "R4-WSA-PROJECTION-AREA-WEIGHTS dipole amplitude"
     g[1, 0] = 0
     # Midpoint quadrature is not exactly orthogonal: a dipole leaks into odd degree l by
     # (2l + 1) * dtheta^2 / 24, which is 1.57e-3 at l = 15 for 2-degree cells.
@@ -77,7 +79,9 @@ def test_each_mode_lands_on_its_own_coefficient_with_cell_averaging_attenuation(
     latitude = schmidt_latitude_design(degree, order, grid.mu)[:, degree - order]
     g, h = pfss.project_spherical_harmonics(np.outer(latitude, np.cos(order * grid.phi_rad)), 15, grid=grid)
     # Cell averages over 2 degrees: not exact recovery, by about (l * 2 deg)^2 / 24 or less.
-    assert g[degree, order] == pytest.approx(1, abs=0.012)
+    assert g[degree, order] == pytest.approx(1, abs=0.012), (
+        f"R4-WSA-PROJECTION-M-NORMALIZATION mode=({degree},{order})"
+    )
     assert g[degree, order] <= 1
     g[degree, order] = 0
     assert np.abs(g).max() < 3e-3

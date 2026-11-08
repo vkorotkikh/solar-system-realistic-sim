@@ -69,6 +69,12 @@ and input validation. Old and new `/solar/physics` responses, six epoch and fide
 cases: same seeds, no open/closed changes, lines move at most 0.007 solar radii at the 95th
 percentile, mean WSA speed moves at most 1.2 km/s, response time unchanged.
 
+The blocking R3/R4 lane (`ci/r3-r4-science-verification.json`) runs three of these tests:
+the unit-dipole amplitude, the (3, 2) mode and the degree-90 NASA match. Two mutants of
+`project_spherical_harmonics` must fail there: equal-area weights for the uniform-latitude
+cells, and an extra factor of 2 on the m > 0 coefficients. The lane's least-squares mutants
+still guard `decompose_spherical_harmonics`.
+
 ## Consequences
 
 Any degree above ~40 is now reachable by policy alone, at the cost of evaluation time: 9.5 s
