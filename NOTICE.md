@@ -47,6 +47,14 @@ its author, Phil Stooke; see the
 Existing "Public domain" catalog labels for other maps are source metadata,
 not a newly completed legal review of every asset.
 
+## Bundled fonts
+
+The interface typefaces are self-hosted Latin subsets, so no visit contacts a
+font host. Chakra Petch is Copyright 2018 The Chakra Petch Project Authors and
+Oxanium is Copyright 2019 The Oxanium Project Authors. Both are licensed under
+the SIL Open Font License 1.1, packaged as `fonts/OFL-ChakraPetch.txt` and
+`fonts/OFL-Oxanium.txt`. Keep those licences with redistributed font files.
+
 ## Other scientific sources
 
 The application uses or offers data from JPL SSD/SBDB/Horizons, NASA/ESA missions,
