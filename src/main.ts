@@ -8,7 +8,9 @@ import { createExperimentController, engineSelectionResolver } from './frontend/
 import { createRendererRecoverySurface } from './frontend/app/rendererRecovery';
 import { createRuntimeLifetime } from './frontend/app/runtimeLifetime';
 import { createModelWorkerController } from './frontend/app/modelWorkerController';
-import { createBackgroundStars, updateBodyLabel } from './frontend/app/sceneAnnotations';
+import {
+  createBackgroundStars, declutterLabels, labelScreenRect, updateBodyLabel, type ProjectedLabel,
+} from './frontend/app/sceneAnnotations';
 import { createFrameLifecycle } from './frontend/app/frameLifecycle';
 import { applyViewportSizeOverride } from './frontend/app/sceneSetup';
 import { renderPixelRatio } from './frontend/app/runtimeConfig';
@@ -362,27 +364,30 @@ const orbitLines: Line[] = [];
 const orbitLineByBodyId = new Map<string, Line>();
 const labels: { bodyId: string; sprite: Sprite }[] = [];
 
+const LABEL_CANVAS_WIDTH = 256, LABEL_CANVAS_HEIGHT = 64, LABEL_FONT_PX = 28;
+
 function createLabelCanvas(text: string) {
   const canvas = document.createElement('canvas');
-  const size = 256;
-  canvas.width = size;
-  canvas.height = 64;
+  canvas.width = LABEL_CANVAS_WIDTH;
+  canvas.height = LABEL_CANVAS_HEIGHT;
   const ctx = canvas.getContext('2d');
-  if (!ctx) return canvas;
-  ctx.font = 'bold 28px system-ui, sans-serif';
+  if (!ctx) return { canvas, inkFraction: undefined };
+  ctx.font = `bold ${LABEL_FONT_PX}px system-ui, sans-serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillStyle = '#ffffff';
   ctx.globalAlpha = 0.85;
-  ctx.fillText(text, size / 2, 32);
-  return canvas;
+  ctx.fillText(text, LABEL_CANVAS_WIDTH / 2, 32);
+  // Text extent as fractions of the sprite, for the declutter box (labelScreenRect).
+  return { canvas, inkFraction: [ctx.measureText(text).width / LABEL_CANVAS_WIDTH, LABEL_FONT_PX / LABEL_CANVAS_HEIGHT] };
 }
 
 function createLabelSprite(text: string) {
-  const canvas = createLabelCanvas(text);
+  const { canvas, inkFraction } = createLabelCanvas(text);
   const tex = ownDisposable(new CanvasTexture(canvas));
   const mat = ownDisposable(new SpriteMaterial({ map: tex, transparent: true, depthWrite: false }));
   const sprite = new Sprite(mat);
+  if (inkFraction) sprite.userData.inkFraction = inkFraction;
   return sprite;
 }
 
@@ -502,14 +507,21 @@ function createOrbitLine(body: CatalogBody) {
 const labelWorldPosition = new Vector3();
 function updateLabels() {
   camera.updateMatrixWorld();
+  const viewportHeight = renderer.domElement.clientHeight;
+  const placed: ProjectedLabel[] = [];
   for (const { bodyId, sprite } of labels) {
     const body = bodyById.get(bodyId);
     const node = bodyNodes.get(bodyId);
     if (!body || !node) continue;
     node.getWorldPosition(labelWorldPosition);
     sprite.visible = dom.toggleLabels.checked && updateBodyLabel(sprite, labelWorldPosition,
-      bodyBaseRadiusAu(body), camera, renderer.domElement.clientHeight);
+      bodyBaseRadiusAu(body), camera, viewportHeight);
+    // Declutter ranks by physical size, so the order survives the scale toggle.
+    if (sprite.visible) placed.push({ id: bodyId, rect: labelScreenRect(sprite, camera, viewportHeight),
+      radiusAu: body.realRadiusAu ?? body.displayRadiusAu });
   }
+  const shown = declutterLabels(placed, simState.focusedBodyId);
+  for (const { bodyId, sprite } of labels) if (sprite.visible && !shown.has(bodyId)) sprite.visible = false;
 }
 
 // ── Background Stars ─────────────────────────────────────────────────────────

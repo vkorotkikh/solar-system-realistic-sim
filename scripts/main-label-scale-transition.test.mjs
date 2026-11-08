@@ -8,7 +8,7 @@ import { createRequire } from 'node:module';
 import { test } from 'vitest';
 import { createSolarSystemCatalog } from '../src/sim/catalog';
 import { createBodyIdResolver } from '../src/frontend/app/stateStore';
-import { updateBodyLabel } from '../src/frontend/app/sceneAnnotations';
+import { declutterLabels, labelScreenRect, updateBodyLabel } from '../src/frontend/app/sceneAnnotations';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -75,7 +75,7 @@ function harness(realistic = false) {
     assert.equal(event, 'change'); assert.equal(options.signal, startup.signal);
     assert.equal(onScaleChange, undefined); onScaleChange = handler;
   } };
-  const bindings = { ...THREE, updateBodyLabel, updateZoomStatus: noop, ownDisposable, geometryCache, simState, camera, scene, solarSystemGroup,
+  const bindings = { ...THREE, updateBodyLabel, labelScreenRect, declutterLabels, updateZoomStatus: noop, ownDisposable, geometryCache, simState, camera, scene, solarSystemGroup,
     isEarthMoonBody: createBodyIdResolver(catalog).isEarthMoonBody,
     bodyById: new Map(selected.map(b => [b.id,b])),
     document: { createElement: () => ({ width:0, height:0, getContext:() => null }) },
