@@ -47,6 +47,17 @@ its author, Phil Stooke; see the
 Existing "Public domain" catalog labels for other maps are source metadata,
 not a newly completed legal review of every asset.
 
+## Bundled surface maps
+
+`public/textures/surfaces/` holds the Earth Moon's colour and elevation maps,
+from NASA's Scientific Visualization Studio
+[CGI Moon Kit](https://svs.gsfc.nasa.gov/4720) (credit: NASA's Scientific
+Visualization Studio; LRO LROC and LOLA data), and a Mars colour map. The Mars
+map appears to derive from the USGS
+[Mars Viking Colorized Global Mosaic 232m](https://astrogeology.usgs.gov/search/map/mars_viking_colorized_global_mosaic_232m),
+but its exact product was not recorded when it was acquired. Confirm it before
+any release. Sizes and SHA-256 values are in `docs/data/distribution-files.json`.
+
 ## Bundled fonts
 
 The interface typefaces are self-hosted Latin subsets, so no visit contacts a

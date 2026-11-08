@@ -341,6 +341,45 @@
       ]
     },
     {
+      "id": "surface-map:moon:cgi-moon-kit",
+      "product": "NASA SVS CGI Moon Kit (ID 4720): lroc_color_poles_8k and ldem_16_uint, retained as an 8192 px JPEG and an 8-bit 5760 px PNG",
+      "use": "browser-loaded Earth Moon surface colour and elevation when the camera approaches the Moon",
+      "sourceUrls": [
+        "https://svs.gsfc.nasa.gov/4720"
+      ],
+      "credit": "NASA's Scientific Visualization Studio; underlying data from the LRO LROC and LOLA instrument teams. No endorsement.",
+      "rightsStatus": "provider-declared-public-domain",
+      "rightsEvidence": "SVS help page, retrieved 2026-11-08: 'All of our content is in the public domain (unless otherwise noted)' and free to download, use and redistribute. Identified by exact dimensions and by the documented elevation encoding (min and max land on Antoniadi and the Selenean summit; the mean matches the published radius). Original download was not recorded, so bytes are not compared to the kit.",
+      "evidencePaths": [
+        "public/textures/surfaces/moon_albedo_lroc_8192.jpg",
+        "public/textures/surfaces/moon_relief_ldem16_5760.png",
+        "src/frontend/features/planetary/planetSurfaceMaps.ts",
+        "NOTICE.md"
+      ],
+      "rightsPolicyUrls": [
+        "https://svs.gsfc.nasa.gov/help/"
+      ]
+    },
+    {
+      "id": "surface-map:mars:viking-colorized",
+      "product": "Mars global colour map retained as a 4096 px JPEG; appears to derive from USGS Mars Viking Colorized Global Mosaic 232m",
+      "use": "browser-loaded Mars surface colour when the camera approaches Mars",
+      "sourceUrls": [
+        "https://astrogeology.usgs.gov/search/map/mars_viking_colorized_global_mosaic_232m"
+      ],
+      "credit": "NASA/USGS; retain the product identity once confirmed. No endorsement.",
+      "rightsStatus": "review-required",
+      "rightsEvidence": "The exact product was not recorded at acquisition on 2026-02-16; this match is by file name and appearance. A search listing reports the USGS product as public domain, but its page returned HTTP 403 on 2026-11-08. Confirm the source before release.",
+      "evidencePaths": [
+        "public/textures/surfaces/mars_albedo_usgs_4096.jpg",
+        "src/frontend/features/planetary/planetSurfaceMaps.ts",
+        "NOTICE.md"
+      ],
+      "rightsPolicyUrls": [
+        "https://www.usgs.gov/information-policies-and-instructions/copyrights-and-credits"
+      ]
+    },
+    {
       "id": "noaa-wind",
       "product": "NOAA SWPC RTSW 1-minute wind",
       "use": "backend runtime live context",

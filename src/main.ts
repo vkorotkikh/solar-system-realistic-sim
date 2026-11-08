@@ -30,7 +30,9 @@ import {
   Raycaster,
   RepeatWrapping,
   SphereGeometry,
+  Quaternion,
   type ShaderMaterial,
+  type Texture,
   Sprite,
   SpriteMaterial,
   Vector2,
@@ -48,17 +50,16 @@ import {
   currentJulianDate,
   formatJulianAsDate
 } from './constants';
-import {
-  createSolarSystemCatalog,
-  type MoonEphemerisMap
-} from './sim/catalog';
+import { createSolarSystemCatalog } from './sim/catalog';
 import { sampleOrbitLoop } from './sim/orbitMath';
 import { SolarSystemModel } from './sim/solarSystemModel';
 import { applyMetricDisplayOffsets } from './frontend/features/superluminal-modeling/metricDisplay';
 import { resolveAgnSelection, type AgnEventOptions } from './frontend/features/superluminal-modeling/agnShockwaveEngine';
-import { generatePlanetTexture } from './textures';
+import { generateMoonTexture, generatePlanetTexture } from './textures';
 import { updateSceneBodiesFromModel } from './frontend/app/bodyManager';
 import { createBodyIdResolver, createSimulationState } from './frontend/app/stateStore';
+import { MoonTexturePipeline } from './frontend/features/planetary/moonTexturePipeline';
+import { createPlanetSurfaceMaps } from './frontend/features/planetary/planetSurfaceMaps';
 import { PlanetQuadtree } from './frontend/features/planetary/quadtreeLOD';
 import { applyBodySpin } from './frontend/features/planetary/bodySpin';
 import { planetViewDistances } from './frontend/features/planetary/planetView';
@@ -127,6 +128,7 @@ const dom = {
   toggleOrbits: elementById<HTMLInputElement>('toggle-orbits'),
   toggleMagneticField: elementById<HTMLInputElement>('toggle-magnetic-field'),
   toggleLabels: elementById<HTMLInputElement>('toggle-labels'),
+  toggleMoons: elementById<HTMLInputElement>('toggle-moons'),
   toggleAsteroids: elementById<HTMLInputElement>('toggle-asteroids'),
   toggleKuiper: elementById<HTMLInputElement>('toggle-kuiper'),
   toggleRealisticScale: elementById<HTMLInputElement>('toggle-realistic-scale'),
@@ -206,21 +208,20 @@ function ownDisposable<T extends { dispose(): void }>(value: T): T {
 }
 // ── Data & State ─────────────────────────────────────────────────────────────
 
-// Moon rendering is not currently exposed by the shipped UI. Keep those 423
-// catalog records available for provenance/search, but do not pretend to keep
-// hidden dynamical states current or spend a worker tick propagating them.
-const showMoons: boolean = false;
-let moonEphemerides: MoonEphemerisMap | undefined;
-if (showMoons) {
-  const { loadMoonEphemerides } = await import('./sim/loadMoonEphemerides');
-  if (startup.signal.aborted || !recovery.available) return;
-  moonEphemerides = await loadMoonEphemerides();
-}
+// Moons stay propagated while switched off, so the switch can reveal them at once.
+let showMoons: boolean = true;
+const { loadMoonEphemerides } = await import('./sim/loadMoonEphemerides');
 if (startup.signal.aborted || !recovery.available) return;
-const catalog = createSolarSystemCatalog({ moonEphemerides, moonsVisible: showMoons });
+const moonEphemerides = await loadMoonEphemerides().catch((error: unknown) => {
+  console.warn('[moons] fitted ephemerides unavailable; using mean elements:', error);
+  return undefined;
+});
+if (startup.signal.aborted || !recovery.available) return;
+// Planets keep their enlarged sizes with moons on: moons move out to clear them instead.
+const catalog = createSolarSystemCatalog({ moonEphemerides, moonsVisible: false });
 const { isEarthMoonBody } = createBodyIdResolver(catalog);
 const modelWorkerCatalog: ModelWorkerCatalog = buildModelWorkerCatalog(catalog.bodies, {
-  includeMoons: showMoons
+  includeMoons: true
 });
 const propagatedBodies = modelWorkerCatalog.bodies.map((body) => catalog.bodies[body.sourceIndex]);
 const model = new SolarSystemModel({ bodies: propagatedBodies });
@@ -310,7 +311,8 @@ const {
 const geometryCache = {
   sun: ownDisposable(new SphereGeometry(1, 128, 96)),
   planet: ownDisposable(new SphereGeometry(1, 16, 12)),
-  moon: ownDisposable(new SphereGeometry(1, 8, 6))
+  moon: ownDisposable(new SphereGeometry(1, 8, 6)),
+  majorMoon: ownDisposable(new SphereGeometry(1, 36, 28))
 };
 
 const PLANET_COLORS: Record<string, string> = {
@@ -516,6 +518,7 @@ function updateLabels() {
     const body = bodyById.get(bodyId);
     const node = bodyNodes.get(bodyId);
     if (!body || !node) continue;
+    if (node.visible === false) { sprite.visible = false; continue; }
     node.getWorldPosition(labelWorldPosition);
     // Last frame's final visibility drives the declutter hysteresis.
     const wasShown = sprite.visible;
@@ -554,6 +557,41 @@ for (const body of catalog.bodies) {
   }
   createOrbitLine(body);
 }
+
+const moonBodies = catalog.bodies.filter((b) => b.type === 'moon')
+  .sort((a, b) => Number(Boolean(b.isMajor)) - Number(Boolean(a.isMajor)) || a.name.localeCompare(b.name));
+
+// Named moons get a real map where one is bundled and a generated one otherwise.
+const curatedMoonTextures = new MoonTexturePipeline({
+  textureLoader,
+  configureTexture: (texture) => {
+    configureLoadedTexture(texture);
+    texture.wrapS = RepeatWrapping;
+    texture.needsUpdate = true;
+  },
+});
+startup.defer(() => { for (const texture of curatedMoonTextures.cache.values()) texture.dispose(); });
+for (const body of moonBodies) {
+  const mesh = bodyMeshes.get(body.id);
+  if (!body.isMajor || !(mesh?.material instanceof MeshStandardMaterial)) continue;
+  mesh.geometry = geometryCache.majorMoon;
+  const generated = ownDisposable(new CanvasTexture(generateMoonTexture(body.name, body.parentId ?? 'default')));
+  configureLoadedTexture(generated);
+  mesh.material.map = generated;
+  mesh.material.color.set('#ffffff');
+  const applyMap = (texture: typeof generated | Texture) => { mesh.material.map = texture; mesh.material.needsUpdate = true; };
+  const cached = curatedMoonTextures.requestTexture({ ...body, parentId: body.parentId ?? '' }, applyMap, startup.signal);
+  if (cached) applyMap(cached);
+}
+
+const surfaceMaps = ownDisposable(createPlanetSurfaceMaps({
+  targets: ([['moon', catalog.bodies.find(isEarthMoonBody)?.id], ['mars', 'mars']] as const).flatMap(([visualId, id]) => {
+    const tree: PlanetQuadtree | undefined = id ? bodyMeshes.get(id)?.userData.quadtree : undefined;
+    return tree ? [{ visualId, tree, node: bodyNodes.get(id!) }] : [];
+  }),
+  textureLoader,
+  maxAnisotropy,
+}));
 
 // ── Asteroid & Kuiper Belts ──────────────────────────────────────────────────
 
@@ -646,6 +684,64 @@ if (asteroidStartup.source === 'catalog' && phaseOneCatalog) {
 
 kuiperBeltUpdater.update(simState.julianDate);
 syncAsteroidBeltInputs();
+
+// ── Moons ────────────────────────────────────────────────────────────────────
+
+/** Enlarged planets would swallow their moons, so a moon keeps its true altitude above the drawn surface. */
+function moonDisplayOffsetAu(body: CatalogBody): number {
+  const parent = body.parentId ? bodyById.get(body.parentId) : undefined;
+  if (!parent) return 0;
+  return Math.max(0, bodyBaseRadiusAu(parent) - (parent.realRadiusAu ?? bodyBaseRadiusAu(parent)));
+}
+
+/** Reads the true parent-relative position written earlier in the same frame stage. */
+function applyMoonAltitudeDisplay() {
+  if (simState.useRealisticScale) return;
+  for (const body of moonBodies) {
+    const node = bodyNodes.get(body.id);
+    const distanceAu = node?.position.length();
+    if (distanceAu) node.position.multiplyScalar(1 + moonDisplayOffsetAu(body) / distanceAu);
+  }
+}
+
+function applyMoonOrbitLineDisplay() {
+  for (const line of orbitLines) {
+    const body = line.userData.bodyType === 'moon' ? bodyById.get(line.userData.bodyId) : undefined;
+    if (!body) continue;
+    const attribute = line.geometry.getAttribute('position');
+    const trueLoop: Float32Array = line.userData.trueLoop ??= Float32Array.from(attribute.array);
+    const offsetAu = moonDisplayOffsetAu(body);
+    for (let i = 0; i < attribute.count; i++) {
+      const x = trueLoop[i * 3], y = trueLoop[i * 3 + 1], z = trueLoop[i * 3 + 2];
+      const scale = 1 + offsetAu / (Math.hypot(x, y, z) || 1);
+      attribute.setXYZ(i, x * scale, y * scale, z * scale);
+    }
+    attribute.needsUpdate = true;
+    line.geometry.computeBoundingSphere();
+  }
+}
+applyMoonOrbitLineDisplay();
+
+const earthMoon = catalog.bodies.find(isEarthMoonBody);
+const earthDirectionLocal = new Vector3();
+const inverseSpin = new Quaternion();
+/** The prime meridian is defined by the mean Earth direction; librations are not modelled. */
+function faceMoonTowardEarth() {
+  const state = earthMoon && model.getState(earthMoon.id);
+  const spin = earthMoon && bodySpinGroups.get(earthMoon.id);
+  const mesh = earthMoon && bodyMeshes.get(earthMoon.id);
+  if (!state?.available || !spin || !mesh) return;
+  earthDirectionLocal.copy(state.relativePosition).negate().applyQuaternion(inverseSpin.copy(spin.quaternion).invert());
+  mesh.rotation.y = Math.atan2(earthDirectionLocal.x, earthDirectionLocal.z);
+}
+
+function applyMoonVisibility() {
+  showMoons = dom.toggleMoons.checked;
+  explorerBodies.length = 0;
+  explorerBodies.push(...namedBodies, ...(showMoons ? moonBodies : []));
+  refillBodyList();
+  updateSceneBodies();
+}
 
 // ── Focus & Follow ───────────────────────────────────────────────────────────
 
@@ -761,11 +857,11 @@ function updateBodyInfoPanel(bodyId: string) {
 
 // ── Body List ────────────────────────────────────────────────────────────────
 
-const majorBodies = catalog.bodies.filter((b) =>
-  b.type === 'star' || b.type === 'planet' || b.type === 'dwarf'
-);
+const namedBodies = catalog.bodies.filter((b) => b.type !== 'moon');
+showMoons = dom.toggleMoons.checked; // Browsers may restore the switch on reload.
+const explorerBodies = [...namedBodies, ...(showMoons ? moonBodies : [])];
 const explorer = ownDisposable(createExplorerController({
-  dom, bodies: majorBodies, onInspect: updateBodyInfoPanel,
+  dom, bodies: explorerBodies, onInspect: updateBodyInfoPanel,
   onFocus: (bodyId) => { simState.followBodyId = null; focusBody(bodyId, true); updateCameraMode('focus', bodyId); },
   onFollow: (bodyId) => { simState.followBodyId = bodyId; focusBody(bodyId, true); updateCameraMode('follow', bodyId); },
   onFree: () => { simState.followBodyId = null; updateCameraMode('free'); }
@@ -773,7 +869,8 @@ const explorer = ownDisposable(createExplorerController({
 const bodyPicker = ownDisposable(createBodyPickerPresentation({ select: dom.bodyList, narrow: window.matchMedia('(max-width: 600px)'), coarse: window.matchMedia('(any-pointer: coarse)') }));
 function refillBodyList() {
   explorer.refresh(); bodyPicker.refresh();
-  const totalBodies = majorBodies.length + (asteroidPop?.count ?? 0) + (kuiperPop?.count ?? 0);
+  const totalBodies = explorerBodies.length + (dom.toggleAsteroids.checked ? asteroidPop?.count ?? 0 : 0)
+    + (dom.toggleKuiper.checked ? kuiperPop?.count ?? 0 : 0);
   dom.statusBodies.textContent = `Bodies · ${totalBodies.toLocaleString()}`;
 }
 
@@ -793,6 +890,8 @@ function applyScaleMode() {
   // Notify belt renderers so asteroids use physical sizes in realistic mode
   asteroidBeltRenderer.setScaleMode(simState.useRealisticScale);
   kuiperBeltRenderer.setScaleMode(simState.useRealisticScale);
+  applyMoonOrbitLineDisplay();
+  applyMoonAltitudeDisplay();
   if (simState.focusedBodyId) focusBody(simState.focusedBodyId, true);
 }
 
@@ -873,7 +972,7 @@ function applyLatestWorkerSnapshot() {
     const orbitLine = orbitLineByBodyId.get(body.id);
     if (orbitLine) {
       orbitLine.userData.stateAvailable = stateAvailable;
-      orbitLine.visible = stateAvailable && dom.toggleOrbits.checked;
+      orbitLine.visible = stateAvailable && dom.toggleOrbits.checked && (showMoons || body.type !== 'moon');
     }
     if (!stateAvailable) {
       if (node) node.visible = false;
@@ -981,7 +1080,7 @@ function applyModelSceneAndStateFallback() {
     if (!orbitLine) continue;
     const stateAvailable = model.getState(body.id)?.available !== false;
     orbitLine.userData.stateAvailable = stateAvailable;
-    orbitLine.visible = stateAvailable && dom.toggleOrbits.checked;
+    orbitLine.visible = stateAvailable && dom.toggleOrbits.checked && (showMoons || body.type !== 'moon');
   }
 }
 
@@ -1090,8 +1189,10 @@ dom.toggleLabels.addEventListener('change', () => {
   for (const entry of labels) entry.sprite.visible = vis;
 }, { signal: startup.signal });
 
-dom.toggleAsteroids.addEventListener('change', applyBeltVisibility, { signal: startup.signal });
-dom.toggleKuiper.addEventListener('change', applyBeltVisibility, { signal: startup.signal });
+dom.toggleMoons.addEventListener('change', applyMoonVisibility, { signal: startup.signal });
+for (const toggle of [dom.toggleAsteroids, dom.toggleKuiper]) {
+  toggle.addEventListener('change', () => { applyBeltVisibility(); refillBodyList(); }, { signal: startup.signal });
+}
 
 dom.toggleRealisticScale.addEventListener('change', () => {
   simState.useRealisticScale = dom.toggleRealisticScale.checked;
@@ -1116,7 +1217,7 @@ dom.canvas.addEventListener('dblclick', (e) => {
   const ndcY = -((e.clientY - rect.top) / rect.height) * 2 + 1;
   const raycaster = new Raycaster();
   raycaster.setFromCamera(new Vector2(ndcX, ndcY), camera);
-  const targets = [...bodyMeshes.values()].filter((m) => m.visible);
+  const targets = [...bodyMeshes].filter(([id, m]) => m.visible && bodyNodes.get(id)?.visible !== false).map(([, m]) => m);
   // Quadtree groups supply mean-sphere pick proxies; their GPU-displaced plane
   // children are deliberately excluded from CPU triangle raycasting.
   const hits = raycaster.intersectObjects(targets, false);
@@ -1168,12 +1269,13 @@ const frameLifecycle = createFrameLifecycle({
   stages: [
     { name: 'time', run: ({ deltaSeconds }) => timeController.advanceLocalTime(deltaSeconds) },
     { name: 'model', run: ({ deltaSeconds }) => updateModelState(deltaSeconds) },
-    { name: 'rotations', run: () => updateBodyRotations(simState.julianDate) },
+    { name: 'rotations', run: () => { updateBodyRotations(simState.julianDate); faceMoonTowardEarth(); } },
     { name: 'asteroids', run: syncAsteroidBeltInputs },
     { name: 'kuiper', run: () => { kuiperBeltUpdater.update(simState.julianDate); } },
     // Controller gates decorative motion; scientific inputs remain simulation JD.
     { name: 'sun', run: ({ timestamp }) => sunCtrl.update(simState.julianDate, timestamp * 0.001) },
-    { name: 'metric-display', run: () => applyMetricDisplayOffsets(model, bodyNodes, sunCtrl.getWarpState()) },
+    // Together: the moon offset scales the positions this stage has just rewritten.
+    { name: 'metric-display', run: () => { applyMetricDisplayOffsets(model, bodyNodes, sunCtrl.getWarpState()); applyMoonAltitudeDisplay(); } },
     { name: 'solar-refresh', run: () => sunCtrl.maybeRefreshPhysics() },
     { name: 'follow', run: updateFollowTarget },
     { name: 'camera-actions', run: () => viewportCamera.applyPendingActions() },
@@ -1194,6 +1296,7 @@ const frameLifecycle = createFrameLifecycle({
         }
       };
     }),
+    { name: 'surface-maps', run: () => surfaceMaps.update() },
     { name: 'background', run: () => { backgroundStars.position.copy(camera.position); } },
     { name: 'controls', run: () => { controls.update(); } },
     { name: 'clip-planes', run: updateCameraClipPlanes },

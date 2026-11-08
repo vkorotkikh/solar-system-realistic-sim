@@ -119,7 +119,7 @@ test('reusing the panel replaces Unknown, known moon and planet text without ret
   assert.deepEqual(runtime.distanceCalls, ['moon-jupiter-magaclite', 'moon-earth-moon', 'earth', 'moon-jupiter-magaclite']);
 });
 
-test('canonical source identities and disabled moon scene remain intact', () => {
+test('canonical source identities remain intact and moons ship enabled', () => {
   assert.equal(raw.length, 423);
   assert.deepEqual(raw.filter(row => row.iauCode === '715').map(row => [row.id, row.ephemeris]), [[388, 'URA184']]);
   assert.equal(raw.find(row => row.id === 21)!.name, 'Magaclite');
@@ -127,7 +127,7 @@ test('canonical source identities and disabled moon scene remain intact', () => 
   assert.equal(body('moon-jupiter-magaclite').radiusKm, null);
   assert.equal(body('moon-uranus-puck').sourceId, '715');
   assert.equal(catalog.bodies.some(item => item.id === 'moon-uranus-puck-2'), false);
-  assert.equal(visibilityNode!.kind, ts.SyntaxKind.FalseKeyword);
+  assert.equal(visibilityNode!.kind, ts.SyntaxKind.TrueKeyword);
 });
 
 for (const visible of [false, true]) test(`panel reads preserve catalog, worker and shared orbit bindings: visible=${visible}`, () => {

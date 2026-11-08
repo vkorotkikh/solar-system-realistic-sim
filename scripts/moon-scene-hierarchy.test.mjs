@@ -139,11 +139,11 @@ function withScene({showMoons = true} = {}, inspect) {
   }
 }
 
-test('control: shipped Moon-off policy, current423 identities and compact worker exclusion remain', () => {
-  expect(shippedShowMoons).toBe(false);
+test('control: moons ship on, current423 identities and Moon-off worker exclusion remain', () => {
+  expect(shippedShowMoons).toBe(true);
   expect(catalog.bodies.filter(body => body.type === 'moon')).toHaveLength(423);
   expect(earthMoon.id).toBe('moon-earth-moon');
-  withScene({showMoons: shippedShowMoons}, f => {
+  withScene({showMoons: false}, f => {
     expect([...f.bodyNodes.keys()]).toEqual(['sun', 'earth', 'jupiter', 'mars']);
     expect(f.contract.idByIndex).toEqual(['sun', 'earth', 'jupiter', 'mars']);
   });

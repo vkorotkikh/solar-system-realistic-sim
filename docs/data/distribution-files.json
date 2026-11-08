@@ -8430,6 +8430,33 @@
       "releaseClass": "copied-public-asset"
     },
     {
+      "path": "public/textures/surfaces/mars_albedo_usgs_4096.jpg",
+      "bytes": 1659283,
+      "sha256": "63b6afa8db88e00f4ee9c66650e15cd73ab225bacb7b45da14081b1282f49542",
+      "sourceProductIds": [
+        "surface-map:mars:viking-colorized"
+      ],
+      "releaseClass": "copied-public-asset"
+    },
+    {
+      "path": "public/textures/surfaces/moon_albedo_lroc_8192.jpg",
+      "bytes": 9431450,
+      "sha256": "9fbcf2dbb42137dc8c31fd13a050a2d3014ef048d35b5f16f579b83b66f7f3dc",
+      "sourceProductIds": [
+        "surface-map:moon:cgi-moon-kit"
+      ],
+      "releaseClass": "copied-public-asset"
+    },
+    {
+      "path": "public/textures/surfaces/moon_relief_ldem16_5760.png",
+      "bytes": 3611817,
+      "sha256": "35e07425ce6ce6f92c07e81dbabe0d8abeba844de7d068a131605bef86e3e113",
+      "sourceProductIds": [
+        "surface-map:moon:cgi-moon-kit"
+      ],
+      "releaseClass": "copied-public-asset"
+    },
+    {
       "path": "solar-systems/nearby_star_systems_ranked_full.csv",
       "bytes": 57430,
       "sha256": "71a1feae8e91fd28efe9a2908061851d911dab58b5ba7a6ec7e254397955bfff",
