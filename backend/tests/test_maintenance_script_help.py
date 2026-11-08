@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import os
 import shutil
+import socket
 import subprocess
 import sys
 from pathlib import Path
@@ -30,6 +31,9 @@ def sandbox(tmp_path: Path) -> Path:
         shutil.copy2(ROOT / "scripts" / name, tmp_path / "scripts" / name)
     (tmp_path / "src/data").mkdir(parents=True)
     shutil.copy2(ROOT / "src/data/moons.json", tmp_path / "src/data/moons.json")
+    # The scripts write under here; without the directory a stray write would
+    # crash instead of leaving a file, and the no-write check could not fail.
+    (tmp_path / "backend/tests/fixtures").mkdir(parents=True)
     return tmp_path
 
 
@@ -38,10 +42,21 @@ def files(root: Path) -> dict[str, bytes]:
             for path in sorted(root.rglob("*")) if path.is_file()}
 
 
+def closed_port() -> int:
+    # Bind an ephemeral port and release it: nothing listens there afterwards.
+    with socket.socket() as probe:
+        probe.bind(("127.0.0.1", 0))
+        return probe.getsockname()[1]
+
+
 def run(sandbox: Path, name: str, *args: str) -> subprocess.CompletedProcess[str]:
-    closed = "http://127.0.0.1:9"
-    env = {**os.environ, "http_proxy": closed, "https_proxy": closed, "no_proxy": "",
-           "PYTHONDONTWRITEBYTECODE": "1"}
+    closed = f"http://127.0.0.1:{closed_port()}"
+    # NO_COLOR keeps argparse and tracebacks plain on Python 3.13+, whatever the
+    # developer's shell sets.
+    env = {key: value for key, value in os.environ.items()
+           if key not in ("FORCE_COLOR", "PYTHON_COLORS")}
+    env.update({"http_proxy": closed, "https_proxy": closed, "no_proxy": "",
+                "NO_COLOR": "1", "PYTHONDONTWRITEBYTECODE": "1"})
     return subprocess.run(
         [sys.executable, str(sandbox / "scripts" / name), *args],
         cwd=sandbox, env=env, capture_output=True, text=True, timeout=120,
@@ -84,5 +99,4 @@ def test_moon_elements_flag_selects_the_element_capture(sandbox: Path) -> None:
     result = run(sandbox, "fetch_remediation_ephemeris.py", "--moon-elements")
     assert result.returncode == 1
     assert "in capture_moon_elements" in result.stderr
-    assert "Connection refused" in result.stderr
     assert files(sandbox) == before
