@@ -21,20 +21,22 @@ a hash. Complete responses from older servers remain supported.
 Geometry is a function of the requested epoch, so a hash can match only when
 the next request is for a byte-identical epoch. Reuse therefore applies to
 repeated requests at the same epoch, such as a paused simulation or a retry; it
-does not apply during playback faster than 28.8× real time, which includes the
-default rate. Measured over real HTTP at
+does not apply during playback. Measured over real HTTP at
 `fidelity=high&max_features=180`, one second of simulated time already changes
 all three arrays (corona features, PFSS lines and Parker lines). While the
 simulation plays, every poll sends complete geometry, about **262 KB gzip**; a
 same-epoch poll with reuse is about 2.8 KB. Deltas are not sent.
 
 The browser requests the start of the 0.01-day step that holds the clock
-reading (`solarPhysicsRequestJd`, owner decision of 2026-11-03), so polls inside
-one step ask for the same epoch. The backend's exact ready-result cache and this
-geometry reuse can then serve them: at real-time rate about 29 consecutive polls
-share a step, while any rate above 28.8× real time moves at least one step per
-poll. The drawn state trails the clock by under 0.01 d (14.4 simulated minutes,
-about 0.14° of solar rotation). An epoch already on the grid, such as 00:00 UTC,
+reading (`solarPhysicsRequestJd`, owner decision of 2026-11-03). For a single
+viewer this adds no reuse at any speed the UI offers. The speed slider moves in
+whole days per second, so even 1 d/s crosses about 3,000 steps per 30 s poll;
+polls would share a step only below 28.8× real time. A paused clock, or one at
+0 d/s, already repeats its exact epoch. The snap helps only when different tabs
+or clients request epochs inside the same step, which in practice means clocks
+paused within 14.4 simulated minutes of each other. They can then share the
+backend's exact ready-result cache. The drawn state trails the clock by under
+0.01 d (14.4 simulated minutes, about 0.14° of solar rotation). An epoch already on the grid, such as 00:00 UTC,
 is requested unchanged. The backend still answers other callers at exactly the
 epoch they request.
 
