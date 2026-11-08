@@ -153,6 +153,9 @@ const dom = {
   statusSolarAnnouncer: elementById<HTMLElement>('status-solar-announcer'),
   zoomSensitivity: elementById<HTMLInputElement>('zoom-sensitivity'),
   zoomSensitivityValue: elementById<HTMLOutputElement>('zoom-sensitivity-value'),
+  focusMoonSkim: elementById<HTMLButtonElement>('focus-moon-skim'),
+  focusMoonLlo: elementById<HTMLButtonElement>('focus-moon-llo'),
+  focusMoonNrho: elementById<HTMLButtonElement>('focus-moon-nrho'),
   viewportShell: elementById<HTMLElement>('viewport-shell'),
   agnSource: elementById<HTMLSelectElement>('agn-source'),
   agnPreset: elementById<HTMLSelectElement>('agn-preset'),
@@ -874,6 +877,37 @@ function refillBodyList() {
   dom.statusBodies.textContent = `Bodies · ${totalBodies.toLocaleString()}`;
 }
 
+// ── Moon Quick Views ─────────────────────────────────────────────────────────
+
+/** Keeps the camera above the Moon's highest terrain, 10.8 km over the reference sphere. */
+const MOON_MIN_CAMERA_ALTITUDE_KM = 11;
+
+function viewMoonAtAltitude(altitudeKm: number) {
+  const node = earthMoon && bodyNodes.get(earthMoon.id);
+  if (!earthMoon?.radiusKm || !node) return;
+  if (!dom.toggleMoons.checked) {
+    dom.toggleMoons.checked = true;
+    applyMoonVisibility();
+  }
+  if (!simState.useRealisticScale) {
+    dom.toggleRealisticScale.checked = true;
+    simState.useRealisticScale = true;
+    applyScaleMode();
+  }
+  explorer.setPreferredBody(earthMoon.id);
+  simState.focusedBodyId = simState.followBodyId = earthMoon.id;
+  node.getWorldPosition(tempVec);
+  const towardSun = tempVec.clone().negate().normalize();
+  const offset = camera.position.clone().sub(controls.target).normalize();
+  // Arriving over the night side would show nothing.
+  if (offset.dot(towardSun) < 0.3) offset.copy(towardSun).add(new Vector3(0, 0, 0.35)).normalize();
+  controls.minDistance = (earthMoon.radiusKm + MOON_MIN_CAMERA_ALTITUDE_KM) / AU_KM;
+  controls.target.copy(tempVec);
+  camera.position.copy(tempVec).addScaledVector(offset, (earthMoon.radiusKm + altitudeKm) / AU_KM);
+  controls.update();
+  updateCameraMode('follow', earthMoon.id);
+}
+
 // ── Scale Mode ───────────────────────────────────────────────────────────────
 
 function applyScaleMode() {
@@ -1190,6 +1224,9 @@ dom.toggleLabels.addEventListener('change', () => {
 }, { signal: startup.signal });
 
 dom.toggleMoons.addEventListener('change', applyMoonVisibility, { signal: startup.signal });
+for (const [button, altitudeKm] of [[dom.focusMoonSkim, 15], [dom.focusMoonLlo, 100], [dom.focusMoonNrho, 30_000]] as const) {
+  button.addEventListener('click', () => viewMoonAtAltitude(altitudeKm), { signal: startup.signal });
+}
 for (const toggle of [dom.toggleAsteroids, dom.toggleKuiper]) {
   toggle.addEventListener('change', () => { applyBeltVisibility(); refillBodyList(); }, { signal: startup.signal });
 }

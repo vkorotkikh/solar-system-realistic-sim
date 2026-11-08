@@ -372,6 +372,11 @@ void main() {
 #endif
 
     // Apply grit to base color
+#ifdef PLANET_HAS_MAPS
+    // Signed: abs() draws bright veins along the noise's zero crossings, which read as false terrain.
+    if (uAlbedoReady > 0.5) baseColor *= 1.0 + grit;
+    else
+#endif
     baseColor *= (1.0 - abs(grit) * 2.0);
 
     // Simple lambertian lighting + ambient + micro normal perturbation
