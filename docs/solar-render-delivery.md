@@ -44,9 +44,11 @@ and **2 MiB decoded**. Without gzip the same encoded cap applies to plain JSON.
 A state above either cap returns structured HTTP 413
 `solar_delivery_budget_exceeded`, preserving the last accepted state in the
 client. There is no silent truncation or mixed-epoch geometry. The browser also
-bounds its decompressed response stream at 2 MiB and checks a supplied encoded
-Content-Length for render responses. Old complete responses are accepted up to
-the decoded cap.
+bounds its decompressed response stream at 2 MiB. Render responses carry an
+`X-Solar-Delivery: render-v1` header, exposed through CORS; when it is present
+and `Content-Length` exceeds 512 KiB the browser rejects before reading any body,
+and otherwise checks the supplied `Content-Length` after parsing. Old complete
+responses (no header) are accepted up to the decoded cap.
 
 At the default cadence this bounds two successful response bodies per minute at
 **1 MiB encoded**, excluding HTTP/TLS overhead, realtime observations and explicit
