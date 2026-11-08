@@ -65,3 +65,24 @@ def test_unsupported_option_is_refused_before_any_work(sandbox: Path, name: str)
     assert result.returncode == 2
     assert "unrecognized arguments: --dry-run" in result.stderr
     assert files(sandbox) == before
+
+
+def test_abbreviated_option_is_refused_before_any_work(sandbox: Path) -> None:
+    # argparse accepts any unambiguous prefix unless told not to; --moon must not
+    # quietly become --moon-elements and start the live element capture.
+    before = files(sandbox)
+    result = run(sandbox, "fetch_remediation_ephemeris.py", "--moon")
+    assert result.returncode == 2
+    assert "unrecognized arguments: --moon" in result.stderr
+    assert files(sandbox) == before
+
+
+def test_moon_elements_flag_selects_the_element_capture(sandbox: Path) -> None:
+    # The flag replaced a sys.argv check; it must still reach capture_moon_elements,
+    # which fails at the closed proxy before it can write the element fixtures.
+    before = files(sandbox)
+    result = run(sandbox, "fetch_remediation_ephemeris.py", "--moon-elements")
+    assert result.returncode == 1
+    assert "in capture_moon_elements" in result.stderr
+    assert "Connection refused" in result.stderr
+    assert files(sandbox) == before

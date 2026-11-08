@@ -81,6 +81,8 @@ def capture_moon_elements():
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description=__doc__,
+        # No prefix matching: a typo like --moon must not start the live capture.
+        allow_abbrev=False,
         epilog='Downloads from JPL Horizons and overwrites backend/tests/fixtures/'
                '{fallback,secular}_horizons_remediation.json, or with --moon-elements '
                'the Carme and Himalia element captures.')
