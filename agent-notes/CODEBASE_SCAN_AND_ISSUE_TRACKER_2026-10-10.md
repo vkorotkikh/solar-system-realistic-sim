@@ -82,8 +82,9 @@ below is an ancestor of `main`, including all 18 that it lists as branch repairs
 | SCN-039 | Policy | Explicit backend-origin and viewport configuration, accepted 2026-10-30. |
 | SCN-040 | Not fully fixed | The September and H1 archive is committed, but the living trackers linked the untracked originals. [#46](https://github.com/vkorotkikh/solar-system-realistic-sim/pull/46), which adds this section, fixes the links. |
 
-Since the re-check, `main` has merged #33–#40 and #42; those changes were not re-checked. As of 2026-11-08, the
-pull requests for SCN-004, SCN-033 and SCN-040 (#47, #45 and #46) are open.
+Since the re-check, `main` has merged every pull request from #32 to #56 except #45; those changes were not
+re-checked. SCN-004 (#47) and SCN-040 (#46) are merged. SCN-033 (#45) is still open as of 2026-11-08, and it now also
+covers a fourth script the re-check missed, `generate_mga_reference.py`.
 
 ## Pasted SCN-001–040 branch inventory — 2026-10-17
 
