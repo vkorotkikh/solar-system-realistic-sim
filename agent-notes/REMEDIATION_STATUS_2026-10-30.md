@@ -20,10 +20,9 @@ The original source copies and immutable archives are retained.
   these fixes are not merged into main is out of date.
 - **What the 2026-11-06 re-check covered.** It re-ran the original reproductions on `main` (`8e75993`) for SCN-001–040
   only:
-  - 30 hold.
+  - 31 hold, including SCN-029: both workflows run on pushes and pull requests and passed on `main`.
   - 4 are closed by the accepted policies.
   - SCN-005, SCN-030 and SCN-035 stay partial, as listed below.
-  - SCN-029's CI exists, but nothing enforces it (see SCN-047 below).
   - SCN-033 and SCN-040 were incomplete.
 - **Backend suite.** A clean install from `ci/backend-test-requirements.txt` ran the full suite on `main`:
   **5,833 passed, 13 skipped**.
@@ -46,9 +45,6 @@ Related items:
   Nothing has read `BACKEND_GEOMETRY_VALIDATED` since `68be768`. All six backend layers are admitted per layer by
   their frame contract. That includes PFSS lines labelled synthetic and unvalidated, which draw when the "Solar
   magnetic field" switch is on. The owner has deferred the choice between an honest label and a restored gate.
-- **SCN-047.** The remote configuration is now known: `main` has no branch protection (checked 2026-11-07), so no
-  check is required before a merge. Both workflows run on pushes and pull requests; the frontend workflow only when a
-  change touches one of the paths it lists.
 
 ## Saved work and scope
 
