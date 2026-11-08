@@ -58,6 +58,15 @@ latency or compute-speed promise: geometry is still computed and authenticated
 through the existing request-owned worker before hashing. A future computation
 cache would need its own cancellation and freshness proof.
 
+Keeping the client's last accepted response does not keep it on screen indefinitely.
+The renderer clears its backend state when the absolute simulation/snapshot epoch
+separation exceeds `max(30, 2 * abs(rateDaysPerSec) * pollIntervalSec)` days, after
+five consecutive refresh failures, or after more than five minutes without success.
+Paused playback uses a zero rate for this limit. Arrivals beyond it are not drawn.
+The Sun chip labels separation above one day as "time-lapse: state lags N d";
+after clearing, procedural fallback identifies the removed state's date unless
+the model-range notice takes precedence. A usable new snapshot restores backend state.
+
 Observed forcing remains disabled until separately validated. The qualified
 single-epoch GONG/WSA corpus, raw AIA tile spatial rejection and provider-cache
 contracts are unaffected by wire reuse. A compact response cannot promote an

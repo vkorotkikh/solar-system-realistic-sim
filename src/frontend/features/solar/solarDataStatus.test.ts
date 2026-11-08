@@ -193,6 +193,46 @@ describe('describeSolarDataStatus', () => {
   });
 });
 
+describe('describeSolarDataStatus stale-state policy (H2.7)', () => {
+  it.each([
+    [0.9, null],
+    [1.4, '1.4'],
+    [37.4, '37'],
+    [137, '140'],
+    [3_842, '3800'],
+  ])('labels a backend state %s simulated days behind the clock as %s days of time-lapse', (lagDays, shown) => {
+    const { text } = describeSolarDataStatus(input({ lastSuccessMs: SUCCESS_MS, payload: HYBRID_PAYLOAD, stateLagDays: lagDays }));
+    if (shown === null) expect(text).not.toContain('time-lapse');
+    else expect(text).toContain(` · time-lapse: state lags ${shown} d · updated 14:03 UTC`);
+  });
+
+  it('labels the lag of an earlier state that is still drawn while refreshes fail', () => {
+    const { text } = describeSolarDataStatus(input({
+      lastSuccessMs: SUCCESS_MS, payload: HYBRID_PAYLOAD, lastFailure: failure('busy', 503), stateLagDays: 12,
+    }));
+    expect(text).toBe('Sun: backend state from 14:03 UTC (refresh failing: solar server busy, HTTP 503) · time-lapse: state lags 12 d');
+  });
+
+  it('says which epoch a cleared backend state was for', () => {
+    expect(describeSolarDataStatus(input({ lastSuccessMs: SUCCESS_MS, clearedEpochJdTdb: 2_451_552 }))).toMatchObject({
+      state: 'connecting',
+      text: 'Sun: procedural fallback (last backend state was for 2000-01-08)',
+      announcementKey: 'cleared',
+      announcement: 'Sun data: the simulation clock moved past the backend state. Showing the procedural Sun.',
+    });
+  });
+
+  it('adds the failure reason when the backend state was cleared because refreshes failed', () => {
+    expect(describeSolarDataStatus(input({
+      lastSuccessMs: SUCCESS_MS, clearedEpochJdTdb: 2_451_552, lastFailure: failure('busy', 503),
+    }))).toMatchObject({
+      state: 'error',
+      text: 'Sun: procedural fallback (last backend state was for 2000-01-08; refresh failing: solar server busy, HTTP 503)',
+      announcementKey: 'error:slow',
+    });
+  });
+});
+
 describe('renderSolarDataStatus', () => {
   it('writes text, title and state, and skips identical rewrites', () => {
     let writes = 0;

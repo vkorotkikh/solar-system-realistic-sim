@@ -46,6 +46,7 @@ export interface SolarPhysicsStatePayload extends SolarObservationPhysicsStateLi
   pfss_field_lines?: {
     source?: string;
     carrington_rotation?: number;
+    lines?: unknown[];
   };
   coronal_holes?: {
     holes?: Array<{

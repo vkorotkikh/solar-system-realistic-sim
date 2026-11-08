@@ -121,7 +121,10 @@ describe('actual production Sun controller graph', () => {
     const pfssLine = controller.magneticFieldGroup!.children[0] as Mesh;
     const actual = new Vector3().fromBufferAttribute(pfssLine.geometry.getAttribute('position'), 0).applyMatrix4(pfssLine.matrixWorld);
     const first = captured.pfss_field_lines.lines[0].arc[0];
-    const expected = new Vector3(...first as [number, number, number]).applyMatrix4(referenceMatrix).multiplyScalar(SOLAR_RADIUS_AU);
+    // Field lines are carried with the Sun's rotation from their payload epoch, like the spots below.
+    const carried = new Matrix4().makeRotationZ((displayJd - captured.epoch_jd_tdb) * 14.1844 * Math.PI / 180);
+    const expected = new Vector3(...first as [number, number, number])
+      .applyMatrix4(carried).applyMatrix4(referenceMatrix).multiplyScalar(SOLAR_RADIUS_AU);
     expect(actual.distanceTo(expected)).toBeLessThan(2e-9);
     for (const input of [[1, 0, 0], [0, 1, 0], [0.3, 0.4, Math.sqrt(0.75)]]) {
       const localState = solarFeaturesInSurfaceFrame(

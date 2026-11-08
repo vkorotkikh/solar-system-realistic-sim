@@ -5,6 +5,7 @@ interface TimeControllerDom {
   timeScale?: HTMLInputElement | null;
   timeScaleValue?: HTMLElement | null;
   timeDate?: HTMLElement | null;
+  sessionLabel?: HTMLElement | null;
 }
 
 interface TimeControllerState {
@@ -77,12 +78,12 @@ export function createTimeController({
   }
 
   function updateHud() {
-    if (dom.timeScaleValue) {
-      const value = simState.timeScaleDaysPerSec;
-      const prefix = value > 0 ? '+' : '';
-      const text = `${prefix}${value.toFixed(1)} d/s`;
-      if (dom.timeScaleValue.textContent !== text) dom.timeScaleValue.textContent = text;
-    }
+    const value = simState.timeScaleDaysPerSec;
+    const rate = `${value > 0 ? '+' : ''}${value.toFixed(1)} d/s`;
+    if (dom.timeScaleValue && dom.timeScaleValue.textContent !== rate) dom.timeScaleValue.textContent = rate;
+    // The header says what the clock is doing instead of calling the simulation live (H2.10).
+    const session = simState.paused ? 'Paused' : `Simulation · ${rate}`;
+    if (dom.sessionLabel && dom.sessionLabel.textContent !== session) dom.sessionLabel.textContent = session;
     if (dom.timeDate) {
       const formattedDate = formatJulianAsDate(simState.julianDate);
       if (dom.timeDate.textContent !== formattedDate) dom.timeDate.textContent = formattedDate;

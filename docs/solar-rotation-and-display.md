@@ -26,6 +26,19 @@ integrate physical km/s over simulated days. Pause, reverse and reduced-motion
 suppression continue to freeze this decorative animation. Backend features
 still evolve at requested JDTDB, independently of the decorative clock.
 
+Snapshot transitions use a fixed 1.5 seconds of that decorative clock, including
+the first loop/eruption arrival. Activity, sunspots and coronal holes ease from
+what is drawn; eligible observation blend/emission controls also ease. Pause,
+reverse and reduced motion apply the new target immediately. Revoked or
+ineligible imagery immediately sets both observation controls to zero on update,
+even when decorative time is frozen; eligible recovery still fades in over 1.5
+seconds. This does not enable observed imagery.
+
+Admitted backend magnetic lines are keyed on line content and snapshot epoch;
+brightness-only changes at the same epoch retain them. Between snapshots they follow the Sun's
+rigid rotation in simulation time. The analytic fallback uses quantized activity
+for rebuilds. These display transitions do not advance the backend physical model.
+
 The corona shell is an **illustrative glow bounded at four displayed Sun
 radii** at either scale. Its analytic radial brightness profile is not a measured
 coronal edge, calibrated radiance or a statement that the corona physically ends

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { Camera, Texture, TextureLoader } from 'three';
+import { Texture, type Camera, type TextureLoader } from 'three';
 
 import { createSunController } from './sunController';
 import {
@@ -187,7 +187,43 @@ describe('sun controller solar delivery', () => {
     controller.disposeSolarDelivery();
   });
 
-  it('revokes a loaded observation texture when its spatial contract is withdrawn', async () => {
+  it('eases a newly loaded AIA image in instead of switching it on at once (H2.9)', async () => {
+    vi.stubGlobal('fetch', vi.fn(async (input: string | URL | Request) => (
+      String(input).includes('/solar/realtime') ? responseWith(realtimePayload(true)) : Promise.reject(new Error('offline'))
+    )));
+    const settle: Array<(texture: Texture) => void> = [];
+    const load = vi.fn((_url: string, onLoad: (texture: Texture) => void) => { settle.push(onLoad); });
+    const simState = { julianDate: 2_460_000.5 };
+    const controller = createSunController({
+      camera: {} as Camera,
+      simState,
+      backendBaseUrl: () => 'http://backend.test',
+      configureLoadedTexture: vi.fn((_texture: Texture) => undefined),
+      observationTextureLoader: { load } as unknown as TextureLoader,
+      getSunRadiusAu: () => 0.01,
+      isMagneticFieldEnabled: () => false
+    });
+    const shownBlend = () => Number(vi.mocked(updateSunMaterialUniforms).mock.lastCall?.[0].observationBlend);
+    let wallSec = 0;
+    const frame = () => { simState.julianDate += 0.01; wallSec += 0.1; controller.update(simState.julianDate, wallSec); };
+    frame(); frame();
+    const before = shownBlend();
+
+    controller.maybeRefreshRealtime(Date.now(), true);
+    await vi.waitFor(() => expect(load).toHaveBeenCalledTimes(1));
+    settle[0]({ dispose: vi.fn(), needsUpdate: false } as unknown as Texture);
+    frame();
+    const firstFrame = shownBlend();
+    for (let i = 0; i < 20; i += 1) frame();
+    const settled = shownBlend();
+
+    expect(settled - before).toBeGreaterThan(0.1);
+    // One 0.1 s frame into the 1.5 s smoothstep: (1/15)^2 * (3 - 2/15) = 0.012741 of the way.
+    expect((firstFrame - before) / (settled - before)).toBeCloseTo(0.012741, 3);
+    controller.disposeSolarDelivery();
+  });
+
+  it('clears observation uniforms immediately on spatial withdrawal and eases an eligible recovery in', async () => {
     let spatiallyEligible = true;
     vi.stubGlobal('fetch', vi.fn(async () => responseWith(realtimePayload(spatiallyEligible))));
 
@@ -195,15 +231,25 @@ describe('sun controller solar delivery', () => {
     const load = vi.fn((_url: string, onLoad: (texture: Texture) => void) => {
       settleTexture = onLoad;
     });
+    const simState = { julianDate: 2_460_000.5 };
     const controller = createSunController({
       camera: {} as Camera,
-      simState: { julianDate: 2_460_000.5 },
+      simState,
       backendBaseUrl: () => 'http://backend.test',
       configureLoadedTexture: vi.fn((_texture: Texture) => undefined),
       observationTextureLoader: { load } as unknown as TextureLoader,
       getSunRadiusAu: () => 0.01,
       isMagneticFieldEnabled: () => false
     });
+    const baseMap = new Texture();
+    const material = controller.createSunMaterial(baseMap)!;
+    let wallSec = 0;
+    const frame = (advance = true) => {
+      if (advance) simState.julianDate += 0.01;
+      wallSec += 0.1;
+      controller.update(simState.julianDate, wallSec);
+    };
+    frame(); frame();
 
     controller.maybeRefreshRealtime(Date.now(), true);
     await vi.waitFor(() => expect(load).toHaveBeenCalledTimes(1));
@@ -217,6 +263,9 @@ describe('sun controller solar delivery', () => {
       activeRenderChannel: 'aia_193',
       textureLoaded: true
     });
+    for (let i = 0; i < 20; i += 1) frame();
+    expect(material.uniforms.observationBlend.value).toBeGreaterThan(0.1);
+    expect(material.uniforms.observationEmission.value).toBeGreaterThan(0.1);
 
     spatiallyEligible = false;
     controller.maybeRefreshRealtime(Date.now(), true);
@@ -231,6 +280,22 @@ describe('sun controller solar delivery', () => {
       textureChannel: null,
       textureImageId: null
     });
+    // With no JD movement there is no decorative blend time to hide a delayed revocation.
+    frame(false);
+    expect(material.uniforms.observationMap.value).toBe(baseMap);
+    expect(material.uniforms.observationBlend.value).toBe(0);
+    expect(material.uniforms.observationEmission.value).toBe(0);
+
+    spatiallyEligible = true;
+    controller.maybeRefreshRealtime(Date.now(), true);
+    await vi.waitFor(() => expect(load).toHaveBeenCalledTimes(2));
+    (settleTexture as (texture: Texture) => void)(new Texture());
+    frame();
+    const recoveryBlend = material.uniforms.observationBlend.value;
+    expect(recoveryBlend).toBeGreaterThan(0);
+    for (let i = 0; i < 20; i += 1) frame();
+    expect(material.uniforms.observationBlend.value).toBeGreaterThan(0.1);
+    expect(recoveryBlend / material.uniforms.observationBlend.value).toBeCloseTo(0.012741, 3);
     controller.disposeSolarDelivery();
   });
 

@@ -22,18 +22,17 @@ def test_magnetogram_is_continuous_across_old_random_seed_boundary():
 
 
 @pytest.mark.parametrize(
-    ("rotation_fraction", "longitude_roll", "expected_g11", "expected_h11"),
+    ("rotation_fraction", "expected_g11", "expected_h11"),
     [
-        (0.0, 0, 1.0, 0.0),
-        (0.25, 24, 0.0, 1.0),
-        (0.5, 48, -1.0, 0.0),
-        (-0.25, -24, 0.0, -1.0),
-        (1.0, 96, 1.0, 0.0),
+        (0.0, 1.0, 0.0),
+        (0.25, 0.0, 1.0),
+        (0.5, -1.0, 0.0),
+        (-0.25, 0.0, -1.0),
+        (1.0, 1.0, 0.0),
     ],
 )
 def test_synthetic_tilted_dipole_rotates_at_the_sidereal_rate(
     rotation_fraction: float,
-    longitude_roll: int,
     expected_g11: float,
     expected_h11: float,
 ) -> None:
@@ -42,54 +41,42 @@ def test_synthetic_tilted_dipole_rotates_at_the_sidereal_rate(
     sidereal_period_days = 360.0 / 14.1844
     activity = 0.8
     grid = equal_area_sine_latitude_grid(48, 96)
-    base = synthetic_magnetogram(
-        activity,
-        j2000_jd,
-        grid=grid,
-        active_regions=(),
-    )
     phased = synthetic_magnetogram(
         activity,
         j2000_jd + rotation_fraction * sidereal_period_days,
         grid=grid,
         active_regions=(),
     )
-
-    np.testing.assert_allclose(
-        phased,
-        np.roll(base, longitude_roll, axis=1),
-        rtol=0.0,
-        atol=2e-9,
-    )
     g_lm, h_lm = decompose_spherical_harmonics(
         phased,
         lmax=3,
         grid=grid,
     )
-    tilt_amplitude = 5.0 * (1.0 - 0.6 * activity) * math.sin(0.2 * activity)
-    assert g_lm[1, 1] == pytest.approx(
-        tilt_amplitude * expected_g11,
-        abs=2e-9,
-    )
-    assert h_lm[1, 1] == pytest.approx(
-        tilt_amplitude * expected_h11,
-        abs=2e-9,
-    )
-    assert math.hypot(g_lm[1, 1], h_lm[1, 1]) == pytest.approx(
-        tilt_amplitude,
-        abs=2e-9,
-    )
-    assert g_lm[1, 0] == pytest.approx(2.6, abs=2e-12)
+    # The equatorial dipole points where sidereal rotation has carried it, and
+    # the whole dipole keeps its activity-set strength while its axis turns
+    # with the cycle (about 1 degree per rotation).
+    azimuth = math.atan2(h_lm[1, 1], g_lm[1, 1])
+    expected_azimuth = math.atan2(expected_h11, expected_g11)
+    assert math.remainder(azimuth - expected_azimuth, math.tau) == pytest.approx(0.0, abs=1e-8)
+    assert math.hypot(g_lm[1, 0], g_lm[1, 1], h_lm[1, 1]) == pytest.approx(2.6, abs=2e-9)
     assert g_lm[2, 0] == pytest.approx(2.0, abs=2e-12)
     assert g_lm[3, 0] == pytest.approx(0.96, abs=2e-12)
 
 
-def test_zero_activity_synthetic_background_is_epoch_invariant() -> None:
+def test_zero_activity_synthetic_background_is_a_pure_dipole_at_every_epoch() -> None:
+    # Without activity only the 5 G dipole remains; only its axis follows the epoch.
     grid = equal_area_sine_latitude_grid(30, 60)
-    j2000 = synthetic_magnetogram(0.0, 2_451_545.0, grid=grid, active_regions=())
-    later = synthetic_magnetogram(0.0, 2_460_000.0, grid=grid, active_regions=())
-
-    np.testing.assert_array_equal(later, j2000)
+    for jd in (2_451_545.0, 2_460_000.0):
+        g_lm, h_lm = decompose_spherical_harmonics(
+            synthetic_magnetogram(0.0, jd, grid=grid, active_regions=()),
+            lmax=3,
+            grid=grid,
+        )
+        assert math.hypot(g_lm[1, 0], g_lm[1, 1], h_lm[1, 1]) == pytest.approx(5.0, abs=2e-9)
+        g_lm[1, :2] = 0.0
+        h_lm[1, 1] = 0.0
+        assert np.abs(g_lm).max() < 2e-9
+        assert np.abs(h_lm).max() < 2e-9
 
 
 @pytest.mark.parametrize("envelope", [1.0, 0.5, 0.25, 0.02, 0.0])
@@ -348,3 +335,34 @@ def test_region_rotation_lifetime_and_cycle_transition_are_continuous():
     assert birth < jd < next_birth
     new_emergence = model._region_polarity_dirs(region, next_birth + next_lifetime / 2)
     assert new_emergence[-1] == -before[-1]
+
+
+@pytest.mark.parametrize(
+    ("jd", "north_sign"),
+    [(2_454_832.5, -1.0), (2_458_849.5, 1.0), (2_462_867.5, -1.0)],
+    ids=["2009-minimum", "2020-minimum", "2031-minimum"],
+)
+def test_synthetic_polar_field_alternates_at_each_minimum(jd: float, north_sign: float) -> None:
+    # Observed (Wilcox) north polar field: negative at the 2008-09 minimum,
+    # positive at the 2019-20 minimum. Cycle 25's northern leaders are positive,
+    # and each minimum's polar field matches the incoming cycle's leaders.
+    grid = equal_area_sine_latitude_grid(60, 120)
+    br = synthetic_magnetogram(0.06, jd, grid=grid, active_regions=())
+    cap = math.sin(math.radians(70))
+    assert np.sign(br[grid.mu > cap].mean()) == north_sign
+    assert np.sign(br[grid.mu < -cap].mean()) == -north_sign
+
+
+def test_synthetic_dipole_reverses_through_the_equator_not_through_zero() -> None:
+    # At the reversal the dipole lies in the equator, as the nearly vertical
+    # heliospheric current sheet near solar maximum shows; it does not vanish.
+    grid = equal_area_sine_latitude_grid(48, 96)
+    activity = 0.8
+    mid_cycle = CYCLE_25_START_JD + CYCLE_DAYS / 2
+    g_lm, h_lm = decompose_spherical_harmonics(
+        synthetic_magnetogram(activity, mid_cycle, grid=grid, active_regions=()),
+        lmax=3,
+        grid=grid,
+    )
+    assert abs(g_lm[1, 0]) < 1e-9
+    assert math.hypot(g_lm[1, 1], h_lm[1, 1]) == pytest.approx(5.0 * (1.0 - 0.6 * activity), abs=2e-9)

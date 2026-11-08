@@ -54,7 +54,7 @@
     },
     {
       "path": "backend/sim/pfss_magnetogram.py",
-      "sha256": "aada87526b748d350028c659dacbc28a7aad0cc02f96eb93690e951fdc390aa8"
+      "sha256": "99510ecb349280a401bda4890114d080b28ce8d84692205627c1368cce22be7c"
     },
     {
       "path": "backend/sim/pfss_tracing.py",
@@ -66,7 +66,7 @@
     },
     {
       "path": "backend/tests/test_pfss_decomposition.py",
-      "sha256": "c6d5efc0970acef4d2a80a5c5798add21a574d1697afdcaf7b4b6d86948d5a04"
+      "sha256": "9f6a8bdfdcee7a38355583da0804bf4032f003fc8523370e8b646739b5337eb0"
     },
     {
       "path": "backend/tests/test_pfss_analytic_fields.py",

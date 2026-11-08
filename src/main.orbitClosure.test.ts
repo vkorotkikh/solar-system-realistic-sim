@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import * as ts from 'typescript';
 import { afterEach, expect, it, vi } from 'vitest';
 import { createSolarSystemCatalog, type CatalogBody } from './sim/catalog';
-import { propagateKeplerOrbit } from './sim/orbitMath';
+import { sampleOrbitLoop } from './sim/orbitMath';
 import { createRuntimeLifetime } from './frontend/app/runtimeLifetime';
 
 const mainPath = new URL('./main.ts', import.meta.url);
@@ -52,7 +52,7 @@ function bodyOf(type: 'planet' | 'dwarf' | 'moon'): CatalogBody {
 function harness() {
   const startup = createRuntimeLifetime();
   const deferred = vi.spyOn(startup, 'defer');
-  const propagate = vi.fn(propagateKeplerOrbit);
+  const sample = vi.fn(sampleOrbitLoop);
   const solarSystemGroup = new THREE.Group();
   solarSystemGroup.position.set(3, -4, 2);
   const parentNode = new THREE.Group();
@@ -64,10 +64,10 @@ function harness() {
   const bodyNodes = new Map([['earth', parentNode], ['sun', sunNode]]);
   const orbitLineByBodyId = new Map<string, OrbitLine>();
   const orbitLines: OrbitLine[] = [];
-  const bindings = { ...threeBindings, startup, propagateKeplerOrbit: propagate,
+  const bindings = { ...threeBindings, startup, sampleOrbitLoop: sample,
     solarSystemGroup, bodyNodes, orbitLineByBodyId, orbitLines };
   const runtime = Function(...Object.keys(bindings), `${javascript}\nreturn { createOrbitLine };`)(...Object.values(bindings)) as Runtime;
-  const result = { startup, deferred, propagate, solarSystemGroup, parentNode, sunNode,
+  const result = { startup, deferred, sample, solarSystemGroup, parentNode, sunNode,
     bodyNodes, orbitLineByBodyId, orbitLines, runtime };
   active.push(result);
   return result;
@@ -88,21 +88,18 @@ function assertClosed(line: OrbitLine, samples: number): void {
 }
 
 for (const type of ['planet', 'dwarf', 'moon'] as const) {
-  const samples = type === 'moon' ? 64 : 128;
+  const samples = type === 'moon' ? 256 : 512;
   it(`closes the existing ${type} visual path without requiring orbit recurrence`, () => {
     const h = harness();
     assertClosed(h.runtime.createOrbitLine(bodyOf(type))!, samples);
   });
-  it(`preserves every original ${type} Float32 sample and display metadata`, () => {
+  it(`draws the ${type} loop sampler's Float32 samples and display metadata`, () => {
     const h = harness(), body = bodyOf(type), line = h.runtime.createOrbitLine(body)!;
     const positions = line.geometry.getAttribute('position');
     expect([samples, samples + 1]).toContain(positions.count);
-    const expected = new Float32Array(samples * 3), out = new THREE.Vector3();
-    for (let index = 0; index < samples; index++) {
-      // Existing propagator equivalence, deliberately not an independent science oracle.
-      expect(propagateKeplerOrbit(body.orbit!, index / samples * body.orbit!.periodDays, out)).toBe(true);
-      expected.set([out.x, out.y, out.z], index * 3);
-    }
+    // Sampler equivalence only; orbitMath.test.ts checks the loop against the analytic ellipse.
+    const expected = new Float32Array(samples * 3);
+    expect(sampleOrbitLoop(body.orbit!, samples, expected)).toBe(true);
     expect(Array.from(positions.array).slice(0, expected.length)).toEqual(Array.from(expected));
     expect(line.userData).toEqual({ bodyId: body.id, bodyType: type, stateAvailable: true });
     expect(line.material.opacity).toBe(0.35);
@@ -115,9 +112,9 @@ for (const type of ['planet', 'dwarf', 'moon'] as const) {
   });
 }
 
-it('closes the actual shipped Earth path while retaining its existing sampled model', () => {
+it('closes the actual shipped Earth path', () => {
   const h = harness();
-  assertClosed(h.runtime.createOrbitLine(earth)!, 128);
+  assertClosed(h.runtime.createOrbitLine(earth)!, 512);
 });
 
 it('keeps moon samples parent-relative beneath an offset parent and solar group', () => {
@@ -146,15 +143,16 @@ for (const reason of ['absent-orbit', 'star', 'required-ephemeris-missing'] as c
     expect(h.orbitLines).toEqual([]);
     expect(h.orbitLineByBodyId.size).toBe(0);
     expect(h.deferred).not.toHaveBeenCalled();
-    expect(h.propagate).toHaveBeenCalledTimes(reason === 'required-ephemeris-missing' ? 1 : 0);
+    expect(h.sample).toHaveBeenCalledTimes(reason === 'required-ephemeris-missing' ? 1 : 0);
   });
 }
 
 it('keeps partial sampling failure atomic before geometry/material acquisition', () => {
   const h = harness(), body = bodyOf('planet');
-  body.orbit = { ...body.orbit!, periodDays: 36525, secularRates: { ePerCentury: 2 } };
+  // The perihelion sample at t = 0 succeeds; e passes 1 at 40% of the revolution.
+  body.orbit = { ...body.orbit!, meanAnomalyDeg: 0, periodDays: 36525, secularRates: { ePerCentury: 2 } };
   expect(h.runtime.createOrbitLine(body)).toBeNull();
-  expect(h.propagate.mock.calls.length).toBeGreaterThan(1);
+  expect(h.sample).toHaveReturnedWith(false);
   expect(h.orbitLines).toEqual([]);
   expect(h.orbitLineByBodyId.size).toBe(0);
   expect(h.deferred).not.toHaveBeenCalled();

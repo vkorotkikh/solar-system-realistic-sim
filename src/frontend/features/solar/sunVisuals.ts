@@ -26,7 +26,7 @@ import {
 import { AU_KM } from '../../../constants';
 import { SOLAR_RADIUS_AU, coronalToDisplay } from './solarDisplayScale';
 import { SOLAR_ROTATION_COEFFICIENTS_DEG_DAY, SOLAR_ROTATION_REFERENCE } from './solarRotation';
-import { clampUnit, solarFeatureEntryBrightness, sampleSolarFeatureEntryPoint } from './solarFeatureBlending';
+import { clampUnit, lerpNumber, solarFeatureEntryBrightness, sampleSolarFeatureEntryPoint } from './solarFeatureBlending';
 import type { SolarFeatureBlendView, SolarPhysicsStateLike } from './solarFeatureBlending';
 
 const TWO_PI = Math.PI * 2;
@@ -738,6 +738,89 @@ export function updateSunspotUniforms(sunSurfaceMaterial: ShaderMaterial | null 
     seeds[i].set(baseLon, baseLat, angularRadius, intensity);
     if (patternSeeds) patternSeeds[i] = stableHash01(`synthetic-sunspot-${syntheticIndex}`);
   }
+}
+
+/** The shorter way round from longitude `a` to `b`, `t` of the way. */
+function lerpLongitude(a: number, b: number, t: number): number {
+  const longitude = a + Math.atan2(Math.sin(b - a), Math.cos(b - a)) * t;
+  // The corona shader's one-step longitude wrap expects a centre in [-pi, pi].
+  return Math.atan2(Math.sin(longitude), Math.cos(longitude));
+}
+
+/** Sunspot seeds [lon, lat, angular radius, intensity] and pattern seeds as drawn now. */
+export function readSunspotSeeds(material: ShaderMaterial | null | undefined) {
+  const seeds = material?.uniforms?.sunspotSeeds?.value as Vector4[] | undefined;
+  const patterns = material?.uniforms?.sunspotPatternSeeds?.value as ArrayLike<number> | undefined;
+  return seeds && patterns ? { seeds: seeds.map(seed => seed.toArray()), patterns: Array.from(patterns) } : null;
+}
+
+/**
+ * Cross-fade the seeds just written for a new snapshot with those drawn before it (H2.9).
+ * A group in both, matched by its pattern seed, moves and resizes; the others fade in or out
+ * by intensity. The eight most intense of the mix are drawn.
+ */
+export function blendSunspotUniforms(
+  material: ShaderMaterial | null | undefined,
+  from: ReturnType<typeof readSunspotSeeds>,
+  alpha: number
+): void {
+  const to = readSunspotSeeds(material);
+  if (!material || !to || !from || alpha >= 1) return;
+  const matched = new Set<number>();
+  const mix: Array<{ seed: number[]; pattern: number }> = [];
+  to.seeds.forEach((seed, i) => {
+    if (seed[3] <= 0) return;
+    const j = from.patterns.findIndex((pattern, k) => pattern === to.patterns[i] && from.seeds[k][3] > 0 && !matched.has(k));
+    if (j < 0) {
+      mix.push({ seed: [seed[0], seed[1], seed[2], seed[3] * alpha], pattern: to.patterns[i] });
+      return;
+    }
+    matched.add(j);
+    const old = from.seeds[j];
+    mix.push({
+      seed: [lerpLongitude(old[0], seed[0], alpha), ...[1, 2, 3].map(c => lerpNumber(old[c], seed[c], alpha))],
+      pattern: to.patterns[i]
+    });
+  });
+  from.seeds.forEach((seed, k) => {
+    if (seed[3] > 0 && !matched.has(k)) mix.push({ seed: [seed[0], seed[1], seed[2], seed[3] * (1 - alpha)], pattern: from.patterns[k] });
+  });
+  mix.sort((a, b) => b.seed[3] - a.seed[3]);
+  const seeds = material.uniforms.sunspotSeeds.value as Vector4[];
+  const patterns = material.uniforms.sunspotPatternSeeds.value as Float32Array | number[];
+  seeds.forEach((seed, i) => {
+    seed.fromArray(mix[i]?.seed ?? [0, 0, 0, 0]);
+    patterns[i] = mix[i]?.pattern ?? 0;
+  });
+}
+
+/** Backend coronal holes [lon, lat, lon extent, lat extent] and their count as drawn now. */
+export function readCoronalHoles(material: ShaderMaterial | null | undefined) {
+  const holes = material?.uniforms?.coronalHoles?.value as Vector4[] | undefined;
+  const count = Number(material?.uniforms?.coronalHoleCount?.value);
+  return holes ? { holes: holes.map(hole => hole.toArray()), count: Number.isFinite(count) ? count : 0 } : null;
+}
+
+/**
+ * Blend the holes just written for a new snapshot with those drawn before it (H2.9), in slot
+ * order (holes carry no id): they move and resize, and an added or removed hole grows from or
+ * shrinks to nothing at its centre.
+ */
+export function blendCoronalHoleUniforms(
+  material: ShaderMaterial | null | undefined,
+  from: ReturnType<typeof readCoronalHoles>,
+  alpha: number
+): void {
+  const to = readCoronalHoles(material);
+  if (!material || !to || !from || alpha >= 1) return;
+  const count = Math.max(from.count, to.count);
+  const holes = material.uniforms.coronalHoles.value as Vector4[];
+  for (let i = 0; i < count; i += 1) {
+    const a = i < from.count ? from.holes[i] : [to.holes[i][0], to.holes[i][1], 0, 0];
+    const b = i < to.count ? to.holes[i] : [from.holes[i][0], from.holes[i][1], 0, 0];
+    holes[i].set(lerpLongitude(a[0], b[0], alpha), lerpNumber(a[1], b[1], alpha), lerpNumber(a[2], b[2], alpha), lerpNumber(a[3], b[3], alpha));
+  }
+  material.uniforms.coronalHoleCount.value = count;
 }
 
 export function updateSunFlaresUniforms(
@@ -1932,7 +2015,7 @@ export function updateSunMaterialUniforms({
   coronalHoleData = undefined as { holes?: Array<{ center_lon_rad?: unknown; center_lat_rad?: unknown; extent_lon_rad?: unknown; extent_lat_rad?: unknown }> | null } | null | undefined
 }) {
   const obsBlend = clampUnit(Number(observationBlend) || 0);
-  const obsEmission = clampUnit(Number(observationEmission) || 0.25);
+  const obsEmission = clampUnit(Number(observationEmission) || 0);
   if (sunSurfaceMaterial?.uniforms) {
     sunSurfaceMaterial.uniforms.time.value = timeSec * 0.4;
     sunSurfaceMaterial.uniforms.activity.value = activity;

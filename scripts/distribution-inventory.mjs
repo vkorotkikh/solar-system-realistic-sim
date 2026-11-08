@@ -25,7 +25,7 @@ export const REQUIRED_LOCAL_DATA_INPUTS = Object.freeze([
 ]);
 const RIGHTS_STATUSES = new Set([
   'review-required', 'owner-permission-required', 'provider-declared-public-domain',
-  'noncommercial-only', 'MIT',
+  'noncommercial-only', 'MIT', 'OFL-1.1',
 ]);
 
 function safePath(value) {
@@ -123,7 +123,7 @@ export async function verifyDistributionInventory(root, { requireReleaseRights =
     if (!expectedPublic.has(name)) throw new Error(`unlisted public asset: ${name}`);
   }
   const unresolvedProductIds = catalog.products
-    .filter(product => !['MIT', 'noncommercial-only'].includes(product.rightsStatus))
+    .filter(product => !['MIT', 'OFL-1.1', 'noncommercial-only'].includes(product.rightsStatus))
     .map(product => product.id).sort();
   if (requireReleaseRights && unresolvedProductIds.length) {
     throw new Error(`distribution rights review incomplete: ${unresolvedProductIds.join(', ')}`);
