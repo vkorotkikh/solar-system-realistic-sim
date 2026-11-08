@@ -83,7 +83,7 @@ Step H2.4 therefore let each backend layer reach the screen only after its own c
 | 2026-10-07 | `86d199b` (H2.4); merged with H2.1–H2.6 in PR #5 on 2026-10-11 | One global constant, `BACKEND_GEOMETRY_VALIDATED = false`, instead of the per-layer table. No backend geometry reached the Sun, and the chip said "backend activity, procedural features". |
 | 2026-10-14 | `68be768`, this checkpoint | Per-layer frame admission replaced the constant's three readers. A layer draws backend geometry when its snapshot carries the frame contract described above. The constant stays exported and `false`, but nothing reads it. The chip says "backend solar model" once any layer is admitted. |
 | 2026-11-03 | PR #31 (H2.7–H2.10) | Stale-state clearing and lag labels, field-line identity by content and epoch, rigid rotation of backend field lines between snapshots, fixed decorative blends, and the rate/Paused header. |
-| 2026-11-07 | Branch `fix/solar-h2-followups`, pushed, not merged | Loops and eruption bursts also turn with the Sun between snapshots (part of H4.6), plus review fixes. |
+| 2026-11-07 | Branch `fix/solar-h2-followups`, open as PR #54, not merged | Loops and eruption bursts also turn with the Sun between snapshots (part of H4.6), plus review fixes. |
 
 The frame is not the plan's HGC. Snapshots use the frozen `SOLAR_EQUATORIAL_J2000` frame (`IAU_SUN` at J2000) with
 already-evolved vectors. The IAU orientation is implemented in `solarFrame.ts` and checked against CSPICE, in place of
