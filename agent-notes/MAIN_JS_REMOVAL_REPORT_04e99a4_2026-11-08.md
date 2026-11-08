@@ -9,9 +9,9 @@ Checked against `origin/main` at `f539406` on 2026-11-08.
 The commit message says it removed unused imports. It did not. It cut `src/main.js` from 4,404 lines
 to 614 (4,190 deleted, 400 added) and turned the Solar System Mission Lab into the Sun Model Lab.
 
-Most of what it cut should **not** come back as written. About a third moved elsewhere and still runs, and
-the old belt code was weaker than what replaced it. The features people miss are mainly wiring and UI
-around modules that still exist and have been maintained since.
+Most of what it cut should **not** come back as written. The Sun visuals, scale handling and frame loop moved
+elsewhere and still run, and the old belt code was weaker than what replaced it. The features people miss are
+mainly wiring and UI around modules that still exist and have been maintained since.
 
 ## How the loss happened: three steps, not one
 
@@ -61,11 +61,11 @@ Everything deleted is still in git history.
 |---|---|---|
 | Asteroid and Kuiper switches | Existing `setVisible` | None |
 | Asteroid ring band | New; real catalog | Density-shaded instead of uniform. See below |
-| Moons switch and picker | Existing catalog and ephemerides | Planets stay enlarged and moons sit at true altitude (owner decision), replacing the old planet shrink |
+| Moons switch and picker | Existing catalog and ephemerides | Planets stay enlarged and moons sit at true altitude (owner decision), replacing the old planet shrink. Costs 280 ms and 2.9 MB at startup; frame time unchanged |
 | Moon quick views (Exosphere 15 km, LLO 100 km, NRHO 30,000 km) | Altitudes recovered from `visualProfiles.ts` | Guide rings not restored |
-| Earth satellites switch | Existing `satelliteSystem.ts` | Earth only |
+| Earth satellites switch | Existing `satelliteSystem.ts` | Earth only. Defaults off, because switching on downloads orbits from CelesTrak |
 | Mission planner | Existing `plannerController`, `routeRenderer`, `createTrajectoryClient` | Route arcs stay at their computed departure and arrival positions |
-| Moon and Mars maps | Git history | Fed into today's terrain shader, not the old materials |
+| Moon and Mars maps | Git history | Fed into today's terrain shader, not the old materials. Moon rendering verified at 0.94-0.95 correlation with the source map, zero longitude offset |
 
 ## Do not restore
 
@@ -84,6 +84,9 @@ Route arcs remain illustrative cubic curves between the correct endpoints, not p
 | Feature | State of the code | Effort |
 |---|---|---|
 | **Saturn and Uranus rings** | Deleted; 30 lines to reinstate | Small |
+| Named asteroids in the picker (Ceres, Vesta, Pallas, Hygiea) | Removed from the catalog 2026-03-01 (`d9a4b4e`); data still in `planets.ts` | Small |
+| Mission plan with real vehicles | Button works, but the default vehicle cannot close a round trip and the form has no vehicle or mining inputs | Medium |
+| Real Mars terrain | Needs the MOLA elevation product (the retained file is a picture) | Small |
 | Earth clouds, atmosphere, ocean | `cloudDataPipeline.ts` remains; textures in history | Medium |
 | Mars clouds, atmosphere, polar caps | Same | Medium |
 | Earth and Mars quick views | Same mechanism as the Moon's; Mars altitudes recoverable | Small |
@@ -100,22 +103,24 @@ Route arcs remain illustrative cubic curves between the correct endpoints, not p
 
 ## Textures
 
-Mars: **yes, the NASA maps survive**, in git history. Deleted with the rest on 2026-10-31.
+Mars: **yes, the NASA maps survive**, in git history and now partly back in the app. Some files are not what their names say, so each was inspected before restoring.
 
-| File | MB | Source recorded? | This PR |
-|---|---:|---|---|
-| `moon_albedo_lroc_8192.jpg` | 9.43 | USGS "LRO LROC WAC Global Mosaic 100m" | Restored |
-| `moon_relief_ldem16_5760.png` | 3.61 | USGS "LRO LOLA DEM 118m" | Restored |
-| `moon_albedo_lroc_1024.jpg` | 0.09 | Same family | Restored |
-| `moon_relief_lola_1024.jpg` | 0.15 | Same family | Restored |
-| `mars_albedo_usgs_2048/4096.jpg` | 0.44, 1.66 | Name says USGS; **exact product not recorded** | Restored |
-| `mars_relief_mola_2048/4096.png` | 1.97, 8.11 | Name says MOLA; **exact product not recorded** | Restored |
-| `moon_1024.jpg` | 0.24 | **None** | Left out |
-| `mars_day_2048.jpg` | 0.75 | **None** | Left out |
-| Other 15 files | 13.9 | **None or partial** | Your call |
+| File | MB | What it actually is | Source | This PR |
+|---|---:|---|---|---|
+| `moon_albedo_lroc_8192.jpg` | 9.43 | Full-colour Moon | NASA SVS CGI Moon Kit, `lroc_color_poles_8k` | **Restored** |
+| `moon_relief_ldem16_5760.png` | 3.61 | True elevation, 8-bit | Same kit, `ldem_16_uint` | **Restored** |
+| `mars_albedo_usgs_4096.jpg` | 1.66 | Full-colour Mars | Appears to be USGS Viking colorized mosaic; **exact product unrecorded** | **Restored**, `review-required` |
+| `mars_albedo_usgs_2048.jpg` | 0.44 | Smaller copy of the above | Same | Not needed |
+| `mars_relief_mola_2048/4096.png` | 1.97, 8.11 | **Shaded-relief picture, not heights**. Olympus Mons reads the same as Hellas | Unrecorded | Left out; cannot drive terrain |
+| `moon_albedo_lroc_1024.jpg` | 0.09 | **Grey elevation, not albedo** | Unrecorded | Left out |
+| `moon_relief_lola_1024.jpg` | 0.15 | **Colour-ramped picture** | Unrecorded | Left out |
+| `moon_1024.jpg`, `mars_day_2048.jpg` | 0.24, 0.75 | Unknown | None | Left out |
+| Other 15 files | 14.1 | Earth, other planets, Milky Way | None or partial | Your call |
 
-The restored files are registered in the distribution inventory as `review-required`. That passes
-`verify:distribution` but fails `--require-rights` until someone confirms the source and rights.
+- The old app displaced Mars's surface from a colour channel of that shaded-relief picture, so its Mars terrain was never real.
+- Mars is a smooth textured globe for now. Real heights need the actual MOLA elevation product, which is a small follow-up.
+- **Moon elevation is calibrated.** NASA documents half-metres above 1727.4 km with a 10 km offset. Independently, the map's lowest and highest points fall on Antoniadi and the Selenean summit, and its mean gives the published 1737.15 km radius.
+- **Rights.** NASA SVS states its content is public domain unless noted. The Mars product could not be confirmed (USGS page returned HTTP 403), so it needs your check against `docs/distribution-policy.md` before any release.
 
 ## Asteroid band: what was measured
 
