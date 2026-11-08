@@ -130,7 +130,7 @@ test('one source-selected full scene uses the latest scale and retires its quadt
     await unload(page); await unload(page);
     const closed = await capture(page);
     expect(closed.rendererDisposals).toBe(1); expect(closed.workerTerminations).toBe(1);
-    expect(closed.quadtreeDisposals).toBe(2); expect(closed.remainingQuadtreeFaces).toEqual([0, 0]);
+    expect(closed.quadtreeDisposals).toBe(3); expect(closed.remainingQuadtreeFaces).toEqual([0, 0, 0]);
     expect(closed.unhandled).toEqual([]); expect(observed.errors).toEqual([]);
     await testInfo.attach('startup-ownership', { body: JSON.stringify({ pending, active, closed, catalogLogs: observed.catalogLogs }), contentType: 'application/json' });
   } finally { release(); }
@@ -190,8 +190,8 @@ test('final compile failure retires workers and quadtrees while keeping restorat
   await expect(page.locator('#renderer-unavailable [role="alert"]')).toContainText('could not finish preparing');
   const stopped = await capture(page);
   expect(stopped.rendererDisposals).toBe(1); expect(stopped.renders).toBe(0);
-  expect(stopped.workerTerminations).toBe(1); expect(stopped.quadtreeDisposals).toBe(2);
-  expect(stopped.remainingQuadtreeFaces).toEqual([0, 0]);
+  expect(stopped.workerTerminations).toBe(1); expect(stopped.quadtreeDisposals).toBe(3);
+  expect(stopped.remainingQuadtreeFaces).toEqual([0, 0, 0]);
   expect(stopped.unhandled).toEqual([]); expect(observed.errors).toEqual([]);
   await page.evaluate(() => document.querySelector('#space-canvas')!.dispatchEvent(new Event('webglcontextrestored')));
   await expect(page.locator('#renderer-unavailable [role="alert"]')).toContainText('available again');
