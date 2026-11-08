@@ -117,7 +117,7 @@ test('disposed panels do not restore modality or move focus on later resizes', a
 test('modal Tab trap, search Escape precedence, backdrop and close use real focus',async({page})=>{
   await page.setViewportSize({width:390,height:844});await loadShell(page);await page.locator('#panel-toggle').click();
   await expect(page.getByRole('dialog',{name:'Sun Model Lab'})).toBeVisible();
-  await page.keyboard.press('Shift+Tab');await expect(page.locator('.panel-disclosure--danger summary')).toBeFocused();
+  await page.keyboard.press('Shift+Tab');await expect(page.locator('#data-credits a')).toBeFocused();
   await page.keyboard.press('Tab');await expect(page.locator('#panel-close')).toBeFocused();
   const visited=await page.evaluate(()=>{const seen:string[]=[];document.addEventListener('focusin',e=>seen.push((e.target as HTMLElement).id));return seen;});
   expect(visited).toEqual([]);
@@ -132,7 +132,7 @@ test('modal Tab trap, search Escape precedence, backdrop and close use real focu
 });
 test('focus guarding and empty trap recover to the panel when close is unavailable',async({page})=>{
   await page.setViewportSize({width:390,height:844});await loadShell(page);
-  await page.evaluate(()=>{document.querySelectorAll<HTMLElement>('#control-panel button,#control-panel input,#control-panel select,#control-panel summary').forEach(el=>el.hidden=true);window.__uiFixture.setPanelOpen(true);});
+  await page.evaluate(()=>{document.querySelectorAll<HTMLElement>('#control-panel button,#control-panel input,#control-panel select,#control-panel summary,#control-panel a').forEach(el=>el.hidden=true);window.__uiFixture.setPanelOpen(true);});
   await expect(page.locator('#control-panel')).toBeFocused();await page.keyboard.press('Tab');await expect(page.locator('#control-panel')).toBeFocused();
   await page.evaluate(()=>{document.getElementById('viewport-shell')!.inert=false;document.getElementById('space-canvas')!.focus();});
   await expect(page.locator('#control-panel')).toBeFocused();

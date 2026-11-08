@@ -70,7 +70,7 @@ test.describe('native Chromium tab zoom', () => {
         await slider.press('ArrowRight');
         await expect(slider).not.toHaveValue(oldValue);
 
-        const stops = await panel.locator('button,input,select,summary,[tabindex]').evaluateAll((elements) => elements
+        const stops = await panel.locator('a[href],button,input,select,summary,[tabindex]').evaluateAll((elements) => elements
           .filter((element): element is HTMLElement => element instanceof HTMLElement && element.tabIndex >= 0
             && !element.matches(':disabled') && element.getClientRects().length > 0
             && getComputedStyle(element).visibility !== 'hidden')
@@ -118,7 +118,7 @@ test.describe('native Chromium tab zoom', () => {
         expect([...visited].sort()).toEqual([...stops].sort());
         await expect(panel.locator('#panel-close')).toBeFocused();
         await page.keyboard.press('Shift+Tab');
-        await expect(panel.locator('#trigger-agn-shockwave')).toBeFocused();
+        await expect(panel.locator('#data-credits a')).toBeFocused();
         await captureNativeZoomScreenshot(page, info, `native-zoom-${factor * 100}-dialog`);
         await page.keyboard.press('Escape');
         await expect(toggle).toBeFocused();
