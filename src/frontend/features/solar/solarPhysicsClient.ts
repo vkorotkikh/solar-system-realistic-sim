@@ -340,12 +340,18 @@ function finiteNumericOption(value: number, name: string): number {
 // Bounds apply to the render-v1 HTTP body, independently of optional HTTP gzip.
 const MAX_SOLAR_ENCODED_BYTES = 512 * 1024;
 const MAX_SOLAR_DECODED_BYTES = 2 * 1024 * 1024;
+const ENCODED_BUDGET_ERROR = 'Solar physics response exceeds encoded byte budget';
 
 async function readSolarJson(response: Response, signal: AbortSignal): Promise<unknown> {
   signal.throwIfAborted();
   const length = Number(response.headers?.get?.('Content-Length'));
   if (Number.isFinite(length) && length > MAX_SOLAR_DECODED_BYTES) {
     throw new Error('Solar physics response exceeds byte budget');
+  }
+  // A marked render-v1 response is already known to be capped at 512 KiB encoded.
+  // Unmarked responses (older server, header-stripping proxy) get the post-parse check.
+  if (response.headers?.get?.('X-Solar-Delivery') === 'render-v1' && length > MAX_SOLAR_ENCODED_BYTES) {
+    throw new Error(ENCODED_BUDGET_ERROR);
   }
   // Synthetic Response doubles used by embedding callers may only expose json().
   if (!response.body) return response.json();
@@ -373,7 +379,7 @@ async function readSolarJson(response: Response, signal: AbortSignal): Promise<u
     const payload: unknown = JSON.parse(text + decoder.decode());
     if (payload && typeof payload === 'object' && 'delivery' in payload
       && Number.isFinite(length) && length > MAX_SOLAR_ENCODED_BYTES) {
-      throw new Error('Solar physics response exceeds encoded byte budget');
+      throw new Error(ENCODED_BUDGET_ERROR);
     }
     return payload;
   } finally {

@@ -1441,4 +1441,19 @@ describe('bounded render reader ownership', () => {
       expect(client.lastError).toContain('encoded byte budget'); expect(client.latestState()).toBeNull();
     } finally { client.dispose(); }
   });
+
+  it('rejects a render-v1 marked response above 512 KiB before acquiring a reader', async () => {
+    const response = new Response(JSON.stringify(payload()), {
+      headers: { 'X-Solar-Delivery': 'render-v1', 'Content-Length': String(512 * 1024 + 1) }
+    });
+    const getReader = vi.spyOn(response.body!, 'getReader');
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response));
+    const client = new SolarPhysicsClient({ baseUrl: () => 'http://backend.test' });
+    try {
+      expect(await client.maybeRefresh(epoch, true)).toBe(false);
+      expect(getReader).not.toHaveBeenCalled();
+      expect(client.lastError).toContain('Solar physics response exceeds encoded byte budget');
+      expect(client.latestState()).toBeNull();
+    } finally { client.dispose(); }
+  });
 });
