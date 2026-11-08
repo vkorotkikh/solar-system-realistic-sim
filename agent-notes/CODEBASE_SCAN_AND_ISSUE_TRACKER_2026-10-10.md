@@ -4,6 +4,8 @@
 
 > **Last full 83-entry status (2026-10-30):** See the [verified remediation status](REMEDIATION_STATUS_2026-10-30.md) for all 83 dispositions, branch-specific fixes, remaining acceptance gates and the 25 completed working-note removals. The dated content below is historical evidence; it does not describe current main.
 
+> **2026-11-06 re-check of SCN-001–040 on main:** 31 hold, 4 are closed by owner policy, 3 still need the owner, and 2 were not fully fixed (SCN-033, SCN-040). See [the re-check](#scn-001040-re-check-on-main--2026-11-06).
+
 Consolidated **2026-10-17**. This is the maintained tracker: the canonical
 SCN-001–083 ledger and alias mappings are below, followed by the complete
 [October 10 scan](#appendix-a--october-10-scan-historical) and
@@ -20,6 +22,68 @@ The ledger's main baseline, construction checkpoint,
 83 canonical IDs, 138 aliases, counts, and dated test results remain pinned to
 their recorded evidence. Scope clarification does not promote a finding to
 resolved or turn branch-only repairs into shipped fixes.
+
+## SCN-001–040 re-check on main — 2026-11-06
+
+This re-check ran on `main` at `8e75993`, after `git fetch`. Every fix commit cited in the 2026-10-17 inventory
+below is an ancestor of `main`, including all 18 that it lists as branch repairs. Only SCN-001–040 were re-checked.
+
+- **Fresh run:** the original reproduction from the 2026-10-07 scan, or a direct equivalent, was run again.
+- **Gate tests:** the result rests on reading the code and on the tests that guard the fix. Those tests passed in a
+  full local backend run (5,833 passed, 13 skipped) or in CI on `main`.
+
+| Result | Count | IDs |
+|---|---:|---|
+| Holds | 31 | 19 by a fresh run, 12 by gate tests |
+| Closed by an accepted owner policy (2026-10-30) | 4 | SCN-015, SCN-037, SCN-038, SCN-039 |
+| Partial, needs the owner | 3 | SCN-005, SCN-030, SCN-035 |
+| Not fully fixed | 2 | SCN-033, SCN-040 |
+
+| ID | Result | Evidence |
+|---|---|---|
+| SCN-001 | Holds, fresh run | P₂(0.5) = −0.125 and P₃(0.5) = −0.4375 exactly; ∫P₀P₂ = 1.3e−14. The Schmidt basis matches SciPy to 4.8e−15 through degree 20. |
+| SCN-002 | Holds, gate tests | The FITS reader is now `parse_gong_fits` (astropy), with a committed synthetic fixture; `test_gong_fits.py` passes. A live GONG map fetched on 2026-11-06 was refused at admission as `flux_unbalanced`; using real maps is SCN-041's open scope. |
+| SCN-003 | Holds, gate tests | `test_gong_wcs.py` and the decomposition tests pass on the explicit sine-latitude grid. |
+| SCN-004 | Holds, gate tests | The killable transport holds. Its tests, though, failed 6 of 9 with one core shared by five busy processes, and their fixture server could keep pytest from exiting. [#47](https://github.com/vkorotkikh/solar-system-realistic-sim/pull/47) fixes both. |
+| SCN-005 | Partial, needs the owner | Cold offline high/180 compute takes 2.0 s, against the client's 20 s deadline. Recorded first GPU completion is 6.5–6.9 s (2026-10-30), and no startup budget is accepted. |
+| SCN-006 | Holds, fresh run | A preflight from `localhost:4173` or `127.0.0.1:4173` returns 200 with a matching allow-origin; an unlisted origin gets 400. |
+| SCN-007 | Holds, fresh run | From one peer, 50 rotating `X-Forwarded-For` values give 36 admitted requests and 1 stored identity; 50 unvalidated API keys give the same. The identity store is capped at 1,024. |
+| SCN-008 | Holds, fresh run | `/solar/physics` returns 400 `jd_out_of_range` for 1e12, −1e12 and 1e300, and 400 `invalid_jd_tdb` for NaN and infinity. The window is JDTDB 2,378,495–2,524,595. The AIA tile route applies the same bound. |
+| SCN-009 | Holds, fresh run | Hybrid forcing with a stale 2000-01-01 input returns `applied: false`, and activity stays at 0.8 (`disabled_unvalidated`). |
+| SCN-010 | Holds, fresh run | During an outage the failed snapshot is cached only for the 4.5 s backoff; the first request after that recovers. |
+| SCN-011 | Holds, fresh run | The backend sends AIA dates in UTC with a `Z`; the texture tests pass under UTC, America/Los_Angeles and Asia/Tokyo. |
+| SCN-012 | Holds, fresh run | 3 scenarios, 3 comparable, coverage 1.0, mean error 6.7e−11 km/s against independent Lambert references. |
+| SCN-013 | Holds, gate tests | Asteroid time is rebased on the CPU (`rebaseTime`), and the asteroid GPU gate in CI passed on `main`. |
+| SCN-014 | Holds, fresh run | ACBF round trip of 100,000 records: 0 mismatches, `ok: true`. |
+| SCN-015 | Policy | Largest-diameter prefix, accepted 2026-10-30. |
+| SCN-016 | Holds, gate tests | Earth is placed at the geocentre through a barycentre companion, and the Horizons test "puts Earth at the geocentre" passes. |
+| SCN-017 | Holds, fresh run | Velocity against the finite-difference derivative: worst 0.002 m/s (Mercury, h = 0.01 d), down from 8.07 m/s for Neptune. |
+| SCN-018 | Holds, fresh run | Pluto carries secular rates. |
+| SCN-019 | Holds, fresh run | Return cargo is in the burn ledger: adding 5,000 kg at the return burn makes the default vehicle's budget infeasible. |
+| SCN-020 | Holds, fresh run | An infeasible 100 + 100 km/s budget gives `failureProbability` 1.0. |
+| SCN-021 | Holds, fresh run | The stored Sgr A* radius equals 2GM/c² from the same constants (ratio 1.0000). |
+| SCN-022 | Holds, fresh run | At e = 0.99 the maximum residual is 8.9e−16 rad, down from 1.4e8. The GLSL solver is bracketed, with 32 iterations. |
+| SCN-023 | Holds, gate tests | Display offsets stay separate from canonical states (`metricDisplay.test.ts`, CI). |
+| SCN-024 | Holds, gate tests | Paused frames skip Kuiper-belt propagation (`kuiperPaused.test.ts`, CI). |
+| SCN-025 | Holds, fresh run | `tsc --strict --noEmit` exits 0 with 0 errors. |
+| SCN-026 | Holds, gate tests | Vitest collects only `src/**` and `scripts/**` tests and excludes `agent-notes/**`. |
+| SCN-027 | Holds, fresh run | A clean install from `ci/backend-test-requirements.txt` runs the full suite: 5,833 passed, 13 skipped. Its test-client deprecation warning was fixed by #42, merged 2026-11-08. |
+| SCN-028 | Holds, fresh run | `npm audit` reports 0 advisories. |
+| SCN-029 | Holds, gate tests | Both workflows run on pushes and pull requests and passed on `main`: backend suite, science gate, frontend tests, types, build and browser lanes. |
+| SCN-030 | Partial, needs the owner | Manual NVDA, VoiceOver, OS text-resize and physical-touch checks remain. |
+| SCN-031 | Holds, gate tests | `rendererRecovery.ts` and its tests cover unavailable WebGL and context loss. |
+| SCN-032 | Holds, fresh run | All 103 entries in the README's file tree exist, and the README says the UI has no engine selector. |
+| SCN-033 | Not fully fixed | The two scripts named in the finding honour `--help`. Three more ran instead: two sent JPL Horizons requests and overwrote tracked fixtures, and one rewrote the GONG fixture. [#45](https://github.com/vkorotkikh/solar-system-realistic-sim/pull/45) fixes them. |
+| SCN-034 | Holds, gate tests | CI checks the asteroid dataset and moon radii offline and rebuilds the moon artifacts byte for byte. |
+| SCN-035 | Partial, needs the owner | `distribution-inventory.mjs --require-rights` fails on 43 product records that await rights review. |
+| SCN-036 | Holds, gate tests | Per-subject WebSocket admission within the global cap, plus idle and send timeouts (`test_ws_resource_contract.py`). |
+| SCN-037 | Policy | Fixed-step clock, accepted 2026-10-30. |
+| SCN-038 | Policy | Decorative motion on its own clock, accepted 2026-10-30. |
+| SCN-039 | Policy | Explicit backend-origin and viewport configuration, accepted 2026-10-30. |
+| SCN-040 | Not fully fixed | The September and H1 archive is committed, but the living trackers linked the untracked originals. [#46](https://github.com/vkorotkikh/solar-system-realistic-sim/pull/46), which adds this section, fixes the links. |
+
+Since the re-check, `main` has merged #33–#40 and #42; those changes were not re-checked. As of 2026-11-08, the
+pull requests for SCN-004, SCN-033 and SCN-040 (#47, #45 and #46) are open.
 
 ## Pasted SCN-001–040 branch inventory — 2026-10-17
 
@@ -1334,13 +1398,13 @@ For an exact Python package set, use the retained `python-freeze.txt` instead of
 
 ### October 7 — 10. Source documents and provenance
 
-- [September 24 audit](CODEBASE_AUDIT_2026-09-24.md) and its retained evidence: principal historical ID baseline; includes its own corrections and the `bd48a7d` addendum. Pre-existing untracked material.
+- [September 24 audit](HISTORICAL_SOURCE_ARCHIVE_2026-10-30/sources/agent-notes/CODEBASE_AUDIT_2026-09-24.md) and its retained evidence: principal historical ID baseline; includes its own corrections and the `bd48a7d` addendum. Pre-existing untracked material.
 - [September 7 audit](CODEBASE_AUDIT_2026-09-07.md) and [September 6 physics audit](CODEBASE_AUDIT_2026-09-06.md): historical hypotheses and physics leads, not current status authority.
 - [August 24 reconciliation](MAJOR_ISSUE_REPORT_2026-08-24.md) and [Report C / R01–R56 ledger](MAJOR_ISSUE_REPORT_C_SUNFOCUS_HUNT_2026-08-23.md): prior root-cause and branch history.
 - [September 25 consolidated status/plan](SUNFOCUS_REGRESSION_STATUS_AND_FIX_PLAN_2026-09-25.md): branch-aware preservation and release gates; not a scan of this exact HEAD.
 - [Trajectory amplification plan](TRAJECTORY_AMPLIFICATION_DEFENSE_IN_DEPTH_PLAN_2026-09-25.md): compare with the actual September 26 implementation and passing tests.
 - [R3/R4 PFSS work order](R3R4_PFSS_IMPLEMENTATION_PROMPT_2026-09-25.md): solver/input/delivery acceptance design.
-- [H1 solar delivery plan](H1_SOLAR_DELIVERY_PLAN_2026-09-25.md) and [digest](H1_SOLAR_DELIVERY_PLAN_2026-09-25_EVIDENCE/h1/digest.md): historical delivery/upstream mechanisms; pre-existing untracked material.
+- [H1 solar delivery plan](H1_SOLAR_DELIVERY_PLAN_2026-09-25.md) and [digest](HISTORICAL_SOURCE_ARCHIVE_2026-10-30/sources/agent-notes/H1_SOLAR_DELIVERY_PLAN_2026-09-25_EVIDENCE/h1/digest.md): historical delivery/upstream mechanisms; pre-existing untracked material.
 - [October 7 accessibility design](../docs/superpowers/specs/2026-10-07-frontend-accessibility-remediation-design.md): approved design only at audited HEAD.
 - [JPL approximate planetary elements](https://ssd.jpl.nasa.gov/planets/approx_pos.html): primary-source identity/time-scale check, accessed in this scan. JPL labels the matching Earth row as the Earth/Moon barycentre and specifies JDTDB for the formula. No new live Horizons truth vectors were downloaded.
 
