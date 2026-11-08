@@ -55,6 +55,32 @@ describe('declutterLabels', () => {
   it('ignores a focus id that has no label', () => {
     expect([...declutterLabels([box('sun', 0, 0, 9), box('a', 5, 0)], 'ghost')]).toEqual(['sun']);
   });
+
+  // Hysteresis: frame-to-frame state comes from the caller (wasShown).
+  const frames = (xs: number[]) => {
+    let wasShown: boolean | undefined;
+    return xs.map(x => {
+      const b = { ...box('b', x, 0, 1), wasShown };
+      wasShown = declutterLabels([box('a', 0, 0, 2), b], null).has('b');
+      return wasShown;
+    });
+  };
+  const transitions = (shown: boolean[]) => shown.slice(1).filter((s, i) => s !== shown[i]).length;
+
+  it('does not flicker while a label hovers at the edge of a higher-priority one', () => {
+    // b alternates between overlapping a by 1 px and clearing it by 1 px.
+    const shown = frames(Array.from({ length: 20 }, (_, i) => (i % 2 ? 81 : 79)));
+    expect(transitions(shown)).toBeLessThanOrEqual(1);
+  });
+
+  it('brings a hidden label back only once it clears the other label by the margin', () => {
+    // Hidden at 1 px overlap, still hidden at 7 px clearance, shown at 9 px.
+    expect(frames([79, 87, 89])).toEqual([false, false, true]);
+  });
+
+  it('keeps a shown label until its box actually overlaps', () => {
+    expect(frames([100, 81, 80, 79])).toEqual([true, true, true, false]);
+  });
 });
 
 describe('labelScreenRect', () => {
