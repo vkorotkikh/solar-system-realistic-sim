@@ -55,11 +55,11 @@ export function solarSurfaceToEclipticMatrix(jdTdb: number): Matrix4 {
 }
 
 /**
- * Convert an already-evolved backend vector to the rotating surface's local
- * coordinates. Removing rigid phase here prevents double rotation when the
- * surface receives its IAU orientation. Differential rotation is not removed.
+ * Convert an already-evolved backend vector to the Sun's z-up body frame
+ * (IAU_SUN). Removing rigid phase here prevents double rotation when the
+ * geometry receives the IAU orientation. Differential rotation is not removed.
  */
-export function solarVectorToSurfaceLocal(vector: readonly number[], frame: SolarFrame, jdTdb: number): Vector3 {
+export function solarVectorToBody(vector: readonly number[], frame: SolarFrame, jdTdb: number): Vector3 {
   if (vector.length !== 3 || !vector.every(Number.isFinite)) {
     throw new RangeError('Solar vector must contain three finite coordinates');
   }
@@ -71,6 +71,12 @@ export function solarVectorToSurfaceLocal(vector: readonly number[], frame: Sola
   if (frame === 'SOLAR_EQUATORIAL_J2000') {
     point.applyAxisAngle(new Vector3(0, 0, 1), -(elapsedPhase % 360)*DEG);
   }
+  return point;
+}
+
+/** The same vector in the rotating surface's local coordinates (+Y north). */
+export function solarVectorToSurfaceLocal(vector: readonly number[], frame: SolarFrame, jdTdb: number): Vector3 {
+  const point = solarVectorToBody(vector, frame, jdTdb);
   return new Vector3(point.x, point.z, -point.y);
 }
 

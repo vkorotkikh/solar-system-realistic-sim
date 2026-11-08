@@ -280,3 +280,20 @@ def test_public_cartesian_near_poles_match_independent_zonal_polynomial(degree, 
     else:
         actual = np.array(field.evaluate_cartesian_batch(*xyz[:, None]))[:, 0]
     np.testing.assert_allclose(actual, expected, rtol=0, atol=POLE_ATOL)
+
+
+def test_a_batch_mixing_poles_and_regular_points_equals_separate_evaluations():
+    # Pole handling is skipped when a batch has no pole, so a mixed batch must take it.
+    coefficients = np.zeros((2, 16, 16))
+    rng = np.random.default_rng(0)
+    coefficients[:, 1:] = rng.normal(size=(2, 15, 16))
+    coefficients *= np.tril(np.ones((16, 16)))
+    field = StreamingPFSS(coefficients[0], coefficients[1], 15, 2.5)
+    r = np.array([1.0, 1.3, 1.0, 2.0, 1.7])
+    theta = np.array([0.0, 0.7, np.pi, 1.9, 1e-9])
+    phi = np.array([0.3, 1.2, 2.2, -0.4, 0.9])
+    mixed = np.array(field.evaluate(r, theta, phi))
+    regular = [1, 3, 4]
+    poles = [0, 2]
+    np.testing.assert_array_equal(mixed[:, regular], np.array(field.evaluate(r[regular], theta[regular], phi[regular])))
+    np.testing.assert_array_equal(mixed[:, poles], np.array(field.evaluate(r[poles], theta[poles], phi[poles])))

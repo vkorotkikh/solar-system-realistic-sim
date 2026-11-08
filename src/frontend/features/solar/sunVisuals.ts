@@ -392,6 +392,8 @@ uniform float channelMode;
 // Each vec4: (centerLon_rad, centerLat_rad, extentLon_rad, extentLat_rad)
 uniform vec4 coronalHoles[8];
 uniform float coronalHoleCount;
+// Weight of the procedural polar + equatorial holes, eased against the data holes (H2.9).
+uniform float proceduralHoleWeight;
 
 varying vec3 vWorldPosition;
 varying vec3 vWorldNormal;
@@ -517,7 +519,8 @@ void main() {
   alpha *= (1.0 + streamerBright * (0.8 + streamerTurb * 0.4));
 
   // ─── Magnetically-Driven Coronal Holes ─────────────────────────────────────
-  // Data-driven when coronalHoleCount > 0, otherwise fallback to polar darkening
+  // Data-driven when coronalHoleCount > 0; the procedural polar darkening is weighted by
+  // proceduralHoleWeight, which eases against the data holes instead of switching in one frame.
   float inHole = 0.0;
   if (coronalHoleCount > 0.5) {
     float fragLon = atan(sunNormal.z, sunNormal.x);
@@ -534,14 +537,15 @@ void main() {
         inHole = max(inHole, edgeFade);
       }
     }
-  } else {
+  }
+  if (proceduralHoleWeight > 0.001) {
     // Fallback: generic polar + equatorial hole pattern from coronalHoleActivity
     float polarHole = abs(sunNormal.y);
     float holeThreshold = 0.55 - coronalHoleActivity * 0.35;
     float polarFade = smoothstep(holeThreshold - 0.1, holeThreshold + 0.15, polarHole);
     float holeNoise = fbm(normalDir * 4.0 + vec3(time * 0.02));
     float equatorialHole = smoothstep(0.6, 0.8, holeNoise) * coronalHoleActivity;
-    inHole = max(polarFade, equatorialHole);
+    inHole = max(inHole, max(polarFade, equatorialHole) * proceduralHoleWeight);
   }
   // Emission measure drops ~5× in coronal holes (alpha → 0.2)
   alpha *= mix(1.0, 0.2, inHole);
@@ -764,8 +768,9 @@ export function blendSunspotUniforms(
   from: ReturnType<typeof readSunspotSeeds>,
   alpha: number
 ): void {
+  if (!from || alpha >= 1) return;
   const to = readSunspotSeeds(material);
-  if (!material || !to || !from || alpha >= 1) return;
+  if (!material || !to) return;
   const matched = new Set<number>();
   const mix: Array<{ seed: number[]; pattern: number }> = [];
   to.seeds.forEach((seed, i) => {
@@ -811,8 +816,9 @@ export function blendCoronalHoleUniforms(
   from: ReturnType<typeof readCoronalHoles>,
   alpha: number
 ): void {
+  if (!from || alpha >= 1) return;
   const to = readCoronalHoles(material);
-  if (!material || !to || !from || alpha >= 1) return;
+  if (!material || !to) return;
   const count = Math.max(from.count, to.count);
   const holes = material.uniforms.coronalHoles.value as Vector4[];
   for (let i = 0; i < count; i += 1) {
@@ -1098,7 +1104,8 @@ export function createSunCoronaShell(
           new Vector4(0, 0, 0, 0), new Vector4(0, 0, 0, 0)
         ]
       },
-      coronalHoleCount: { value: 0.0 }
+      coronalHoleCount: { value: 0.0 },
+      proceduralHoleWeight: { value: 1.0 }
     },
     transparent: true,
     blending: AdditiveBlending,

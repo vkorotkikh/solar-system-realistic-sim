@@ -1,0 +1,13 @@
+diff --git a/backend/sim/pfss_magnetogram.py b/backend/sim/pfss_magnetogram.py
+--- a/backend/sim/pfss_magnetogram.py
++++ b/backend/sim/pfss_magnetogram.py
+@@ -290,7 +290,8 @@ def project_spherical_harmonics(
+     h_lm = np.zeros((lmax + 1, lmax + 1))
+     for m in range(lmax + 1):
+         design = schmidt_latitude_design(lmax, m, np.cos(theta))
+-        scale = (2 * np.arange(m, lmax + 1) + 1) / (2 * phi.size)
++        # Defect: apply epsilon_m to modes the Schmidt design already normalizes.
++        scale = (1 if m == 0 else 2) * (2 * np.arange(m, lmax + 1) + 1) / (2 * phi.size)
+         g_lm[m:, m] = ((cells @ np.cos(m * phi)) * weights) @ design * scale
+         h_lm[m:, m] = ((cells @ np.sin(m * phi)) * weights) @ design * scale
+     return g_lm, h_lm

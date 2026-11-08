@@ -33,6 +33,8 @@ from .magnetogram_grid import MagnetogramGrid, equal_area_sine_latitude_grid
 from .pfss_tracing import safe_norm, trace_field, trace_field_batch
 from .pfss_evaluation import StreamingPFSS, schmidt_latitude_design
 from .solar_active_regions import (
+    CYCLE_25_START_JD,
+    CYCLE_DAYS,
     J2000_JD,
     ActiveRegionSeed,
     build_active_regions,
@@ -155,13 +157,17 @@ def synthetic_magnetogram(
     cos_theta = np.cos(theta_grid)
     sin_theta = np.sin(theta_grid)
 
-    # Dipole: g_1^0 (dominant at solar minimum)
-    g10 = 5.0 * (1.0 - activity * 0.6)  # Gauss, weakens at solar max
+    # Dipole, dominant at solar minimum and weaker at maximum. Its axis turns
+    # through the equator once per cycle, so the polar field reverses near each
+    # maximum. Each minimum's north polar field matches the incoming cycle's
+    # northern leaders: positive for cycle 25 (2020), negative for 24 and 26.
+    dipole = 5.0 * (1.0 - activity * 0.6)  # Gauss
+    axis_tilt = math.pi * (jd - CYCLE_25_START_JD) / CYCLE_DAYS
+    g10 = dipole * math.cos(axis_tilt)
     br = g10 * cos_theta
 
-    # Dipole tilt: g_1^1 (tilted component, increases at solar max)
-    tilt_angle = 0.2 * activity  # ~12° at solar max
-    g11 = g10 * math.sin(tilt_angle)
+    # Equatorial part g_1^1, largest while the axis crosses the equator.
+    g11 = dipole * math.sin(axis_tilt)
     tilt_phase = (
         math.radians(CARRINGTON_SIDEREAL_ROTATION_RATE_DEG_PER_DAY)
         * (jd - J2000_JD)
@@ -215,6 +221,8 @@ def decompose_spherical_harmonics(
     weighted least squares (NumPy SVD, no normal equations). Each design's
     2-norm condition number must be finite and <= condition_limit. The m=0
     fit includes the monopole; flux-balance policy is outside this projection.
+    The solve does not use this: above degree ~40 on real maps it collapses
+    despite the gate (see project_spherical_harmonics and ADR 0007).
     """
     br_map = grid.validate_map(br_map)
     # Validate degree before dimensions/allocation; retain the existing SVD gate.
@@ -243,6 +251,48 @@ def decompose_spherical_harmonics(
             raise ValueError(f"latitude design for m={m} is rank deficient")
         g_lm[m:, m], h_lm[m:, m] = coefficients.T
 
+    return g_lm, h_lm
+
+
+def project_spherical_harmonics(
+    br_map: np.ndarray,
+    lmax: int = 15,
+    *,
+    grid: MagnetogramGrid,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Schmidt coefficients by NASA WSA's method (ADR 0007), for 360-column maps.
+
+    Averages the piecewise-constant input over WSA's 2-degree uniform-latitude
+    cells (exact area overlap in latitude, adjacent pairs in longitude), then
+    sums g_lm = (2l+1)/(4 pi) * sum(Br P_lm cos(m phi) sin(theta) dtheta dphi).
+    Nothing is inverted, so there is no condition limit and no monopole/polar-mode
+    split: g00 is the map's area mean. This reproduces NASA's product; it does not
+    recover a band-limited field exactly (cell averaging attenuates by up to about
+    (l * 2 deg)^2 / 24) or supply polar information the input grid lacks.
+    """
+    br_map = grid.validate_map(br_map)
+    schmidt_latitude_design(lmax, 0, grid.mu[:1])
+    if br_map.shape[1] != 360:
+        raise ValueError("projection requires 360 longitude columns")
+    edges = np.linspace(0.0, np.pi, 91)
+    theta = (edges[:-1] + edges[1:]) / 2
+    mu_upper, mu_lower = np.cos(edges[:-1]), np.cos(edges[1:])
+    row_lower = np.minimum(grid.mu_edges[:-1], grid.mu_edges[1:])
+    row_upper = np.maximum(grid.mu_edges[:-1], grid.mu_edges[1:])
+    overlap = np.clip(
+        np.minimum.outer(mu_upper, row_upper) - np.maximum.outer(mu_lower, row_lower),
+        0.0, None,
+    )
+    cells = overlap @ ((br_map[:, 0::2] + br_map[:, 1::2]) / 2) / overlap.sum(axis=1, keepdims=True)
+    phi = (grid.phi_rad[0::2] + grid.phi_rad[1::2]) / 2
+    weights = np.sin(theta) * (edges[1] - edges[0])
+    g_lm = np.zeros((lmax + 1, lmax + 1))
+    h_lm = np.zeros((lmax + 1, lmax + 1))
+    for m in range(lmax + 1):
+        design = schmidt_latitude_design(lmax, m, np.cos(theta))
+        scale = (2 * np.arange(m, lmax + 1) + 1) / (2 * phi.size)
+        g_lm[m:, m] = ((cells @ np.cos(m * phi)) * weights) @ design * scale
+        h_lm[m:, m] = ((cells @ np.sin(m * phi)) * weights) @ design * scale
     return g_lm, h_lm
 
 
@@ -908,13 +958,13 @@ def wsa_velocity_at_source_surface(
 PFSS_SOLUTION_KEY_VERSION = "pfss-solution-key-v1"
 PFSS_SOLUTION_CONFIG_VERSION = "pfss-solution-config-v1"
 SYNTHETIC_SNAPSHOT_ID_VERSION = "synthetic-magnetogram-snapshot-v1"
-SYNTHETIC_TRANSFORM_VERSION = "synthetic-persistent-bipoles-v4"
+SYNTHETIC_TRANSFORM_VERSION = "synthetic-persistent-bipoles-v5"
 SYNTHETIC_FLUX_POLICY_VERSION = "synthetic-native-unbalanced-v1"
 PFSS_PREPROCESSING_POLICY_VERSION = "pfss-input-preprocessing-none-v1"
 PFSS_SOLVER_VERSION = "pfss-altschuler-newkirk-v1"
 PFSS_TRACER_VERSION = "rk4-three-state-v1"
 PFSS_SEEDING_POLICY_VERSION = "importance-abs-br-exact-area-v1"
-PFSS_DECOMPOSITION_VERSION = "weighted-schmidt-least-squares-v1"
+PFSS_DECOMPOSITION_VERSION = "wsa-area-overlap-midpoint-quadrature-v1"
 WSA_BOUNDARY_DISTANCE_VERSION = "adjacent-open-closed-edge-midpoints-v1"
 _SNAPSHOT_TIME_ATOL_DAYS = 5e-10
 _SNAPSHOT_ROTATION_ATOL = 5e-7
@@ -1907,8 +1957,8 @@ class PFSSCache:
         br_map = snapshot.field_gauss
         grid = snapshot.grid
 
-        # Decompose into spherical harmonics
-        g_lm, h_lm = decompose_spherical_harmonics(
+        # Project onto spherical harmonics
+        g_lm, h_lm = project_spherical_harmonics(
             br_map, lmax=config.lmax, grid=grid
         )
 

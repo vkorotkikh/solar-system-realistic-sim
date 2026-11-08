@@ -10,7 +10,7 @@ import * as THREE from 'three';
 import { createSolarSystemCatalog } from '../src/sim/catalog.ts';
 import { createBodyIdResolver } from '../src/frontend/app/stateStore.ts';
 import { SolarSystemModel } from '../src/sim/solarSystemModel.ts';
-import { propagateKeplerOrbit } from '../src/sim/orbitMath.ts';
+import { propagateKeplerOrbit, sampleOrbitLoop } from '../src/sim/orbitMath.ts';
 import { updateSceneBodiesFromModel } from '../src/frontend/app/bodyManager.ts';
 import { createModelWorkerController } from '../src/frontend/app/modelWorkerController.ts';
 import { PlanetQuadtree } from '../src/frontend/features/planetary/quadtreeLOD.ts';
@@ -94,7 +94,7 @@ function withScene({showMoons = true} = {}, inspect) {
   };
   const geometryCache = Object.fromEntries(['sun', 'planet', 'moon'].map(key => [key, ownDisposable(new THREE.SphereGeometry(1, 8, 6))]));
   const bindings = {
-    ...THREE, PlanetQuadtree, applyBodySpin, propagateKeplerOrbit, updateSceneBodiesFromModel,
+    ...THREE, PlanetQuadtree, applyBodySpin, propagateKeplerOrbit, sampleOrbitLoop, updateSceneBodiesFromModel,
     ownDisposable, camera, geometryCache, catalog: runtimeCatalog, sceneCatalog: runtimeCatalog,
     isEarthMoonBody: createBodyIdResolver(catalog).isEarthMoonBody,
     showMoons, simState: {julianDate: JD, useRealisticScale: false, timeScaleDaysPerSec: 120},

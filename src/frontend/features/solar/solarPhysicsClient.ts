@@ -226,7 +226,7 @@ export interface SolarPhysicsClientStatus {
 }
 
 /** Each `/health` probe only has to tell "answers" from "refused" from "nothing listening". */
-const HEALTH_PROBE_TIMEOUT_MS = 2_000;
+export const HEALTH_PROBE_TIMEOUT_MS = 2_000;
 /** The origin allowlist and the server's reachability change rarely; don't re-probe every retry. */
 const HEALTH_PROBE_REUSE_MS = 30_000;
 /** Upper bound on how long a server's Retry-After can postpone the next attempt. */
@@ -308,6 +308,20 @@ function parseEpochRange(value: unknown): SolarEpochRange | null {
     ? { minJdTdb: min, maxJdTdb: max } : null;
 }
 
+/**
+ * The epoch actually requested for a clock reading: the start of its 0.01-day
+ * step (owner decision 2026-11-03, docs/solar-render-delivery.md). Polls inside
+ * one step then ask for the same epoch, so the backend's exact ready-result
+ * cache can serve them. The drawn state trails the clock by under 14.4
+ * simulated minutes, about 0.14 degrees of solar rotation.
+ */
+export function solarPhysicsRequestJd(jd: number): number {
+  // Whole 1e-8 d wire units are exact at these magnitudes, so an epoch already
+  // on the grid maps to itself despite binary rounding of jd * 100.
+  const units = Math.round(jd * 1e8);
+  return (units - (units % 1e6)) / 1e8;
+}
+
 function outsideEpochRange(jd: number, range: SolarEpochRange): boolean {
   // Admission follows the same eight-decimal identity as the actual request.
   const wireJd = Number(Number(jd).toFixed(8));
@@ -340,12 +354,18 @@ function finiteNumericOption(value: number, name: string): number {
 // Bounds apply to the render-v1 HTTP body, independently of optional HTTP gzip.
 const MAX_SOLAR_ENCODED_BYTES = 512 * 1024;
 const MAX_SOLAR_DECODED_BYTES = 2 * 1024 * 1024;
+const ENCODED_BUDGET_ERROR = 'Solar physics response exceeds encoded byte budget';
 
 async function readSolarJson(response: Response, signal: AbortSignal): Promise<unknown> {
   signal.throwIfAborted();
   const length = Number(response.headers?.get?.('Content-Length'));
   if (Number.isFinite(length) && length > MAX_SOLAR_DECODED_BYTES) {
     throw new Error('Solar physics response exceeds byte budget');
+  }
+  // A marked render-v1 response is already known to be capped at 512 KiB encoded.
+  // Unmarked responses (older server, header-stripping proxy) get the post-parse check.
+  if (response.headers?.get?.('X-Solar-Delivery') === 'render-v1' && length > MAX_SOLAR_ENCODED_BYTES) {
+    throw new Error(ENCODED_BUDGET_ERROR);
   }
   // Synthetic Response doubles used by embedding callers may only expose json().
   if (!response.body) return response.json();
@@ -373,7 +393,7 @@ async function readSolarJson(response: Response, signal: AbortSignal): Promise<u
     const payload: unknown = JSON.parse(text + decoder.decode());
     if (payload && typeof payload === 'object' && 'delivery' in payload
       && Number.isFinite(length) && length > MAX_SOLAR_ENCODED_BYTES) {
-      throw new Error('Solar physics response exceeds encoded byte budget');
+      throw new Error(ENCODED_BUDGET_ERROR);
     }
     return payload;
   } finally {
@@ -527,7 +547,7 @@ export class SolarPhysicsClient {
   /** Read-only: the controller can honor transitions before its outer cadence gate. */
   epochRangeReadiness(jd: number): SolarEpochRangeReadiness | null {
     if (this.disposed || !this.knownEpochRange) return null;
-    return this.epochRangeReadinessFor(jd, this.baseUrl());
+    return this.epochRangeReadinessFor(solarPhysicsRequestJd(jd), this.baseUrl());
   }
 
   private epochRangeReadinessFor(jd: number, baseUrl: string): SolarEpochRangeReadiness {
@@ -562,8 +582,9 @@ export class SolarPhysicsClient {
     this.inFlight = false;
   }
 
-  async maybeRefresh(jd: number, force = false, preparedRange?: SolarEpochRangeReadiness | null): Promise<boolean> {
+  async maybeRefresh(clockJd: number, force = false, preparedRange?: SolarEpochRangeReadiness | null): Promise<boolean> {
     const nowMs = Date.now();
+    const jd = solarPhysicsRequestJd(clockJd);
 
     if (this.disposed) return false;
     const entryReqId = this._reqId;

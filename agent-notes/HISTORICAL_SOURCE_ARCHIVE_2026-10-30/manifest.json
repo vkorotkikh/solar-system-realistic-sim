@@ -6994,7 +6994,8 @@
       "credentialPatternScan": "no_matches",
       "disposition": "copied_exact_bytes",
       "archivePath": "sources/agent-notes/H1_SOLAR_DELIVERY_PLAN_2026-09-25.md",
-      "provenanceClass": "historical_report_or_investigation_record"
+      "provenanceClass": "historical_report_or_investigation_record",
+      "removedFromArchive": "2026-11-07; see postArchiveRemovals"
     }
   ],
   "localRetentionCompletedUTC": "2026-10-30T05:16:49.121782+00:00",
@@ -7006,5 +7007,18 @@
     "selectedFiles": 577,
     "metadataOnly": 0,
     "sourceWritesPerformed": false
-  }
+  },
+  "postArchiveRemovals": [
+    {
+      "date": "2026-11-07",
+      "archivePath": "sources/agent-notes/H1_SOLAR_DELIVERY_PLAN_2026-09-25.md",
+      "relativeOrigin": "agent-notes/H1_SOLAR_DELIVERY_PLAN_2026-09-25.md",
+      "sha256": "263ba8f7e88512dbd033fa514d67d3f1cb3f60f902ed8b3d4f77bb2f3f182c09",
+      "bytes": 141341,
+      "reason": "Owner request after its backend geometry gate write-up was merged into agent-notes/REMEDIATION_SOLAR_SCN042_PRODUCTION_2026-10-14.md.",
+      "exactBytesRetainedAt": "f92e7c7c3eaefbfe2052d02cd57d9ca4b20f79a2:agent-notes/HISTORICAL_SOURCE_ARCHIVE_2026-10-30/sources/agent-notes/H1_SOLAR_DELIVERY_PLAN_2026-09-25.md",
+      "textRetainedIn": "agent-notes/H1_SOLAR_DELIVERY_PLAN_2026-09-25.md, the same text plus one later 8-line status block.",
+      "countsAbove": "selectedFileCount, copiedFileCount and the byte totals describe the archive as captured on 2026-10-30."
+    }
+  ]
 }

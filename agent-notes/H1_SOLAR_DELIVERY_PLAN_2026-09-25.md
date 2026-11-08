@@ -10,7 +10,8 @@
 
 > **Display phase 2026-10-07 (branch `fix/solar-display-truth`, stacked on the chip branch, unmerged).** Owner decisions:
 > D3 (b), D4 (a), D10 (a) and D17 start now. Done, each with a test that fails without it:
-> - **H2.4:** backend geometry gated (`BACKEND_GEOMETRY_VALIDATED = false`); the chip says "backend activity, procedural features".
+> - **H2.4:** moved. The gate's plan, what was built and its state on `main` are in the SCN-042 production note:
+>   [backend geometry gate](REMEDIATION_SOLAR_SCN042_PRODUCTION_2026-10-14.md#backend-geometry-gate-plan-history-and-state-on-main).
 > - **H2.2:** D3 scale (`coronalToDisplay`, k = 0.15; Parker spiral at true AU, clipped). Old code: spiral 242 AU, loop 1.77 AU.
 >   New code: about 3.0 AU and at most 0.60 AU. A "not to scale" note sits under the Realistic-scale toggle.
 > - **H2.3:** flares visible. CMEs grow to their D3 extent over the flash, as a time-lapse (this touches D5, still open).

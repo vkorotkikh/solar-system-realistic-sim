@@ -5,7 +5,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
 import { createBodyIdResolver } from '../src/frontend/app/stateStore';
-import { updateBodyLabel } from '../src/frontend/app/sceneAnnotations';
+import { declutterLabels, labelScreenRect, updateBodyLabel } from '../src/frontend/app/sceneAnnotations';
 import fs from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
@@ -75,7 +75,7 @@ function harness({ realistic = false, axialTiltDeg = 0, type = 'planet', id = 'o
       ...labelMetrics(label, node, camera, realistic ? body.realRadiusAu : body.displayRadiusAu, renderer.domElement.clientHeight),
     });
   } };
-  const bindings = { ...THREE, updateBodyLabel, updateZoomStatus: noop, ownDisposable, geometryCache, simState, camera, scene, solarSystemGroup,
+  const bindings = { ...THREE, updateBodyLabel, labelScreenRect, declutterLabels, updateZoomStatus: noop, ownDisposable, geometryCache, simState, camera, scene, solarSystemGroup,
     isEarthMoonBody: createBodyIdResolver({ bodies: [body] }).isEarthMoonBody,
     document: { createElement: () => ({ width: 0, height: 0, getContext: () => null }) },
     BODY_LOCAL_SPIN_AXIS: new THREE.Vector3(0, 1, 0), PLANET_COLORS: {}, sunTexture: null,

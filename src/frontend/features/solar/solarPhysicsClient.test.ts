@@ -212,6 +212,37 @@ describe('SolarPhysicsClient time contract', () => {
     expect(client.latestState()?.jd_time_scale).toBe('TDB');
   });
 
+  it('requests the start of the 0.01-day epoch step, so polls inside one step share a result', async () => {
+    const requested: string[] = [];
+    vi.stubGlobal('fetch', vi.fn(async (input: string | URL | Request) => {
+      const jd = new URL(String(input)).searchParams.get('jd_tdb') ?? '';
+      requested.push(jd);
+      return responseWith(validPayload(Number(jd)));
+    }));
+    const client = new SolarPhysicsClient({ baseUrl: () => 'http://backend.test' });
+
+    for (const jd of [2_460_000.5012, 2_460_000.5099, 2_460_000.51]) {
+      await expect(client.maybeRefresh(jd, true)).resolves.toBe(true);
+    }
+
+    expect(requested).toEqual(['2460000.50000000', '2460000.50000000', '2460000.51000000']);
+    expect(client.latestState()?.epoch_jd_tdb).toBe(2_460_000.51);
+  });
+
+  it('keeps an epoch that is already on the 0.01-day grid', async () => {
+    // 2461308.55 * 100 is 246130854.99999997 in binary floating point, so a
+    // naive floor would move this epoch back to the previous step.
+    let requestUrl = '';
+    vi.stubGlobal('fetch', vi.fn(async (input: string | URL | Request) => {
+      requestUrl = String(input);
+      return responseWith(validPayload(2_461_308.55));
+    }));
+    const client = new SolarPhysicsClient({ baseUrl: () => 'http://backend.test' });
+
+    await expect(client.maybeRefresh(2_461_308.55, true)).resolves.toBe(true);
+    expect(new URL(requestUrl).searchParams.get('jd_tdb')).toBe('2461308.55000000');
+  });
+
   it.each([
     [{ ...validPayload(), jd_time_scale: 'UTC' }, 'time scale'],
     [{ ...validPayload(), epoch_jd_tdb: Number.NaN }, 'epoch_jd_tdb'],
@@ -1439,6 +1470,21 @@ describe('bounded render reader ownership', () => {
     try {
       expect(await client.maybeRefresh(epoch, true)).toBe(false);
       expect(client.lastError).toContain('encoded byte budget'); expect(client.latestState()).toBeNull();
+    } finally { client.dispose(); }
+  });
+
+  it('rejects a render-v1 marked response above 512 KiB before acquiring a reader', async () => {
+    const response = new Response(JSON.stringify(payload()), {
+      headers: { 'X-Solar-Delivery': 'render-v1', 'Content-Length': String(512 * 1024 + 1) }
+    });
+    const getReader = vi.spyOn(response.body!, 'getReader');
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response));
+    const client = new SolarPhysicsClient({ baseUrl: () => 'http://backend.test' });
+    try {
+      expect(await client.maybeRefresh(epoch, true)).toBe(false);
+      expect(getReader).not.toHaveBeenCalled();
+      expect(client.lastError).toContain('Solar physics response exceeds encoded byte budget');
+      expect(client.latestState()).toBeNull();
     } finally { client.dispose(); }
   });
 });

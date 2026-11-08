@@ -341,20 +341,6 @@
       ]
     },
     {
-      "id": "google-fonts",
-      "product": "Google Fonts CSS: Chakra Petch 500/600; Oxanium 500/600/700",
-      "use": "active entry CSS @import; browser requests remote CSS/font bytes",
-      "sourceUrls": [
-        "https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600&family=Oxanium:wght@500;600;700&display=swap"
-      ],
-      "credit": "Determine actual delivered font versions, font-specific licenses/notices and delivery terms; do not invent OFL/SPDX from family names.",
-      "rightsStatus": "review-required",
-      "rightsEvidence": "Product-specific redistribution rights have not been established. Retaining source, bytes and credit does not grant permission.",
-      "evidencePaths": [
-        "src/style.css"
-      ]
-    },
-    {
       "id": "noaa-wind",
       "product": "NOAA SWPC RTSW 1-minute wind",
       "use": "backend runtime live context",
@@ -785,6 +771,36 @@
       ],
       "rightsPolicyUrls": [
         "https://ssd.jpl.nasa.gov/faq.html"
+      ]
+    },
+    {
+      "id": "chakra-petch-font",
+      "product": "Chakra Petch 500 and 600 Latin web fonts (Google Fonts v13 woff2)",
+      "use": "self-hosted UI typeface",
+      "sourceUrls": [
+        "https://fonts.google.com/specimen/Chakra+Petch",
+        "https://github.com/google/fonts/tree/main/ofl/chakrapetch"
+      ],
+      "credit": "Copyright 2018 The Chakra Petch Project Authors (https://github.com/m4rc1e/Chakra-Petch.git); SIL Open Font License 1.1, packaged as fonts/OFL-ChakraPetch.txt.",
+      "rightsStatus": "OFL-1.1",
+      "rightsEvidence": "The delivered woff2 name table declares this copyright and the SIL OFL licence URL (font version 1.000). The upstream OFL.txt permits use, bundling and redistribution with software when the licence accompanies the fonts, and it ships beside them.",
+      "evidencePaths": [
+        "public/fonts/OFL-ChakraPetch.txt"
+      ]
+    },
+    {
+      "id": "oxanium-font",
+      "product": "Oxanium variable Latin web font (Google Fonts v21 woff2)",
+      "use": "self-hosted UI typeface",
+      "sourceUrls": [
+        "https://fonts.google.com/specimen/Oxanium",
+        "https://github.com/google/fonts/tree/main/ofl/oxanium"
+      ],
+      "credit": "Copyright 2019 The Oxanium Project Authors (https://github.com/sevmeyer/oxanium); SIL Open Font License 1.1, packaged as fonts/OFL-Oxanium.txt.",
+      "rightsStatus": "OFL-1.1",
+      "rightsEvidence": "The delivered woff2 name table declares this copyright and the SIL OFL licence URL (font version 2.000). The upstream OFL.txt permits use, bundling and redistribution with software when the licence accompanies the fonts, and it ships beside them.",
+      "evidencePaths": [
+        "public/fonts/OFL-Oxanium.txt"
       ]
     },
     {

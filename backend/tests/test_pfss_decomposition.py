@@ -158,10 +158,11 @@ def test_seeding_rejects_implicit_grid():
 def test_synthetic_defaults_and_explicit_grid():
     from sim.pfss_magnetogram import synthetic_magnetogram
     grid = equal_area_sine_latitude_grid(48, 64)
-    br = synthetic_magnetogram(0, 2460000, 48, 64)
+    # The cycle-25 start (JD 2458849.5), where the synthetic dipole axis is polar.
+    br = synthetic_magnetogram(0, 2458849.5, 48, 64)
     np.testing.assert_allclose(br, 5 * grid.mu[:, None] * np.ones((1, 64)), atol=1e-14)
     south = uniform_colatitude_grid(48, 64, row_order="south_to_north")
-    br = synthetic_magnetogram(0, 2460000, grid=south)
+    br = synthetic_magnetogram(0, 2458849.5, grid=south)
     g, h = decompose_spherical_harmonics(br, 15, grid=south)
     expected = np.zeros((16, 16))
     expected[1, 0] = 5
@@ -197,7 +198,7 @@ def test_validated_provider_snapshot_crosses_pfss_boundary_without_reorientation
         captured["grid"] = grid
         return np.zeros((lmax + 1, lmax + 1)), np.zeros((lmax + 1, lmax + 1))
 
-    monkeypatch.setattr(pfss, "decompose_spherical_harmonics", decompose)
+    monkeypatch.setattr(pfss, "project_spherical_harmonics", decompose)
     monkeypatch.setattr(pfss, "trace_field_lines", lambda *a, **k: [])
     monkeypatch.setattr(
         pfss,
@@ -233,6 +234,7 @@ def test_validated_provider_snapshot_crosses_pfss_boundary_without_reorientation
     )
     assert result["solution_config"]["lmax"] == 1
     assert result["solution_config"]["line_count"] == 8
+    assert result["solution_config"]["decomposition_version"] == "wsa-area-overlap-midpoint-quadrature-v1"
     assert result["magnetogram_provenance"]["request_jd_tdb"] == (
         snapshot.provenance.request_jd_tdb
     )

@@ -1,5 +1,15 @@
 # Selected historical source evidence, 2026-10-30
 
+> **2026-11-07 removal (owner request).** `sources/agent-notes/H1_SOLAR_DELIVERY_PLAN_2026-09-25.md` (141,341 bytes, SHA-256 `263ba8f7…2c09`) was removed
+> after its write-up of the backend geometry gate was merged into
+> [REMEDIATION_SOLAR_SCN042_PRODUCTION_2026-10-14.md](../REMEDIATION_SOLAR_SCN042_PRODUCTION_2026-10-14.md#backend-geometry-gate-plan-history-and-state-on-main).
+> The archive now holds 576 files, and `SHA256SUMS` lists exactly those. The exact bytes remain in
+> [commit `f92e7c7`](https://github.com/vkorotkikh/solar-system-realistic-sim/blob/f92e7c7c3eaefbfe2052d02cd57d9ca4b20f79a2/agent-notes/HISTORICAL_SOURCE_ARCHIVE_2026-10-30/sources/agent-notes/H1_SOLAR_DELIVERY_PLAN_2026-09-25.md).
+> The living plan, [H1_SOLAR_DELIVERY_PLAN_2026-09-25.md](../H1_SOLAR_DELIVERY_PLAN_2026-09-25.md), contains the same text plus
+> one later 8-line status block. `manifest.json` records the removal under `postArchiveRemovals`. The counts below,
+> the manifest totals, and `verification.json` (including its hashes of this README, `SHA256SUMS` and `manifest.json`)
+> describe the archive as captured on 2026-10-30.
+
 This archive preserves all **577 deliberately selected files / 10,581,836 bytes**
 for SCN-040: the September 24 audit report/raw evidence and September 25 H1
 report/raw evidence from the primary checkout. Every selected file is copied
@@ -26,7 +36,7 @@ The source report's own audited revision must not be confused with either.
 | --- | --- |
 | `agent-notes/CODEBASE_AUDIT_2026-09-24.md` | [Original September 24 report](sources/agent-notes/CODEBASE_AUDIT_2026-09-24.md) |
 | `agent-notes/CODEBASE_AUDIT_2026-09-24_EVIDENCE/` | [September audit evidence](sources/agent-notes/CODEBASE_AUDIT_2026-09-24_EVIDENCE/README.md) |
-| `agent-notes/H1_SOLAR_DELIVERY_PLAN_2026-09-25.md` | [Original H1 report](sources/agent-notes/H1_SOLAR_DELIVERY_PLAN_2026-09-25.md) |
+| `agent-notes/H1_SOLAR_DELIVERY_PLAN_2026-09-25.md` | Original H1 report, removed 2026-11-07: [exact bytes at `f92e7c7`](https://github.com/vkorotkikh/solar-system-realistic-sim/blob/f92e7c7c3eaefbfe2052d02cd57d9ca4b20f79a2/agent-notes/HISTORICAL_SOURCE_ARCHIVE_2026-10-30/sources/agent-notes/H1_SOLAR_DELIVERY_PLAN_2026-09-25.md) |
 | `agent-notes/H1_SOLAR_DELIVERY_PLAN_2026-09-25_EVIDENCE/` | [H1 evidence](sources/agent-notes/H1_SOLAR_DELIVERY_PLAN_2026-09-25_EVIDENCE/README.md) |
 | Every selected original and exact copy | [Origin/size/SHA manifest](manifest.json) |
 

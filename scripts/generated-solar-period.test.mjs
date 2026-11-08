@@ -3,6 +3,7 @@
 // agent-notes/CONSOLIDATED_MARKDOWN_ISSUE_AUDIT_2026-10-24.md
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { test } from 'vitest';
 import { MU_SUN_AU3_DAY2 } from '../src/constants';
 import { generateAsteroidBelt, NAMED_ASTEROIDS } from '../src/sim/asteroidBelt';
@@ -10,23 +11,33 @@ import { generateKuiperBelt, NAMED_KBOS } from '../src/sim/kuiperBelt';
 
 // SMB056 selected synthetic-period contract, not observed-body ephemeris accuracy.
 // Full pre-change populations and capture provenance are retained in the owned
-// preparation root. These hashes retain ALL original values except generated
-// orbit.periodDays; PR22 population metadata is asserted separately, not rehashed.
+// preparation root. The reference fixture retains ALL original values except
+// generated orbit.periodDays; PR22 population metadata is asserted separately,
+// not stored. The Kuiper values were re-baselined for SMB-051: binary fractions
+// apply at every size, which changes which objects are binary and so the seeded
+// draw after them.
+//
+// Engine independence: the populations used to be pinned by SHA-256, but V8 12.4
+// (Node 22) and V8 13.6 (Node 24) round Math.pow / `**` differently (up to 1 ULP
+// per call, and Node 24 is the correctly rounded one), which moved the last bits
+// of every diameterKm (and the binary fields derived from it). The reference
+// fixture was captured on Node 22.23.2 and is byte-for-byte the data the old
+// hashes covered. Values that do not pass through pow/exp/log are compared
+// EXACTLY; the few that do are compared to REL_TOL.
+// Regenerate on purpose with: UPDATE_POPULATION_REFERENCE=1 vitest run <this file>
 const SEEDS = [0, 42, 137];
-const BASELINES = [
-  { asteroid: '70cc1a3b8f3db67e52297385f8424691638e9540e953db59d2af2785e99c1652',
-    kuiper: 'f423be246ed4ec3ab26fde76e0ace008ce7414166bcdcf6f463548530e618c38',
-    binaryCount: 8, binary: '7f5cd0663bdc9989df504d1edaffce709d88df321a9f9e8372ee4fe0eaa39227' },
-  { asteroid: 'e53ad5d3cda40b4fb7f00c20d31fd12ccd29df8b1b607592a9a8d86d91f2771b',
-    kuiper: '3dfc3a7c341018ed5a61a80aadaf98a65baf0427845ceb1a720bae1efff9a7d5',
-    binaryCount: 6, binary: '7ad93f14b4ad828eced559bb0f07bc27fe525ce549aa0e7be1372372160fe384' },
-  { asteroid: '84531be183a08c2d5cf7167a677d0b2bf1f21575fb126c3d8618a730d0438357',
-    kuiper: 'c04903d9b640bdfb5574e4808e84bf32b322268961064e5baf1099443fc7b65f',
-    binaryCount: 4, binary: '3740a4fd537ca510f202102fcafddfa3b65427e176ecbd6d2cdc34c6d3dd0e91' },
-];
+const BINARY_COUNTS = [31, 24, 24];
 const NAMED_ASTEROIDS_HASH = '1c8043c8c0a3f5a1fd7f6c945c6ab036bacb2a5e06d0ffbeb6ec4cf669c25608';
 const NAMED_KBOS_HASH = '2a7cb40e576844186af0bc2003b49aa9b7bb7b676baf6c03db9880365bb05a45';
 const hash = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
+
+// Observed engine noise is <= 3 ULP (4e-16 relative; pow is <= 1 ULP per call and
+// the binary period chains `**3` and sqrt). 1e-13 is ~450 ULP: >200x that noise,
+// yet a 1e-12 relative change in any value is still rejected.
+const REL_TOL = 1e-13;
+// Generated-row fields that pass through Math.pow / `**` / exp / log.
+const LIBM_FIELDS = new Set(['diameterKm', 'binary.diameterKm', 'binary.separationKm', 'binary.periodDays']);
+const REFERENCE_URL = new URL('./fixtures/generated-solar-period-reference.json', import.meta.url);
 
 function withoutGeneratedPeriods(population, key, namedCount) {
   return { ...population, [key]: population[key].map((row, index) => {
@@ -34,6 +45,46 @@ function withoutGeneratedPeriods(population, key, namedCount) {
     const { periodDays, ...orbit } = row.orbit;
     return { ...row, orbit };
   }) };
+}
+
+const asteroidProjection = seed =>
+  withoutGeneratedPeriods(generateAsteroidBelt(64, seed), 'asteroids', NAMED_ASTEROIDS.length);
+// seed and populationModel are asserted separately; the rest is the pre-PR22 envelope.
+const kuiperProjection = ({ seed, populationModel, ...originalFields }) =>
+  withoutGeneratedPeriods(originalFields, 'kbos', NAMED_KBOS.length);
+const binariesOf = ({ kbos }) => ({ kbos: kbos.map(row => ({ binary: row.binary ?? null })) });
+// The hashes saw populations through JSON.stringify; compare exactly that view.
+const plain = value => JSON.parse(JSON.stringify(value));
+
+if (process.env.UPDATE_POPULATION_REFERENCE) {
+  const rows = [['capture', { node: process.version, v8: process.versions.v8 }]];
+  for (const seed of SEEDS) {
+    rows.push(['asteroid:' + seed, asteroidProjection(seed)]);
+    rows.push(['kuiper:' + seed, kuiperProjection(generateKuiperBelt(256, seed))]);
+  }
+  writeFileSync(REFERENCE_URL, '{\n' + rows.map(([k, v]) => JSON.stringify(k) + ':' + JSON.stringify(v)).join(',\n') + '\n}\n');
+}
+const REFERENCE = JSON.parse(readFileSync(REFERENCE_URL, 'utf8'));
+
+// Exact everywhere (keys, order, ids, counts, nulls, strings, integers, named source
+// rows, and every rand()-only float) except generated-row LIBM_FIELDS at REL_TOL.
+function assertMatchesReference(actual, expected, namedCount, path = []) {
+  const where = path.join('.');
+  if (expected !== null && typeof expected === 'object') {
+    assert.ok(actual !== null && typeof actual === 'object' && Array.isArray(actual) === Array.isArray(expected),
+      where + ' shape');
+    assert.deepEqual(Object.keys(actual), Object.keys(expected), where + ' keys');
+    for (const key of Object.keys(expected)) {
+      assertMatchesReference(actual[key], expected[key], namedCount, [...path, key]);
+    }
+    return;
+  }
+  const [, index, ...field] = path;
+  if (typeof expected === 'number' && Number(index) >= namedCount && LIBM_FIELDS.has(field.join('.'))) {
+    assert.equal(typeof actual, 'number', where);
+    assert.ok(Math.abs(actual - expected) <= REL_TOL * Math.abs(expected),
+      where + ': ' + actual + ' vs reference ' + expected + ' exceeds relative ' + REL_TOL);
+  } else assert.equal(actual, expected, where);
 }
 
 function assertSolarClosure(rows, expectedCount) {
@@ -59,7 +110,7 @@ function assertSolarClosure(rows, expectedCount) {
     'the selected constant correction must be observably distinct from the Julian-year rule');
 }
 
-for (const [index, seed] of SEEDS.entries()) {
+for (const seed of SEEDS) {
   test('contract asteroid synthetic solar closure seed ' + seed, () => {
     const population = generateAsteroidBelt(64, seed);
     assert.equal(population.count, 64);
@@ -73,20 +124,41 @@ for (const [index, seed] of SEEDS.entries()) {
   });
 
   test('control complete asteroid non-generated-period projection seed ' + seed, () => {
-    assert.equal(hash(withoutGeneratedPeriods(generateAsteroidBelt(64, seed),
-      'asteroids', NAMED_ASTEROIDS.length)), BASELINES[index].asteroid);
+    assertMatchesReference(plain(asteroidProjection(seed)), REFERENCE['asteroid:' + seed], NAMED_ASTEROIDS.length);
   });
 
   test('control Kuiper non-generated-period projection and population metadata seed ' + seed, () => {
-    const { seed: actualSeed, populationModel, ...originalFields } = generateKuiperBelt(256, seed);
-    assert.equal(actualSeed, seed);
-    assert.equal(populationModel, 'synthetic_orbit_candidates_not_resonance_verified');
+    const population = generateKuiperBelt(256, seed);
+    assert.equal(population.seed, seed);
+    assert.equal(population.populationModel, 'synthetic_orbit_candidates_not_resonance_verified');
     // Preserve the original numeric oracle. Only the two explicitly checked
     // metadata fields are outside its pre-PR22 population envelope.
-    assert.equal(hash(withoutGeneratedPeriods(originalFields,
-      'kbos', NAMED_KBOS.length)), BASELINES[index].kuiper);
+    assertMatchesReference(plain(kuiperProjection(population)), REFERENCE['kuiper:' + seed], NAMED_KBOS.length);
   });
 }
+
+test('control reference comparison tolerates only last-bit noise in libm fields', () => {
+  const reference = REFERENCE['kuiper:0'];
+  const first = NAMED_KBOS.length;                    // first generated row
+  const binary = reference.kbos.findIndex(row => row.binary != null);
+  const edit = (mutate) => { const copy = structuredClone(reference); mutate(copy); return copy; };
+  const passes = copy => assertMatchesReference(copy, reference, NAMED_KBOS.length);
+  const fails = copy => assert.throws(() => passes(copy), assert.AssertionError);
+  // 4 ULP-scale noise (4e-16) in libm fields is accepted ...
+  passes(edit(c => { c.kbos[first].diameterKm *= 1 + 4e-16; c.kbos[binary].binary.periodDays *= 1 - 4e-16; }));
+  // ... but a 1e-12 relative change is not, and nothing else gets any slack.
+  fails(edit(c => { c.kbos[first].diameterKm *= 1 + 1e-12; }));
+  fails(edit(c => { c.kbos[binary].binary.periodDays *= 1 + 1e-12; }));
+  fails(edit(c => { c.kbos[first].albedo *= 1 + 1e-9; }));
+  fails(edit(c => { c.kbos[first].orbit.aAu *= 1 + 2.3e-16; }));              // 1 ULP, exact field
+  fails(edit(c => { c.kbos[binary].binary.eccentricity *= 1 + 2.3e-16; }));   // exact binary field
+  fails(edit(c => { c.kbos[0].orbit.periodDays *= 1 + 2.3e-16; }));            // source-supplied row
+  fails(edit(c => { c.kbos[0].diameterKm *= 1 + 2.3e-16; }));                  // named rows get no tolerance
+  fails(edit(c => { c.kbos[first].dynClass += 1; }));
+  fails(edit(c => { c.binaryCount += 1; }));
+  fails(edit(c => { c.kbos.pop(); }));
+  fails(edit(c => { delete c.kbos[first].irregularity; }));
+});
 
 test('control named objects retain all source periods, fields, order and references', () => {
   assert.equal(NAMED_ASTEROIDS.length, 10); assert.equal(NAMED_KBOS.length, 8);
@@ -160,14 +232,14 @@ test('control complete same-seed repeatability and distinct-seed populations', (
   assert.notDeepEqual(generateKuiperBelt(256, 0), generateKuiperBelt(256, 42));
 });
 
-test('control nonempty mutual binaries preserve complete parameters and periods exactly', () => {
+test('control nonempty mutual binaries preserve complete parameters and periods', () => {
   for (const [index, seed] of SEEDS.entries()) {
     const population = generateKuiperBelt(256, seed);
     const binaries = population.kbos.filter(row => row.binary != null);
-    assert.equal(population.binaryCount, BASELINES[index].binaryCount);
+    assert.equal(population.binaryCount, BINARY_COUNTS[index]);
     assert.ok(population.binaryCount > 0);
     assert.equal(binaries.length, population.binaryCount);
-    assert.equal(hash(population.kbos.map(row => row.binary ?? null)), BASELINES[index].binary);
+    assertMatchesReference(plain(binariesOf(population)), binariesOf(REFERENCE['kuiper:' + seed]), NAMED_KBOS.length);
     for (const row of binaries) assert.ok(Number.isFinite(row.binary.periodDays) && row.binary.periodDays > 0);
   }
 });

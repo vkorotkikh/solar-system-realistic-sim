@@ -88,9 +88,12 @@ export interface MultiMessengerTimeline {
         lorentzGamma: number;
     };
     gwPhysics: {
-        strainAtSun: number;
+        /** Source-mass Schwarzschild ringdown frequency used for the narrowband estimate. */
+        characteristicFrequencyHz: number;
+        /** Root-sum-square strain at the Sun, Hz^-1/2; no waveform, so no peak strain. */
+        rssStrainAtSunPerRootHz: number;
+        /** Order-of-magnitude permanent memory strain (dimensionless). */
         memoryStrain: number;
-        displacementAtAU_cm: number;
         memoryDisplacementAtAU_cm: number;
     };
     heliosphereResponse: {

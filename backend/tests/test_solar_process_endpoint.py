@@ -159,7 +159,7 @@ def test_solar_endpoint_maps_supervisor_failures_to_stable_503_contract(
     if origin == "http://localhost:3000":
         assert response.headers["access-control-allow-origin"] == origin
         assert response.headers["access-control-allow-credentials"] == "true"
-        assert response.headers["access-control-expose-headers"] == "Retry-After"
+        assert response.headers["access-control-expose-headers"] == "Retry-After, X-Solar-Delivery"
     else:
         assert "access-control-allow-origin" not in response.headers
         if origin is None:

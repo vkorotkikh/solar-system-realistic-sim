@@ -1,6 +1,6 @@
 # ADR 0002: Explicit magnetogram geometry and stable projection
 
-Status: Accepted
+Status: Accepted. Its latitude least-squares fit no longer drives the solve: see ADR 0007.
 
 ## Problem
 

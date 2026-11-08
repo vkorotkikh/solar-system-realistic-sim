@@ -2,24 +2,24 @@
   "admitted_applications": [
     {
       "checks": {
-        "boundary_correlation": false,
+        "boundary_correlation": true,
         "boundary_median_abs": true,
-        "log_expansion_correlation": false,
-        "log_expansion_median_abs": false,
-        "matched_feature_cells": false,
-        "provider_closed_recall": false,
-        "provider_open_recall": false,
-        "topology_accuracy": false
+        "log_expansion_correlation": true,
+        "log_expansion_median_abs": true,
+        "matched_feature_cells": true,
+        "provider_closed_recall": true,
+        "provider_open_recall": true,
+        "topology_accuracy": true
       },
-      "degree": 64,
-      "feature_budget_passed": false,
+      "degree": 90,
+      "feature_budget_passed": true,
       "metrics": {
         "application_api": "compute_pfss_from_coefficients",
-        "application_degree": 64,
-        "application_input": "retained_gong_map_degree64_coefficients_in_provider_native_frame",
+        "application_degree": 90,
+        "application_input": "retained_gong_map_degree90_coefficients_in_provider_native_frame",
         "application_metadata": {
           "calibration_status": "unvalidated",
-          "coverage_fraction": 0.6662808641975309,
+          "coverage_fraction": 0.7341820987654321,
           "indeterminate_fraction": 0.0,
           "model": "wsa_inspired_v1",
           "provider_feature_evidence": {
@@ -46,43 +46,43 @@
           "quality_reasons": [
             "incomplete_source_surface_coverage"
           ],
-          "valid_fraction": 0.20833333333333334
+          "valid_fraction": 0.09567901234567901
         },
         "boundary_distance_deg": {
-          "actual_median": 4.856032261348747,
-          "bias": 1.732651849618954,
-          "correlation": 0.2280547894827201,
-          "median_abs": 2.963149914241815,
-          "p90_abs": 6.03337867596567,
-          "reference_median": 4.049170970916748,
-          "rmse": 3.9053941254053477
+          "actual_median": 2.6063837543674486,
+          "bias": -4.208849526085077,
+          "correlation": 0.5171549417928994,
+          "median_abs": 3.421131313635742,
+          "p90_abs": 8.658708576563855,
+          "reference_median": 6.617185354232788,
+          "rmse": 5.409744151795224
         },
         "grid_shape": [
           36,
           72
         ],
         "log_expansion": {
-          "actual_median": 0.8415415330632187,
-          "bias": -1.5297165739179759,
-          "correlation": -0.06137654750968265,
-          "median_abs": 1.6392973224622147,
-          "p90_abs": 2.48192758795431,
-          "reference_median": 2.6546050446724223,
-          "rmse": 1.7662874332585243
+          "actual_median": 1.5762200849491124,
+          "bias": -0.08108019366761664,
+          "correlation": 0.6823933833242459,
+          "median_abs": 0.4636775408676468,
+          "p90_abs": 1.2382357386827927,
+          "reference_median": 1.583699786127467,
+          "rmse": 0.7499621045314969
         },
-        "matched_feature_cells": 49,
+        "matched_feature_cells": 248,
         "provider": "WSA_V6.2",
         "provider_degree": 90,
         "source_surface_radii": 2.51,
         "topology": {
-          "accuracy": 0.7017746913580247,
-          "application_open": 540,
-          "balanced_accuracy": 0.46543785267326837,
-          "false_closed": 282,
-          "false_open": 491,
-          "provider_closed_recall": 0.7828394515701017,
+          "accuracy": 0.9679783950617284,
+          "application_open": 248,
+          "balanced_accuracy": 0.8746223564954683,
+          "false_closed": 83,
+          "false_open": 0,
+          "provider_closed_recall": 1.0,
           "provider_open": 331,
-          "provider_open_recall": 0.14803625377643503
+          "provider_open_recall": 0.7492447129909365
         }
       }
     },
@@ -90,7 +90,93 @@
       "checks": {
         "boundary_correlation": true,
         "boundary_median_abs": true,
-        "log_expansion_correlation": true,
+        "log_expansion_correlation": false,
+        "log_expansion_median_abs": true,
+        "matched_feature_cells": true,
+        "provider_closed_recall": false,
+        "provider_open_recall": false,
+        "topology_accuracy": true
+      },
+      "degree": 64,
+      "feature_budget_passed": false,
+      "metrics": {
+        "application_api": "compute_pfss_from_coefficients",
+        "application_degree": 64,
+        "application_input": "retained_gong_map_degree64_coefficients_in_provider_native_frame",
+        "application_metadata": {
+          "calibration_status": "unvalidated",
+          "coverage_fraction": 0.7299382716049383,
+          "indeterminate_fraction": 0.0,
+          "model": "wsa_inspired_v1",
+          "provider_feature_evidence": {
+            "corpus": "nso-gong-zqs-wsa-v6.2-20261012T1744",
+            "current_input_certified": false,
+            "evidence_scope": "topology_expansion_boundary_features_only",
+            "excluded_claims": [
+              "independent speed calibration",
+              "operational WSA equivalence",
+              "SCS equivalence",
+              "1-AU wind forecast accuracy",
+              "live-provider availability",
+              "solar-cycle generalization",
+              "scene-coordinate rendering"
+            ],
+            "independent_speed_output_available": false,
+            "observation_sha256": "e405550e1f8844bf5556419e7137aa6eb9bce79e0292a628df2c1ece28872ee8",
+            "operational_forecast_validated": false,
+            "provider": "NASA/CCMC WSA_V6.2 FILELIST mrzql matched by epoch, rotation, and left edge to retained NSO/GONG zqs",
+            "provider_wsa_sha256": "5b8f1da9e8bcf057b1c86ecd80207166e3362e1ecb92db7a54499ec7bf192035",
+            "scope": "topology, expansion, and boundary-feature agreement at one retained epoch",
+            "status": "bounded_retained_epoch_feature_match"
+          },
+          "quality_reasons": [
+            "incomplete_source_surface_coverage"
+          ],
+          "valid_fraction": 0.09452160493827161
+        },
+        "boundary_distance_deg": {
+          "actual_median": 2.9939335637700526,
+          "bias": -4.102195269411903,
+          "correlation": 0.5240508775707823,
+          "median_abs": 3.1991775901717445,
+          "p90_abs": 8.602549102261225,
+          "reference_median": 6.7412824630737305,
+          "rmse": 5.36259352624734
+        },
+        "grid_shape": [
+          36,
+          72
+        ],
+        "log_expansion": {
+          "actual_median": 1.578353936900469,
+          "bias": -0.11049504820257075,
+          "correlation": 0.6319709321818869,
+          "median_abs": 0.4492006104372263,
+          "p90_abs": 1.3774498179344645,
+          "reference_median": 1.5089413673575625,
+          "rmse": 0.9103160345280813
+        },
+        "matched_feature_cells": 241,
+        "provider": "WSA_V6.2",
+        "provider_degree": 90,
+        "source_surface_radii": 2.51,
+        "topology": {
+          "accuracy": 0.9637345679012346,
+          "application_open": 245,
+          "balanced_accuracy": 0.8631637740165234,
+          "false_closed": 90,
+          "false_open": 4,
+          "provider_closed_recall": 0.9982308712958867,
+          "provider_open": 331,
+          "provider_open_recall": 0.7280966767371602
+        }
+      }
+    },
+    {
+      "checks": {
+        "boundary_correlation": true,
+        "boundary_median_abs": true,
+        "log_expansion_correlation": false,
         "log_expansion_median_abs": true,
         "matched_feature_cells": false,
         "provider_closed_recall": false,
@@ -105,7 +191,7 @@
         "application_input": "retained_gong_map_degree30_coefficients_in_provider_native_frame",
         "application_metadata": {
           "calibration_status": "unvalidated",
-          "coverage_fraction": 0.7457561728395061,
+          "coverage_fraction": 0.7696759259259259,
           "indeterminate_fraction": 0.0,
           "model": "wsa_inspired_v1",
           "provider_feature_evidence": {
@@ -132,43 +218,43 @@
           "quality_reasons": [
             "incomplete_source_surface_coverage"
           ],
-          "valid_fraction": 0.08873456790123457
+          "valid_fraction": 0.08950617283950617
         },
         "boundary_distance_deg": {
-          "actual_median": 2.998877975985849,
-          "bias": -3.9930357488948687,
-          "correlation": 0.6579678924775002,
+          "actual_median": 2.998877975985847,
+          "bias": -4.042511625879801,
+          "correlation": 0.6552398728485523,
           "median_abs": 3.271295998483852,
-          "p90_abs": 8.184160576175847,
+          "p90_abs": 8.216378803247395,
           "reference_median": 7.468038320541382,
-          "rmse": 5.060538867194605
+          "rmse": 5.118410133419687
         },
         "grid_shape": [
           36,
           72
         ],
         "log_expansion": {
-          "actual_median": 1.5854058900150507,
-          "bias": 0.08579300079629959,
-          "correlation": 0.7224042370444288,
-          "median_abs": 0.39071301814170434,
-          "p90_abs": 1.1438328634977337,
-          "reference_median": 1.443808734621307,
-          "rmse": 0.7328441530213586
+          "actual_median": 1.5959451805688178,
+          "bias": 0.026882037852383894,
+          "correlation": 0.5741390798987551,
+          "median_abs": 0.37714753049280375,
+          "p90_abs": 1.1458992494577422,
+          "reference_median": 1.507189150422413,
+          "rmse": 0.9483468894779491
         },
-        "matched_feature_cells": 220,
+        "matched_feature_cells": 222,
         "provider": "WSA_V6.2",
         "provider_degree": 90,
         "source_surface_radii": 2.51,
         "topology": {
-          "accuracy": 0.9533179012345679,
-          "application_open": 230,
-          "balanced_accuracy": 0.8301148731077739,
-          "false_closed": 111,
+          "accuracy": 0.9540895061728395,
+          "application_open": 232,
+          "balanced_accuracy": 0.8331360211440276,
+          "false_closed": 109,
           "false_open": 10,
           "provider_closed_recall": 0.9955771782397169,
           "provider_open": 331,
-          "provider_open_recall": 0.6646525679758308
+          "provider_open_recall": 0.6706948640483383
         }
       }
     },
@@ -176,7 +262,7 @@
       "checks": {
         "boundary_correlation": true,
         "boundary_median_abs": false,
-        "log_expansion_correlation": false,
+        "log_expansion_correlation": true,
         "log_expansion_median_abs": true,
         "matched_feature_cells": false,
         "provider_closed_recall": false,
@@ -191,7 +277,7 @@
         "application_input": "retained_gong_map_degree15_coefficients_in_provider_native_frame",
         "application_metadata": {
           "calibration_status": "unvalidated",
-          "coverage_fraction": 0.7094907407407407,
+          "coverage_fraction": 0.7199074074074074,
           "indeterminate_fraction": 0.0,
           "model": "wsa_inspired_v1",
           "provider_feature_evidence": {
@@ -218,43 +304,43 @@
           "quality_reasons": [
             "incomplete_source_surface_coverage"
           ],
-          "valid_fraction": 0.08371913580246913
+          "valid_fraction": 0.08526234567901235
         },
         "boundary_distance_deg": {
           "actual_median": 2.998877975985849,
-          "bias": -4.690786477093035,
-          "correlation": 0.6552421948845534,
+          "bias": -4.662960385001032,
+          "correlation": 0.6576709668219691,
           "median_abs": 4.20796880194572,
-          "p90_abs": 8.171597334218092,
+          "p90_abs": 8.157187583163644,
           "reference_median": 8.29956340789795,
-          "rmse": 5.638239821188275
+          "rmse": 5.611828537666132
         },
         "grid_shape": [
           36,
           72
         ],
         "log_expansion": {
-          "actual_median": 1.8171756968170436,
-          "bias": 0.08772069365548625,
-          "correlation": 0.6694409988992818,
-          "median_abs": 0.45708448822054093,
-          "p90_abs": 1.265926947884618,
-          "reference_median": 1.4335113835051105,
-          "rmse": 0.7681484745538655
+          "actual_median": 1.8131216478995356,
+          "bias": 0.08718156011650072,
+          "correlation": 0.6843321466762552,
+          "median_abs": 0.4397598349466676,
+          "p90_abs": 1.2487379759238209,
+          "reference_median": 1.444046995761599,
+          "rmse": 0.7597366178723665
         },
-        "matched_feature_cells": 191,
+        "matched_feature_cells": 193,
         "provider": "WSA_V6.2",
         "provider_degree": 90,
         "source_surface_radii": 2.51,
         "topology": {
           "accuracy": 0.9359567901234568,
-          "application_open": 217,
-          "balanced_accuracy": 0.7827699691738677,
-          "false_closed": 140,
-          "false_open": 26,
-          "provider_closed_recall": 0.988500663423264,
+          "application_open": 221,
+          "balanced_accuracy": 0.7853488350340931,
+          "false_closed": 138,
+          "false_open": 28,
+          "provider_closed_recall": 0.9876160990712074,
           "provider_open": 331,
-          "provider_open_recall": 0.5770392749244713
+          "provider_open_recall": 0.5830815709969789
         }
       }
     }
@@ -276,9 +362,8 @@
   },
   "degree_admission": [
     {
-      "admitted": false,
-      "degree": 90,
-      "error": "latitude design for m=0 has condition 5.3876e+09 above limit 1e+06"
+      "admitted": true,
+      "degree": 90
     },
     {
       "admitted": true,
@@ -299,11 +384,11 @@
     "No independent provider speed output exists in this corpus; application speed is not an observational acceptance measure.",
     "No Schatten current-sheet stage, 1 AU propagation, arrival-time calibration, live-provider availability, or scene-frame rendering calibration is established.",
     "The public data_driven route remains fail-closed.",
-    "The retained 180x360 map is rejected by the unchanged degree-90 latitude-design condition limit; the highest admitted diagnostic degree is 64 and is reported separately from native provider degree-90 acceptance."
+    "The production projection (ADR 0007) reproduces NASA's method on this map; it does not recover unobserved polar information. The least-squares fit rejects this map at degree 90 under its condition limit and collapses above degree ~40."
   ],
   "observation_sha256": "e405550e1f8844bf5556419e7137aa6eb9bce79e0292a628df2c1ece28872ee8",
   "provider_wsa_sha256": "5b8f1da9e8bcf057b1c86ecd80207166e3362e1ecb92db7a54499ec7bf192035",
-  "required_degree90_admitted": false,
+  "required_degree90_admitted": true,
   "schema": "scn041_real_map_application_diagnostic_v1",
   "scope": "Actual retained map decomposition and spectral API; no PFSS snapshot consumer or scene adapter claim."
 }

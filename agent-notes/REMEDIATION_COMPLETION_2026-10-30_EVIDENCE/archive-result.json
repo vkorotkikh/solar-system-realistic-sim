@@ -737,5 +737,17 @@
     "primaryOriginalWrites": false,
     "unrelatedUntrackedFilesCopied": false,
     "applicationSuitesClaimed": false
-  }
+  },
+  "laterChanges": [
+    {
+      "date": "2026-11-07",
+      "path": "agent-notes/HISTORICAL_SOURCE_ARCHIVE_2026-10-30/sources/agent-notes/H1_SOLAR_DELIVERY_PLAN_2026-09-25.md",
+      "change": "Removed at the owner's request after its backend geometry gate write-up was merged into agent-notes/REMEDIATION_SOLAR_SCN042_PRODUCTION_2026-10-14.md. changedFiles above still lists it, because this 2026-10-30 work did write it.",
+      "exactBytesRetainedAt": "f92e7c7c3eaefbfe2052d02cd57d9ca4b20f79a2:agent-notes/HISTORICAL_SOURCE_ARCHIVE_2026-10-30/sources/agent-notes/H1_SOLAR_DELIVERY_PLAN_2026-09-25.md",
+      "textRetainedIn": "agent-notes/H1_SOLAR_DELIVERY_PLAN_2026-09-25.md, the same text plus one later 8-line status block.",
+      "archiveRecord": "agent-notes/HISTORICAL_SOURCE_ARCHIVE_2026-10-30/manifest.json postArchiveRemovals",
+      "reviewedSha256Before": "2f4687913fe7d592e527ea4400e70c4d2d543901a541ba3d682a34b0ad73a13c",
+      "review": "retirement-independent-review.json receipts record the reviewedSha256Before version of this file, from before this laterChanges entry was added."
+    }
+  ]
 }

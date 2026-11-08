@@ -222,8 +222,12 @@ def test_synthetic_dipole_phase_has_a_versioned_cache_identity() -> None:
     rotated = cache._resolve_synthetic_snapshot(quarter_cycle_jd, 0.8)
 
     assert first is reused
-    assert first.snapshot_id.transform_version == "synthetic-persistent-bipoles-v4"
-    for obsolete_version in ("synthetic-persistent-bipoles-v2", "synthetic-persistent-bipoles-v3"):
+    assert first.snapshot_id.transform_version == "synthetic-persistent-bipoles-v5"
+    for obsolete_version in (
+        "synthetic-persistent-bipoles-v2",
+        "synthetic-persistent-bipoles-v3",
+        "synthetic-persistent-bipoles-v4",
+    ):
         with pytest.raises(ValueError, match="transform_version is not implemented"):
             replace(first.snapshot_id, transform_version=obsolete_version)
     assert rotated is not first
@@ -251,7 +255,7 @@ def test_hale_corrected_snapshot_reuses_identity_without_reusing_inverted_conten
     )
 
     assert first is reused
-    assert first.snapshot_id.transform_version == "synthetic-persistent-bipoles-v4"
+    assert first.snapshot_id.transform_version == "synthetic-persistent-bipoles-v5"
     assert first.snapshot_id.sha256 == independent.snapshot_id.sha256
     np.testing.assert_array_equal(first.field_gauss, independent.field_gauss)
     assert first.snapshot_id.sha256 != inverted.snapshot_id.sha256

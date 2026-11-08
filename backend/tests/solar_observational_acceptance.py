@@ -16,7 +16,7 @@ from sim import gong_magnetogram as gong
 from sim.magnetogram_grid import MagnetogramGrid
 from sim.pfss_magnetogram import (
     compute_pfss_from_coefficients,
-    decompose_spherical_harmonics,
+    project_spherical_harmonics,
 )
 from solar_reference_comparison import FITS_SHA, _artifact, fits_images
 
@@ -156,7 +156,7 @@ def coefficient_acceptance(snapshot: gong.MagnetogramSnapshot) -> dict[str, obje
     ):
         raise ValueError("Provider correction metadata does not corroborate map means")
 
-    g_absolute, h_absolute = decompose_spherical_harmonics(
+    g_absolute, h_absolute = project_spherical_harmonics(
         snapshot.field_gauss, lmax=15, grid=snapshot.grid,
     )
     absolute = np.stack((g_absolute, h_absolute))
@@ -181,7 +181,7 @@ def coefficient_acceptance(snapshot: gong.MagnetogramSnapshot) -> dict[str, obje
     )
     constant = raw - float(np.mean(raw))
     constant_coefficients = np.stack(
-        decompose_spherical_harmonics(constant, lmax=15, grid=relative_grid),
+        project_spherical_harmonics(constant, lmax=15, grid=relative_grid),
     )
     constant_values = _coefficient_vectors(constant_coefficients)
     constant_difference = constant_values - expected
@@ -342,7 +342,7 @@ def real_map_application_diagnostic() -> dict[str, object]:
     applications = []
     for degree in (90, 64, 30, 15):
         try:
-            absolute = np.stack(decompose_spherical_harmonics(
+            absolute = np.stack(project_spherical_harmonics(
                 snapshot.field_gauss, lmax=degree, grid=snapshot.grid,
             ))
         except ValueError as exc:
