@@ -486,6 +486,15 @@ describe('a backend state is labelled with its lag, then cleared when too old (H
     expect(shownEpoch(f)).toBe(2451552);
   });
 
+  it('does not count hidden time before a single failed refresh as five minutes of failing', async () => {
+    const f = await fixture();
+    f.tick(2); // the failure rules apply once the state lags the clock by more than a day
+    f.tick(0, 360); // the tab is hidden for six minutes: no frames, no polls
+    await f.fail(); // the first poll on return fails once
+    f.tick(0.01);
+    expect(shownEpoch(f)).toBe(2451552);
+  });
+
   it('keeps a state that is right for the paused date while refreshes fail, and says they fail', async () => {
     const f = await fixture();
     f.state.paused = true;

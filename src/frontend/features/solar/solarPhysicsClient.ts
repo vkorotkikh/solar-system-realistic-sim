@@ -463,6 +463,8 @@ export class SolarPhysicsClient {
   lastError: string | null;
   lastFailure: SolarPhysicsFailure | null;
   consecutiveFailures: number;
+  /** When the current run of failures began; 0 with none. */
+  failingSinceMs: number;
   lastSuccessMs: number;
   lastRefreshMs: number;
   lastLatencyMs: number;
@@ -507,6 +509,7 @@ export class SolarPhysicsClient {
     this.lastError = null;
     this.lastFailure = null;
     this.consecutiveFailures = 0;
+    this.failingSinceMs = 0;
     this.lastSuccessMs = 0;
     this.lastRefreshMs = 0;
     this.lastLatencyMs = 0;
@@ -754,6 +757,7 @@ export class SolarPhysicsClient {
       this.lastError = null;
       this.lastFailure = null;
       this.consecutiveFailures = 0;
+      this.failingSinceMs = 0;
       this.lastProbe = null;
       this.nextRefreshMs = nowMs + this.pollIntervalMs;
       return true;
@@ -770,6 +774,7 @@ export class SolarPhysicsClient {
         code: failure.code,
         atMs: Date.now()
       };
+      if (this.consecutiveFailures === 0) this.failingSinceMs = this.lastFailure.atMs;
       this.consecutiveFailures += 1;
       this.nextRefreshMs = Date.now() + Math.max(
         SOLAR_PHYSICS_ERROR_BACKOFF_MS,
