@@ -14,7 +14,10 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
   retries: 0,
-  timeout: 90_000,
+  // Covers software-GPU context creation, app startup and the afterEach WebGL
+  // teardown. Under SwiftShader on CI-class CPUs that teardown alone took 31-34 s
+  // of a 90 s test, so software runs get headroom; assertion waits stay at 8 s.
+  timeout: hardwareWebGL ? 90_000 : 180_000,
   expect: { timeout: 8_000 },
   reporter: [
     ['line'],

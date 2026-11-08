@@ -5,8 +5,6 @@ import { writeFile } from 'node:fs/promises';
 // TOOL045 proposed real-app replacement; NOT executed during read-only design.
 // Synthetic endpoint fixtures are diagnostic plumbing, never observed solar data.
 const BACKEND = 'http://127.0.0.1:9142';
-const FONT_CSS = 'https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600&family=Oxanium:wght@500;600;700&display=swap';
-
 function physicsFixture(encodedJd: number) {
   return {
     schema: { name: 'solar_physics_state', version: 2 }, epoch_jd_tdb: encodedJd,
@@ -45,10 +43,6 @@ async function observeAndRoute(page: Page, baseURL: string) {
     const request = route.request();
     const url = new URL(request.url());
     if (url.origin === origin) return route.continue();
-    if (request.method() === 'GET' && url.href === new URL(FONT_CSS).href) {
-      fixturesServed.push('empty external font stylesheet');
-      return route.fulfill({ status: 200, contentType: 'text/css', body: '' });
-    }
     let payload: unknown;
     if (request.method() === 'GET' && url.origin === BACKEND && url.pathname === '/solar/realtime' && url.search === '') {
       payload = realtimeFixture();

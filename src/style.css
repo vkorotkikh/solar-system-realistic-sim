@@ -1,4 +1,28 @@
-@import url('https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600&family=Oxanium:wght@500;600;700&display=swap');
+/* Self-hosted Latin subsets (SIL OFL 1.1; licences in /fonts/), so no visit
+   contacts a third-party font host. Oxanium is one variable font. */
+@font-face {
+  font-family: 'Chakra Petch';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('/fonts/chakra-petch-500-latin.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Chakra Petch';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('/fonts/chakra-petch-600-latin.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Oxanium';
+  font-style: normal;
+  font-weight: 500 700;
+  font-display: swap;
+  src: url('/fonts/oxanium-latin.woff2') format('woff2');
+}
 
 :root {
   color-scheme: dark;
@@ -316,6 +340,23 @@ svg {
   scrollbar-color: var(--color-line-strong) transparent;
   scrollbar-width: thin;
   padding: 0 var(--space-3) calc(var(--space-6) + env(safe-area-inset-bottom, 0px));
+}
+
+.panel-credits {
+  margin: var(--space-5) var(--space-2) 0;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-line);
+  color: var(--color-muted);
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+.panel-credits p {
+  margin: 0;
+}
+
+.panel-credits a {
+  color: var(--color-cyan);
 }
 
 .panel-scroll::-webkit-scrollbar {
