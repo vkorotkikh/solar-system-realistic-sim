@@ -192,9 +192,15 @@ def test_legacy_roundoff_normalized_identity_is_preserved() -> None:
     assert snapshot.provenance.flux.policy_version == gong.FLUX_BALANCE_POLICY_VERSION
 
 
-def test_zero_field_preserves_the_legacy_roundoff_policy() -> None:
-    snapshot = gong.parse_gong_fits(rewrite_fits(data=np.zeros((180, 360), dtype=np.float32)), context=context())
-    assert np.count_nonzero(snapshot.field_gauss) == 0
+def test_all_zero_map_is_refused_but_a_weak_balanced_field_is_not() -> None:
+    # Owner policy 2026-11-03 (SOL-ZERO-MAP): an exactly all-zero map carries no
+    # field to extrapolate and is refused. No floor rejects weak but real fields.
+    with pytest.raises(gong.GongFitsError, match="^zero_field:"):
+        gong.parse_gong_fits(rewrite_fits(data=np.zeros((180, 360), dtype=np.float32)), context=context())
+    weak = np.zeros((180, 360), dtype=np.float32)
+    weak[90, 0], weak[90, 1] = 1e-6, -1e-6
+    snapshot = gong.parse_gong_fits(rewrite_fits(data=weak), context=context())
+    assert np.count_nonzero(snapshot.field_gauss) == 2
     assert snapshot.provenance.flux.policy_version == gong.FLUX_BALANCE_POLICY_VERSION
 
 
