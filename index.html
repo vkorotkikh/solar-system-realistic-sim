@@ -303,6 +303,88 @@
           </div>
         </details>
 
+        <details class="panel-disclosure">
+          <summary aria-controls="planner-controls" aria-expanded="false">
+            <span class="section-heading" role="heading" aria-level="2">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="5" cy="18.5" r="2.5" />
+                <circle cx="19" cy="5.5" r="2.5" />
+                <path d="M7 17.2C11.5 16 15 12.5 17.6 7.6" />
+              </svg>
+              Mission planner
+            </span>
+            <svg class="disclosure-chevron" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="m8 10 4 4 4-4" />
+            </svg>
+          </summary>
+          <div class="section-content" id="planner-controls">
+            <div class="field-stack">
+              <label for="planner-from">From</label>
+              <select id="planner-from"></select>
+            </div>
+            <div class="field-stack">
+              <label for="planner-to">To</label>
+              <select id="planner-to"></select>
+            </div>
+            <div class="field-stack">
+              <label for="planner-date">Departure date (UTC)</label>
+              <input id="planner-date" type="date" />
+            </div>
+            <div class="field-stack">
+              <label for="planner-objective">Objective</label>
+              <select id="planner-objective">
+                <option value="min_distance">Minimize travel path</option>
+                <option value="max_assist">Maximize gravity-assist gain</option>
+                <option value="min_time">Minimize total time</option>
+              </select>
+            </div>
+            <div class="field-stack">
+              <label for="planner-assists">Max assist flybys</label>
+              <select id="planner-assists">
+                <option value="0">0</option>
+                <option value="1" selected>1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+              </select>
+            </div>
+            <div class="field-stack">
+              <label for="planner-ephemeris">Ephemeris source</label>
+              <select id="planner-ephemeris">
+                <option value="auto" selected>Auto (SPICE / Kepler / HORIZONS)</option>
+                <option value="kepler">Kepler fallback</option>
+                <option value="spice">SPICE (TudatPy)</option>
+                <option value="horizons">JPL HORIZONS</option>
+              </select>
+            </div>
+            <fieldset class="switch-group">
+              <legend class="visually-hidden">Transfer direction</legend>
+              <label class="switch-control">
+                <input id="planner-prograde" type="checkbox" checked />
+                <span class="switch-track" aria-hidden="true"><span></span></span>
+                <span class="switch-copy">Prograde transfer</span>
+              </label>
+            </fieldset>
+            <div class="field-stack">
+              <label for="planner-arrival-date">Lambert arrival date (UTC)</label>
+              <input id="planner-arrival-date" type="date" />
+            </div>
+            <div class="field-stack">
+              <label for="planner-payload-mass">Mission payload mass (kg)</label>
+              <input id="planner-payload-mass" type="number" min="100" step="100" value="6500" />
+            </div>
+            <div class="button-row camera-actions" role="group" aria-label="Plan a trajectory">
+              <button id="plan-direct" class="button button--secondary" type="button">Direct</button>
+              <button id="plan-optimal" class="button button--secondary" type="button">Plan route</button>
+              <button id="plan-lambert" class="button button--secondary" type="button">Lambert</button>
+              <button id="plan-porkchop" class="button button--secondary" type="button">Porkchop best</button>
+              <button id="plan-mission" class="button button--secondary" type="button">Mission plan</button>
+              <button id="clear-route" class="button button--ghost" type="button">Clear</button>
+            </div>
+            <p class="control-help">Plotted arcs are illustrative curves between the computed departure and arrival positions.</p>
+            <pre id="planner-output" class="planner-output" role="status" aria-live="polite"></pre>
+          </div>
+        </details>
+
         <details class="panel-disclosure panel-disclosure--danger">
           <summary aria-controls="cataclysm-controls" aria-expanded="false">
             <span class="section-heading" role="heading" aria-level="2">
@@ -453,6 +535,7 @@
           <span id="status-focus" data-camera-mode="focus">Focused · Sun</span>
           <span id="status-bodies">Bodies · —</span>
           <span id="status-zoom">Range · —</span>
+          <span id="status-route" hidden>Route: none</span>
           <span
             id="status-catalog"
             role="status"

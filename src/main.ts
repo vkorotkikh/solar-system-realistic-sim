@@ -1,6 +1,9 @@
 import './style.css';
 import { createPanelController } from './frontend/app/panelController';
 import { createExplorerController } from './frontend/app/explorerController';
+import { createPlannerController } from './frontend/app/plannerController';
+import { clearRouteVisualization, plotRoute } from './frontend/app/routeRenderer';
+import { buildTransferCurvePoints, createTrajectoryClient, describeRoute } from './frontend/features/trajectory';
 import { createBodyPickerPresentation } from './frontend/app/bodyPickerPresentation';
 import { createViewportCameraController } from './frontend/app/viewportCameraController';
 import * as agnEngine from './frontend/features/superluminal-modeling/agnShockwaveEngine';
@@ -48,7 +51,8 @@ import {
   MAX_TIME_SCALE_DAYS_PER_SEC,
   G_SI,
   currentJulianDate,
-  formatJulianAsDate
+  formatJulianAsDate,
+  parseDateInputToJulian
 } from './constants';
 import { createSolarSystemCatalog } from './sim/catalog';
 import { sampleOrbitLoop } from './sim/orbitMath';
@@ -150,6 +154,23 @@ const dom = {
   statusFocus: elementById<HTMLElement>('status-focus'),
   statusBodies: elementById<HTMLElement>('status-bodies'),
   statusZoom: elementById<HTMLElement>('status-zoom'),
+  statusRoute: elementById<HTMLElement>('status-route'),
+  plannerFrom: elementById<HTMLSelectElement>('planner-from'),
+  plannerTo: elementById<HTMLSelectElement>('planner-to'),
+  plannerDate: elementById<HTMLInputElement>('planner-date'),
+  plannerArrivalDate: elementById<HTMLInputElement>('planner-arrival-date'),
+  plannerObjective: elementById<HTMLSelectElement>('planner-objective'),
+  plannerAssists: elementById<HTMLSelectElement>('planner-assists'),
+  plannerEphemeris: elementById<HTMLSelectElement>('planner-ephemeris'),
+  plannerPrograde: elementById<HTMLInputElement>('planner-prograde'),
+  plannerPayloadMass: elementById<HTMLInputElement>('planner-payload-mass'),
+  planDirect: elementById<HTMLButtonElement>('plan-direct'),
+  planOptimal: elementById<HTMLButtonElement>('plan-optimal'),
+  planLambert: elementById<HTMLButtonElement>('plan-lambert'),
+  planPorkchop: elementById<HTMLButtonElement>('plan-porkchop'),
+  planMission: elementById<HTMLButtonElement>('plan-mission'),
+  clearRoute: elementById<HTMLButtonElement>('clear-route'),
+  plannerOutput: elementById<HTMLElement>('planner-output'),
   statusCatalog: elementById<HTMLElement>('status-catalog'),
   statusSolar: elementById<HTMLElement>('status-solar'),
   statusSolarAnnouncer: elementById<HTMLElement>('status-solar-announcer'),
@@ -1314,6 +1335,40 @@ dom.canvas.addEventListener('dblclick', (e) => {
     }
   }
 }, { signal: startup.signal });
+
+// ── Mission Planner ──────────────────────────────────────────────────────────
+
+const routeGroup = new Group();
+solarSystemGroup.add(routeGroup);
+const routeTarget = { routeGroup, simState, statusRouteElement: dom.statusRoute };
+function clearPlottedRoute() {
+  clearRouteVisualization(routeTarget);
+  dom.statusRoute.hidden = true;
+}
+startup.defer(clearPlottedRoute);
+const planner = createPlannerController({
+  dom, simState, model, plannerBodyIds: catalog.plannerBodyIds, bodyById,
+  planners: {
+    describeRoute: (route, bodies) => describeRoute(route as Parameters<typeof describeRoute>[0], bodies),
+    ...createTrajectoryClient({ backendBaseUrl }),
+  },
+  routeApi: {
+    // The arc stays at its computed endpoints; the bodies move on along their orbits.
+    plotRoute: (route) => {
+      plotRoute({
+        ...routeTarget, route, bodyById,
+        // The trajectory client hydrates both endpoints of every leg.
+        buildTransferCurvePoints: (leg, segments) => buildTransferCurvePoints(leg as Parameters<typeof buildTransferCurvePoints>[0], segments),
+      });
+      dom.statusRoute.hidden = false;
+    },
+    clearRouteVisualization: clearPlottedRoute,
+  },
+  dateUtils: { formatJulianAsDate, parseDateInputToJulian },
+});
+planner.fillPlannerSelects();
+planner.bindPlannerUi();
+dom.plannerOutput.textContent = 'No plotted route.';
 
 const experiment = ownDisposable(createExperimentController({ dom, sun: sunCtrl, resolveSelection: engineSelectionResolver(agnEngine) }));
 
