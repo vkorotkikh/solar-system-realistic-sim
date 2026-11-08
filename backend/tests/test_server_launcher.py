@@ -13,8 +13,15 @@ import sys
 
 import pytest
 
+from sim.process_supervisor import HARD_MAX_TIMEOUT_SECONDS
+
 ROOT = Path(__file__).resolve().parents[2]
 FIXTURE = Path(__file__).parent / "fixtures"
+# Hang watchdog only, never pacing: the child normally exits by itself. It must
+# outlast the worker's own supervisor cap (plus an equal allowance for boot and
+# teardown) so CPU starvation surfaces as the worker's ProcessTimedOut, not as
+# a harness kill, and so a loaded runner is not mistaken for a hang.
+LAUNCH_WATCHDOG_SECONDS = 2 * HARD_MAX_TIMEOUT_SECONDS
 
 
 def launch(entry, profile, cwd, websocket_bytes, *, include_key=True):
@@ -38,7 +45,7 @@ def launch(entry, profile, cwd, websocket_bytes, *, include_key=True):
     child = subprocess.Popen(command, cwd=cwd, env=env, text=True,
                              stdout=subprocess.PIPE, stderr=subprocess.PIPE, start_new_session=True)
     try:
-        stdout, stderr = child.communicate(timeout=40)
+        stdout, stderr = child.communicate(timeout=LAUNCH_WATCHDOG_SECONDS)
     finally:
         if child.poll() is None:
             os.killpg(child.pid, signal.SIGTERM)

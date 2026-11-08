@@ -38,13 +38,19 @@ def solar_capture(payload):
 
 
 def run_worker():
-    from sim.process_supervisor import SupervisedProcessRunner
+    from sim.process_supervisor import HARD_MAX_TIMEOUT_SECONDS, SupervisedProcessRunner
     runner = SupervisedProcessRunner("server_launcher_probe:solar_capture", max_workers=1, max_queue=0)
+    # The supervisor's deadline runs from submit(), so it includes spawn,
+    # interpreter boot and imports: ~2.3 CPU-seconds, but over 10 s of wall
+    # clock on a CPU-starved host (the BKP029 load flake). It is a latency
+    # contract, not part of this isolation oracle, so use the supervisor's own
+    # cap, as conftest's runner_independent_solar_deadline does. The future
+    # always settles by that deadline, so result() adds no second guess.
     try:
         result = runner.submit({
             "epoch_jd_tdb": 2460400.5, "fidelity": "preview", "max_features": 8,
             "forcing": "synthetic", "live_data": False,
-        }, timeout_seconds=10).result(timeout=12)
+        }, timeout_seconds=HARD_MAX_TIMEOUT_SECONDS).result()
     finally:
         runner.shutdown()
     return {"result": result, "final_snapshot": runner.snapshot()}
@@ -84,11 +90,17 @@ def intercept_uvicorn_run(app, **kwargs):
     try:
         process.start()
         send.close()
-        if not receive.poll(20):
-            raise RuntimeError("owned Uvicorn child did not return within20s")
-        result = receive.recv()
-        process.join(3)
-        if process.is_alive() or process.exitcode != 0:
+        # Event-driven handshake: wake on the child's report, or on EOF if it
+        # dies first (our copy of the write end is closed). No guessed duration;
+        # a true hang is bounded by the test's outer launch watchdog.
+        receive.poll(None)
+        try:
+            result = receive.recv()
+        except EOFError:
+            process.join()
+            raise RuntimeError(f"owned Uvicorn child exited {process.exitcode} without reporting") from None
+        process.join()
+        if process.exitcode != 0:
             raise RuntimeError("owned Uvicorn child did not exit cleanly")
         result["launch"] = {"app": app, "host": config.host, "port": config.port,
                             "reload": config.reload, "proxy_headers": config.proxy_headers,
