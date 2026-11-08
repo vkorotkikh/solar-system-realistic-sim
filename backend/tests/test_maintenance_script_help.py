@@ -24,6 +24,7 @@ SCRIPTS = (
     "capture_all_moon_oracle.py",
     "fetch_remediation_ephemeris.py",
     "generate_synthetic_gong_fixture.py",
+    "generate_mga_reference.py",
 )
 
 

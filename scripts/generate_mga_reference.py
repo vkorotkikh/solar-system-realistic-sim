@@ -5,10 +5,16 @@ Catalog Kepler states provide only the input geometry; the production Lambert,
 flyby evaluator and search are never imported. scipy.brentq closes both flybys
 using independent Izzo velocities. Gooding and DOP853 cross-check each leg.
 """
+import argparse
 import importlib.metadata
 import json
 from pathlib import Path
 import sys
+
+# Ahead of the pinned-environment imports, so --help works in any Python.
+if __name__=="__main__":
+    argparse.ArgumentParser(description=__doc__,
+        epilog="Recomputes and overwrites backend/tests/fixtures/mga_independent_witness.json.").parse_args()
 
 import numpy as np
 from lamberthub import gooding1990, izzo2015
