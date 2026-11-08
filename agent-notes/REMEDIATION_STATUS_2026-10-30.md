@@ -14,6 +14,38 @@ children, executed proof and source/lock identity in the
 [retirement register](REMEDIATION_COMPLETION_2026-10-30_EVIDENCE/note-retirement.json).
 The original source copies and immutable archives are retained.
 
+## 2026-11-07 follow-up: re-check, PRs #45–#47 and related items
+
+- **Now on `main`.** This record's code checkpoint, `09421c9`, is an ancestor of `main`, so the caveat above that
+  these fixes are not merged into main is out of date.
+- **What the 2026-11-06 re-check covered.** It re-ran the original reproductions on `main` (`8e75993`) for SCN-001–040
+  only:
+  - 31 hold, including SCN-029: both workflows run on pushes and pull requests and passed on `main`.
+  - 4 are closed by the accepted policies.
+  - SCN-005, SCN-030 and SCN-035 stay partial, as listed below.
+  - SCN-033 and SCN-040 were incomplete.
+- **Backend suite.** A clean install from `ci/backend-test-requirements.txt` ran the full suite on `main`:
+  **5,833 passed, 13 skipped**.
+- **Unchanged.** The 2026-10-30 counts and tables below are left as recorded.
+
+| Item | Found on 2026-11-06 | Pull request (open, not merged) | CI on the PR |
+|---|---|---|---|
+| SCN-033 | Three more maintenance scripts ignored `--help` and ran. `capture_all_moon_oracle.py` and `fetch_remediation_ephemeris.py` queried JPL Horizons and overwrote tracked fixtures; `generate_synthetic_gong_fixture.py` rewrote the GONG fixture. | [#45](https://github.com/vkorotkikh/solar-system-realistic-sim/pull/45): `argparse` in each `__main__`. A subprocess test shows `--help` writes nothing and an unsupported option exits 2. | Pass, except one Chromium run: `scene-text-contrast.spec.ts:56` timed out waiting for `#control-panel` to hide. The other run of the same commit passed, and the PR changes no frontend code. |
+| SCN-040 | The archive is on `main`, but the living trackers still linked the untracked originals and one retired note. | [#46](https://github.com/vkorotkikh/solar-system-realistic-sim/pull/46): three links now point at the committed archive copies and the retirement permalink. | Pass |
+| SCN-004 | The product fix holds, but its transport-deadline tests failed 6 of 9 with one core shared by five busy processes. Their fixture server could also stop pytest from exiting after a client left early. | [#47](https://github.com/vkorotkikh/solar-system-realistic-sim/pull/47): deadline headroom, EOF handled as a disconnect, daemon thread. The full backend suite passed: 5,834 passed, 13 skipped. | Pass |
+
+Related items:
+- **Provenance (SCN-040).** At the owner's request, the archived copy of the H1 plan was removed on 2026-11-07 after
+  its gate write-up moved into the SCN-042 production note. The [archive](HISTORICAL_SOURCE_ARCHIVE_2026-10-30/README.md)
+  now holds 576 files, and `SHA256SUMS` checks clean. The exact bytes stay in `f92e7c7`, and the living
+  [H1 plan](H1_SOLAR_DELIVERY_PLAN_2026-09-25.md) keeps the same text. The "577" in the Provenance row below is the
+  2026-10-30 capture.
+- **SCN-042.** The backend geometry gate's plan, history and state on `main` are now in one place:
+  [REMEDIATION_SOLAR_SCN042_PRODUCTION_2026-10-14.md](REMEDIATION_SOLAR_SCN042_PRODUCTION_2026-10-14.md#backend-geometry-gate-plan-history-and-state-on-main).
+  Nothing has read `BACKEND_GEOMETRY_VALIDATED` since `68be768`. All six backend layers are admitted per layer by
+  their frame contract. That includes PFSS lines labelled synthetic and unvalidated, which draw when the "Solar
+  magnetic field" switch is on. The owner has deferred the choice between an honest label and a restored gate.
+
 ## Saved work and scope
 
 Branch: `fix/remediation-completion-20261030`; worktree:
