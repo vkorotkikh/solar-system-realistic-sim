@@ -61,7 +61,7 @@ Everything deleted is still in git history.
 |---|---|---|
 | Asteroid and Kuiper switches | Existing `setVisible` | None |
 | Asteroid ring band | New; real catalog | Density-shaded instead of uniform. See below |
-| Moons switch and picker | Existing catalog and ephemerides | Planets stay enlarged and moons sit at true altitude (owner decision), replacing the old planet shrink. Costs 280 ms and 2.9 MB at startup; frame time unchanged |
+| Moons switch and picker | Existing catalog and ephemerides | Planets stay enlarged and moons sit at true altitude (owner decision), replacing the old planet shrink. The 21 named moons use fitted ephemerides. Startup cost: see the audit below |
 | Moon quick views (Exosphere 15 km, LLO 100 km, NRHO 30,000 km) | Altitudes recovered from `visualProfiles.ts` | Guide rings not restored |
 | Earth satellites switch | Existing `satelliteSystem.ts` | Earth only. Defaults off, because switching on downloads orbits from CelesTrak |
 | Mission planner | Existing `plannerController`, `routeRenderer`, `createTrajectoryClient` | Route arcs stay at their computed departure and arrival positions |
@@ -98,6 +98,8 @@ Route arcs remain illustrative cubic curves between the correct endpoints, not p
 | Milky Way survey | `milkyWay.ts` remains; 2MASS texture in history | Small, needs a rights decision |
 | Adaptive near-surface zoom | `cameraController.ts` remains | Small |
 | Live REBOUND/TudatPy backend picker | Client and `/ws/sim` both remain | Medium |
+| Accurate small moons | 402 moons use mean elements; Himalia was 7–16 million km off. Their 410 fitted shards total 60 MB, so fetch one when its moon is selected | Medium |
+| Smaller moon-fit bundle | The 13 bundled fits are 6.4 MB of JavaScript (4.2 MB chunk) and trip Vite's 550 kB chunk warning | Medium |
 
 **Separate PR, as agreed:** nearby star systems (`nearbySystemsRenderer`, `localSystemRenderer`, `transitions`, star-system picker).
 
@@ -151,6 +153,43 @@ itself `synthetic_orbit_candidates_not_resonance_verified`.
 
 `scripts/fetch_jpl_sbdb.py` already queries by SBDB class, so a real trans-Neptunian catalog is a small extension.
 Owner decision: follow-up PR, then the same measured band.
+
+## Audit 2026-11-08: what checking it end to end found
+
+The owner asked to confirm everything works. A browser audit of 51 checks, a JPL Horizons
+comparison and a startup profile found four real problems on the branch. All are fixed and committed.
+
+| Found | Effect | Fix |
+|---|---|---|
+| Only 13 of 423 moons had fitted ephemerides | Against Horizons at three dates (2026–2031): Rhea on the wrong side of Saturn (196% of its orbit), Deimos 95%, Enceladus 10%, Triton 7%, our Moon up to 17,700 km | The 16 other named moons' shards load at startup, within a 4 s budget. All 21 now within 0.03% |
+| Moon orbit lines drawn around 2000 | Orbits precess, so the Moon sat up to 17% of its orbit off its line, Miranda 15%, Triton 10% | Lines sampled around today and refreshed. All named moons within 1.6% |
+| Moon terrain shader at startup | Its procedural crater noise took about 2 s to build on this driver | Measured maps replace it. See below |
+| Planner listeners never removed | Breaks ADR 0006's disposal rule | Bound to the startup lifetime; late replies dropped |
+
+**Startup, measured correctly.** Timing `render()` misleads here: on `main` the GPU keeps working
+about 4 s after it returns. Forcing the first frame to finish (readPixels), median of three cold starts
+on this WSL machine:
+
+| | First complete picture | 30 frames delivered |
+|---|---:|---:|
+| `main` | 6.4 s | 6.9 s |
+| Branch before the shader fix | 8.5 s | 9.3 s |
+| Branch now | 6.6 s | 7.3 s |
+
+- About 4 s of that is pre-existing on `main`: the driver (Mesa D3D12) building Earth's and Mars's terrain shaders on first draw.
+- After the first picture, the branch has one ~0.3 s pause and a few ~70 ms frames as the eight moon maps upload; steady frame time matches `main` (16.7 ms).
+- Transfer grows from 9.1 to 14.9 MB: moon fits and shards. The Moon's 13 MB of maps load only when the camera approaches.
+
+**Checked and fine.** All 23 restored controls exist. Every one of the 423 moons is placed and drawn,
+none intersects its planet at either scale, and moon distances follow the true-altitude rule to 1e-16.
+Satellites sit at true LEO/GEO radii at realistic scale. Each planner action plots a route, arcs stay fixed
+as time runs, and the offline fallback works. The band is drawn only from the verified catalog. Restored
+switch states are honoured on reload. Double-click selects a visible Moon and passes through a hidden one.
+
+**Not explained.** In one of eight audit runs, the LLO and skim quick views ended about 1,000 and 2,700 km
+further from the Moon than set, 1.5 s after the click. Seven other runs, including frame-by-frame traces
+after replaying the audit's earlier steps, landed exactly. Cause unknown; treat the quick views as
+needing a second look if it recurs.
 
 ## Unrelated finding
 
