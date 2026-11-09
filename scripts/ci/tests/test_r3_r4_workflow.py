@@ -14,13 +14,13 @@ ROOT = Path(__file__).parents[3]
 WORKFLOW = ROOT / ".github/workflows/r3-r4-science.yml"
 FRONTEND_WORKFLOW = ROOT / ".github/workflows/frontend-ui.yml"
 
-# Script tests the pinned backend environment cannot run. Each needs a package
-# that ci/backend-test-requirements.txt does not install: the SpiceyPy tests
-# would only skip ("skipped is not a scientific pass"), the other fails at import.
+# Script tests the pinned backend environment cannot run. Each needs SpiceyPy,
+# which ci/backend-test-requirements.txt does not install, so they would only
+# skip ("skipped is not a scientific pass"). Their bit-exact rebuilds also match
+# only on the BLAS kernels the committed artifacts were generated with.
 NOT_IN_CI = {
     "test_moon_source_exception_independent_review.py": "needs SpiceyPy",
     "test_moon_spk_repairs.py": "needs SpiceyPy",
-    "test_solar_main_frame_verifier.py": "needs the Python playwright package",
 }
 
 
