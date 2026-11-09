@@ -19,8 +19,6 @@ FRONTEND_WORKFLOW = ROOT / ".github/workflows/frontend-ui.yml"
 # would only skip ("skipped is not a scientific pass"), the other fails at import.
 NOT_IN_CI = {
     "test_moon_source_exception_independent_review.py": "needs SpiceyPy",
-    "test_moon_source_exceptions.py": "needs SpiceyPy",
-    "test_moon_spk_clean_checkout.py": "needs SpiceyPy",
     "test_moon_spk_repairs.py": "needs SpiceyPy",
     "test_solar_main_frame_verifier.py": "needs the Python playwright package",
 }

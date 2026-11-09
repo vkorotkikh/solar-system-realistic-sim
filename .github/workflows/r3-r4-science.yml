@@ -140,6 +140,7 @@ jobs:
           scripts/test_moon_lazy_ephemerides.py
           scripts/test_moon_physical_radii.py
           scripts/test_moon_repairs.py
+          scripts/test_moon_source_exception_inputs.py
           scripts/test_wsa_observation_overlap.py
 
       - name: Verify the committed moon radii offline
