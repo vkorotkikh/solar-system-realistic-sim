@@ -16,3 +16,9 @@ Key routing rules:
 - Save progress → invoke /context-save
 - Resume context → invoke /context-restore
 - Author a backlog-ready spec/issue → invoke /spec
+
+## Output locations
+
+- Dated agent output (audits, reviews, issue notes, remediation evidence) goes under `records/`, named per `records/README.md`.
+- `agent-notes/` and `my-notes/` are read-only archives: link to them, never write into them.
+- Prompts that drive agents live in `docs/prompts/`.
