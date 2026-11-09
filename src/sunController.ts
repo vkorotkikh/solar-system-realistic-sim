@@ -910,14 +910,14 @@ export function createSunController({
   }
 
   /**
-   * No longer refreshed: five failures in a row, or attempts failing for five minutes (the latest
-   * failure more than five minutes after the last success). Time with no attempts (a hidden tab
-   * runs no frames, so no polls) does not count.
+   * No longer refreshed: five failures in a row, or one run of failures lasting five minutes (first
+   * failure to latest). Time with no attempts (a hidden tab runs no frames, so no polls) does not
+   * count, before or during the run.
    */
   function solarStateUnrefreshed() {
     // Read the counters directly: status() builds a fresh object and this runs every frame.
-    const { consecutiveFailures, lastFailure, lastSuccessMs } = solarPhysicsClient;
-    return consecutiveFailures >= 5 || (lastFailure !== null && lastFailure.atMs - lastSuccessMs > 300_000);
+    const { consecutiveFailures, lastFailure, failingSinceMs } = solarPhysicsClient;
+    return consecutiveFailures >= 5 || (lastFailure !== null && lastFailure.atMs - failingSinceMs > 300_000);
   }
 
   /** Fade the backend state out and draw the procedural Sun until a usable snapshot arrives (H2.7). */
