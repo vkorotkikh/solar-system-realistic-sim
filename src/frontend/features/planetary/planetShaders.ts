@@ -161,10 +161,8 @@ float getElevation(vec3 p) {
         return elevation;
     } 
     else if (uPlanetType == 1) { // Moon
-        float base = fbm(p * 2.5, 6) * 0.2;
-        float craters = fbm(p * 8.0, 4); // simplistic crater rim approximation
-        float details = fbm(p * 20.0, 4) * 0.05;
-        return base + abs(craters)*0.1 + details;
+        // Measured LOLA heights replace procedural craters; this noise cost ~2 s per driver compile.
+        return 0.0;
     } 
     else if (uPlanetType == 2) { // Mars
         float continents = fbm(p * 1.2, 7);
@@ -323,21 +321,8 @@ vec3 getMarsColor(float h, vec3 p, vec3 normal) {
 }
 
 vec3 getMoonColor(float h, vec3 p, vec3 normal) {
-    vec3 base = vec3(0.6, 0.6, 0.62);
-    vec3 darkMaria = vec3(0.3, 0.3, 0.32);
-    vec3 brightEjecta = vec3(0.8, 0.8, 0.85); // ray systems
-    
-    vec3 col = mix(darkMaria, base, smoothstep(-0.1, 0.1, h));
-    
-    float rays = fbm(p * 2.0, 3);
-    col = mix(col, brightEjecta, smoothstep(0.7, 1.0, rays) * 0.4);
-    
-    float slope = 1.0 - max(0.0, dot(normal, normalize(p)));
-    if (slope > 0.1) {
-        col *= 0.8;
-    }
-    
-    return col;
+    // Shown only until the measured LROC map loads.
+    return vec3(0.45, 0.45, 0.47);
 }
 
 void main() {
