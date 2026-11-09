@@ -1,6 +1,6 @@
 # Sun Model Lab
 
-A Sun-focused browser visualization of the solar system, with local orbital propagation, procedural Sun and planet visuals, asteroid/Kuiper belts, and experimental AGN displays. An optional Python backend provides synthetic solar-state data and separate N-body, trajectory, mission and benchmark APIs. The default page does not expose planner panels or the retained nearby-system, satellite and cloud interfaces.
+A Sun-focused browser visualization of the solar system, with local orbital propagation, procedural Sun and planet visuals, asteroid/Kuiper belts, and experimental AGN displays. An optional Python backend provides synthetic solar-state data and separate N-body, trajectory, mission and benchmark APIs. The page includes moons, a mission planner and an optional Earth-satellite layer; the retained nearby-system and cloud interfaces are not exposed.
 
 ## Highlights
 
@@ -8,8 +8,8 @@ The current [accepted product policies](docs/supported-product-policies.md)
 define platform support, asteroid sampling, timing, decorative motion and
 backend configuration.
 
-- **Sun + 8 planets + Pluto** with axial tilt, spin, and major-body search/focus controls
-- **423 unique moon identities** from the NASA/JPL satellite mean-elements table, retained for provenance and offline tooling; the shipped entry does not load moon ephemerides, render moons, or send moons to the model worker (`showMoons` in `src/main.ts` is fixed to `false`)
+- **Sun + 8 planets + Pluto** with axial tilt, spin, and search/focus controls for every rendered body
+- **423 moons** from the NASA/JPL satellite mean-elements table, behind a Moons switch. The 21 named moons use fitted JPL Horizons models; the rest use mean elements. At enlarged scale each moon keeps its true altitude above its enlarged planet
 - **Synthetic Sun visualization** with physically inspired surface, corona, flare, magnetic-field and solar-wind layers; these are models, not a calibrated observation reconstruction
 - **SMBH/AGN experiments** with transient timelines and exotic hypothesis-model displays
 - **Adjustable simulation clock** with pause, reverse, time-warp, and a Now control
@@ -17,7 +17,7 @@ backend configuration.
 - **Asteroid belt** targeting 50,000 displayed objects from an accepted Phase 1 subset of up to 100,000 source rows, with deterministic procedural fallback
 - **5,000-object Kuiper field** including binary companions
 
-Catalog-star proper motion, nearby-system navigation, Earth satellites/clouds, Oort-related UI/update hooks and planner interfaces remain repository modules/assets, not enabled features of this entry. Backend APIs are described separately below.
+Catalog-star proper motion, nearby-system navigation, Earth clouds and Oort-related UI/update hooks remain repository modules/assets, not enabled features of this entry. Backend APIs are described separately below.
 
 See [CONTRIBUTING](CONTRIBUTING.md) for pinned toolchains and test commands,
 [ADR 0006](docs/adr/0006-runtime-composition-and-retained-apis.md) for ownership,
@@ -29,7 +29,7 @@ current repair/verification status.
 - `src` is fully TypeScript-native; legacy `.js` shim/re-export files have been removed from the frontend/runtime tree.
 - All `// @ts-nocheck` directives have been removed across the entire `src` tree. Strict type checking is now active on every source file.
 - Type annotations have been added to simulation, rendering, solar-feature, planetary-feature, and asteroid-pipeline modules. Remaining files still require explicit type definitions for full compile-time safety.
-- The browser runtime is driven from [`src/main.ts`](src/main.ts) with solar-system model propagation in [`src/workers/modelWorker.ts`](src/workers/modelWorker.ts). The retained satellite worker is not connected to this entry.
+- The browser runtime is driven from [`src/main.ts`](src/main.ts) with solar-system model propagation in [`src/workers/modelWorker.ts`](src/workers/modelWorker.ts). Earth satellites propagate on the main thread when their switch is on; the satellite worker is not used.
 - Small-body data tooling includes compact binary pack/read utilities in [`src/data/asteroidCatalogLoader.ts`](src/data/asteroidCatalogLoader.ts). The Phase 1 runtime requires SHA-256 verification through WebCrypto and fetches binary/metadata in parallel. ACBF v2 preserves provider orbital values as Float64, including fractional epochs; legacy formats remain readable. GPU display attributes remain Float32, and source-value integrity does not certify trajectory accuracy.
 - Ongoing hardening: replacing implicit `any` types with concrete interfaces across app, rendering, and feature modules.
 
@@ -118,8 +118,8 @@ API paths on the frontend origin. Vite embeds the variable at build time, so set
 it for `npm run build` too when deploying a separate backend origin. See
 [Frontend configuration](docs/frontend-configuration.md) for the full contract.
 With the backend available, the Sun chip reports its solar model source/status.
-Trajectory and mission services are available through their APIs; starting the
-backend does not add planner panels to the page.
+The page's mission planner uses the trajectory and mission services when the
+backend is reachable; without it, route planning falls back to a local solver.
 
 The default `SOLAR_SECURITY_PROFILE=local` keeps solar endpoints available
 without a key and should stay bound to loopback. To expose the backend on a
@@ -211,8 +211,8 @@ records the runtime owners.
 │   │   │   ├── timeController.ts              # Simulation clock controls
 │   │   │   ├── labelSystem.ts                 # Camera-relative 3D label rendering (retained, not wired)
 │   │   │   ├── simulationClient.ts            # Backend WebSocket client (retained, not wired)
-│   │   │   ├── plannerController.ts           # Trajectory planner UI bridge (retained, not wired)
-│   │   │   ├── routeRenderer.ts               # Transfer-arc visualization (retained, not wired)
+│   │   │   ├── plannerController.ts           # Mission planner panel bridge
+│   │   │   ├── routeRenderer.ts               # Transfer-arc visualization
 │   │   │   ├── uiBindings.ts                  # DOM ↔ state bindings (retained, not wired)
 │   │   │   ├── localSystemRenderer.ts         # Local solar system renderer (retained, not wired)
 │   │   │   └── nearbySystemsRenderer.ts       # Nearby star systems renderer (retained, not wired)
@@ -220,18 +220,19 @@ records the runtime owners.
 │   │   │   └── transitions.ts                 # Smooth camera transitions (retained, not wired)
 │   │   ├── features/
 │   │   │   ├── asteroids/
-│   │   │   │   └── beltRenderer.ts            # Instanced asteroid belt renderer
-│   │   │   ├── planetary/                     # Planet views, shaders, quadtree terrain and spin;
-│   │   │   │   │                              #   cloud, satellite, moon-texture and terrain-synthesis
-│   │   │   │   │                              #   modules are retained, not wired
+│   │   │   │   ├── beltRenderer.ts            # Instanced asteroid belt renderer
+│   │   │   │   └── beltDensityBand.ts         # Orbit-averaged density band from the verified catalog
+│   │   │   ├── planetary/                     # Planet views, shaders, quadtree terrain, spin, Moon/Mars
+│   │   │   │   │                              #   surface maps, satellites and moon textures; cloud and
+│   │   │   │   │                              #   terrain-synthesis modules are retained, not wired
 │   │   │   ├── solar/                         # Sun visuals, flares, magnetics, corona, GW visualization,
 │   │   │   │   │                              #   observation textures, feature blending, solar physics client;
 │   │   │   │   │                              #   solarProminences.ts and solarWind.ts are retained, not wired
 │   │   │   ├── superluminal-modeling/         # SMBH/AGN shockwave engine,
 │   │   │   │   │                              #   propagation, warp slipstream visuals
-│   │   │   └── trajectory/                    # Local patched-conic planner
-│   │   │       ├── index.ts                   #   Trajectory feature exports (retained, not wired)
-│   │   │       └── localPlanner.ts            #   Local trajectory computation (retained, not wired)
+│   │   │   └── trajectory/                    # Planner client and local patched-conic fallback
+│   │   │       ├── index.ts                   #   Backend trajectory client with offline fallback
+│   │   │       └── localPlanner.ts            #   Local route planning and arc construction
 │   │   └── rendering/
 │   │       ├── milkyWay.ts                    # Milky Way background layer (retained, not wired)
 │   │       ├── orbitRenderer.ts               # Orbit-line drawing (retained, not wired)
@@ -294,16 +295,19 @@ The header shows the configured rate, such as "Simulation · +4.0 d/s", or "Paus
 
 ### Explorer
 
-Search and focus the major bodies rendered by the page. A catalog entry or retained manifest does not by itself make an object rendered or navigable.
+Search and focus the bodies rendered by the page, including all 423 moons while the Moons switch is on. A catalog entry or retained manifest does not by itself make an object rendered or navigable.
 
 ### Planet visuals
 
 - **Earth and Mars**: procedural quadtree surfaces with distance-based detail
-- **Moon assets (dormant)**: eight USGS-hosted per-moon maps and the moon-texture modules are present, but the shipped entry does not load or render them
+- **Earth's Moon**: quadtree terrain from NASA's CGI Moon Kit (LROC colour and LOLA elevation), loaded when the camera approaches
+- **Mars**: a NASA/USGS colour map once approached; its terrain stays procedural, because no elevation map ships
+- **Named moons**: eight USGS-hosted maps, with generated maps for the rest
+- **Earth satellites**: current CelesTrak orbits when switched on, with built-in fallback records
 - **Other planets and Pluto**: colored sphere materials
 - Axial tilt and spin use the rendered bodies' orientation metadata
 
-Retained cloud and satellite modules are not assembled by this entry. The page also has no Saturn-ring or oblate-body assembly. Repository assets and alternative renderers are not a claim that the page displays them.
+The retained cloud module is not assembled by this entry. The page also has no Saturn-ring or oblate-body assembly. Repository assets and alternative renderers are not a claim that the page displays them.
 
 ### Solar model
 
@@ -336,6 +340,7 @@ Nearby-system catalogs, JSON manifests, proper-motion utilities and renderer/nav
 - Phase 1 data is accepted only through the existing integrity/admission gates; deterministic procedural generation remains the fallback
 - Shared instanced irregular geometry and GPU elliptic orbit propagation
 - No shipped adaptive close-up, asteroid-worker or Sun/Jupiter/Saturn detail-force path; those retained interfaces are not evidence of active perturbation physics
+- A flat band in the ecliptic shows where the catalogued asteroids spend their time: each orbit is spread along its ellipse by time, so the shading is the orbit-averaged surface density. It is drawn only from the verified catalog. Kirkwood gaps are gaps in semi-major axis and correctly do not appear in position
 
 ### Kuiper belt
 
@@ -345,9 +350,9 @@ Nearby-system catalogs, JSON manifests, proper-motion utilities and renderer/nav
 
 The generated population and binary assumptions are visualization models, not a complete measured catalog or a validation of every mutual orbit.
 
-### Trajectory APIs and retained frontend library
+### Trajectory APIs and the mission planner panel
 
-The backend provides direct-transfer and multi-leg gravity-assist planning, including `POST /trajectory/lambert` and `POST /trajectory/porkchop`. Retained frontend planner and patched-conic fallback modules are not connected to the default page; no planner panels or transfer-arc display are enabled there.
+The backend provides direct-transfer and multi-leg gravity-assist planning, including `POST /trajectory/lambert` and `POST /trajectory/porkchop`. The page's Mission planner panel calls these, falling back to the local patched-conic planner for route planning when the backend is unreachable. Plotted arcs are illustrative curves between the computed departure and arrival positions, not propagated conics. Mission plan uses the backend's default vehicle, which currently closes no round trip.
 
 ### Mission planner API
 
@@ -396,8 +401,8 @@ cannot represent them. Ordinary midnight remains a valid precise input.
   models: 13 base models plus 410 lazy shards. The historical 424-row oracle
   remains unchanged and is explicitly projected onto active identities. Explicit library
   requests fetch only the required shards from `public/moon-ephemerides/`.
-  The default library load remains 13 models; the shipped page does not load
-  moon ephemerides or propagate/render moon states. Captured numerical-source
+  The page loads the 13 base models plus the shards of its other 16 named moons
+  at startup, waiting at most 4 s for those shards; the remaining moons use mean elements. Captured numerical-source
   agreement does not establish observational uncertainty or redistribution rights.
   A pinned JPL physical-parameter table supplies 46 mean radii with references
   and uncertainties. The other 377 physical radii are null; their finite display
@@ -521,15 +526,15 @@ non-publishing validation mode.
 
 - Frontend orbital propagation uses Keplerian two-body elements (parent-body centered), not a full N-body integrator.
 - Optional backend REBOUND/TudatPy modes provide higher-fidelity integrations for major bodies. REBOUND's `high` designation is scoped to the default, accuracy-gated IAS15 integrator; WHFast and Mercurius are reported as `normal`. REBOUND remains a reduced Newtonian model, not a replacement for DE441: relativity, most asteroids, outer-system satellites, and extended-body terms are outside its present force model.
-- Retained satellite propagation uses TLE-derived Kepler elements and optional J2 terms; it is not activated by this entry.
+- Earth satellite propagation uses TLE-derived Kepler elements with J2 terms; it runs only while the satellites switch is on.
 - The retained NASA GIBS cloud pipeline is not connected to the page and is not numerical weather-prediction assimilation.
 - Retained gravity-vector UI/update hooks do not imply a shipped gravity-vector display.
-- The retained fitted moon ephemerides are validated only inside their declared 2000–2050 JDTDB
-  coverage. They and the visualization-grade mean-element fallbacks are not activated by the
-  current shipped entry because moon state propagation and rendering are disabled there.
+- The fitted moon ephemerides are validated only inside their declared 2000–2050 JDTDB
+  coverage. The 402 moons without a loaded fit use visualization-grade mean elements, which
+  can be far off for irregular moons: Himalia was 7–16 million km from JPL Horizons at three dates in 2026–2031.
 - The shipped asteroid display uses elliptic element propagation, not close-up N-body perturbations.
-- Backend gravity-assist planning uses Lambert legs with hard-constrained flyby turn feasibility; the retained frontend fallback is patched-conic and not integrated into this page.
-- Retained transfer-arc rendering is not a finite-burn trajectory integrator or an active page feature.
+- Backend gravity-assist planning uses Lambert legs with hard-constrained flyby turn feasibility; the page's offline fallback is patched-conic.
+- Transfer-arc rendering is illustrative, not a finite-burn trajectory integrator.
 - Retained Oort UI/update hooks are not connected to the page.
 - Literature-inspired solar and AGN models are visualization/hypothesis tools. Separate radiation-pressure and galactic-tide modules are not evidence of those effects in the shipped local propagation.
 - Solar state remains synthetic, and raw AIA viewport imagery is ineligible for surface blending. Upstream availability or a channel selection does not open the validated observed-input gates.
@@ -543,11 +548,12 @@ Provenance does not itself establish redistribution permission; see `NOTICE.md`.
 | Material | Source and current scope |
 |---|---|
 | Moon elements and physical radii | NASA/JPL SSD; source pins and qualified optional fitted models |
-| Eight curated moon maps | USGS-hosted products; public attribution manifest; retained optional texture pipeline |
+| Eight curated moon maps | USGS-hosted products; public attribution manifest; drawn on their named moons |
+| Moon and Mars surface maps | NASA SVS CGI Moon Kit (colour, elevation); Mars colour map whose exact USGS product is unconfirmed |
 | Asteroid catalog | Pinned JPL SBDB source, ACBF v2 bundle and SHA-256 metadata |
 | Planet appearance | Procedural maps and Earth/Mars quadtree terrain; former unused photographic files retired |
 | Catalog stars and Gaia enrichment | Retained offline/dormant modules; no default catalog-star rendering |
-| Earth clouds / satellite elements | Retained GIBS / CelesTrak acquisition; no default page activation |
+| Earth clouds / satellite elements | Retained GIBS pipeline, not activated; CelesTrak fetched when the satellites switch is on |
 | Solar observation context | SDO/AIA via Helioviewer, NOAA SWPC and SILSO; source-specific terms apply |
 
 The [distribution policy](docs/distribution-policy.md) covers noncommercial
