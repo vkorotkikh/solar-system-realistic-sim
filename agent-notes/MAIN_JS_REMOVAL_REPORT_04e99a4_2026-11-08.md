@@ -167,16 +167,26 @@ comparison and a startup profile found four real problems on the branch. All are
 | Planner listeners never removed | Breaks ADR 0006's disposal rule | Bound to the startup lifetime; late replies dropped |
 
 **Startup, measured correctly.** Timing `render()` misleads here: on `main` the GPU keeps working
-about 4 s after it returns. Forcing the first frame to finish (readPixels), median of three cold starts
-on this WSL machine:
+about 4 s after it returns. Forcing the first frame to finish (readPixels), cold starts on this WSL
+machine's RTX 5090 (Mesa D3D12). The two ways of running the real GPU disagree, so both are shown:
 
-| | First complete picture | 30 frames delivered |
-|---|---:|---:|
-| `main` | 6.4 s | 6.9 s |
-| Branch before the shader fix | 8.5 s | 9.3 s |
-| Branch now | 6.6 s | 7.3 s |
+| | Headed: first picture | Headed: 30 frames | Headless: first picture | Headless: 30 frames |
+|---|---:|---:|---:|---:|
+| `main` | 6.4 s | 6.9 s | 4.4 s | 4.8 s |
+| Branch before the shader fix | 8.5 s | 9.3 s | | |
+| Branch now | 6.6 s | 7.3 s | 5.1 s | 5.7 s |
 
-- About 4 s of that is pre-existing on `main`: the driver (Mesa D3D12) building Earth's and Mars's terrain shaders on first draw.
+Headed: median of 3 in a visible browser window. Headless: median of 5 on a quiet machine, no window
+(`--use-angle=gl-egl` with `GALLIUM_DRIVER=d3d12`); use this mode from now on.
+
+- **The branch adds about 0.7 s to the first picture and 0.9 s to steady frames.** The headed +0.2 s was
+  too optimistic: there, about 4 s of shader building ran alongside the branch's extra work and hid most
+  of it. A Windows browser builds shaders faster still, so expect the headless figure or more.
+- No single cause. Switching one addition off at a time (4 runs each, about ±0.15 s): moons visible at
+  start 0.38 s, the asteroid band 0.36 s (its density pass over 100,000 orbits is 0.09 s; the rest is GPU),
+  the Moon's terrain quadtree 0.29 s, named-moon fits 0.18 s. The savings overlap, so they sum to more
+  than 0.7 s.
+- About 4 s of `main`'s headed time is the driver (Mesa D3D12) building Earth's and Mars's terrain shaders on first draw.
 - After the first picture, the branch has one ~0.3 s pause and a few ~70 ms frames as the eight moon maps upload; steady frame time matches `main` (16.7 ms).
 - Transfer grows from 9.1 to 14.9 MB: moon fits and shards. The Moon's 13 MB of maps load only when the camera approaches.
 
@@ -185,6 +195,10 @@ none intersects its planet at either scale, and moon distances follow the true-a
 Satellites sit at true LEO/GEO radii at realistic scale. Each planner action plots a route, arcs stay fixed
 as time runs, and the offline fallback works. The band is drawn only from the verified catalog. Restored
 switch states are honoured on reload. Double-click selects a visible Moon and passes through a hidden one.
+The production suite passes 5/5 on the branch twice in CI mode and twice on the GPU. Its earlier
+failures came from other jobs loading the machine (load average 32), and `main` failed the same way then.
+The orbit worker's init message grows from 7 KB to 12 MB (all moons and their fits), but posting it takes
+about 30 ms and the worker is ready in 0.3 s, well inside its 5 s limit.
 
 **Not explained.** In one of eight audit runs, the LLO and skim quick views ended about 1,000 and 2,700 km
 further from the Moon than set, 1.5 s after the click. Seven other runs, including frame-by-frame traces
