@@ -240,6 +240,20 @@ describe('planner UI trajectory outcomes', () => {
   });
 });
 
+describe('planner UI binding', () => {
+  it('ties every button listener to the given signal, so one abort removes them all', () => {
+    const harness = makeHarness(vi.fn());
+    const lifetime = new AbortController();
+    harness.controller.bindPlannerUi(lifetime.signal);
+    const buttons = [harness.dom.planDirect, harness.dom.planOptimal, harness.dom.planLambert,
+      harness.dom.planPorkchop, harness.dom.planMission, harness.dom.clearRoute];
+    for (const button of buttons) {
+      expect(button.addEventListener).toHaveBeenCalledOnce();
+      expect(button.addEventListener.mock.calls[0][2]).toEqual({ signal: lifetime.signal });
+    }
+  });
+});
+
 describe('planner request sequencing', () => {
   const route = (destination: string) => ({
     bodyRoute: ['earth', destination],

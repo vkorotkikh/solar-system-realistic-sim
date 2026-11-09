@@ -623,18 +623,19 @@ export function createPlannerController({
     }
   }
 
-  function bindPlannerUi(): void {
-    dom.planDirect.addEventListener('click', () => runPlanner({ directOnly: true }));
-    dom.planOptimal.addEventListener('click', () => runPlanner({ directOnly: false }));
-    dom.planLambert.addEventListener('click', () => runLambertPlanner());
-    dom.planPorkchop.addEventListener('click', () => runPorkchopPlanner());
-    dom.planMission.addEventListener('click', () => runMissionPlanner());
+  /** Aborting `signal` removes every listener this adds. */
+  function bindPlannerUi(signal?: AbortSignal): void {
+    dom.planDirect.addEventListener('click', () => runPlanner({ directOnly: true }), { signal });
+    dom.planOptimal.addEventListener('click', () => runPlanner({ directOnly: false }), { signal });
+    dom.planLambert.addEventListener('click', () => runLambertPlanner(), { signal });
+    dom.planPorkchop.addEventListener('click', () => runPorkchopPlanner(), { signal });
+    dom.planMission.addEventListener('click', () => runMissionPlanner(), { signal });
 
     dom.clearRoute.addEventListener('click', () => {
       beginPlannerRequest();
       clearRouteVisualization();
       dom.plannerOutput.textContent = 'No plotted route.';
-    });
+    }, { signal });
   }
 
   return {

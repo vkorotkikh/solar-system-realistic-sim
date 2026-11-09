@@ -1383,6 +1383,7 @@ const planner = createPlannerController({
   routeApi: {
     // The arc stays at its computed endpoints; the bodies move on along their orbits.
     plotRoute: (route) => {
+      if (startup.signal.aborted) return; // A reply that lands after shutdown has nothing to draw into.
       plotRoute({
         ...routeTarget, route, bodyById,
         // The trajectory client hydrates both endpoints of every leg.
@@ -1395,7 +1396,7 @@ const planner = createPlannerController({
   dateUtils: { formatJulianAsDate, parseDateInputToJulian },
 });
 planner.fillPlannerSelects();
-planner.bindPlannerUi();
+planner.bindPlannerUi(startup.signal);
 dom.plannerOutput.textContent = 'No plotted route.';
 
 const experiment = ownDisposable(createExperimentController({ dom, sun: sunCtrl, resolveSelection: engineSelectionResolver(agnEngine) }));
