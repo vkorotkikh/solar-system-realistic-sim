@@ -251,8 +251,7 @@ records the runtime owners.
 │   │   ├── solar_physics.py                   # Synthetic solar corona model
 │   │   ├── solar_realtime_data.py             # SDO/AIA, SWPC, SILSO ingestion
 │   │   ├── kuiper.py                          # Kuiper belt physics + binary KBOs
-│   │   ├── radiation_pressure.py              # SRP, Poynting-Robertson, Yarkovsky
-│   │   └── galactic_tide.py                   # Heisler-Tremaine galactic tidal field
+│   │   └── radiation_pressure.py              # SRP, Poynting-Robertson, Yarkovsky
 │   ├── trajectory/                            # Lambert solver, MGA optimizer, planner
 │   ├── mission/                               # Multi-agent mission planner + services
 │   ├── benchmark/                             # Accuracy benchmarks + calibration protocol
@@ -531,7 +530,7 @@ non-publishing validation mode.
 - Backend gravity-assist planning uses Lambert legs with hard-constrained flyby turn feasibility; the retained frontend fallback is patched-conic and not integrated into this page.
 - Retained transfer-arc rendering is not a finite-burn trajectory integrator or an active page feature.
 - Retained Oort UI/update hooks are not connected to the page.
-- Literature-inspired solar and AGN models are visualization/hypothesis tools. Separate radiation-pressure and galactic-tide modules are not evidence of those effects in the shipped local propagation.
+- Literature-inspired solar and AGN models are visualization/hypothesis tools. A separate radiation-pressure module is not evidence of that effect in the shipped local propagation.
 - Solar state remains synthetic, and raw AIA viewport imagery is ineligible for surface blending. Upstream availability or a channel selection does not open the validated observed-input gates.
 - The default browser display uses elliptic element propagation; it is not a general hyperbolic-comet propagator. Backend solvers and retained modules have separate contracts.
 
