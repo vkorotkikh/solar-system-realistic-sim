@@ -62,7 +62,8 @@ def test_workflow_installs_pinned_environment_and_runs_exact_all_lane():
     assert (
         "python -m pytest --noconftest -q "
         "scripts/ci/tests/test_verify_r3_r4_runner.py "
-        "scripts/ci/tests/test_r3_r4_workflow.py"
+        "scripts/ci/tests/test_r3_r4_workflow.py "
+        "scripts/ci/tests/test_verify_r3_r4_mutation_evidence.py"
     ) in commands
     assert "python scripts/ci/verify_r3_r4.py" in commands
     assert "--manifest ci/r3-r4-science-verification.json" in commands

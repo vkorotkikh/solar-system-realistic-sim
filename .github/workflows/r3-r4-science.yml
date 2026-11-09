@@ -65,6 +65,7 @@ jobs:
           python -m pytest --noconftest -q
           scripts/ci/tests/test_verify_r3_r4_runner.py
           scripts/ci/tests/test_r3_r4_workflow.py
+          scripts/ci/tests/test_verify_r3_r4_mutation_evidence.py
 
       - name: Run the exact baseline and mutation manifest
         run: |
