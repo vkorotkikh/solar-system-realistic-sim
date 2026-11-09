@@ -17,7 +17,7 @@ type MainBodyInfoRuntime = {
 const MAIN_BINDINGS = [
   'bodyById', 'model', 'dom', 'timeController', 'updateModelState',
   'updateBodyRotations', 'simState', 'syncAsteroidBeltInputs',
-  'kuiperBeltUpdater', 'sunCtrl', 'applyMetricDisplayOffsets', 'applyMoonAltitudeDisplay', 'faceMoonTowardEarth', 'surfaceMaps', 'updateEarthSatellites', 'bodyNodes',
+  'kuiperBeltUpdater', 'sunCtrl', 'applyMetricDisplayOffsets', 'applyMoonAltitudeDisplay', 'faceMoonTowardEarth', 'surfaceMaps', 'updateEarthSatellites', 'refreshMoonOrbitLines', 'bodyNodes',
   'updateFollowTarget', 'viewportCamera', 'bodyMeshes', 'Vector3',
   'backgroundStars', 'camera', 'controls', 'updateCameraClipPlanes',
   'renderer', 'scene', 'AU_KM', 'updateZoomStatus', 'updateLabels',
@@ -164,6 +164,7 @@ function makeHarness() {
     faceMoonTowardEarth: () => undefined,
     surfaceMaps: { update: () => undefined },
     updateEarthSatellites: () => undefined,
+    refreshMoonOrbitLines: () => undefined,
     bodyNodes: new Map(),
     updateFollowTarget: () => undefined,
     viewportCamera: { applyPendingActions: () => undefined },

@@ -64,7 +64,8 @@ function harness() {
   const bodyNodes = new Map([['earth', parentNode], ['sun', sunNode]]);
   const orbitLineByBodyId = new Map<string, OrbitLine>();
   const orbitLines: OrbitLine[] = [];
-  const bindings = { ...threeBindings, startup, sampleOrbitLoop: sample,
+  // At the orbits' epoch, so a moon's date-aware sampling matches the plain sampler below.
+  const bindings = { ...threeBindings, startup, sampleOrbitLoop: sample, simState: { julianDate: 2451545 },
     solarSystemGroup, bodyNodes, orbitLineByBodyId, orbitLines };
   const runtime = Function(...Object.keys(bindings), `${javascript}\nreturn { createOrbitLine };`)(...Object.values(bindings)) as Runtime;
   const result = { startup, deferred, sample, solarSystemGroup, parentNode, sunNode,

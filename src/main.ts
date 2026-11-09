@@ -510,7 +510,9 @@ function createOrbitLine(body: CatalogBody) {
   // 512 keeps the largest chord error of every planetary loop below 3e-3 AU.
   const segments = body.type === 'moon' ? 256 : 512;
   const positions = new Float32Array(segments * 3);
-  if (!sampleOrbitLoop(body.orbit, segments, positions)) return null;
+  // Planets barely change between the epoch and now; the Moon's orbit visibly precesses.
+  const aroundElapsedDays = body.type === 'moon' ? simState.julianDate - body.orbit.epochJd : 0;
+  if (!sampleOrbitLoop(body.orbit, segments, positions, aroundElapsedDays)) return null;
 
   const geo = ownDisposable(new BufferGeometry());
   geo.setAttribute('position', new Float32BufferAttribute(positions, 3));
@@ -730,23 +732,49 @@ function applyMoonAltitudeDisplay() {
   }
 }
 
+function writeMoonOrbitLine(line: Line, body: CatalogBody) {
+  const attribute = line.geometry.getAttribute('position');
+  const trueLoop: Float32Array = line.userData.trueLoop ??= Float32Array.from(attribute.array);
+  const offsetAu = surfaceOffsetAu(body.parentId);
+  for (let i = 0; i < attribute.count; i++) {
+    const x = trueLoop[i * 3], y = trueLoop[i * 3 + 1], z = trueLoop[i * 3 + 2];
+    const scale = 1 + offsetAu / (Math.hypot(x, y, z) || 1);
+    attribute.setXYZ(i, x * scale, y * scale, z * scale);
+  }
+  attribute.needsUpdate = true;
+  line.geometry.computeBoundingSphere();
+}
+
 function applyMoonOrbitLineDisplay() {
   for (const line of orbitLines) {
     const body = line.userData.bodyType === 'moon' ? bodyById.get(line.userData.bodyId) : undefined;
-    if (!body) continue;
-    const attribute = line.geometry.getAttribute('position');
-    const trueLoop: Float32Array = line.userData.trueLoop ??= Float32Array.from(attribute.array);
-    const offsetAu = surfaceOffsetAu(body.parentId);
-    for (let i = 0; i < attribute.count; i++) {
-      const x = trueLoop[i * 3], y = trueLoop[i * 3 + 1], z = trueLoop[i * 3 + 2];
-      const scale = 1 + offsetAu / (Math.hypot(x, y, z) || 1);
-      attribute.setXYZ(i, x * scale, y * scale, z * scale);
-    }
-    attribute.needsUpdate = true;
-    line.geometry.computeBoundingSphere();
+    if (body) writeMoonOrbitLine(line, body);
   }
 }
 applyMoonOrbitLineDisplay();
+
+const moonOrbitLines = orbitLines.filter((line) => line.userData.bodyType === 'moon');
+const MOON_ORBIT_REFRESHES_PER_FRAME = 6;
+const MOON_ORBIT_MIN_REFRESH_DAYS = 30;
+let moonOrbitRefreshCursor = 0;
+/** Keeps drawn orbits on the moons as they precess, with a fixed cost per frame. */
+function refreshMoonOrbitLines() {
+  if (!showMoons || !dom.toggleOrbits.checked) return;
+  let refreshed = 0;
+  for (let visited = 0; visited < moonOrbitLines.length && refreshed < MOON_ORBIT_REFRESHES_PER_FRAME; visited++) {
+    moonOrbitRefreshCursor = (moonOrbitRefreshCursor + 1) % moonOrbitLines.length;
+    const line = moonOrbitLines[moonOrbitRefreshCursor];
+    const body = bodyById.get(line.userData.bodyId);
+    if (!body?.orbit) continue;
+    const staleAfterDays = Math.max(body.orbit.periodDays, MOON_ORBIT_MIN_REFRESH_DAYS);
+    if (Math.abs(simState.julianDate - (line.userData.sampledJd ?? Number.NEGATIVE_INFINITY)) < staleAfterDays) continue;
+    if (sampleOrbitLoop(body.orbit, line.userData.trueLoop.length / 3, line.userData.trueLoop, simState.julianDate - body.orbit.epochJd)) {
+      writeMoonOrbitLine(line, body);
+    }
+    line.userData.sampledJd = simState.julianDate;
+    refreshed++;
+  }
+}
 
 const earthMoon = catalog.bodies.find(isEarthMoonBody);
 const earthDirectionLocal = new Vector3();
@@ -1430,6 +1458,7 @@ const frameLifecycle = createFrameLifecycle({
         }
       };
     }),
+    { name: 'moon-orbits', run: refreshMoonOrbitLines },
     { name: 'surface-maps', run: () => surfaceMaps.update() },
     { name: 'satellites', run: updateEarthSatellites },
     { name: 'background', run: () => { backgroundStars.position.copy(camera.position); } },
