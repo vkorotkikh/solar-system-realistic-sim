@@ -73,13 +73,15 @@ export async function createTabZoomSession(info: TestInfo, origin: string) {
   const hardware = process.env.UI_HARDWARE_WEBGL === '1';
   const context = await chromium.launchPersistentContext(profile, {
     channel: 'chromium',
-    headless: !hardware && process.env.UI_ZOOM_HEADFUL !== '1',
+    // Hardware stays headless: Mesa's D3D12 driver reaches the WSL GPU without a window.
+    headless: process.env.UI_ZOOM_HEADFUL !== '1',
     viewport: null,
+    ...(hardware ? { env: { ...process.env, GALLIUM_DRIVER: 'd3d12' } } : {}),
     args: [
       '--no-sandbox', '--window-size=1280,960',
       `--disable-extensions-except=${extension}`, `--load-extension=${extension}`,
       ...(hardware
-        ? ['--ignore-gpu-blocklist', '--use-gl=angle', '--use-angle=gl']
+        ? ['--ignore-gpu-blocklist', '--use-angle=gl-egl']
         : ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader']),
     ],
   }).catch(async (error: unknown) => {

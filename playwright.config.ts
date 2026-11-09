@@ -5,11 +5,11 @@ const hardwareWebGL = process.env.UI_HARDWARE_WEBGL === '1';
 // Use full Chromium's headless mode, as the native-zoom gate already does.
 // Headless shell stalled in real WEBGL_lose_context calls and later context
 // setup on SwiftShader. Keep the real GPU fault and lifecycle checks.
-const chromiumUse = { browserName: 'chromium' as const, channel: 'chromium', headless: !hardwareWebGL, launchOptions: {
-  args: hardwareWebGL
-    ? ['--no-sandbox', '--ignore-gpu-blocklist', '--use-gl=angle', '--use-angle=gl']
-    : ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox'],
-} };
+// Hardware runs stay headless as well: ANGLE over Mesa's EGL with its D3D12
+// driver reaches the WSL GPU without a window (headed opens on the Windows desktop).
+const chromiumUse = { browserName: 'chromium' as const, channel: 'chromium', launchOptions: hardwareWebGL
+  ? { args: ['--no-sandbox', '--ignore-gpu-blocklist', '--use-angle=gl-egl'], env: { ...process.env, GALLIUM_DRIVER: 'd3d12' } }
+  : { args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox'] } };
 export default defineConfig({
   testDir: './tests/browser',
   outputDir: `test-results/${port}`,

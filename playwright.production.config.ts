@@ -35,12 +35,10 @@ export default defineConfig({
     use: {
       browserName: 'chromium',
       channel: 'chromium',
-      headless: !hardwareWebGL,
-      launchOptions: {
-        args: hardwareWebGL
-          ? ['--no-sandbox', '--ignore-gpu-blocklist', '--use-gl=angle', '--use-angle=gl']
-          : ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox'],
-      },
+      // Headless in hardware mode too: Mesa's D3D12 driver reaches the WSL GPU without a window.
+      launchOptions: hardwareWebGL
+        ? { args: ['--no-sandbox', '--ignore-gpu-blocklist', '--use-angle=gl-egl'], env: { ...process.env, GALLIUM_DRIVER: 'd3d12' } }
+        : { args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox'] },
     },
   }],
   webServer: {
