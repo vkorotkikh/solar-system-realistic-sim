@@ -28,8 +28,8 @@ The original source copies and immutable archives are retained.
   **5,833 passed, 13 skipped**.
 - **Unchanged.** The 2026-10-30 counts and tables below are left as recorded.
 
-**Update 2026-11-08.** #46 and #47 are merged. #45 is still open and now also covers a fourth script,
-`generate_mga_reference.py`. The table below is as of 2026-11-07.
+**Update 2026-11-09.** All three are merged: #46 and #47 on 2026-11-08, and #45 on 2026-11-09. #45 also covers a
+fourth script, `generate_mga_reference.py`. The table below is as of 2026-11-07.
 
 | Item | Found on 2026-11-06 | Pull request (open, not merged) | CI on the PR |
 |---|---|---|---|
