@@ -236,9 +236,9 @@ function ownDisposable<T extends { dispose(): void }>(value: T): T {
 
 // Moons stay propagated while switched off, so the switch can reveal them at once.
 let showMoons: boolean = true;
-const { loadMoonEphemerides } = await import('./sim/loadMoonEphemerides');
+const { loadNamedMoonEphemerides } = await import('./sim/loadMoonEphemerides');
 if (startup.signal.aborted || !recovery.available) return;
-const moonEphemerides = await loadMoonEphemerides().catch((error: unknown) => {
+const moonEphemerides = await loadNamedMoonEphemerides().catch((error: unknown) => {
   console.warn('[moons] fitted ephemerides unavailable; using mean elements:', error);
   return undefined;
 });

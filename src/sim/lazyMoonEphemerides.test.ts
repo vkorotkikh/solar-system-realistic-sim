@@ -403,3 +403,41 @@ for (const requestTimeoutMs of [0, -1, 0.5, Infinity, NaN, 120001]) {
     expect(() => createLazyMoonEphemerisLoader({ requestTimeoutMs })).toThrow();
   });
 }
+
+describe('loadNamedMoonEphemerides', () => {
+  it('gives every named moon a fit, fetching only the ones not bundled', async () => {
+    const { MAJOR_MOONS } = await import('../data/planets');
+    const { loadNamedMoonEphemerides } = await import('./loadMoonEphemerides');
+    const requests: string[] = [];
+    const bodies = await loadNamedMoonEphemerides({
+      fetch: ((input: RequestInfo | URL) => { requests.push(String(input)); return publicShardFetch(input); }) as typeof fetch,
+    });
+    for (const name of MAJOR_MOONS) expect(bodies[name.toLowerCase()], name).toBeDefined();
+    // The manifest plus one shard for each of the 16 named moons outside the 13 bundled fits.
+    expect(requests).toHaveLength(17);
+  });
+
+  it('starts with the bundled fits when the extra fits are slower than the budget', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const { loadNamedMoonEphemerides } = await import('./loadMoonEphemerides');
+    // A request that never answers, but honours its abort signal.
+    const stalled = ((_input: RequestInfo | URL, init?: RequestInit) => new Promise<Response>((_, reject) => {
+      init?.signal?.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')));
+    })) as typeof fetch;
+    const started = Date.now();
+    const bodies = await loadNamedMoonEphemerides({ fetch: stalled, requestTimeoutMs: 2_000 }, 50);
+    expect(Date.now() - started).toBeLessThan(1_500);
+    expect(bodies.titan).toBeDefined();
+    expect(bodies.moon).toBeUndefined();
+    vi.restoreAllMocks();
+  });
+
+  it('keeps the bundled fits when a shard cannot be loaded', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const { loadNamedMoonEphemerides } = await import('./loadMoonEphemerides');
+    const bodies = await loadNamedMoonEphemerides({ fetch: (async () => { throw new TypeError('offline'); }) as typeof fetch });
+    expect(bodies.titan).toBeDefined();
+    expect(bodies.moon).toBeUndefined();
+    vi.restoreAllMocks();
+  });
+});

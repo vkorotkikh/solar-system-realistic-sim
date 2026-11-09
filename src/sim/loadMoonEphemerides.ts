@@ -1,5 +1,31 @@
 import { parseMoonEphemerisArtifact, type GeneratedMoonChebyshevEphemeris } from './moonEphemeris';
 import type { LazyMoonLoaderOptions } from './lazyMoonEphemerides';
+import { MAJOR_MOONS } from '../data/planets';
+
+/** Startup waits this long for the 16 extra fits (about 4 MB) before carrying on without them. */
+const NAMED_MOON_FIT_BUDGET_MS = 4_000;
+
+/**
+ * Fits for every named moon: mean elements alone put Rhea on the wrong side of Saturn.
+ * Small moons stay on mean elements, because all 410 shards total 60 MB.
+ */
+export async function loadNamedMoonEphemerides(lazyOptions?: LazyMoonLoaderOptions, budgetMs = NAMED_MOON_FIT_BUDGET_MS) {
+  const { BASE_MOON_EPHEMERIS_KEYS } = await import('./lazyMoonEphemerides');
+  const additionalBodyKeys = [...MAJOR_MOONS].map(name => name.toLowerCase())
+    .filter(key => !BASE_MOON_EPHEMERIS_KEYS.has(key));
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const overBudget = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`named-moon fits took longer than ${budgetMs} ms`)), budgetMs);
+  });
+  try {
+    return await Promise.race([loadMoonEphemerides({ additionalBodyKeys, lazyOptions }), overBudget]);
+  } catch (error) {
+    console.warn('[moons] named-moon fits unavailable; keeping the bundled fits:', error);
+    return loadMoonEphemerides();
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 /** Called only by consumers that opt into fitted moon propagation. */
 export async function loadMoonEphemerides(options: {
