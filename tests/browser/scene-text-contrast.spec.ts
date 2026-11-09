@@ -64,7 +64,9 @@ test('actual rendered desktop and mobile text retains contrast over any scene', 
   await captureContrast(page, info, 'desktop');
   await audit(page, info, 'desktop');
   await page.setViewportSize({ width: 390, height: 844 });
-  await expect(page.locator('#control-panel')).toBeHidden();
+  // The app closes the panel when the browser delivers the resize, which it does
+  // while rendering a frame. Software GL needs the same budget as the first frame.
+  await expect(page.locator('#control-panel')).toBeHidden({ timeout: 60_000 });
   await captureContrast(page, info, 'mobile-closed');
   await audit(page, info, 'mobile-closed');
   await page.locator('#panel-toggle').click();

@@ -6,7 +6,7 @@ import reference from '../backend/tests/fixtures/solar_frames/cspice_solar_frame
 import { createSunController, fallbackSolarActivityFromJulianDate } from './sunController';
 import { SOLAR_RADIUS_AU } from './frontend/features/solar/solarDisplayScale';
 import { validatedSolarLayerFrames } from './frontend/features/solar/solarGeometryContract';
-import type { SolarPhysicsStatePayload } from './frontend/features/solar/solarPhysicsClient';
+import { solarPhysicsRequestJd, type SolarPhysicsStatePayload } from './frontend/features/solar/solarPhysicsClient';
 import type { SolarDataSourceStatus } from './frontend/features/solar/solarDataStatus';
 import { readCoronalHoles, readSunspotSeeds, updateSunCoronalLoopsFromBlendView } from './frontend/features/solar/sunVisuals';
 import { SolarFlareManager } from './frontend/features/solar/solarFlares';
@@ -52,7 +52,9 @@ describe('solar frame review admission boundaries', () => {
 });
 
 /** The captured snapshot moved to another epoch; the client only accepts the epoch it asked for. */
-function atEpoch(state: ReturnType<typeof payload>, jdTdb: number) {
+function atEpoch(state: ReturnType<typeof payload>, clockJd: number) {
+  // The client requests the start of the clock's 0.01-day step and rejects any other epoch.
+  const jdTdb = solarPhysicsRequestJd(clockJd);
   state.epoch_jd_tdb = jdTdb;
   state.epoch_jd = jdTdb;
   for (const frame of Object.values(state.geometry_frames)) frame.epoch_jd_tdb = jdTdb;
@@ -481,6 +483,15 @@ describe('a backend state is labelled with its lag, then cleared when too old (H
     f.tick(2); // the failure rules apply once the state lags the clock by more than a day
     await f.fail();
     f.tick(0, 360); // the tab is hidden for six minutes: no frames, no polls
+    expect(shownEpoch(f)).toBe(2451552);
+  });
+
+  it('does not count hidden time before a single failed refresh as five minutes of failing', async () => {
+    const f = await fixture();
+    f.tick(2); // the failure rules apply once the state lags the clock by more than a day
+    f.tick(0, 360); // the tab is hidden for six minutes: no frames, no polls
+    await f.fail(); // the first poll on return fails once
+    f.tick(0.01);
     expect(shownEpoch(f)).toBe(2451552);
   });
 

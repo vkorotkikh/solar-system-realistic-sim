@@ -8,6 +8,7 @@ for PFSS.
 
 from __future__ import annotations
 
+import argparse
 import gzip
 import hashlib
 import io
@@ -149,4 +150,7 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+    argparse.ArgumentParser(
+        description=__doc__, epilog=f"Overwrites {OUT.relative_to(ROOT)}/."
+    ).parse_args()
     main()
