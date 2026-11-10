@@ -17,7 +17,8 @@ and the fidelity table could not ask for more.
   (12) are unchanged.
 
 Nothing else moves: the response carries the degree it used, the frontend contract has no degree
-field, and the response body size does not depend on degree.
+field, and the gzip `render-v1` body the browser receives grows by under 3% (largest measured
+388 kB, at `ultra`, against its 512 KiB cap).
 
 ## Evidence
 
