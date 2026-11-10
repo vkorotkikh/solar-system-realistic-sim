@@ -9,7 +9,7 @@ status: final
 
 > **How to use this file.** Everything below the rule is a self-contained prompt for an AI coding agent with shell access to a checkout, or for a human reviewer. Send it with one line saying what you want (run it, or review it): an agent that receives it alone starts a multi-hour run. A run writes one record, `records/audits/<YYYY-MM-DD>-codebase-defects.md`, with its evidence folder beside it (§10), named per `records/README.md`. Nothing goes into `agent-notes/`. Budget: multi-hour and multi-hundred-file; §9 gives the cost of a fan-out.
 >
-> **Maintaining it.** Paths and commands were checked on `origin/main @ bbfbb27`. If a cited path or a §4 command is missing on your target, this file has drifted: correct it in the same run and say so under Limitations. Edit lines, do not append: it holds only what every run needs, and measured numbers belong in records. It replaced `agent-notes/codebase_evaluation_prompt_2026-08-22.md` and `agent-notes/codebase_evaluation_prompt_major_issues.md`, which stay as references.
+> **Maintaining it.** Paths and commands were checked on `origin/main @ bbfbb27` plus the branch that adds `records/` and this file. A target without `records/` predates that convention, and §10 still applies. If any other cited path or a §4 command is missing on your target, this file has drifted: list each case under Limitations for the owner, and leave the file alone during a run. When you maintain it, edit lines, do not append: it holds only what every run needs, and measured numbers belong in records. It replaced `agent-notes/codebase_evaluation_prompt_2026-08-22.md` and `agent-notes/codebase_evaluation_prompt_major_issues.md`, which stay as references.
 
 ---
 
@@ -34,7 +34,7 @@ Calibration: a solo-author research and visualisation project, heavily agent-ass
 ```text
 <state>/                     default ~/.local/state/solar-audit/<YYYY-MM-DD>-<sha>/
   env.sh                     the §3 exports; source it in every shell
-  wt/                        the target, detached and read-only: git worktree add --detach <state>/wt <sha>
+  wt/                        the target, detached, tracked files never touched: git worktree add --detach <state>/wt <sha>
   wt-gates/                  a second detached worktree; only the §4 gates run in it
   wt-<name>/                 scratch worktrees for anything that writes: mutations, generators, builds, --help probes
   venv/  venv-r3r4/          §3
@@ -47,7 +47,7 @@ Calibration: a solo-author research and visualisation project, heavily agent-ass
     <finding-id>/            repro script, captured output, truth data
 ```
 
-- Never audit or run gates in the owner's live checkout: other agents commit into it and move branches mid-run. Its untracked notes exist nowhere else, so read them there.
+- The owner's checkout is the repository's main worktree, the first line of `git worktree list`. Never audit or run gates in it: other agents commit into it and move branches mid-run. Its untracked notes exist nowhere else, so read them there.
 - `agent-notes/` and `my-notes/` are archives (rule 9 of `records/README.md`): read and link, never write. Many of their files are pinned by SHA-256 manifests.
 - Every branch, PR and CI claim in an older note is a hypothesis. Main has merged most of the branches those notes audited.
 
@@ -60,31 +60,33 @@ python3.12 -m venv <state>/venv      && <state>/venv/bin/pip install -r ci/backe
 python3.12 -m venv <state>/venv-r3r4 && <state>/venv-r3r4/bin/pip install -r ci/r3-r4-requirements.txt
 npm ci --ignore-scripts                                  # in wt/ and in wt-gates/
 export PYTHONHASHSEED=0 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1 TZ=UTC
-export OPENBLAS_CORETYPE=Nehalem OPENBLAS_L2_SIZE=256    # the backend-tests job sets these; the r3-r4-science job does not
+export OPENBLAS_CORETYPE=Nehalem OPENBLAS_L2_SIZE=256    # backend-tests job only; unset both for the r3-r4-science gates
 ```
+
+Check `node --version` and `npm --version` against the pins first. In §4, `python` is the interpreter of the venv each comment names.
 
 On the owner's WSL box:
 
 - Python 3.12.13 is `~/.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/bin/python3.12`. The default `node` is v24; Node 22.23.2 with npm 10.9.8 is in `~/miniconda3/envs/icl-vram-py312-cu132/bin`.
 - The CPU is a fast AVX-512 part: timings and float bits differ from GitHub's runners (§6, reproducibility).
 - Browsers run headless, always. A headed browser opens on the owner's desktop and takes the keyboard. That rules out `--headed`, `headless: false`, and on this tree `UI_HARDWARE_WEBGL=1` and `UI_ZOOM_HEADFUL=1`.
-- Headless Chromium renders with SwiftShader. The real GPU also works headless: launch with `--use-angle=gl-egl`, set `GALLIUM_DRIVER=d3d12` in the browser's environment, remove `DISPLAY` and `WAYLAND_DISPLAY` from it, and fail unless the WebGL renderer string contains `D3D12`. Record the renderer string with every browser measurement; performance numbers from a software renderer are not findings.
-- WebKit cannot launch (no `libgtk-4`). Run that project from a scratch config whose `launchOptions.executablePath` is `~/.cache/solar-webkit-noble-20261101/browsers/webkit-2370/pw_run.sh`; if that cache is gone, record WebKit as not run.
+- Headless Chromium renders with SwiftShader, and the §4 gates run that way, as in CI. For your own measurements the real GPU also works headless: launch with `--use-angle=gl-egl`, set `GALLIUM_DRIVER=d3d12` in the browser's environment, remove `DISPLAY` and `WAYLAND_DISPLAY` from it, and fail unless the WebGL renderer string contains `D3D12`. Record the renderer string with every browser measurement; performance numbers from a software renderer are not findings.
+- WebKit cannot launch (no `libgtk-4`). Put a scratch config beside `playwright.config.ts` in `wt-gates/` that imports it and gives the `webkit` project the `launchOptions.executablePath` `~/.cache/solar-webkit-noble-20261101/browsers/webkit-2370/pw_run.sh` (as an absolute path), run `npx playwright test --config=<that file> --project=webkit`, then delete the file. If that cache is gone, record WebKit as not run.
 - Other sessions hold ports, 5173 and 8042 among them. Give every server a port of its own, and pass `UI_TEST_PORT` and `UI_PRODUCTION_PORT` to the Playwright gates.
 
 ## 4. Baseline first
 
-The workflows are the gate list. Run every `run:` step of `.github/workflows/frontend-ui.yml` and `.github/workflows/r3-r4-science.yml` in `wt-gates/`, on a quiet machine, before any hunting: a loaded box turns timing gates red. The block is the snapshot for the target above, plus four checks CI does not run. Put each exit code, count and duration in the record header. A red gate is finding 1 and your comparison baseline.
+The workflows are the gate list. Run every check step of `.github/workflows/frontend-ui.yml` and `.github/workflows/r3-r4-science.yml` in `wt-gates/`, on a quiet machine, before any hunting: a loaded box turns timing gates red. Their setup steps are §3: skip `npm install --global` and `--with-deps`. The block is the snapshot for the target above, plus four checks CI does not run. Put each exit code, count and duration in the record's baseline (§10, item 1). A red gate is finding 1 and your comparison baseline.
 
 ```bash
-# frontend-ui.yml: ui, production-artifact, browser (browsers: npx playwright install chromium firefox webkit; --with-deps needs sudo)
+# frontend-ui.yml: ui, production-artifact, browser (browsers: npx playwright install chromium firefox webkit)
 npm test                                          # vitest
 npm run typecheck:ratchet && npm run typecheck:ui-delta && npm run test:types:ui && npm run typecheck:scripts
 npm run typecheck                                 # strict tsc, CI requires 0 errors
 npm run build && npm run verify:asteroid-gpu
 VITE_BACKEND_ORIGIN= npm run build && npm run test:production
 for p in chromium chromium-tab-zoom firefox webkit; do npm run test:browser -- --project=$p; done
-# r3-r4-science.yml, job r3-r4-science: r3r4 venv, Node 22 on PATH, clean tracked tree
+# r3-r4-science.yml, job r3-r4-science: r3r4 venv, Node 22 on PATH, clean tracked tree (the job also repeats test, build, ratchet and typecheck)
 python -m pytest --noconftest -q scripts/ci/tests/test_verify_r3_r4_runner.py scripts/ci/tests/test_r3_r4_workflow.py
 python scripts/ci/verify_r3_r4.py --repo . --manifest ci/r3-r4-science-verification.json --artifacts <dir> all
 # r3-r4-science.yml, job backend-tests: backend venv, from the repo root (`cd backend && pytest` breaks collection)
@@ -105,7 +107,7 @@ A gate that is red for a host reason (a port in use, a missing system library) i
 
 ## 5. Known issues: dedupe before you write
 
-- `records/INDEX.md` lists every record, newest first, and says where the living registers are. Read the newest audit record's register and refuted appendix first.
+- `records/INDEX.md` lists every record, newest first, and says where the living registers are. If it lists an audit record, read that record's register and refuted appendix first.
 - Until the owner moves them, the registers are in the `agent-notes/` archive. `agent-notes/CODEBASE_SCAN_AND_ISSUE_TRACKER_2026-10-10.md` holds SCN-001 to SCN-083, with dispositions in `agent-notes/REMEDIATION_STATUS_2026-10-30.md`. `agent-notes/MASTER_ISSUE_TRACKER_2026-10-11.md` is a second register, not reconciled with the first. Check both.
 - `agent-notes/CONSOLIDATED_MARKDOWN_ISSUE_AUDIT_2026-10-24.md` maps the older K-, F- and B-numbered findings onto SCN ids. `agent-notes/AUDIT_AND_ISSUE_INDEX_2026-10-07.md` is the document map.
 - Untracked, in the owner's checkout only: `agent-notes/OPEN_FINDINGS_2026-11-02.md` lists what was still open on 2 November.
@@ -131,22 +133,22 @@ npx esbuild <entry> --bundle --format=esm --platform=browser --external:'/fonts/
 
 List the backend routes those modules call, and the backend modules that `backend/server.py` never imports. Every finding then carries one reachability: `shipped` (reached from the entry points, or a route they call), `api-only` (a backend route with no shipped caller), `dormant` (unreachable, or behind a constant such as `showMoons` in `src/main.ts`), `gate` (CI, tests, verifiers) or `docs`. Unreachable is not dead: `docs/adr/0006-runtime-composition-and-retained-apis.md` retains the unwired planner, satellite and navigation modules on purpose, so rate their defects dormant and do not propose deleting them.
 
-**Layers.** These twelve are the hunt scopes and the rows of the coverage matrix (§10). On entering one, read its question bank in `agent-notes/codebase_evaluation_prompt_2026-08-22.md` §6.1 to §6.10; the line numbers there date from August.
+**Layers.** These twelve are the hunt scopes and the rows of the coverage matrix (§10). The last column is the layer's question bank in `agent-notes/codebase_evaluation_prompt_2026-08-22.md`; read it on entering the layer (its line numbers date from August). A layer owns the tests beside its code, and `tooling` owns whatever no other row names.
 
-| Layer | Where |
-|---|---|
-| `fe-core` | `src/main.ts`, `src/frontend/app/`, `src/workers/`, `src/constants.ts`, `index.html` |
-| `orbits` | orbit, catalog and moon modules in `src/sim/`; `src/data/planets.ts`; `backend/data/` |
-| `belts` | asteroid and Kuiper modules in `src/sim/`; `src/frontend/features/asteroids/`; `backend/sim/kuiper.py`; `scripts/asteroid/` |
-| `solar-physics` | PFSS, harmonics, GONG, frame and time modules in `backend/sim/`; the ADRs in `docs/adr/` |
-| `solar-runtime` | the `/solar/*` and `/health` routes in `backend/server.py`; `backend/sim/solar_realtime_data.py`; `backend/sim/process_supervisor.py`; `backend/http_ingress.py` |
-| `solar-client` | `src/sunController.ts`; the client, status, frame and blending modules in `src/frontend/features/solar/` |
-| `solar-visuals` | `src/frontend/features/solar/sunVisuals.ts` and the flare, field-line and wave modules beside it, with their GLSL |
-| `trajectory` | `backend/trajectory/`; `backend/mission/ephemeris_service.py`; the `/trajectory/*` routes |
-| `mission` | the rest of `backend/mission/`; `backend/benchmark/`; the `/mission/*` and `/benchmark/*` routes |
-| `engines` | `backend/sim/rebound_nbody.py`, `backend/sim/tudatpy_hooks.py` and the force models; `/ws/sim`; app setup and CORS; `scripts/dev-full.mjs` |
-| `exotic-planetary` | `src/frontend/features/superluminal-modeling/`; `src/frontend/features/planetary/` |
-| `tooling` | `scripts/`, `ci/`, `.github/workflows/`, `tests/`, `README.md`, `docs/` |
+| Layer | Where | Bank |
+|---|---|---|
+| `fe-core` | `src/main.ts`, `src/frontend/app/`, `src/frontend/rendering/`, `src/frontend/camera/`, `src/workers/`, `src/constants.ts`, `src/textures.ts`, `src/style.css`, `index.html` | §6.1, §6.6 |
+| `orbits` | orbit, catalog and moon modules in `src/sim/` and `src/data/`; `public/moon-ephemerides/`; `backend/data/` | §6.2 |
+| `belts` | asteroid and Kuiper modules in `src/sim/` and `src/data/`; `src/frontend/features/asteroids/`; `backend/sim/kuiper.py`; `scripts/asteroid/`; the dataset in `public/data/` | §6.5 |
+| `solar-physics` | PFSS, harmonics, GONG, frame and time modules in `backend/sim/`; the ADRs in `docs/adr/` | §6.3 |
+| `solar-runtime` | the `/solar/*` and `/health` routes in `backend/server.py`; `backend/sim/solar_realtime_data.py`; `backend/sim/process_supervisor.py`; `backend/http_ingress.py`; `backend/solar_delivery.py` | §6.3, §6.7 |
+| `solar-client` | `src/sunController.ts`; the client, status, frame and blending modules in `src/frontend/features/solar/` | §6.3 |
+| `solar-visuals` | `src/frontend/features/solar/sunVisuals.ts` and the flare, field-line and wave modules beside it, with their GLSL | §6.3 |
+| `trajectory` | `backend/trajectory/`; `backend/mission/ephemeris_service.py`; the `/trajectory/*` routes; `src/frontend/features/trajectory/` | §6.8 |
+| `mission` | the rest of `backend/mission/`; `backend/benchmark/`; the `/mission/*` and `/benchmark/*` routes | §6.8 |
+| `engines` | `backend/sim/rebound_nbody.py`, `backend/sim/tudatpy_hooks.py` and the force models; `/ws/sim` and every route not named above; app setup and CORS; `backend/server_launcher.py` | §6.7 |
+| `exotic-planetary` | `src/frontend/features/superluminal-modeling/`; `src/frontend/features/planetary/` | §6.4 |
+| `tooling` | `scripts/`, `ci/`, `.github/workflows/`, `tests/`, `public/`, `README.md`, `docs/`, the root configs; the §4 gates and the cross-cutting probes of §9 | §6.9, §6.10 |
 
 Design intent for the Sun is in `docs/solar-*.md` and the ADRs; for moons in `docs/moon-catalog-integrity.md`; for the UI in `docs/accessibility-acceptance.md` and `docs/frontend-configuration.md`.
 
@@ -176,7 +178,7 @@ Design intent for the Sun is in `docs/solar-*.md` and the ADRs; for moons in `do
 **Tests that cannot fail**
 - Assertions that pin the bug (a benchmark test asserted `validationCoverage == 0.0`), monkeypatched fake solvers inside accuracy tests, tolerances wider than the signal, single-epoch gates.
 - Mutation: mutate production and run the full suite, never a subset. A surviving mutant is "untested" only after you prove the branch is reachable (B071 was withdrawn on exactly this).
-- Tests that never run: the skipped set, the `NOT_IN_CI` list in `scripts/ci/tests/test_r3_r4_workflow.py`, and test files that no workflow or npm script names. List each with its reason (the negative controls of the R3/R4 mutation gate are hash-pinned and run by no workflow).
+- Tests that never run: beyond the skips counted in §4, the `NOT_IN_CI` list in `scripts/ci/tests/test_r3_r4_workflow.py` and test files that no workflow or npm script names. List each with its reason (the negative controls of the R3/R4 mutation gate are hash-pinned and run by no workflow).
 
 **Consistency**
 - Code vs docs vs ADRs vs README claims; manifests and hashes (`ci/r3-r4-science-verification.json`, evidence `SHA256SUMS`) vs the files they pin; frontend and backend schema versions, field names, units and status codes.
@@ -189,7 +191,7 @@ Design intent for the Sun is in `docs/solar-*.md` and the ADRs; for moons in `do
 
 ## 7. Evidence standard
 
-Each finding is one JSON line in `findings/<layer>.jsonl`, written the moment it is proven and built with a JSON library, never by hand. Fields: `id` (`<layer>-NN`); `kind` (`finding` or `status`); `known_id`; `severity`; `class` (§1: `bug`, `inconsistency`, `logic-bomb`, `math`); `sweep` (§6: `math`, `logic-bomb`, `dead-code`, `tests`, `consistency`, `robustness`); `title`; `path_line` on the target SHA; `repro_cmd`, exact, with its captured output in `evidence/<finding-id>/`; `expected` and `actual`; `source_of_truth` (Horizons query, textbook relation, ADR, schema); `evidence_kind`; `reachability` and `reachability_proof` (§6); `fix_sketch`. A status row adds `status_result`: `still-open`, `fixed`, `partly-fixed` or `cannot-reproduce`. When the target is not `origin/main`, add the rerun result there.
+Each finding is one JSON line in `findings/<layer>.jsonl`, written the moment it is proven and built with a JSON library, never by hand. Fields: `id` (`<layer>-NN`); `layer`; `kind` (`finding` or `status`); `known_id`; `severity`; `class` (§1: `bug`, `inconsistency`, `logic-bomb`, `math`); `sweep` (§6: `math`, `logic-bomb`, `dead-code`, `tests`, `consistency`, `robustness`); `title`; `path_line` on the target SHA; `repro_cmd`, exact, with its captured output in `evidence/<finding-id>/`; `expected` and `actual`; `source_of_truth` (Horizons query, textbook relation, ADR, schema); `evidence_kind`; `reachability` and `reachability_proof` (§6); `fix_sketch`. A status row carries the same fields, with `known_id` required, and adds `status_result`: `still-open`, `fixed`, `partly-fixed` or `cannot-reproduce`. When the target is not `origin/main`, add the rerun result there.
 
 Cleared probes and blind spots go to `cleared/<layer>.jsonl` (`layer`, `sweep`, `probe`, `result`: `cleared` or `blind-spot`, `detail`). Refuter verdicts go to `verdicts/<lens>.jsonl` (`finding_id`, `lens`, `verdict`: `refuted`, `upheld` or `partial`, `severity_if_upheld`, `reason`, `repro_cmd`). Save network truth data beside its query, so a rerun can check your arithmetic offline.
 
@@ -226,34 +228,33 @@ Without subagents, refute each finding yourself by a second, different method (a
 
 ## 10. Deliverable
 
-Publish once, on the day the audit is finished, as new untracked files in the owner's checkout:
+Publish once, on the day the audit is finished, into the owner's checkout (§2): two new paths and one new index line, all left uncommitted.
 
 ```text
 records/
-  INDEX.md                                       one new line at the top (rule 10 of records/README.md)
+  INDEX.md                                       one new line (rule 10 of records/README.md)
   audits/
     <YYYY-MM-DD>-codebase-defects.md             the record: <state>/record.md
     <YYYY-MM-DD>-codebase-defects-evidence/      <state>/evidence/, copied unchanged
-      SHA256SUMS                                 written last, over every other file in the folder
+      SHA256SUMS                                 written last: every file in the folder, and the record as ../<name>.md
       findings/  cleared/  verdicts/  gates/  reachability/  <finding-id>/
 ```
 
 - `<YYYY-MM-DD>` is the owner's local date, not the `TZ=UTC` of the test shell. A second record that day takes the suffix `-2`.
-- The record opens with the header of rule 7 (`title`, `date`, `target`, `status`). Once `SHA256SUMS` exists the record is immutable (rule 6): a correction is a new record with `supersedes:`.
-- If the checkout has no `records/INDEX.md` yet, create `records/audits/` anyway and give the index line in your final message.
+- The record opens with the front matter of rule 7 (`title`, `date`, `target`, `status`). Once `SHA256SUMS` exists the record is immutable (rule 6): a correction is a new record with `supersedes:`.
+- The index line is `- <YYYY-MM-DD> · audits · [Codebase defects](audits/<YYYY-MM-DD>-codebase-defects.md) · target <sha>`. Make it the first entry of `records/INDEX.md`, in place of `(no records yet)` if that is still there, and set that file's `updated:`. If the checkout has no `records/INDEX.md` yet, create `records/audits/` anyway and give the line in your final message.
 - The evidence folder holds what a rerun needs and nothing a script can regenerate: no bundles, build output, copies of repository files, worktrees or toolchains. Name a download by URL and SHA-256. Stay under 10 MB; the 2026-09-24 audit needed 2.
 
 The record, in order:
 
-1. Header, then environment and pins, every §4 gate with exit code, counts and duration, scope decisions.
+1. Front matter, then the baseline: environment and pins, every §4 gate with exit code, counts and duration, scope decisions.
 2. Ranked register: Critical and High in full (§7), Medium table, Low counts.
 3. Status re-verification: every known SCN or B id you touched, with its rerun result on the target.
-4. Coverage matrix, the twelve layers by the six sweeps of §6: each cell is a finding id, "cleared" with the probe named, or "blind spot" with the reason.
+4. Coverage matrix, the twelve layers by the six sweeps of §6: each cell holds finding ids, "cleared" with the probe named, or "blind spot" with the reason.
 5. Refuted appendix.
 6. Limitations: what did not run and why, what used a software renderer, what stayed single-source.
 7. Next actions: one proposed PR per defect in the owner's working style, small commits with a red test first.
-
-Score as a secondary lens on the eight weighted dimensions of `agent-notes/CODEBASE_AUDIT_2026-09-07.md` §14 (functional 15, scientific 25, testing 15, architecture 10, performance 10, security 10, provenance 10, documentation 5), so results stay comparable with 36 (2026-08-23), 46 (2026-09-07) and 49 (2026-09-24).
+8. Score, as a secondary lens: the eight weighted dimensions of `agent-notes/CODEBASE_AUDIT_2026-09-07.md` §14 (functional 15, scientific 25, testing 15, architecture 10, performance 10, security 10, provenance 10, documentation 5), so results stay comparable with 36 (2026-08-23), 46 (2026-09-07) and 49 (2026-09-24).
 
 ## 11. Done when
 
