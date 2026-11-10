@@ -441,3 +441,26 @@ def test_parker_spiral_uses_wsa_model() -> None:
         )
         v = line["wind_speed_kms"]
         assert 265.0 <= v <= 860.0, f"Spiral wind speed {v} out of range"
+
+
+@pytest.mark.parametrize(
+    ("fidelity", "lmax"),
+    [("preview", 9), ("operational", 12), ("high", 40), ("ultra", 40)],
+)
+def test_fidelity_table_requests_the_pfss_degree_and_the_config_admits_it(
+    monkeypatch: pytest.MonkeyPatch, fidelity: str, lmax: int
+) -> None:
+    from sim.pfss_magnetogram import PFSSSolutionConfig
+
+    model = SolarCoronaPhysicsModel(seed=17, base_tube_count=64)
+    seen: dict[str, object] = {}
+
+    def recorder(**kwargs):
+        seen.update(kwargs)
+        return {"geometry_frame": None, "lines": []}
+
+    monkeypatch.setattr(model._pfss_cache, "get_or_compute", recorder)
+    model.sample_state(jd=2460000.5, fidelity=fidelity, max_features=8, forcing="synthetic")
+
+    assert seen["lmax"] == lmax
+    assert PFSSSolutionConfig(lmax=lmax).lmax == lmax
