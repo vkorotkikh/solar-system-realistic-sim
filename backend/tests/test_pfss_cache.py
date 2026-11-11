@@ -181,6 +181,7 @@ def _snapshot_with_native_artifact(
         native_header_bytes=native_header_bytes,
         native_header_sha256=hashlib.sha256(native_header_bytes).hexdigest(),
         expanded_fits_sha256=hashlib.sha256(expanded).hexdigest(),
+        native_fits_bytes=expanded,
     )
     return gong.MagnetogramSnapshot(
         snapshot.snapshot_id,
