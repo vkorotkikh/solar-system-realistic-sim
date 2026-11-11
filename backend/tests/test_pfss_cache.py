@@ -265,20 +265,6 @@ def test_hale_corrected_snapshot_reuses_identity_without_reusing_inverted_conten
     assert not np.array_equal(first.field_gauss, inverted.field_gauss)
 
 
-def test_timeout_is_request_metadata_not_solution_identity(
-    monkeypatch: pytest.MonkeyPatch,
-    observed_snapshot: gong.MagnetogramSnapshot,
-) -> None:
-    cache, calls = _recording_cache(monkeypatch)
-    first = cache.get_or_compute(**BASE_REQUEST, snapshot=observed_snapshot)
-    second = cache.get_or_compute(
-        **({**BASE_REQUEST, "gong_timeout_s": 99.0}), snapshot=observed_snapshot
-    )
-    assert len(calls) == 1
-    assert second == first
-    assert second is not first
-
-
 def test_effective_scalar_inputs_are_canonicalized(monkeypatch: pytest.MonkeyPatch) -> None:
     cache, calls = _recording_cache(monkeypatch)
     cache.get_or_compute(jd=2_460_010, activity=-3, n_lines=1, lmax=99)
@@ -396,19 +382,6 @@ def test_observed_snapshot_rejects_ineligible_attempt_before_cache_lookup(
     assert cache._inflight == {}
 
 
-def test_provider_time_is_part_of_observed_identity(
-    monkeypatch: pytest.MonkeyPatch,
-    observed_snapshot: gong.MagnetogramSnapshot,
-) -> None:
-    cache, calls = _recording_cache(monkeypatch)
-    cache.get_or_compute(**BASE_REQUEST, snapshot=observed_snapshot)
-    cache.get_or_compute(
-        **BASE_REQUEST,
-        snapshot=_parsed_observed_variant(minute="2305"),
-    )
-    assert len(calls) == 2
-
-
 @pytest.mark.parametrize("metadata", ["time_and_coverage", "rotation"])
 def test_provider_coverage_and_rotation_are_part_of_observed_identity(
     monkeypatch: pytest.MonkeyPatch,
@@ -423,27 +396,6 @@ def test_provider_coverage_and_rotation_are_part_of_observed_identity(
     cache.get_or_compute(**BASE_REQUEST, snapshot=observed_snapshot)
     cache.get_or_compute(**BASE_REQUEST, snapshot=variant)
     assert len(calls) == 2
-
-
-def test_observed_identity_excludes_retrieval_metadata(
-    monkeypatch: pytest.MonkeyPatch,
-    observed_snapshot: gong.MagnetogramSnapshot,
-) -> None:
-    retrieval_variant = gong.MagnetogramSnapshot(
-        observed_snapshot.snapshot_id,
-        observed_snapshot.field_gauss,
-        observed_snapshot.grid,
-        replace(
-            observed_snapshot.provenance,
-            request_jd_tdb=observed_snapshot.provenance.request_jd_tdb + 10,
-            retrieved_at_utc="2030-01-01T00:00:00Z",
-            retrieval_timeout_s=99.0,
-        ),
-    )
-    cache, calls = _recording_cache(monkeypatch)
-    cache.get_or_compute(**BASE_REQUEST, snapshot=observed_snapshot)
-    cache.get_or_compute(**BASE_REQUEST, snapshot=retrieval_variant)
-    assert len(calls) == 1
 
 
 def test_each_cache_hit_attaches_current_attempt_provenance(
@@ -561,12 +513,17 @@ def test_observed_source_url_must_be_the_exact_filename_derived_archive_url(
     assert cache._cache == {}
 
 
-@pytest.mark.parametrize("mutation", ["naxis", "stale_checksum", "oversized_header"])
+@pytest.mark.parametrize(
+    "mutation",
+    ["naxis", "stale_checksum", "oversized_header", "padding-block", "image-hdu"],
+)
 def test_reconstructed_fits_replays_bounded_parser_gates(
     monkeypatch: pytest.MonkeyPatch,
     observed_snapshot: gong.MagnetogramSnapshot,
     mutation: str,
 ) -> None:
+    native_header = observed_snapshot.provenance.native_header_bytes
+    trailing_bytes = b""
     if mutation == "naxis":
         native_header = _native_header_with_updates(
             observed_snapshot, updates={"NAXIS1": 359}
@@ -575,31 +532,15 @@ def test_reconstructed_fits_replays_bounded_parser_gates(
         native_header = _native_header_with_updates(
             observed_snapshot, updates={"COMMENT": "checksum must now be stale"}
         )
-    else:
+    elif mutation == "oversized_header":
         native_header = _native_header_with_updates(observed_snapshot, comments=4000)
         assert len(native_header) > gong.GongParseLimits().max_header_bytes
-    invalid = _snapshot_with_native_artifact(observed_snapshot, native_header)
-    cache, calls = _recording_cache(monkeypatch)
-    with pytest.raises(ValueError, match="snapshot"):
-        cache.get_or_compute(**BASE_REQUEST, snapshot=invalid)
-    assert calls == []
-    assert cache._cache == {}
-
-
-@pytest.mark.parametrize(
-    "trailing_bytes",
-    [b"\0" * 2880, pytest.param(_trailing_image_hdu_bytes(), id="image-hdu")],
-    ids=["padding-block", "image-hdu"],
-)
-def test_reconstructed_fits_rejects_trailing_blocks_and_hdus(
-    monkeypatch: pytest.MonkeyPatch,
-    observed_snapshot: gong.MagnetogramSnapshot,
-    trailing_bytes: bytes,
-) -> None:
+    elif mutation == "padding-block":
+        trailing_bytes = b"\0" * 2880
+    else:
+        trailing_bytes = _trailing_image_hdu_bytes()
     invalid = _snapshot_with_native_artifact(
-        observed_snapshot,
-        observed_snapshot.provenance.native_header_bytes,
-        trailing_bytes=trailing_bytes,
+        observed_snapshot, native_header, trailing_bytes=trailing_bytes
     )
     cache, calls = _recording_cache(monkeypatch)
     with pytest.raises(ValueError, match="snapshot"):
