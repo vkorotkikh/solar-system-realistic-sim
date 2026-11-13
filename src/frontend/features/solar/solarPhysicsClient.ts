@@ -463,8 +463,15 @@ export class SolarPhysicsClient {
   lastError: string | null;
   lastFailure: SolarPhysicsFailure | null;
   consecutiveFailures: number;
-  /** When the current run of failures began; 0 with none. */
-  failingSinceMs: number;
+  /**
+   * How long the current run of failures has been retrying: each wait the client scheduled after a
+   * failure, plus each failed attempt's own time. Time past a scheduled retry with no attempt (a
+   * hidden tab runs no frames, so no polls) does not count. 0 with no failures.
+   */
+  failingForMs: number;
+  /** Monotonic time of the latest failure, and of the retry it scheduled. */
+  private lastFailureMonoMs = 0;
+  private retryDueMonoMs = 0;
   lastSuccessMs: number;
   lastRefreshMs: number;
   lastLatencyMs: number;
@@ -509,7 +516,7 @@ export class SolarPhysicsClient {
     this.lastError = null;
     this.lastFailure = null;
     this.consecutiveFailures = 0;
-    this.failingSinceMs = 0;
+    this.failingForMs = 0;
     this.lastSuccessMs = 0;
     this.lastRefreshMs = 0;
     this.lastLatencyMs = 0;
@@ -650,6 +657,7 @@ export class SolarPhysicsClient {
     this.requestContext = context;
 
     const startMs = Date.now();
+    const startMonoMs = performance.now();
     // Delivery duration is monotonic; wall-clock corrections still affect only status timestamps.
     const deliveryDeadlineMs = performance.now() + this.timeoutMs;
     const deliveryInterrupted = Symbol('delivery interrupted');
@@ -757,7 +765,7 @@ export class SolarPhysicsClient {
       this.lastError = null;
       this.lastFailure = null;
       this.consecutiveFailures = 0;
-      this.failingSinceMs = 0;
+      this.failingForMs = 0;
       this.lastProbe = null;
       this.nextRefreshMs = nowMs + this.pollIntervalMs;
       return true;
@@ -774,13 +782,24 @@ export class SolarPhysicsClient {
         code: failure.code,
         atMs: Date.now()
       };
-      if (this.consecutiveFailures === 0) this.failingSinceMs = this.lastFailure.atMs;
+      const failedMonoMs = performance.now();
+      if (this.consecutiveFailures === 0) {
+        this.failingForMs = 0;
+      } else {
+        // The wait before this attempt counts up to the retry the last failure scheduled; any longer
+        // gap means no attempts were being made. This attempt's own time always counts.
+        const waitMs = Math.min(startMonoMs, this.retryDueMonoMs) - this.lastFailureMonoMs;
+        this.failingForMs += Math.max(0, waitMs) + Math.max(0, failedMonoMs - startMonoMs);
+      }
       this.consecutiveFailures += 1;
-      this.nextRefreshMs = Date.now() + Math.max(
+      const retryDelayMs = Math.max(
         SOLAR_PHYSICS_ERROR_BACKOFF_MS,
         this.pollIntervalMs,
         Math.min(MAX_RETRY_AFTER_MS, failure.retryAfterMs ?? 0)
       );
+      this.nextRefreshMs = Date.now() + retryDelayMs;
+      this.lastFailureMonoMs = failedMonoMs;
+      this.retryDueMonoMs = failedMonoMs + retryDelayMs;
       return false;
     } finally {
       lifetime.signal.removeEventListener('abort', stopDelivery);
