@@ -4,17 +4,19 @@
 // Proposed FE-STARTUP-ESCAPE optional listener-signal contract. This calls the
 // actual current time controller; no source replacement or fake implementation.
 import { describe, expect, it } from 'vitest';
-import { createTimeController } from './timeController';
+import { createTimeController, timeScaleStops } from './timeController';
+
+const stopIndex = (rate: number) => String(timeScaleStops(-120, 120).indexOf(rate));
 
 function fixture(signal?: AbortSignal) {
   const nowTime = new EventTarget();
-  const timeScale = Object.assign(new EventTarget(), { value: '2', min: '', max: '' });
+  const timeScale = Object.assign(new EventTarget(), { value: '', min: '', max: '', setAttribute() {} });
   const plannerDate = { value: 'old departure' }, plannerArrivalDate = { value: 'old arrival' };
   const timeScaleValue = { textContent: '' }, timeDate = { textContent: '', dateTime: '' };
   const state = { julianDate: 10, timeScaleDaysPerSec: 2, timeScaleDirty: false, paused: true };
   const jumps: unknown[] = [];
   const args = {
-    dom: { nowTime: nowTime as HTMLElement, timeScale: timeScale as HTMLInputElement,
+    dom: { nowTime: nowTime as HTMLElement, timeScale: timeScale as unknown as HTMLInputElement,
       plannerDate: plannerDate as HTMLInputElement, plannerArrivalDate: plannerArrivalDate as HTMLInputElement,
       timeScaleValue: timeScaleValue as HTMLElement, timeDate: timeDate as HTMLTimeElement },
     simState: state, minTimeScale: -120, maxTimeScale: 120,
@@ -36,8 +38,8 @@ describe('time controller runtime listener ownership', () => {
 
   it('legacy omitted signal preserves speed input and ignores nonfinite values', () => {
     const f = fixture();
-    expect([f.timeScale.min, f.timeScale.max, f.timeScale.value]).toEqual(['-120', '120', '2']);
-    f.timeScale.value = '-4'; f.timeScale.dispatchEvent(new Event('input'));
+    expect([f.timeScale.min, f.timeScale.max, f.timeScale.value]).toEqual(['0', String(timeScaleStops(-120, 120).length - 1), stopIndex(2)]);
+    f.timeScale.value = stopIndex(-4); f.timeScale.dispatchEvent(new Event('input'));
     f.timeScale.value = 'NaN'; f.timeScale.dispatchEvent(new Event('input'));
     expect(f.state).toEqual({ julianDate: 10, timeScaleDaysPerSec: -4, timeScaleDirty: true, paused: true });
     expect(f.jumps).toEqual([]);
@@ -63,7 +65,7 @@ describe('time controller runtime listener ownership', () => {
   it('live signal preserves the same speed action', () => {
     const owner = new AbortController(); const f = fixture(owner.signal);
     try {
-      f.timeScale.value = '-4'; f.timeScale.dispatchEvent(new Event('input'));
+      f.timeScale.value = stopIndex(-4); f.timeScale.dispatchEvent(new Event('input'));
       expect(f.state).toEqual({ julianDate: 10, timeScaleDaysPerSec: -4, timeScaleDirty: true, paused: true });
       expect(f.jumps).toEqual([]);
     } finally { owner.abort(); }
@@ -87,7 +89,7 @@ describe('time controller runtime listener ownership', () => {
 
   it('aborting after bind retires the speed listener even for a synthetic input', () => {
     const owner = new AbortController(); const f = fixture(owner.signal); owner.abort();
-    f.timeScale.value = '-4'; f.timeScale.dispatchEvent(new Event('input'));
+    f.timeScale.value = stopIndex(-4); f.timeScale.dispatchEvent(new Event('input'));
     expect(f.state).toEqual({ julianDate: 10, timeScaleDaysPerSec: 2, timeScaleDirty: false, paused: true });
     expect(f.jumps).toEqual([]);
   });
@@ -102,7 +104,7 @@ describe('time controller runtime listener ownership', () => {
 
   it('an already-aborted signal never binds a live speed action', () => {
     const owner = new AbortController(); owner.abort(); const f = fixture(owner.signal);
-    f.timeScale.value = '-4'; f.timeScale.dispatchEvent(new Event('input'));
+    f.timeScale.value = stopIndex(-4); f.timeScale.dispatchEvent(new Event('input'));
     expect(f.state).toEqual({ julianDate: 10, timeScaleDaysPerSec: 2, timeScaleDirty: false, paused: true });
     expect(f.jumps).toEqual([]);
   });

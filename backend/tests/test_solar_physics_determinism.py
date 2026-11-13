@@ -3,7 +3,9 @@
 These exist because the PFSS layer shipped keyed its cache on Carrington rotation
 alone, so identical requests could return different payloads depending on which
 fidelity computed a rotation first (SF-4), and the endpoint had no concurrency or
-range bound (R3). Each assertion below fails against that pre-R3 behaviour.
+range bound (R3). Each assertion below fails against that pre-R3 behaviour. The
+out-of-range epoch and max_features rejections are pinned in
+test_solar_epoch_range_contract.py and test_solar_physics_api.py.
 
 `wall_epoch_jd_tdb` and its deprecated alias are response metadata, so they are
 excluded from byte-identity comparisons; all physical state must be reproducible
@@ -45,41 +47,9 @@ def test_different_fidelity_yields_a_different_payload() -> None:
     assert _payload(fidelity="operational") != _payload(fidelity="high")
 
 
-def test_jd_outside_the_validity_window_is_rejected_without_computing(monkeypatch) -> None:
-    class _FailingRunner:
-        def __init__(self) -> None:
-            self.called = False
-
-        async def run(self, payload, *, timeout_seconds):
-            self.called = True
-            raise AssertionError(
-                f"out-of-range request reached process runner: {payload!r}, {timeout_seconds!r}"
-            )
-
-    runner = _FailingRunner()
-    monkeypatch.setattr(server, "_solar_physics_runner", runner, raising=False)
-
-    resp = client.get("/solar/physics", params={"jd_tdb": server.SOLAR_PHYSICS_JD_MAX + 1.0})
-    assert resp.status_code == 400
-    detail = resp.json()["detail"]
-    assert detail["code"] == "jd_out_of_range"
-    assert detail["retryable"] is False
-    assert "jd_tdb" in detail["message"]
-    assert "JDTDB" in detail["message"]
-    assert runner.called is False
-
-
 def test_jd_inside_the_window_is_accepted() -> None:
     resp = client.get("/solar/physics", params={"jd_tdb": server.J2000_JD})
     assert resp.status_code == 200
-
-
-def test_oversized_max_features_is_rejected_with_413() -> None:
-    resp = client.get(
-        "/solar/physics",
-        params={"jd_tdb": _JD, "max_features": server.SOLAR_PHYSICS_MAX_FEATURES + 1000},
-    )
-    assert resp.status_code == 413
 
 
 def test_saturation_sheds_load_with_503(monkeypatch) -> None:

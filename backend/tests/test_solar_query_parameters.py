@@ -65,15 +65,20 @@ def route(monkeypatch):
     "julian_date",
     "julian_date=2460000.5&julian_date=2460001.5",
     "jd_tdb=2460000.5&jd=2460000.5&fidelity=preview&max_features=8&forcing=synthetic&live_data=false&force_data_refresh=false&extra=x",
+    # The unknown key is reported before any declared value is parsed.
+    "extra=x&jd_tdb=not-a-date",
+    "extra=x&fidelity=not-a-level",
+    "extra=x&forcing=not-a-mode",
 ])
 def test_unknown_query_rejected_before_admission_and_runner(route, query):
     client, events = route
     response = client.get("/solar/physics?" + query)
     assert response.status_code == 400, (response.status_code, response.json(), events)
-    detail = response.json()["detail"]
-    assert detail["code"] == "unknown_query_parameters"
-    assert detail["retryable"] is False
-    assert isinstance(detail["message"], str) and detail["message"]
+    assert response.json()["detail"] == {
+        "code": "unknown_query_parameters",
+        "message": "Unknown query parameters for /solar/physics.",
+        "retryable": False,
+    }
     assert events == {"rate": 0, "get_runner": 0, "runs": []}
 
 
@@ -86,6 +91,10 @@ def test_unknown_query_rejected_before_admission_and_runner(route, query):
     ("jd_tdb=2460000.5&jd=2460000.5&fidelity=preview&max_features=8&forcing=synthetic&live_data=false&force_data_refresh=false", {"epoch_jd_tdb": EPOCH, "fidelity": "preview", "max_features": 8, "forcing": "synthetic", "live_data": False}),
     ("jd%5Ftdb=2460000.5&fidelity=preview&max_features=8&forcing=hybrid&live_data=true&force_data_refresh=true", {"epoch_jd_tdb": EPOCH, "fidelity": "preview", "max_features": 8, "forcing": "hybrid", "live_data": True}),
     ("fidelity=%20PREVIEW%20&forcing=%20SYNTHETIC%20", {"fidelity": "preview", "forcing": "synthetic"}),
+    # A duplicated declared scalar keeps its last value.
+    ("jd_tdb=2460001.5&jd_tdb=2460000.5", {"epoch_jd_tdb": EPOCH}),
+    ("fidelity=not-a-level&fidelity=preview", {"fidelity": "preview"}),
+    ("live_data=invalid&live_data=true", {"live_data": True}),
 ])
 def test_declared_query_compatibility(route, query, expected):
     client, events = route
@@ -95,19 +104,6 @@ def test_declared_query_compatibility(route, query, expected):
     payload = response.json()["received"]
     assert {key: payload[key] for key in expected} == expected
     assert events == {"rate": 1, "get_runner": 1, "runs": [(payload, server.SOLAR_PHYSICS_COMPUTE_TIMEOUT_SECONDS)]}
-
-
-@pytest.mark.parametrize(("query", "key", "value"), [
-    ("jd_tdb=2460001.5&jd_tdb=2460000.5", "epoch_jd_tdb", EPOCH),
-    ("fidelity=not-a-level&fidelity=preview", "fidelity", "preview"),
-    ("live_data=invalid&live_data=true", "live_data", True),
-])
-def test_duplicate_declared_scalar_retains_last_value(route, query, key, value):
-    client, events = route
-    response = client.get("/solar/physics?" + query)
-    assert response.status_code == 200
-    assert response.json()["received"][key] == value
-    assert events["rate"] == events["get_runner"] == len(events["runs"]) == 1
 
 
 @pytest.mark.parametrize(("query", "status", "code", "rate"), [
@@ -144,10 +140,12 @@ def test_openapi_declares_exact_nine_query_names_and_legacy_alias(route):
     ({}, 401, None),
     ({"X-API-Key": "owned-synthetic-key"}, 400, "network_refresh_get_forbidden"),
 ])
-def test_network_authentication_and_recognized_refresh_policy(route, monkeypatch, headers, status, code):
+# An unknown key must not preempt authentication or the refresh policy.
+@pytest.mark.parametrize("query", ["force_data_refresh=true", "force_data_refresh=true&extra=x"])
+def test_network_authentication_and_recognized_refresh_policy(route, monkeypatch, query, headers, status, code):
     client, events = route
     monkeypatch.setattr(server, "SOLAR_SECURITY_CONFIG", server._load_solar_security_config({"SOLAR_SECURITY_PROFILE": "network", "SOLAR_PHYSICS_API_KEYS": "owned-synthetic-key"}))
-    response = client.get("/solar/physics?force_data_refresh=true", headers=headers)
+    response = client.get("/solar/physics?" + query, headers=headers)
     assert response.status_code == status
     if code is not None:
         assert response.json()["detail"]["code"] == code
@@ -185,39 +183,12 @@ def test_unknown_key_rejects_before_default_epoch_computation(route, monkeypatch
     assert events == {"rate": 0, "get_runner": 0, "runs": []}
 
 
-@pytest.mark.parametrize("invalid", ["jd_tdb=not-a-date", "fidelity=not-a-level", "forcing=not-a-mode"])
-def test_unknown_key_precedes_string_semantic_validation(route, invalid):
-    client, events = route
-    response = client.get("/solar/physics?extra=x&" + invalid)
-    assert response.status_code == 400
-    assert response.json()["detail"] == {
-        "code": "unknown_query_parameters",
-        "message": "Unknown query parameters for /solar/physics.",
-        "retryable": False,
-    }
-    assert events == {"rate": 0, "get_runner": 0, "runs": []}
-
-
 @pytest.mark.parametrize("invalid", ["live_data=not-a-boolean", "max_features=not-an-integer"])
 def test_unknown_key_does_not_preempt_framework_typed_validation(route, invalid):
     client, events = route
     response = client.get("/solar/physics?extra=x&" + invalid)
     assert response.status_code == 422
     assert isinstance(response.json()["detail"], list)
-    assert events == {"rate": 0, "get_runner": 0, "runs": []}
-
-
-@pytest.mark.parametrize(("headers", "status", "code"), [
-    ({}, 401, None),
-    ({"X-API-Key": "owned-synthetic-key"}, 400, "network_refresh_get_forbidden"),
-])
-def test_unknown_key_does_not_preempt_network_auth_or_refresh(route, monkeypatch, headers, status, code):
-    client, events = route
-    monkeypatch.setattr(server, "SOLAR_SECURITY_CONFIG", server._load_solar_security_config({"SOLAR_SECURITY_PROFILE": "network", "SOLAR_PHYSICS_API_KEYS": "owned-synthetic-key"}))
-    response = client.get("/solar/physics?force_data_refresh=true&extra=x", headers=headers)
-    assert response.status_code == status
-    if code is not None:
-        assert response.json()["detail"]["code"] == code
     assert events == {"rate": 0, "get_runner": 0, "runs": []}
 
 

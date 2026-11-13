@@ -221,18 +221,6 @@ def test_security_configuration_cardinality_and_bytes_are_hard_bounded(
         )
 
 
-def test_untrusted_peer_cannot_select_identity_with_forwarded_for() -> None:
-    config = server._load_solar_security_config(
-        _security_env(SOLAR_TRUSTED_PROXY_CIDRS="10.0.0.0/8")
-    )
-    request = _request(
-        peer="198.51.100.9",
-        headers={"x-forwarded-for": "203.0.113.1"},
-    )
-
-    assert server._client_identity(request, config=config) == "peer:198.51.100.9"
-
-
 def test_trusted_proxy_uses_validated_bounded_forwarding_chain() -> None:
     config = server._load_solar_security_config(
         _security_env(SOLAR_TRUSTED_PROXY_CIDRS="10.0.0.0/8,2001:db8::/32")

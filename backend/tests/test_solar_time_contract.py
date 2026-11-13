@@ -49,7 +49,7 @@ def test_scalar_leap_interior_has_typed_unsupported_instant_error(
     midnight, leap, offset, fraction,
 ):
     instant = independent_anchor(midnight, leap, offset, fraction=fraction)
-    with pytest.raises(ValueError) as caught:
+    with pytest.raises(ValueError, match="leap second") as caught:
         solar_time.jd_tdb_to_utc_datetime(float(instant.jd))
     assert caught.value.code == "unsupported_utc_instant"
 

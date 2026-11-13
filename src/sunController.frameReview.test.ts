@@ -83,8 +83,10 @@ async function fixture(initial = payload()) {
   vi.spyOn(performance, 'now').mockImplementation(() => nowMs);
   vi.stubGlobal('matchMedia', () => ({ matches: reduced }));
   vi.stubGlobal('document', { createElement: () => ({ width: 4, height: 4, getContext: () => null }) });
+  let retryAfterSeconds: number | null = null;
   vi.stubGlobal('fetch', vi.fn(async (url: unknown) => String(url).includes('/solar/physics') && response
-    ? new Response(JSON.stringify(response), { status: 200 }) : new Response('{}', { status: 503 })));
+    ? new Response(JSON.stringify(response), { status: 200 })
+    : new Response('{}', { status: 503, headers: retryAfterSeconds === null ? {} : { 'Retry-After': String(retryAfterSeconds) } })));
   const state = { julianDate: 2451552, paused: false, timeScaleDaysPerSec: 1 };
   const controller = createSunController({ camera: new PerspectiveCamera(), simState: state,
     backendBaseUrl: () => 'http://backend.test', configureLoadedTexture: () => undefined,
@@ -118,6 +120,7 @@ async function fixture(initial = payload()) {
   return { controller, root, spin, state, material, refresh, fail, statuses,
     lastStatus: () => statuses[statuses.length - 1],
     setReduced(value: boolean) { reduced = value; },
+    setRetryAfter(seconds: number | null) { retryAfterSeconds = seconds; },
     stepWallClock(ms: number) { wallOffsetMs += ms; },
     tick(days = 0.1, elapsedSec = 0.1) {
       state.julianDate += days; realtime += elapsedSec; nowMs += elapsedSec * 1000;
@@ -469,13 +472,16 @@ describe('a backend state is labelled with its lag, then cleared when too old (H
 
   it('clears the backend state once refreshes have been failing for five minutes', async () => {
     const f = await fixture();
+    f.tick(2); // the failure rules apply once the state lags the clock by more than a day
+    f.setRetryAfter(120); // the server asks for two minutes between attempts, so five failures take longer than five minutes
     await f.fail();
-    f.tick(2, 299);
-    expect(shownEpoch(f)).toBe(2451552);
-    f.tick(0.01, 2);
-    await f.fail(); // still failing 301 s after the last success
-    f.tick(0.01);
-    expect(shownEpoch(f)).toBeNull();
+    for (let attempt = 2; attempt <= 4; attempt += 1) {
+      for (let second = 0; second < 120; second += 1) f.tick(0.001, 1); // the tab stays open: frames run while the client waits
+      await f.fail();
+      f.tick(0.001);
+      // Four failures span six minutes of retrying: the state goes on the fourth, before five failures could clear it.
+      expect(shownEpoch(f)).toBe(attempt < 4 ? 2451552 : null);
+    }
   });
 
   it('does not count hidden time after a single failed refresh as five minutes of failing', async () => {
@@ -491,6 +497,16 @@ describe('a backend state is labelled with its lag, then cleared when too old (H
     f.tick(2); // the failure rules apply once the state lags the clock by more than a day
     f.tick(0, 360); // the tab is hidden for six minutes: no frames, no polls
     await f.fail(); // the first poll on return fails once
+    f.tick(0.01);
+    expect(shownEpoch(f)).toBe(2451552);
+  });
+
+  it('does not count hidden time between two failures of one run as five minutes of failing', async () => {
+    const f = await fixture();
+    f.tick(2); // the failure rules apply once the state lags the clock by more than a day
+    await f.fail();
+    f.tick(0, 360); // the tab is hidden for six minutes: no frames, no polls
+    await f.fail(); // the first poll on return fails again: only two failures, minutes of retrying
     f.tick(0.01);
     expect(shownEpoch(f)).toBe(2451552);
   });
