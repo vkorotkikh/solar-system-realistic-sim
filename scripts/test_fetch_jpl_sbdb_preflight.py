@@ -149,7 +149,7 @@ def assert_refused(monkeypatch, capsys, module, calls, targets, argv=()):
 
 
 @pytest.mark.parametrize('invalid', [None, 'missing-backend', 'missing-frontend', 'directory-backend', 'directory-frontend'])
-@pytest.mark.parametrize('argv', [[], ['--write'], ['--dry-run', '--write']])
+@pytest.mark.parametrize('argv', [[], ['--write'], ['--dry-run', '--write'], ['--limit', '1']])
 def test_publication_is_permanently_refused_regardless_of_target_state(tmp_path, monkeypatch, capsys, invalid, argv):
     targets = prepare(tmp_path, invalid)
     calls = []
@@ -283,6 +283,7 @@ def test_python_help_remains_available_without_acquisition(tmp_path, monkeypatch
     assert 'source publication is retired' in output
     assert '--dry-run' in output and '--write' in output
     assert 'query caches' in ' '.join(output.split())
+    assert 'build_asteroid_phase1_dataset.py' in output
 
 
 @pytest.mark.parametrize('target_name', ['backend', 'frontend'])
