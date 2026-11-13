@@ -4,6 +4,7 @@ import { retireWebGlPage } from './webgl-cleanup';
 // These layers vanished without a test noticing in the 2026-02-23 refactor (04e99a4).
 // Report: agent-notes/MAIN_JS_REMOVAL_REPORT_04e99a4_2026-11-08.md
 test.describe.configure({ timeout: 150_000 });
+test.beforeEach(({ browserName }) => { test.skip(browserName !== 'chromium', 'Needs the rendered app; real WebGL runs in Chromium'); });
 test.afterEach(async ({ page }) => { await retireWebGlPage(page); });
 
 async function openApp(page: Page) {
