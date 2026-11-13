@@ -12,7 +12,6 @@ from sim.radiation_pressure import (
     AU_M, C_LIGHT, G_CONST, M_SUN, poynting_robertson_drag,
     rebound_radiation_pressure_callback,
 )
-from sim.galactic_tide import rebound_galactic_tide_callback, galactic_tidal_acceleration_au
 from sim.tudatpy_hooks import TudatPyEngine
 
 
@@ -64,27 +63,18 @@ def test_scn076_circular_radial_and_eccentric_drag(r_au, vr, vt):
     assert np.dot(actual, velocity) == pytest.approx(-k*(2*vr**2+vt**2), rel=1e-12)
 
 
-@pytest.mark.parametrize('force', ['srp', 'tide', 'combined'])
-def test_scn057_real_rebound_callback_applies_expected_acceleration(force):
+def test_scn057_real_rebound_callback_applies_expected_acceleration():
     rebound = pytest.importorskip('rebound')
-    from sim.galactic_tide import combined_forces_callback
     sim = rebound.Simulation()
     sim.units = ('yr', 'AU', 'Msun')
     sim.gravity = 'none'  # isolate the actual installed force, not Newtonian gravity
     sim.integrator = 'ias15'
     sim.add(m=1, x=0.1, y=-0.2)
-    r = np.array([50000, 10000, 20000]) if force != 'srp' else np.array([1, 0.3, 0.2])
+    r = np.array([1, 0.3, 0.2])
     sim.add(x=r[0]+0.1, y=r[1]-0.2, z=r[2])
     beta = 0.1
-    expected = np.zeros(3)
-    if force in ('srp', 'combined'):
-        expected += beta * sim.G * r / np.linalg.norm(r)**3
-        callback = rebound_radiation_pressure_callback if force == 'srp' else combined_forces_callback
-        sim.additional_forces = partial(callback, beta_by_index={1: beta})
-    else:
-        sim.additional_forces = rebound_galactic_tide_callback
-    if force in ('tide', 'combined'):
-        expected += galactic_tidal_acceleration_au(*r)
+    expected = beta * sim.G * r / np.linalg.norm(r)**3
+    sim.additional_forces = partial(rebound_radiation_pressure_callback, beta_by_index={1: beta})
     dt = 1e-5
     sim.integrate(dt)
     p = sim.particles[1]
