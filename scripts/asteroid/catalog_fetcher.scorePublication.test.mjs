@@ -1,21 +1,11 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { test } from 'vitest';
-import { assertRetired, buildRows, checkBuilderPublication, sbdbRow } from './catalog_fetcher.fixtures.mjs';
+import { buildRows, checkBuilderPublication, sbdbRow } from './catalog_fetcher.fixtures.mjs';
 
 // SMB-024 publication facet: score overflow was a legacy heuristic defect.
-// Current guarantees are permanent CLI refusal and whole-batch validation of
-// pinned science before publication; a failed source must not become partial success.
-for (const args of [[], ['--dry-run'], ['--write']]) {
-  test(`retired publisher preserves cached input and both output sentinels: ${args}`, () => {
-    assertRetired(['--source', 'jpl,mpc', '--cache-dir', 'cache', '--output-dir', 'output', ...args], {
-      'cache/vcatalog-fetcher-ts-1.0.0-jpl-main.json': 'broken JSON; must never be read',
-      'output/asteroid_raw_snapshot.json': 'old raw\n\0preserve',
-      'output/asteroid_raw_snapshot.provenance.json': 'old provenance\n\0preserve',
-    });
-  });
-}
-
+// Current guarantees are whole-batch validation of pinned science before publication
+// (CLI refusal: retirement.test.mjs); a failed source must not become partial success.
 for (const existing of [false, true]) {
   for (const args of [['--write'], ['--dry-run'], []]) {
     test(`invalid pinned science refuses the whole mixed batch before publication: existing=${existing}, args=${args}`, () => {
