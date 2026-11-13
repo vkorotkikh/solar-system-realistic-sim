@@ -33,6 +33,28 @@ interface CreateTimeControllerArgs {
   signal?: AbortSignal;
 }
 
+/** One simulated second per real second. */
+export const REAL_TIME_DAYS_PER_SEC = 1 / 86_400;
+
+/**
+ * Speeds the slider offers, slowest first: whole days per second, ±12 h/s and
+ * real time. The slider's value is an index into this list. The real-time stop
+ * is the only one slow enough for solar physics polls to share a 0.01-day
+ * epoch step (PR #32, docs/solar-render-delivery.md).
+ */
+export function timeScaleStops(min: number, max: number): number[] {
+  const stops = [-0.5, REAL_TIME_DAYS_PER_SEC, 0.5];
+  for (let days = Math.ceil(min); days <= max; days++) stops.push(days);
+  return stops.filter(rate => rate >= min && rate <= max).sort((a, b) => a - b);
+}
+
+function rateLabel(rate: number): string {
+  if (rate === REAL_TIME_DAYS_PER_SEC) return 'Real time';
+  const sign = rate > 0 ? '+' : '';
+  if (rate !== 0 && Math.abs(rate) < 1) return `${sign}${Number((rate * 24).toFixed(1))} h/s`;
+  return `${sign}${rate.toFixed(1)} d/s`;
+}
+
 export function createTimeController({
   dom,
   simState,
@@ -44,6 +66,8 @@ export function createTimeController({
   onTimeJump,
   signal
 }: CreateTimeControllerArgs): TimeController {
+  const stops = timeScaleStops(minTimeScale, maxTimeScale);
+
   function bindUi() {
     dom.nowTime?.addEventListener('click', () => {
       simState.julianDate = currentJulianDate();
@@ -56,13 +80,18 @@ export function createTimeController({
       onTimeJump?.();
     }, { signal });
 
-    if (dom.timeScale) {
-      dom.timeScale.min = `${minTimeScale}`;
-      dom.timeScale.max = `${maxTimeScale}`;
-      dom.timeScale.value = `${simState.timeScaleDaysPerSec}`;
-      dom.timeScale.addEventListener('input', () => {
-        const nextTimeScale = Number(dom.timeScale?.value);
-        if (!Number.isFinite(nextTimeScale)) return;
+    const slider = dom.timeScale;
+    if (slider) {
+      const current = simState.timeScaleDaysPerSec;
+      const nearest = stops.reduce((best, rate, i) => Math.abs(rate - current) < Math.abs(stops[best] - current) ? i : best, 0);
+      slider.min = '0';
+      slider.max = `${stops.length - 1}`;
+      slider.value = `${nearest}`;
+      slider.setAttribute('aria-valuetext', rateLabel(stops[nearest]));
+      slider.addEventListener('input', () => {
+        const nextTimeScale = stops[Number(slider.value)];
+        if (nextTimeScale === undefined) return;
+        slider.setAttribute('aria-valuetext', rateLabel(nextTimeScale));
         if (nextTimeScale !== simState.timeScaleDaysPerSec) {
           simState.timeScaleDaysPerSec = nextTimeScale;
           simState.timeScaleDirty = true;
@@ -78,8 +107,7 @@ export function createTimeController({
   }
 
   function updateHud() {
-    const value = simState.timeScaleDaysPerSec;
-    const rate = `${value > 0 ? '+' : ''}${value.toFixed(1)} d/s`;
+    const rate = rateLabel(simState.timeScaleDaysPerSec);
     if (dom.timeScaleValue && dom.timeScaleValue.textContent !== rate) dom.timeScaleValue.textContent = rate;
     // The header says what the clock is doing instead of calling the simulation live (H2.10).
     const session = simState.paused ? 'Paused' : `Simulation · ${rate}`;
