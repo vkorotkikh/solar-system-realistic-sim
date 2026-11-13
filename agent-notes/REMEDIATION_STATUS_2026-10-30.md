@@ -28,6 +28,9 @@ The original source copies and immutable archives are retained.
   **5,833 passed, 13 skipped**.
 - **Unchanged.** The 2026-10-30 counts and tables below are left as recorded.
 
+**Update 2026-11-09.** All three are merged: #46 and #47 on 2026-11-08, and #45 on 2026-11-09. #45 also covers a
+fourth script, `generate_mga_reference.py`. The table below is as of 2026-11-07.
+
 | Item | Found on 2026-11-06 | Pull request (open, not merged) | CI on the PR |
 |---|---|---|---|
 | SCN-033 | Three more maintenance scripts ignored `--help` and ran. `capture_all_moon_oracle.py` and `fetch_remediation_ephemeris.py` queried JPL Horizons and overwrote tracked fixtures; `generate_synthetic_gong_fixture.py` rewrote the GONG fixture. | [#45](https://github.com/vkorotkikh/solar-system-realistic-sim/pull/45): `argparse` in each `__main__`. A subprocess test shows `--help` writes nothing and an unsupported option exits 2. | Pass, except one Chromium run: `scene-text-contrast.spec.ts:56` timed out waiting for `#control-panel` to hide. The other run of the same commit passed, and the PR changes no frontend code. |
