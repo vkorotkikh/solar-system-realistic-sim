@@ -243,7 +243,7 @@ records the runtime owners.
 │   ├── server.py                              # FastAPI entry point
 │   ├── requirements.txt
 │   ├── sim/
-│   │   ├── __init__.py                        # Sim package + engine registry
+│   │   ├── __init__.py                        # Sim package exports
 │   │   ├── base.py                            # Abstract engine base class
 │   │   ├── contracts.py                       # API data contracts
 │   │   ├── rebound_nbody.py                   # REBOUND IAS15 integrator
