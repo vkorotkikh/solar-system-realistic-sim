@@ -234,7 +234,12 @@ def test_plan_contract_rejects_duplicates_instead_of_silently_deduplicating() ->
     assert caught.value.context == {"duplicates": ["venus"]}
 
 
-def test_plan_contract_rejects_ninth_assist_before_route_generation() -> None:
+@pytest.mark.parametrize(
+    "limits",
+    [{}, {"max_assist_pool_size": 10_000, "max_route_topologies": 10_000_000}],
+    ids=["defaults", "caller-supplied-limits-hard-clamped"],
+)
+def test_plan_contract_rejects_ninth_assist_before_route_generation(limits) -> None:
     pool = [
         "mercury",
         "venus",
@@ -248,7 +253,7 @@ def test_plan_contract_rejects_ninth_assist_before_route_generation() -> None:
     ]
 
     with pytest.raises(TrajectoryRequestRejected) as caught:
-        _validate(assist_pool=pool)
+        _validate(assist_pool=pool, **limits)
 
     assert caught.value.code == "trajectory_complexity_limit"
     assert caught.value.context["assistPoolSize"] == 9
@@ -286,26 +291,6 @@ def test_plan_contract_rejects_ineligible_or_unknown_assists(body_id: str) -> No
 
     assert caught.value.code == "trajectory_invalid_assist_body"
     assert caught.value.context == {"bodyIds": [body_id]}
-
-
-def test_plan_contract_hard_clamps_caller_supplied_limits() -> None:
-    pool = [
-        "mercury",
-        "venus",
-        "mars",
-        "saturn",
-        "uranus",
-        "neptune",
-        "pluto",
-        "ceres",
-        "vesta",
-    ]
-    with pytest.raises(TrajectoryRequestRejected):
-        _validate(
-            assist_pool=pool,
-            max_assist_pool_size=10_000,
-            max_route_topologies=10_000_000,
-        )
 
 
 def test_planning_context_group_reservation_is_atomic() -> None:

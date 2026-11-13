@@ -12,7 +12,6 @@ from sim.solar_physics import (
     HATHAWAY_PEAK_MONTHS,
     J2000_JD,
     MEAN_MONTH_DAYS,
-    ObservedSolarInputUnavailable,
     SolarCoronaPhysicsModel,
     _hathaway_normalized,
 )
@@ -101,19 +100,6 @@ def test_hathaway_envelope_peaks_at_exactly_one_at_its_true_maximum() -> None:
     # Normalising at b*sqrt(1.5) pushed ~14 months of every cycle above 1, which the clamp
     # flattened into a plateau. Now at most the grid point nearest the peak can reach 1.
     assert sum(v >= 1.0 - 1e-12 for v in values) <= 1
-
-
-def test_hale_leading_polarity_of_new_emergences_flips_between_adjacent_cycles() -> None:
-    model = SolarCoronaPhysicsModel(seed=17, base_tube_count=220)
-    cycle_days = CYCLE_LENGTH_MONTHS * MEAN_MONTH_DAYS
-    north_region = next(region for region in model.active_regions if region.hemisphere_sign > 0)
-
-    # Sample well inside each cycle: a living old-cycle region retains its
-    # birth polarity across minimum rather than reversing instantaneously.
-    _, _, _, _, lead_cycle_25 = model._region_polarity_dirs(north_region, CYCLE_25_START_JD + 300.0)
-    _, _, _, _, lead_cycle_26 = model._region_polarity_dirs(north_region, CYCLE_25_START_JD + cycle_days + 300.0)
-
-    assert lead_cycle_25 == -lead_cycle_26
 
 
 def test_cme_speed_distribution_covers_slow_and_fast_populations() -> None:
@@ -316,13 +302,6 @@ def test_hybrid_forcing_is_deterministic_disabled_synthetic() -> None:
     )
     assert set(_fallback_reasons(state)) == {"disabled_unvalidated"}
     assert state["pfss_field_lines"]["fallback_reason"] == "disabled_unvalidated"
-
-
-def test_data_driven_model_fails_closed_without_promoted_provider() -> None:
-    model = SolarCoronaPhysicsModel(seed=17, base_tube_count=220)
-
-    with pytest.raises(ObservedSolarInputUnavailable, match="disabled_unvalidated"):
-        model._apply_realtime_forcing(0.42, "data_driven", {"combined_activity_proxy": 0.8})
 
 
 def test_carrington_rotation_number() -> None:

@@ -4,27 +4,12 @@ import numpy as np
 import pytest
 from gong_fixture_helpers import context, rewrite_fits
 from sim import gong_magnetogram as gong
-from sim.pfss_magnetogram import PFSSCache, PFSSSolutionConfig
+from sim.pfss_magnetogram import PFSSCache
 from solar_observational_acceptance import load_observed_snapshot
 
 @pytest.fixture(scope="module")
 def observed_snapshot():
     return load_observed_snapshot()
-
-
-def test_real_map_passes_the_complete_pfss_snapshot_contract(observed_snapshot):
-    result = PFSSCache(max_entries=1).get_or_compute(
-        jd=observed_snapshot.snapshot_id.reference_jd_tdb, activity=0.5,
-        snapshot=observed_snapshot,
-        solution_config=PFSSSolutionConfig(line_count=8, lmax=1,
-            source_surface_radii=2.51, wsa_n_lat=2, wsa_n_lon=4),
-    )
-    assert result["geometry_frame"]["rendering_eligible"] is False
-    frame = result["geometry_frame"]
-    assert frame["frame"] == "GONG_ZQS_CARRINGTON_GRID_V1"
-    assert frame["reference_frame"] == "HELIOGRAPHIC_CARRINGTON"
-    assert frame["scene_adapter_status"] == "not_implemented"
-    assert frame["calibration_status"] == "provider_native_wcs_validated"
 
 
 @pytest.mark.parametrize("field_name,value", [

@@ -3,7 +3,8 @@
 No trajectory search/provider; a test-owned worker
 observes actual parser, vehicle, mining, and Random risk service outputs.
 Contract: reject ten outside-modeled-range values before permits/submission;
-retain supported boundaries, direct compatibility, configured413 and OpenAPI.
+retain supported boundaries, configured413 and OpenAPI. Direct-parser clamps:
+test_mission_plant_cost.py and test_mission_seed_precision.py.
 Each capture is externally bounded; this module never invokes a live provider.
 MIS-010 / MIS-011: agent-notes/CONSOLIDATED_MARKDOWN_ISSUE_AUDIT_2026-10-24.md
 """
@@ -228,13 +229,3 @@ def test_openapi_publishes_supported_not_silently_rewritten_ranges(endpoint, fie
     assert properties[field]['default'] == DEFAULTS[field]
     assert 'maximum' not in properties['risk_samples']  # configured admission retains413
     assert no_work(endpoint) == {'permit_attempts': 0, 'submissions': 0, 'worker_calls': 0}
-
-
-def test_legacy_direct_parser_clamps_are_not_changed_by_http_policy():
-    # Nonplant direct clamps remain compatible. MIS-012 now rejects unsupported
-    # plant costs separately (test_mission_plant_cost.py), so use a supported cost.
-    parsed = parse_mission_request({'reserve_fraction': 0.9, 'handling_loss_fraction': 0.9,
-        'risk_samples': 1, 'payload_mass_kg': 0.25, 'power_required_kw_per_kg_day': 0.24})
-    assert (parsed.reserve_fraction, parsed.handling_loss_fraction, parsed.risk_samples,
-            parsed.payload_mass_kg, parsed.power_required_kw_per_kg_day) == (0.4, 0.6, 30, 1.0, 0.24)
-    assert parse_mission_request({'risk_samples': 5001}).risk_samples == 5000
