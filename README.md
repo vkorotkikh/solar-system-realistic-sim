@@ -599,12 +599,6 @@ npm run typecheck:scripts
 npm run test:types:ui
 ```
 
-Fixed browser diagnostics use the maintained Playwright configuration:
-`node scripts/run-browser-diagnostic.mjs <warp|scale|debug>`.
-Use `--help` or `--list` for inspection without launching a browser, and
-`--output EXISTING_PARENT` to keep artifacts in a new child directory.
-The former root `testWarp.js` and `testRealisticScale.mjs` scratch commands remain retired.
-
 ## Backend Tests
 
 The runtime requirements alone cannot collect the suite: Starlette's
