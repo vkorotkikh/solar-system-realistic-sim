@@ -12,7 +12,7 @@ from __future__ import annotations
 import json
 import math
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 from data.bodies import ALL_BODIES
@@ -45,6 +45,7 @@ class Place:
     default_orbit: Orbit
     around: str = "sun"  # a moon's planet
     orbit_radius_km: float = 0.0  # a moon's distance from its planet (semi-major axis)
+    body: str = ""  # for a named orbit, the body or moon it is around
 
 
 def _default_orbit(body: dict) -> Orbit:
@@ -98,23 +99,41 @@ def _moons(planet_ids: set[str]) -> list[Place]:
             if record and (record["name"], record["parent"]) != (moon["name"], moon["planet"]):
                 raise ValueError(f"Moon identity differs between catalogs: {moon['name']}")
         radius = float(physical["radiusKm"]) if physical else 0.0
+        orbit_id, orbit_name = (("llo", "Low lunar orbit, 100 km") if moon_id == "moon-earth-moon"
+                                else (f"{moon_id}-low-orbit", f"Low orbit around {moon['name']}, 100 km"))
         moons.append(Place(
             id=moon_id,
             name=moon["name"],
             kind="moon",
             radius_km=radius,
             mu_km3_s2=float(mass["gmKm3S2"]) if mass else 0.0,
-            default_orbit=Orbit(f"{moon_id}-low-orbit", f"Low orbit around {moon['name']}, 100 km",
-                                radius + 100.0, radius + 100.0),
+            default_orbit=Orbit(orbit_id, orbit_name, radius + 100.0, radius + 100.0),
             around=parent,
             orbit_radius_km=float(moon["aKm"]),
         ))
     return moons
 
 
+def _named_orbits(by_id: dict[str, Place]) -> list[Place]:
+    """PROPOSED v1 list (spec section 7.2). A named orbit is its body with that orbit as the default."""
+    moon = by_id["moon-earth-moon"]
+    geo = Orbit("geo", "Geostationary orbit, 42,164 km from Earth's centre", 42_164.0, 42_164.0)
+    # NASA, "Gateway NRHO" (nrho-artemis-orbit.pdf, 2023): typical orbit 1,000 by 70,000 km, period 7 days.
+    nrho = Orbit("nrho", "Near-rectilinear halo orbit (NRHO), taken as a 1,000 by 70,000 km lunar ellipse",
+                 moon.radius_km + 1_000.0, moon.radius_km + 70_000.0)
+    named = (("earth", None), ("earth", geo), (moon.id, None), (moon.id, nrho), ("mars", None))
+    places = []
+    for body_id, orbit in named:
+        orbit = orbit or by_id[body_id].default_orbit
+        places.append(replace(by_id[body_id], id=orbit.id, name=orbit.name, kind="orbit", default_orbit=orbit,
+                              body=body_id))
+    return places
+
+
 _ELIGIBLE = set(eligible_endpoint_body_ids(ALL_BODIES))
 _SUN_PLACES = tuple(_place(body) for body in ALL_BODIES if body["id"] in _ELIGIBLE)
-PLACES: tuple[Place, ...] = _SUN_PLACES + tuple(_moons({place.id for place in _SUN_PLACES}))
+_BODIES = _SUN_PLACES + tuple(_moons({place.id for place in _SUN_PLACES}))
+PLACES: tuple[Place, ...] = _BODIES + tuple(_named_orbits({place.id: place for place in _BODIES}))
 _BY_ID = {place.id: place for place in PLACES}
 
 
@@ -144,17 +163,19 @@ def find_places(query: str, limit: int = 5) -> list[Place]:
     return sorted(matches, key=lambda place: not exact(place))[:limit]
 
 
+def body_id(place: Place) -> str:
+    """The body or moon a place is: itself, or for a named orbit the body it is around."""
+    return place.body or place.id
+
+
 def sun_body(place: Place) -> str:
     """The Sun-orbiting body a transfer around the Sun leaves from or reaches for this place."""
-    return place.id if place.around == "sun" else place.around
+    return body_id(place) if place.around == "sun" else place.around
 
 
 def shared_planet(first: Place, second: Place) -> Place | None:
-    """The planet both places are around (a planet and its moon, or two moons of one planet)."""
-    for planet, other in ((first, second), (second, first)):
-        if planet.around == "sun" and other.around == planet.id:
-            return planet
-    return _BY_ID[first.around] if first.around != "sun" and first.around == second.around else None
+    """The planet both places are at: the planet itself, its moons, or orbits around either."""
+    return _BY_ID[sun_body(first)] if sun_body(first) == sun_body(second) else None
 
 
 def orbit_burn_km_s(v_infinity_km_s: float, mu_km3_s2: float, orbit: Orbit) -> float:
@@ -185,8 +206,8 @@ def end_burn_km_s(place: Place, v_infinity_km_s: float) -> float:
 
 def _around_planet(place: Place, planet: Place) -> tuple[float, float, Place | None]:
     """Distance from the planet's centre, the speed there, and the moon to escape or enter (if any)."""
-    if place is planet:  # the planet's own default orbit, at its periapsis
-        orbit = planet.default_orbit
+    if body_id(place) == planet.id:  # an orbit around the planet itself, at its periapsis
+        orbit = place.default_orbit
         semi_major_axis = (orbit.periapsis_km + orbit.apoapsis_km) / 2.0
         return orbit.periapsis_km, math.sqrt(planet.mu_km3_s2 * (2.0 / orbit.periapsis_km - 1.0 / semi_major_axis)), None
     return place.orbit_radius_km, math.sqrt(planet.mu_km3_s2 / place.orbit_radius_km), place
@@ -222,6 +243,6 @@ def place_json(place: Place) -> dict:
         "id": place.id,
         "name": place.name,
         "kind": place.kind,
-        "around": place.around,
+        "around": place.body if place.kind == "orbit" else place.around,
         "default_orbit": orbit_json(place.default_orbit, place),
     }

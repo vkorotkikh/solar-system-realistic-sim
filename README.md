@@ -168,6 +168,8 @@ each trip as burns from a default orbit at each end. A moon is reached straight
 in at the end of a transfer to its planet, or by a transfer around the planet
 when both ends are there. Moon masses come from `backend/data/moon_gm.json`,
 which `scripts/generate_moon_gm.py` derives offline from the pinned JPL table.
+Five named orbits can be a trip's end too: `leo`, `geo`, `llo` (low lunar
+orbit), `nrho` (approximate) and `lmo` (low Mars orbit).
 A refusal is an answer with `"status": "refused"`, a `code` and a plain
 `message`, not an HTTP error. A plan puts several trips
 on one date axis; a trip can be tied to leave no sooner than `gap_days` after

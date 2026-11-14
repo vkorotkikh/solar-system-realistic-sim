@@ -30,8 +30,8 @@ from trajectory.budget import (
 )
 from trajectory.contracts import PLANNING_JD_MAX, PLANNING_JD_MIN, TrajectoryRequestRejected
 
-from .places import (Place, end_burn_km_s, find_places, get_place, orbit_json, planet_leg, shared_planet,
-                     sun_body)
+from .places import (Place, body_id, end_burn_km_s, find_places, get_place, orbit_json, planet_leg,
+                     shared_planet, sun_body)
 
 SEARCH_SECONDS = 10.0  # the whole search, inside the 12 s planner-call limit (spec done check 5)
 MAX_RANGE_DAYS = 3_653  # ten years of departures
@@ -286,11 +286,15 @@ def _approximations(origin: Place, target: Place, planet: Place | None = None) -
                  "works: where a moon is along its orbit is not modelled."]
     notes += [f"{place.name} has no mass in the catalog, so it is treated as having no gravity."
               for place in dict.fromkeys((origin, target)) if place.mu_km3_s2 == 0.0]
+    if "nrho" in (origin.default_orbit.id, target.default_orbit.id):
+        notes.append("The NRHO is approximate: it is taken as a plain lunar ellipse entered or left in one burn. "
+                     "NASA's planned route uses a lunar flyby, about 450 m/s after trans-lunar injection, "
+                     "so this burn is likely low.")
     return notes
 
 
 def _burn(place: Place, jd: float, delta_v: float) -> dict:
-    return {"at": place.id, "orbit": place.default_orbit.id, "date": jd_to_date(jd), "delta_v_km_s": delta_v}
+    return {"at": body_id(place), "orbit": place.default_orbit.id, "date": jd_to_date(jd), "delta_v_km_s": delta_v}
 
 
 def _leg(from_id: str, to_id: str, depart_jd: float, arrive_jd: float,
@@ -315,7 +319,7 @@ def _direct_trip(candidate: _Candidate, origin: Place, target: Place, planet: Pl
     """One leg: around the Sun between the places' Sun bodies, or around the planet both are at."""
     burns = [_burn(origin, candidate.depart_jd, candidate.burn_depart),
              _burn(target, candidate.arrive_jd, candidate.burn_arrive)]
-    ends = (sun_body(origin), sun_body(target)) if planet is None else (origin.id, target.id)
+    ends = (sun_body(origin), sun_body(target)) if planet is None else (body_id(origin), body_id(target))
     leg = _leg(*ends, candidate.depart_jd, candidate.arrive_jd, burns, candidate.v_inf_depart,
                candidate.v_inf_arrive, around="sun" if planet is None else planet.id)
     return {"total_delta_v_km_s": candidate.total, "total_days": leg["flight_days"], "legs": [leg],
@@ -420,7 +424,7 @@ def search_trips(request: TripSearchRequest, *, today: date | None = None,
         if place is None:
             return _refused("unknown_place", f"No place is called '{text}'. Look the place up to get its id.",
                             suggestions=[match.id for match in find_places(text)])
-    if origin.id == target.id:
+    if (body_id(origin), origin.default_orbit.id) == (body_id(target), target.default_orbit.id):
         return _refused("same_place", "A trip must go between two different places.")
     min_stay = max_stay = 0.0
     if request.trip == "round_trip":
