@@ -165,15 +165,22 @@ The reworked trip planner searches a date range for one-way trips and round
 trips (`"trip": "round_trip"` with `stay_days`, and `max_stay_days` for a
 range) between Sun-orbiting bodies, and prices each trip as burns from a
 default orbit at each end. A refusal is an answer with `"status": "refused"`,
-a `code` and a plain `message`, not an HTTP error. The vehicle check says
-whether a staged chemical vehicle can fly a list of burns, and how much fuel
-each burn uses.
+a `code` and a plain `message`, not an HTTP error. A plan puts several trips
+on one date axis; a trip can be tied to leave no sooner than `gap_days` after
+another trip `departs` or `arrives`, and the plan reports its first departure,
+its last arrival and any problems (a loop of ties, a tie to a missing trip, a
+tie that cannot be met). The vehicle check says whether a staged chemical
+vehicle can fly a list of burns, and how much fuel each burn uses.
 
 ```bash
 curl 'http://127.0.0.1:8042/planner/places?query=europa'
 curl -X POST http://127.0.0.1:8042/planner/trips/search \
   -H 'Content-Type: application/json' \
   -d '{"from": "earth", "to": "mars", "earliest_departure": "2026-11-12", "latest_departure": "2028-11-12"}'
+curl -X POST http://127.0.0.1:8042/planner/plans/solve \
+  -H 'Content-Type: application/json' \
+  -d '{"trips": [{"key": "cargo", "search": {"to": "mars", "latest_departure": "2028-11-12"}},
+                 {"key": "crew", "search": {"to": "mars"}, "after": {"trip": "cargo", "event": "arrives", "gap_days": 60}}]}'
 curl -X POST http://127.0.0.1:8042/planner/vehicle-check \
   -H 'Content-Type: application/json' \
   -d '{"burns_km_s": [3.71, 2.04], "payload_mass_kg": 6500, "stages": [{"name": "main", "dry_mass_kg": 6500, "propellant_mass_kg": 18000, "isp_s": 360}]}'

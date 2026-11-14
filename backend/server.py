@@ -121,6 +121,7 @@ from mission.ephemeris_service import (
     TRAJECTORY_STATE_CONTRACT,
 )
 from planner.places import PLACES, find_places, place_json
+from planner.plans import PlanRequest, solve_plan
 from planner.trips import SEARCH_SECONDS as PLANNER_SEARCH_SECONDS, TripSearchRequest, search_trips
 from planner.vehicle import VehicleCheckRequest, check_vehicle
 from sim.base import SimulationEngine
@@ -1398,6 +1399,7 @@ TRAJECTORY_INGRESS_PATHS = {
     "/benchmark/accuracy",
     "/benchmark/accuracy/report",
     "/planner/trips/search",
+    "/planner/plans/solve",
     "/planner/vehicle-check",
 }
 
@@ -4605,6 +4607,17 @@ async def planner_places(query: str | None = Query(None, max_length=100)):
 @app.post("/planner/trips/search")
 async def planner_trip_search(request: Request, payload: TripSearchRequest):
     """Search a date range for trips between two places. Refusals are answers (status 200)."""
+    return await _run_planner_search(request, search_trips, payload)
+
+
+@app.post("/planner/plans/solve")
+async def planner_plan_solve(request: Request, payload: PlanRequest):
+    """Search several tied trips in tie order on one date axis. Problems are answers (status 200)."""
+    return await _run_planner_search(request, solve_plan, payload)
+
+
+async def _run_planner_search(request: Request, function, payload):
+    """Run a planner search on the compute pool; a timeout or disconnect cancels the worker."""
     if not _acquire_nonblocking(_planner_search_guard):
         raise _trajectory_http_exception(
             503,
@@ -4617,7 +4630,7 @@ async def planner_trip_search(request: Request, payload: TripSearchRequest):
     try:
         return await _run_request_owned_thread(
             request,
-            search_trips,
+            function,
             payload,
             guard=_planner_search_guard,
             executor=_heavy_compute_executor,
