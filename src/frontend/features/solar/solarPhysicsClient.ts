@@ -464,9 +464,10 @@ export class SolarPhysicsClient {
   lastFailure: SolarPhysicsFailure | null;
   consecutiveFailures: number;
   /**
-   * How long the current run of failures has been retrying: each wait the client scheduled after a
-   * failure, plus each failed attempt's own time. Time past a scheduled retry with no attempt (a
-   * hidden tab runs no frames, so no polls) does not count. 0 with no failures.
+   * How long the current run of failures has been retrying: each failed attempt's own time, plus the
+   * wait before each later attempt up to the retry the previous failure scheduled. Time past a
+   * scheduled retry with no attempt (a hidden tab runs no frames, so no polls) does not count. 0 with
+   * no failures.
    */
   failingForMs: number;
   /** Monotonic time of the latest failure, and of the retry it scheduled. */
@@ -783,13 +784,14 @@ export class SolarPhysicsClient {
         atMs: Date.now()
       };
       const failedMonoMs = performance.now();
+      // This attempt's own time always counts. The wait before it counts only up to the retry the last
+      // failure scheduled: any longer gap means no attempts were being made.
+      const attemptMs = Math.max(0, failedMonoMs - startMonoMs);
       if (this.consecutiveFailures === 0) {
-        this.failingForMs = 0;
+        this.failingForMs = attemptMs;
       } else {
-        // The wait before this attempt counts up to the retry the last failure scheduled; any longer
-        // gap means no attempts were being made. This attempt's own time always counts.
         const waitMs = Math.min(startMonoMs, this.retryDueMonoMs) - this.lastFailureMonoMs;
-        this.failingForMs += Math.max(0, waitMs) + Math.max(0, failedMonoMs - startMonoMs);
+        this.failingForMs += Math.max(0, waitMs) + attemptMs;
       }
       this.consecutiveFailures += 1;
       const retryDelayMs = Math.max(
