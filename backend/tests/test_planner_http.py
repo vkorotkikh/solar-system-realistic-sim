@@ -29,7 +29,7 @@ def test_places_without_a_query_lists_every_place() -> None:
     assert response.status_code == 200
     ids = [place["id"] for place in response.json()["places"]]
     assert ids == [place.id for place in PLACES]
-    assert (len(ids), ids[0], ids[-1]) == (463, "mercury", "moon-pluto-hydra")  # 40 Sun-orbiting bodies, 423 moons
+    assert (len(ids), ids[0], ids[-1]) == (468, "mercury", "lmo")  # 40 Sun-orbiting bodies, 423 moons, 5 named orbits
 
 
 def test_places_with_a_query_returns_the_matches_as_json() -> None:
