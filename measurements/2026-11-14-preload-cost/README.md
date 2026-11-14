@@ -44,3 +44,16 @@ average 2–3) and `output-worker.txt` (three runs, load average 1.5):
   for about 140 ms. The worker is ready 0.4 to 0.6 s later, well inside its 5 s deadline.
 - Likely ways to win the time back, not tried: decode the maps off the main thread
   (`ImageBitmapLoader`), and verify and parse the shards in a worker.
+
+**Side finding: `networkidle`.** With the fits preloaded, the 200% tab-zoom test timed out on
+the software renderer because `page.goto(..., { waitUntil: 'networkidle' })` never settled.
+`network-timeline.mjs` records every request for a while after load:
+
+```bash
+GPU=0 node network-timeline.mjs http://127.0.0.1:4202/ 40
+```
+
+On SwiftShader the preload build left exactly one request open for the whole run, the model
+worker's script (`modelWorker.ts?worker_file`), although the worker reported ready. The
+baseline build closed it, and so did both builds on the GPU. Playwright therefore never saw
+the network go idle. PR #66 changed the test to wait for the app's own readiness instead.
