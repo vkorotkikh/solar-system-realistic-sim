@@ -521,7 +521,7 @@ describe('a backend state is labelled with its lag, then cleared when too old (H
       open(90); // the server's Retry-After
       await f.fail(() => open(19));
       f.tick(0.001);
-      // Each later failure adds 90 s of waiting and 19 s of attempt: 218 s after three, 327 s after four.
+      // The first failure adds 19 s of attempt, each later one 90 s of waiting and 19 s: 237 s after three, 346 s after four.
       expect(shownEpoch(f)).toBe(attempt < 4 ? 2451552 : null);
     }
   });
