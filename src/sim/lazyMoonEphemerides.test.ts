@@ -404,6 +404,56 @@ for (const requestTimeoutMs of [0, -1, 0.5, Infinity, NaN, 120001]) {
   });
 }
 
+describe('loadAllMoonEphemerides', () => {
+  it('gives all 423 moons a fit by fetching every shard once', async () => {
+    const { loadAllMoonEphemerides } = await import('./loadMoonEphemerides');
+    const requests: string[] = [];
+    const bodies = await loadAllMoonEphemerides({
+      maxConcurrentRequests: 8,
+      fetch: ((input: RequestInfo | URL) => { requests.push(String(input)); return publicShardFetch(input); }) as typeof fetch,
+    });
+    expect(Object.keys(bodies)).toHaveLength(423);
+    expect(bodies.himalia).toBeDefined();
+    // The manifest twice (key listing, then loading) and each of the 410 shards once.
+    expect(requests.filter(url => url.endsWith('manifest.json'))).toHaveLength(2);
+    expect(new Set(requests.filter(url => !url.endsWith('manifest.json'))).size).toBe(410);
+    expect(requests).toHaveLength(412);
+  }, 60_000);
+
+  it('falls back to the named-moon fits when the shards overrun the budget', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const { loadAllMoonEphemerides } = await import('./loadMoonEphemerides');
+    const stalled = ((_input: RequestInfo | URL, init?: RequestInit) => new Promise<Response>((_, reject) => {
+      init?.signal?.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')));
+    })) as typeof fetch;
+    const started = Date.now();
+    const bodies = await loadAllMoonEphemerides({ fetch: stalled, requestTimeoutMs: 2_000 }, 50, 50);
+    expect(Date.now() - started).toBeLessThan(1_500);
+    // Both budgets ran out, so only the bundled fits remain.
+    expect(bodies.titan).toBeDefined();
+    expect(bodies.himalia).toBeUndefined();
+    vi.restoreAllMocks();
+  });
+
+  it('keeps the named-moon fits when only the extra shards fail', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const { loadAllMoonEphemerides } = await import('./loadMoonEphemerides');
+    const { MAJOR_MOONS } = await import('../data/planets');
+    const named = new Set([...MAJOR_MOONS].map(name => name.toLowerCase()));
+    const manifest = JSON.parse(readFileSync(new URL('../../public/moon-ephemerides/manifest.json', import.meta.url), 'utf8')) as { bodies: Record<string, { path: string }> };
+    const namedPaths = new Set(Object.entries(manifest.bodies).filter(([key]) => named.has(key)).map(([, entry]) => entry.path));
+    const failExtra = ((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith('manifest.json') || [...namedPaths].some(path => url.endsWith(path))) return publicShardFetch(input);
+      return Promise.reject(new TypeError('offline'));
+    }) as typeof fetch;
+    const bodies = await loadAllMoonEphemerides({ fetch: failExtra });
+    for (const name of MAJOR_MOONS) expect(bodies[name.toLowerCase()], name).toBeDefined();
+    expect(bodies.himalia).toBeUndefined();
+    vi.restoreAllMocks();
+  });
+});
+
 describe('loadNamedMoonEphemerides', () => {
   it('gives every named moon a fit, fetching only the ones not bundled', async () => {
     const { MAJOR_MOONS } = await import('../data/planets');

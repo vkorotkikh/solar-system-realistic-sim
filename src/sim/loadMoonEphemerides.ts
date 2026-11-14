@@ -27,6 +27,36 @@ export async function loadNamedMoonEphemerides(lazyOptions?: LazyMoonLoaderOptio
   }
 }
 
+/** Startup waits this long for every moon's fit (410 shards, about 59 MB) before using the named-moon fits. */
+const ALL_MOON_FIT_BUDGET_MS = 15_000;
+
+/**
+ * Fits for all 423 moons, so none falls back to mean elements (Himalia was millions of km
+ * off on them). Falls back to the named-moon fits if the shards fail or overrun the budget.
+ */
+export async function loadAllMoonEphemerides(
+  lazyOptions: LazyMoonLoaderOptions = { maxConcurrentRequests: 8 },
+  budgetMs = ALL_MOON_FIT_BUDGET_MS,
+  namedBudgetMs = NAMED_MOON_FIT_BUDGET_MS,
+) {
+  const { createLazyMoonEphemerisLoader } = await import('./lazyMoonEphemerides');
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const overBudget = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`moon fits took longer than ${budgetMs} ms`)), budgetMs);
+  });
+  try {
+    return await Promise.race([(async () => {
+      const manifest = await createLazyMoonEphemerisLoader(lazyOptions).getManifest();
+      return loadMoonEphemerides({ additionalBodyKeys: Object.keys(manifest.bodies), lazyOptions });
+    })(), overBudget]);
+  } catch (error) {
+    console.warn('[moons] not every moon fit loaded; using the named-moon fits:', error);
+    return loadNamedMoonEphemerides(lazyOptions, namedBudgetMs);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 /** Called only by consumers that opt into fitted moon propagation. */
 export async function loadMoonEphemerides(options: {
   additionalBodyKeys?: readonly string[];
