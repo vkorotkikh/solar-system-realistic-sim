@@ -122,6 +122,7 @@ from mission.ephemeris_service import (
 )
 from planner.places import PLACES, find_places, place_json
 from planner.trips import SEARCH_SECONDS as PLANNER_SEARCH_SECONDS, TripSearchRequest, search_trips
+from planner.vehicle import VehicleCheckRequest, check_vehicle
 from sim.base import SimulationEngine
 from sim.contracts import attach_runtime_telemetry, normalize_state_update
 from sim.kuiper import KuiperActivationError, KuiperBeltEngine
@@ -1397,6 +1398,7 @@ TRAJECTORY_INGRESS_PATHS = {
     "/benchmark/accuracy",
     "/benchmark/accuracy/report",
     "/planner/trips/search",
+    "/planner/vehicle-check",
 }
 
 
@@ -4632,6 +4634,12 @@ async def planner_trip_search(request: Request, payload: TripSearchRequest):
         raise _trajectory_http_exception(503, exc.code, str(exc), retryable=True) from exc
     except EphemerisError as exc:
         raise _ephemeris_http_exception(exc) from exc
+
+
+@app.post("/planner/vehicle-check")
+async def planner_vehicle_check(payload: VehicleCheckRequest):
+    """Whether staged propulsion closes a list of burns. At most 32 burns and 12 stages: no pool needed."""
+    return check_vehicle(payload)
 
 
 @app.get("/benchmark/accuracy")

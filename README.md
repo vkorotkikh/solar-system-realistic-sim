@@ -165,13 +165,18 @@ The reworked trip planner searches a date range for one-way trips and round
 trips (`"trip": "round_trip"` with `stay_days`, and `max_stay_days` for a
 range) between Sun-orbiting bodies, and prices each trip as burns from a
 default orbit at each end. A refusal is an answer with `"status": "refused"`,
-a `code` and a plain `message`, not an HTTP error.
+a `code` and a plain `message`, not an HTTP error. The vehicle check says
+whether a staged chemical vehicle can fly a list of burns, and how much fuel
+each burn uses.
 
 ```bash
 curl 'http://127.0.0.1:8042/planner/places?query=europa'
 curl -X POST http://127.0.0.1:8042/planner/trips/search \
   -H 'Content-Type: application/json' \
   -d '{"from": "earth", "to": "mars", "earliest_departure": "2026-11-12", "latest_departure": "2028-11-12"}'
+curl -X POST http://127.0.0.1:8042/planner/vehicle-check \
+  -H 'Content-Type: application/json' \
+  -d '{"burns_km_s": [3.71, 2.04], "payload_mass_kg": 6500, "stages": [{"name": "main", "dry_mass_kg": 6500, "propellant_mass_kg": 18000, "isp_s": 360}]}'
 ```
 
 ## Project Structure
