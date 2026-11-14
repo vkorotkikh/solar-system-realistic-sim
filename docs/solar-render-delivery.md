@@ -66,9 +66,13 @@ cache would need its own cancellation and freshness proof.
 
 Keeping the client's last accepted response does not keep it on screen indefinitely.
 The renderer clears its backend state when the absolute simulation/snapshot epoch
-separation exceeds `max(30, 2 * abs(rateDaysPerSec) * pollIntervalSec)` days, after
-five consecutive refresh failures, or after more than five minutes without success.
-Paused playback uses a zero rate for this limit. Arrivals beyond it are not drawn.
+separation exceeds `max(30, abs(rateDaysPerSec) * replacementGapSec)` days. The rate is
+the last running one: pausing, or setting 0 d/s, keeps it. The replacement gap is the
+longest a running clock waits for its next snapshot through one failed poll, 104 s with
+the defaults. The state is also cleared after five consecutive refresh failures, or
+after five minutes spent retrying. That counts the failed attempts and the waits between
+them, each wait only up to the retry the client scheduled, so time in a hidden tab does
+not count. Arrivals beyond the separation limit are not drawn.
 The Sun chip labels separation above one day as "time-lapse: state lags N d";
 after clearing, procedural fallback identifies the removed state's date unless
 the model-range notice takes precedence. A usable new snapshot restores backend state.
