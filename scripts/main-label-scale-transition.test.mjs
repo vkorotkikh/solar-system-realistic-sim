@@ -40,7 +40,7 @@ assert.ok(ts.isCallExpression(lifecycle) && ts.isObjectLiteralExpression(lifecyc
 const stages = lifecycle.arguments[0].properties.find(p => ts.isPropertyAssignment(p) && p.name.getText(sf) === 'stages');
 assert.ok(stages && ts.isArrayLiteralExpression(stages.initializer));
 const stageSource = text(stages.initializer);
-const catalog = createSolarSystemCatalog({ moonsVisible: false });
+const catalog = createSolarSystemCatalog();
 const selected = ['sun', 'venus', 'earth'].map(id => {
   const body = catalog.bodies.find(b => b.id === id);
   assert.ok(body && Number.isFinite(body.displayRadiusAu) && Number.isFinite(body.realRadiusAu));
@@ -86,7 +86,7 @@ function harness(realistic = false) {
     kuiperBeltRenderer: { setScaleMode:v=>calls.push(['kuiper',v]) },
     focusBody:(id,immediate)=>calls.push(['focus',id,immediate]),
     timeController: { advanceLocalTime:noop, updateHud:noop }, updateModelState:noop, updateBodyRotations:noop,
-    syncAsteroidBeltInputs:noop, kuiperBeltUpdater:{update:noop}, applyMetricDisplayOffsets:noop,
+    syncAsteroidBeltInputs:noop, kuiperBeltUpdater:{update:noop}, applyMetricDisplayOffsets:noop, applyMoonAltitudeDisplay:noop, applyMoonOrbitLineDisplay:noop, faceMoonTowardEarth:noop, updateEarthSatellites:noop, refreshMoonOrbitLines:noop,
     model:{update:noop}, updateFollowTarget:noop, viewportCamera:{applyPendingActions:noop},
     backgroundStars:{position:new THREE.Vector3()}, controls:{ target:new THREE.Vector3(), update:()=>onControls() },
     updateCameraClipPlanes:noop, refreshBodyInfoDistance:noop, AU_KM:149597870.7,

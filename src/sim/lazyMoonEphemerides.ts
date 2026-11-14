@@ -1,7 +1,7 @@
 import rawMoons from '../data/moons.json';
 import { parseMoonEphemerisArtifact, type GeneratedMoonChebyshevEphemeris } from './moonEphemeris';
 
-const BASE_KEYS = new Set(['titan', 'iapetus', 'phoebe', 'cordelia', 'carme', 'dione', 'mimas', 'neso', 'phobos', 's2021_n1', 's2025_u_1', 'daphnis', 's2023_s38']);
+export const BASE_MOON_EPHEMERIS_KEYS: ReadonlySet<string> = new Set(['titan', 'iapetus', 'phoebe', 'cordelia', 'carme', 'dione', 'mimas', 'neso', 'phobos', 's2021_n1', 's2025_u_1', 'daphnis', 's2023_s38']);
 const CENTERS: Record<string, string> = { Earth: '399', Mars: '499', Jupiter: '599', Saturn: '699', Uranus: '799', Neptune: '899', Pluto: '999' };
 const MAX_MANIFEST_BYTES = 1024 * 1024;
 const MAX_SHARD_BYTES = 2 * 1024 * 1024;
@@ -87,7 +87,7 @@ function validateManifest(value: unknown): LazyMoonManifest {
   const byId = new Map(rawMoons.map(moon => [moon.id, moon]));
   for (const moon of rawMoons) {
     const key = moon.name.toLowerCase();
-    if (!BASE_KEYS.has(key)) aliases.set(key, [...(aliases.get(key) ?? []), moon]);
+    if (!BASE_MOON_EPHEMERIS_KEYS.has(key)) aliases.set(key, [...(aliases.get(key) ?? []), moon]);
   }
   if (Object.keys(bodies).length !== 410 || [...aliases.keys()].some(key => !(key in bodies))) {
     throw new Error('Lazy manifest dropped or replaced a catalog model');
@@ -98,7 +98,7 @@ function validateManifest(value: unknown): LazyMoonManifest {
     const moon = byId.get(item.catalogId);
     if (!moon || seen.has(moon.id) || item.key !== moon.name.toLowerCase() || item.name !== moon.name ||
         item.parent !== moon.planet || item.targetId !== String(moon.iauCode) || item.centerId !== CENTERS[moon.planet] ||
-        item.delivery !== (BASE_KEYS.has(moon.name.toLowerCase()) ? 'base' : 'lazy') ||
+        item.delivery !== (BASE_MOON_EPHEMERIS_KEYS.has(moon.name.toLowerCase()) ? 'base' : 'lazy') ||
         !(typeof item.sourceQuality === 'string' && item.sourceQuality.length > 0 ||
           record(item.sourceQuality) && typeof item.sourceQuality.kind === 'string' && item.sourceQuality.kind.length > 0)) {
       throw new Error('Lazy catalog record identity or source qualification differs');

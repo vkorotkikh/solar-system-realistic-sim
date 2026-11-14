@@ -132,6 +132,26 @@
                 <span class="switch-copy">Body labels</span>
               </label>
               <label class="switch-control">
+                <input id="toggle-moons" type="checkbox" checked />
+                <span class="switch-track" aria-hidden="true"><span></span></span>
+                <span class="switch-copy">Moons<small class="switch-note">At enlarged scale each moon keeps its true altitude above the enlarged planet</small></span>
+              </label>
+              <label class="switch-control">
+                <input id="toggle-asteroids" type="checkbox" checked />
+                <span class="switch-track" aria-hidden="true"><span></span></span>
+                <span class="switch-copy">Asteroid belt<small class="switch-note">Band shading: orbit-averaged density of the 100,000 largest catalogued main-belt asteroids (JPL SBDB). Largest-first, so not the full population</small></span>
+              </label>
+              <label class="switch-control">
+                <input id="toggle-kuiper" type="checkbox" checked />
+                <span class="switch-track" aria-hidden="true"><span></span></span>
+                <span class="switch-copy">Kuiper belt<small class="switch-note">Modelled population, apart from eight named objects</small></span>
+              </label>
+              <label class="switch-control">
+                <input id="toggle-earth-satellites" type="checkbox" />
+                <span class="switch-track" aria-hidden="true"><span></span></span>
+                <span class="switch-copy">Earth satellites<small class="switch-note">Downloads current orbits from CelesTrak when switched on</small></span>
+              </label>
+              <label class="switch-control">
                 <input id="toggle-realistic-scale" type="checkbox" />
                 <span class="switch-track" aria-hidden="true"><span></span></span>
                 <span class="switch-copy">Realistic scale<small class="switch-note">Off: the Sun and the structures around it are enlarged and not to scale</small></span>
@@ -186,6 +206,13 @@
               <span>0.20× precise</span>
               <span>4.00× fast</span>
             </div>
+            <div class="control-heading"><span id="moon-views-label">Moon quick views</span></div>
+            <div class="button-row camera-actions" role="group" aria-labelledby="moon-views-label" aria-describedby="moon-views-help">
+              <button id="focus-moon-skim" class="button button--secondary" type="button">Exosphere</button>
+              <button id="focus-moon-llo" class="button button--secondary" type="button">LLO</button>
+              <button id="focus-moon-nrho" class="button button--secondary" type="button">NRHO</button>
+            </div>
+            <p id="moon-views-help" class="control-help">15 km, 100 km and 30,000 km above the surface. Switches to realistic scale and follows the Moon.</p>
           </div>
         </details>
 
@@ -204,7 +231,7 @@
           </summary>
           <div class="section-content" id="explorer-controls">
             <div class="field-stack">
-              <label for="body-search">Find a major body</label>
+              <label for="body-search">Find a body</label>
               <div class="search-field">
                 <svg viewBox="0 0 24 24" aria-hidden="true">
                   <circle cx="10.5" cy="10.5" r="6.5" />
@@ -214,15 +241,15 @@
                   id="body-search"
                   type="search"
                   autocomplete="off"
-                  placeholder="Search Sun, Earth, Pluto…"
+                  placeholder="Search Sun, Earth, Europa…"
                   aria-controls="body-list"
                   aria-describedby="body-search-help"
                 />
               </div>
             </div>
-            <p id="body-search-help" class="control-help">Filter major bodies by name or type. Escape clears the search.</p>
+            <p id="body-search-help" class="control-help">Filter bodies by name or type, such as Europa or Moon. Escape clears the search.</p>
             <div class="list-heading">
-              <label for="body-list">Major bodies</label>
+              <label for="body-list">Bodies</label>
               <output id="body-match-count" aria-live="polite" aria-atomic="true">10 bodies</output>
             </div>
             <select id="body-list" size="6" aria-describedby="body-list-help"></select>
@@ -274,6 +301,88 @@
                 </div>
               </dl>
             </section>
+          </div>
+        </details>
+
+        <details class="panel-disclosure">
+          <summary aria-controls="planner-controls" aria-expanded="false">
+            <span class="section-heading" role="heading" aria-level="2">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="5" cy="18.5" r="2.5" />
+                <circle cx="19" cy="5.5" r="2.5" />
+                <path d="M7 17.2C11.5 16 15 12.5 17.6 7.6" />
+              </svg>
+              Mission planner
+            </span>
+            <svg class="disclosure-chevron" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="m8 10 4 4 4-4" />
+            </svg>
+          </summary>
+          <div class="section-content" id="planner-controls">
+            <div class="field-stack">
+              <label for="planner-from">From</label>
+              <select id="planner-from"></select>
+            </div>
+            <div class="field-stack">
+              <label for="planner-to">To</label>
+              <select id="planner-to"></select>
+            </div>
+            <div class="field-stack">
+              <label for="planner-date">Departure date (UTC)</label>
+              <input id="planner-date" type="date" />
+            </div>
+            <div class="field-stack">
+              <label for="planner-objective">Objective</label>
+              <select id="planner-objective">
+                <option value="min_distance">Minimize travel path</option>
+                <option value="max_assist">Maximize gravity-assist gain</option>
+                <option value="min_time">Minimize total time</option>
+              </select>
+            </div>
+            <div class="field-stack">
+              <label for="planner-assists">Max assist flybys</label>
+              <select id="planner-assists">
+                <option value="0">0</option>
+                <option value="1" selected>1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+              </select>
+            </div>
+            <div class="field-stack">
+              <label for="planner-ephemeris">Ephemeris source</label>
+              <select id="planner-ephemeris">
+                <option value="auto" selected>Auto (SPICE / Kepler / HORIZONS)</option>
+                <option value="kepler">Kepler fallback</option>
+                <option value="spice">SPICE (TudatPy)</option>
+                <option value="horizons">JPL HORIZONS</option>
+              </select>
+            </div>
+            <fieldset class="switch-group">
+              <legend class="visually-hidden">Transfer direction</legend>
+              <label class="switch-control">
+                <input id="planner-prograde" type="checkbox" checked />
+                <span class="switch-track" aria-hidden="true"><span></span></span>
+                <span class="switch-copy">Prograde transfer</span>
+              </label>
+            </fieldset>
+            <div class="field-stack">
+              <label for="planner-arrival-date">Lambert arrival date (UTC)</label>
+              <input id="planner-arrival-date" type="date" />
+            </div>
+            <div class="field-stack">
+              <label for="planner-payload-mass">Mission payload mass (kg)</label>
+              <input id="planner-payload-mass" type="number" min="100" step="100" value="6500" />
+            </div>
+            <div class="button-row camera-actions" role="group" aria-label="Plan a trajectory">
+              <button id="plan-direct" class="button button--secondary" type="button">Direct</button>
+              <button id="plan-optimal" class="button button--secondary" type="button">Plan route</button>
+              <button id="plan-lambert" class="button button--secondary" type="button">Lambert</button>
+              <button id="plan-porkchop" class="button button--secondary" type="button">Porkchop best</button>
+              <button id="plan-mission" class="button button--secondary" type="button">Mission plan</button>
+              <button id="clear-route" class="button button--ghost" type="button">Clear</button>
+            </div>
+            <p class="control-help">Plotted arcs are illustrative curves between the computed departure and arrival positions.</p>
+            <pre id="planner-output" class="planner-output" role="status" aria-live="polite"></pre>
           </div>
         </details>
 
@@ -353,7 +462,8 @@
             NOAA Space Weather Prediction Center; sunspot numbers from WDC-SILSO,
             Royal Observatory of Belgium, Brussels (CC BY-NC 4.0); solar images
             courtesy of NASA/SDO and the AIA science team, via Helioviewer; moon
-            maps from NASA/USGS.
+            maps from NASA/USGS; Moon surface and elevation from NASA's
+            Scientific Visualization Studio; Mars surface from NASA/USGS.
             <a href="legal/NOTICE.md" target="_blank" rel="noopener noreferrer">All credits and licences</a>
           </p>
         </footer>
@@ -426,6 +536,7 @@
           <span id="status-focus" data-camera-mode="focus">Focused · Sun</span>
           <span id="status-bodies">Bodies · —</span>
           <span id="status-zoom">Range · —</span>
+          <span id="status-route" hidden>Route: none</span>
           <span
             id="status-catalog"
             role="status"

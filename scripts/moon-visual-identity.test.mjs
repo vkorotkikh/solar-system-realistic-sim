@@ -74,9 +74,10 @@ test('actual catalog and resolver identify Earth Moon without replacing its cano
   expect(catalog.bodies.filter(body => body.type === 'moon')).toHaveLength(423);
 });
 
-test('actual shipped assembly remains moon-hidden', () => {
-  expect(shippedShowMoons).toBe(false);
-  withScene({}, runtime => {
+test('actual shipped assembly builds moons; a moon-off assembly does not', () => {
+  expect(shippedShowMoons).toBe(true);
+  withScene({}, runtime => expect(runtime.bodyNodes.has(moon.id)).toBe(true));
+  withScene({showMoons: false}, runtime => {
     expect([...runtime.bodyMeshes.keys()]).toEqual(['earth', 'mars']);
     expect(runtime.bodyNodes.has(moon.id)).toBe(false);
   });

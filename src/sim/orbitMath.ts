@@ -505,7 +505,11 @@ const loopPosition = new Vector3();
  * a rounded `periodDays` or the anomalistic period would leave a gap at the seam.
  * Returns false, leaving `out` partly written, when any state is unavailable.
  */
-export function sampleOrbitLoop(orbit: KeplerOrbit, segments: number, out: Float32Array): boolean {
+/**
+ * Sample one revolution uniformly in eccentric anomaly. `aroundElapsedDays` picks the revolution
+ * containing that date, for orbits that precess visibly between the epoch and now.
+ */
+export function sampleOrbitLoop(orbit: KeplerOrbit, segments: number, out: Float32Array, aroundElapsedDays = 0): boolean {
   const e = clampEccentricity(orbit.e ?? 0);
   const epochMeanAnomaly = degToRad(orbit.meanAnomalyDeg ?? 0);
   const rates = orbit.secularRates;
@@ -514,11 +518,12 @@ export function sampleOrbitLoop(orbit: KeplerOrbit, segments: number, out: Float
   ) / JULIAN_CENTURY_DAYS;
   const revolutionDays =
     TWO_PI / (resolveKeplerOrbitAtElapsedDays(orbit, 0).meanMotionRadPerDay + apsisRateRadPerDay);
+  const wholeRevolutionsDays = Math.floor(aroundElapsedDays / revolutionDays) * revolutionDays;
   for (let k = 0; k < segments; k++) {
     const eccentricAnomaly = (k / segments) * TWO_PI;
     const meanAnomaly = eccentricAnomaly - e * Math.sin(eccentricAnomaly);
     const fraction = ((((meanAnomaly - epochMeanAnomaly) / TWO_PI) % 1) + 1) % 1;
-    if (!propagateKeplerOrbit(orbit, fraction * revolutionDays, loopPosition)) return false;
+    if (!propagateKeplerOrbit(orbit, wholeRevolutionsDays + fraction * revolutionDays, loopPosition)) return false;
     out[k * 3] = loopPosition.x;
     out[k * 3 + 1] = loopPosition.y;
     out[k * 3 + 2] = loopPosition.z;

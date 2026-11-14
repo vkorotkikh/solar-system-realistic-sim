@@ -13,22 +13,18 @@ interface ConstraintBody {
 }
 
 describe('Sun perihelion display constraint (B025)', () => {
-  it('caps the production Sun from independent Mercury and physical-radius oracles in both moon modes', () => {
+  it('caps the production Sun from independent Mercury and physical-radius oracles', () => {
     const expectedMercuryPerihelionAu = 0.3074977516112289;
     const expectedSunDisplayRadiusAu = 0.24599820128898311;
     const expectedSunRealRadiusAu = 0.00465474539672041;
 
-    for (const moonsVisible of [true, false]) {
-      const catalog = createSolarSystemCatalog({ moonsVisible });
-      const sun = catalog.bodies.find((body) => body.id === 'sun')!;
+    const catalog = createSolarSystemCatalog();
+    const sun = catalog.bodies.find((body) => body.id === 'sun')!;
 
-      expect(sun.displayRadiusAu, `moonsVisible=${moonsVisible}`).toBe(
-        expectedSunDisplayRadiusAu,
-      );
-      expect(sun.displayRadiusAu).toBeLessThan(expectedMercuryPerihelionAu);
-      expect(sun.radiusKm).toBe(696_340);
-      expect(sun.realRadiusAu).toBeCloseTo(expectedSunRealRadiusAu, 15);
-    }
+    expect(sun.displayRadiusAu).toBe(expectedSunDisplayRadiusAu);
+    expect(sun.displayRadiusAu).toBeLessThan(expectedMercuryPerihelionAu);
+    expect(sun.radiusKm).toBe(696_340);
+    expect(sun.realRadiusAu).toBeCloseTo(expectedSunRealRadiusAu, 15);
   });
 
   it('derives the cap from valid direct planets and dwarfs only', () => {

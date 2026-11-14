@@ -127,7 +127,7 @@ async function catalogFromRows(rows: readonly RawMoonRecord[]) {
   vi.doMock('../data/moons.json', () => ({ default: rows }));
   try {
     const imported = await import('./catalog');
-    return imported.createSolarSystemCatalog({ moonsVisible: false });
+    return imported.createSolarSystemCatalog();
   } finally {
     vi.doUnmock('../data/moons.json');
     vi.resetModules();
@@ -268,7 +268,7 @@ test('leaf range exhaustion returns false and programmer exceptions retain their
 });
 
 test('absent plural metadata preserves ordinary propagation and the exact existing Earth single-companion arithmetic', () => {
-  const catalog = createSolarSystemCatalog({ moonsVisible: false });
+  const catalog = createSolarSystemCatalog();
   const earth = body(catalog, 'earth').orbit!;
   assert.equal((earth as PluralOrbit).barycentreCompanions, undefined);
   const moon = body(catalog, 'moon-earth-moon').orbit!;
@@ -289,10 +289,9 @@ test('absent plural metadata preserves ordinary propagation and the exact existi
   }
 });
 
-test('actual catalog binds exact component identities and published weights without modifying masses, orbits or visibility semantics', () => {
-  const hidden = createSolarSystemCatalog({ moonsVisible: false });
-  const visible = createSolarSystemCatalog({ moonsVisible: true });
-  const pluto = body(hidden, 'pluto');
+test('actual catalog binds exact component identities and published weights without modifying masses or orbits', () => {
+  const catalog = createSolarSystemCatalog();
+  const pluto = body(catalog, 'pluto');
   const selected = companions(pluto.orbit!);
   assert.equal(pluto.massKg, 1.303e22);
   assert.equal(pluto.orbit!.barycentreCompanion, undefined);
@@ -300,22 +299,18 @@ test('actual catalog binds exact component identities and published weights with
   assert.deepEqual(bare, PLANETS.find(item => item.id === 'pluto')!.orbit);
   COMPONENTS.forEach(([identity, name, gm], index) => {
     assert.equal(raw.filter(row => row.planet === 'Pluto' && row.iauCode === identity).length, 1);
-    const moon = body(hidden, `moon-pluto-${name.toLowerCase()}`);
+    const moon = body(catalog, `moon-pluto-${name.toLowerCase()}`);
     assert.equal(moon.massKg, null);
     assert.equal(selected[index].orbit, moon.orbit);
     assert.equal(selected[index].massFraction, gm / SYSTEM_GM);
     assert.equal((moon.orbit as PluralOrbit).barycentreCompanions, undefined);
     assert.equal(moon.orbit!.barycentreCompanion, undefined);
   });
-  const nonDisplay = (catalog: SolarCatalog) => catalog.bodies.map(({ displayRadiusAu, ...item }) => item);
-  assert.deepEqual(nonDisplay(hidden), nonDisplay(visible));
-  assert.equal(hidden.bodies.length, 433);
-  assert.deepEqual(hidden.jumpBodyIds, visible.jumpBodyIds);
-  assert.deepEqual(hidden.plannerBodyIds, visible.plannerBodyIds);
+  assert.equal(catalog.bodies.length, 433);
 });
 
 test('actual model closes all-five weighted world position and velocity onto the unchanged secular system centre', () => {
-  const catalog = createSolarSystemCatalog({ moonsVisible: false });
+  const catalog = createSolarSystemCatalog();
   const model = new SolarSystemModel(catalog);
   const rawSystemOrbit = PLANETS.find(item => item.id === 'pluto')!.orbit;
   for (const jd of EPOCHS) {
@@ -345,7 +340,7 @@ test('actual model closes all-five weighted world position and velocity onto the
 });
 
 test('default compact worker preserves hidden companions through structured clone and its actual init/tick path', async () => {
-  const catalog = createSolarSystemCatalog({ moonsVisible: false });
+  const catalog = createSolarSystemCatalog();
   const compact = buildModelWorkerCatalog(catalog.bodies);
   assert.equal(compact.bodies.length, 10);
   assert.equal(compact.bodies.some(item => item.parentId === 'pluto'), false);
@@ -421,15 +416,15 @@ test('measured Pluto moon identity mismatches still reject before physical radiu
 test('actual opt-in loader and injected fit bind the runtime orbit instances without new acquisition', async () => {
   const loaded = await loadMoonEphemerides();
   for (const [, name] of COMPONENTS) assert.equal(loaded[name.toLowerCase()], undefined);
-  const plain = createSolarSystemCatalog({ moonsVisible: false });
-  const loadedCatalog = createSolarSystemCatalog({ moonEphemerides: loaded, moonsVisible: false });
+  const plain = createSolarSystemCatalog();
+  const loadedCatalog = createSolarSystemCatalog({ moonEphemerides: loaded });
   assert.deepEqual(body(loadedCatalog, 'pluto').orbit, body(plain, 'pluto').orbit);
   const synthetic = fitted();
   synthetic.coverageStartJd = JD;
   synthetic.coverageEndJd = JD + 2;
   synthetic.segments[0].startJd = JD;
   synthetic.segments[0].endJd = JD + 2;
-  const injected = createSolarSystemCatalog({ moonEphemerides: { ...loaded, charon: synthetic }, moonsVisible: false });
+  const injected = createSolarSystemCatalog({ moonEphemerides: { ...loaded, charon: synthetic } });
   const pluto = body(injected, 'pluto').orbit!, charon = body(injected, 'moon-pluto-charon').orbit!;
   assert.equal(companions(pluto)[0].orbit, charon);
   assert.equal(charon.ephemeris, synthetic);

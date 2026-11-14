@@ -1,6 +1,13 @@
 // src/frontend/features/planetary/planetShaders.ts
 import { ShaderMaterial, Color, Matrix4, Vector3 } from 'three';
 
+// Body-fixed equirectangular: +Y north, longitude 0 on +Z, east toward +X.
+const surfaceUvGLSL = /* glsl */`
+vec2 surfaceUv(vec3 p) {
+    return vec2(atan(p.x, p.z) / 6.283185307 + 0.5, asin(clamp(p.y, -1.0, 1.0)) / 3.141592654 + 0.5);
+}
+`;
+
 const fbmGLSL = /* glsl */`
 // Hash and noise functions for GLSL
 vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
@@ -121,7 +128,18 @@ varying vec3 vPosition;
 varying float vHeight;
 varying vec3 vSpherePosition;
 
+#ifdef PLANET_HAS_MAPS
+uniform sampler2D uReliefMap;
+uniform int uTerrainMode; // 0 procedural, 1 measured heights, 2 smooth
+uniform float uReliefZero;
+${surfaceUvGLSL}
+#endif
+
 float getElevation(vec3 p) {
+#ifdef PLANET_HAS_MAPS
+    if (uTerrainMode == 1) return textureLod(uReliefMap, surfaceUv(p), 0.0).r - uReliefZero;
+    if (uTerrainMode == 2) return 0.0;
+#endif
     if (uPlanetType == 0) { // Earth
         float continents = fbm(p * 1.5, 6);
         float mountains = ridgedNoise(p * 4.0, 8);
@@ -143,10 +161,8 @@ float getElevation(vec3 p) {
         return elevation;
     } 
     else if (uPlanetType == 1) { // Moon
-        float base = fbm(p * 2.5, 6) * 0.2;
-        float craters = fbm(p * 8.0, 4); // simplistic crater rim approximation
-        float details = fbm(p * 20.0, 4) * 0.05;
-        return base + abs(craters)*0.1 + details;
+        // Measured LOLA heights replace procedural craters; this noise cost ~2 s per driver compile.
+        return 0.0;
     } 
     else if (uPlanetType == 2) { // Mars
         float continents = fbm(p * 1.2, 7);
@@ -229,6 +245,19 @@ varying vec3 vSpherePosition;
 
 ${fbmGLSL}
 
+#ifdef PLANET_HAS_MAPS
+uniform sampler2D uAlbedoMap;
+uniform float uAlbedoReady;
+${surfaceUvGLSL}
+vec3 mappedAlbedo(vec3 p) {
+    vec2 uv = surfaceUv(p);
+    // The longitude coordinate jumps at the map edge; use the branch that is smooth at this pixel.
+    float wrapped = fract(uv.x + 0.5) - 0.5;
+    if (fwidth(wrapped) < fwidth(uv.x)) uv.x = wrapped;
+    return texture2D(uAlbedoMap, uv).rgb;
+}
+#endif
+
 vec3 getEarthColor(float h, vec3 p, vec3 normal) {
     float lat = abs(p.y);
     
@@ -292,26 +321,18 @@ vec3 getMarsColor(float h, vec3 p, vec3 normal) {
 }
 
 vec3 getMoonColor(float h, vec3 p, vec3 normal) {
-    vec3 base = vec3(0.6, 0.6, 0.62);
-    vec3 darkMaria = vec3(0.3, 0.3, 0.32);
-    vec3 brightEjecta = vec3(0.8, 0.8, 0.85); // ray systems
-    
-    vec3 col = mix(darkMaria, base, smoothstep(-0.1, 0.1, h));
-    
-    float rays = fbm(p * 2.0, 3);
-    col = mix(col, brightEjecta, smoothstep(0.7, 1.0, rays) * 0.4);
-    
-    float slope = 1.0 - max(0.0, dot(normal, normalize(p)));
-    if (slope > 0.1) {
-        col *= 0.8;
-    }
-    
-    return col;
+    // Shown only until the measured LROC map loads.
+    return vec3(0.45, 0.45, 0.47);
 }
 
 void main() {
     vec3 baseColor = uColorBase;
-    
+
+#ifdef PLANET_HAS_MAPS
+    if (uAlbedoReady > 0.5) {
+        baseColor = mappedAlbedo(vSpherePosition);
+    } else
+#endif
     if (uPlanetType == 0) {
         baseColor = getEarthColor(vHeight, vSpherePosition, vNormal);
     } else if (uPlanetType == 1) {
@@ -330,7 +351,17 @@ void main() {
         grit = snoise(vSpherePosition * 1000.0) * 0.04 + snoise(vSpherePosition * 2500.0) * 0.02;
     }
     
+#ifdef PLANET_HAS_MAPS
+    // Noise finer than a pixel would only speckle measured imagery; keep it for close approach.
+    if (uAlbedoReady > 0.5) grit *= smoothstep(0.35, 0.02, length(uCameraPositionLocal - vPosition) / length(vPosition));
+#endif
+
     // Apply grit to base color
+#ifdef PLANET_HAS_MAPS
+    // Signed: abs() draws bright veins along the noise's zero crossings, which read as false terrain.
+    if (uAlbedoReady > 0.5) baseColor *= 1.0 + grit;
+    else
+#endif
     baseColor *= (1.0 - abs(grit) * 2.0);
 
     // Simple lambertian lighting + ambient + micro normal perturbation
@@ -375,14 +406,23 @@ export function createPlanetShaderMaterial(planetId: string, radius: number): Sh
         displacementScale = radius * 0.06; // Olympus Mons / Valles Marineris is huge
     }
 
+    const hasMaps = planetId === 'moon' || planetId === 'mars';
+
     return new ShaderMaterial({
         vertexShader: planetVertexShader,
         fragmentShader: planetFragmentShader,
         // A material's body identity never changes. Specialize before driver
         // compilation so every terrain/normal evaluation excludes the other
         // planets' noise branches; geometry, octaves and shading stay intact.
-        defines: { PLANET_TYPE: planetType },
+        defines: { PLANET_TYPE: planetType, ...(hasMaps ? { PLANET_HAS_MAPS: 1 } : {}) },
         uniforms: {
+            ...(hasMaps ? {
+                uAlbedoMap: { value: null },
+                uAlbedoReady: { value: 0 },
+                uReliefMap: { value: null },
+                uTerrainMode: { value: 0 },
+                uReliefZero: { value: 0 }
+            } : {}),
             uPatchToCube: { value: new Matrix4() },
             uSkirtDepth: { value: 0 },
             uCameraPositionLocal: { value: new Vector3() },
