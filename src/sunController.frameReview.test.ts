@@ -526,6 +526,32 @@ describe('a backend state is labelled with its lag, then cleared when too old (H
     }
   });
 
+  it('counts the first failed attempt\'s own time too', async () => {
+    const f = await fixture();
+    const open = (seconds: number) => { for (let i = 0; i < seconds; i += 1) f.tick(0.001, 1); };
+    f.tick(2);
+    f.setRetryAfter(95);
+    await f.fail(() => open(19)); // the run's first attempt fails 19 s after it is sent
+    for (let attempt = 2; attempt <= 4; attempt += 1) {
+      open(95);
+      await f.fail();
+      f.tick(0.001);
+      // 19 s of first attempt plus 95 s per later wait: 209 s after three, 304 s after four.
+      expect(shownEpoch(f)).toBe(attempt < 4 ? 2451552 : null);
+    }
+  });
+
+  it('counts only the time actually waited when a refresh is forced before the scheduled retry', async () => {
+    const f = await fixture();
+    const open = (seconds: number) => { for (let i = 0; i < seconds; i += 1) f.tick(0.001, 1); };
+    f.tick(2);
+    f.setRetryAfter(120); // the server asks for two minutes, but each refresh is forced after ten seconds
+    await f.fail();
+    for (let attempt = 2; attempt <= 4; attempt += 1) { open(10); await f.fail(); }
+    f.tick(0.001);
+    expect(shownEpoch(f)).toBe(2451552); // 30 s of retrying, not the six minutes the schedule allowed
+  });
+
   it('starts counting afresh after a refresh succeeds', async () => {
     const f = await fixture();
     const open = (seconds: number) => { for (let i = 0; i < seconds; i += 1) f.tick(0.001, 1); };
