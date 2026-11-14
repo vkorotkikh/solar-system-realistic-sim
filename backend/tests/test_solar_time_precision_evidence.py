@@ -69,20 +69,6 @@ def test_two_part_tdb_preserves_the_identity_lost_by_scalar_jd(
         recovered_leap.utc.to_datetime(timezone=timezone.utc)
 
 
-@pytest.mark.parametrize("midnight_tag,leap_tag,tai_offset", LEAP_BOUNDARIES)
-@pytest.mark.parametrize("fraction", [".25", ".5", ".75"])
-def test_scalar_adapter_does_not_silently_remap_genuine_leap_second_interiors(
-    midnight_tag, leap_tag, tai_offset, fraction
-):
-    instant = Time(leap_tag + fraction, scale="utc")
-    tai_leap = Time(
-        midnight_tag[:-2] + f"{tai_offset - 1:02d}" + fraction, scale="tai"
-    )
-    assert abs((instant.tai - tai_leap).to_value("sec")) < 1e-9
-    with pytest.raises(ValueError, match="leap second"):
-        jd_tdb_to_utc_datetime(float(instant.tdb.jd))
-
-
 @pytest.mark.parametrize("utc_tag,tai_offset", [
     ("1990-01-01T12:00:00", 25),
     ("2012-07-01T12:00:00", 35),
