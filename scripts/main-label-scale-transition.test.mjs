@@ -40,7 +40,7 @@ assert.ok(ts.isCallExpression(lifecycle) && ts.isObjectLiteralExpression(lifecyc
 const stages = lifecycle.arguments[0].properties.find(p => ts.isPropertyAssignment(p) && p.name.getText(sf) === 'stages');
 assert.ok(stages && ts.isArrayLiteralExpression(stages.initializer));
 const stageSource = text(stages.initializer);
-const catalog = createSolarSystemCatalog({ moonsVisible: false });
+const catalog = createSolarSystemCatalog();
 const selected = ['sun', 'venus', 'earth'].map(id => {
   const body = catalog.bodies.find(b => b.id === id);
   assert.ok(body && Number.isFinite(body.displayRadiusAu) && Number.isFinite(body.realRadiusAu));

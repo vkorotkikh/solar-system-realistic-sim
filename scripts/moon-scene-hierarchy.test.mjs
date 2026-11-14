@@ -51,7 +51,7 @@ const workerAst = ts.createSourceFile('modelWorker.ts', workerSource, ts.ScriptT
 const packer = workerAst.statements.find(node => ts.isFunctionDeclaration(node) && node.name?.text === 'packModelState');
 if (!packer) throw new Error('actual worker packer extraction failed');
 const packJs = ts.transpileModule(workerSource.slice(packer.getStart(workerAst), packer.getEnd()) + '\nreturn packModelState();', {compilerOptions: {target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None}}).outputText;
-const catalog = createSolarSystemCatalog({moonsVisible: true});
+const catalog = createSolarSystemCatalog();
 const earthMoon = catalog.bodies.find(body => body.parentId === 'earth' && body.name === 'Moon');
 const ganymede = catalog.bodies.find(body => body.parentId === 'jupiter' && body.name === 'Ganymede');
 const byId = id => catalog.bodies.find(body => body.id === id);

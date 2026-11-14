@@ -12,8 +12,7 @@ import physicalRadii from './data/moonPhysicalRadii.json';
 const ROOT = fileURLToPath(new URL('..', import.meta.url)).replace(/\/$/, '');
 const rawBytes = readFileSync(`${ROOT}/src/data/moons.json`, 'utf8');
 const raw = JSON.parse(rawBytes) as Array<{ id: number; planet: string; name: string; iauCode: string; ephemeris: string }>;
-const catalogs = new Map([false, true].map(moonsVisible => [moonsVisible, createSolarSystemCatalog({ moonsVisible })]));
-const catalog = catalogs.get(false)!;
+const catalog = createSolarSystemCatalog();
 const body = (id: string) => {
   const found = catalog.bodies.find(item => item.id === id);
   assert.ok(found, `Missing actual catalog body ${id}`);
@@ -69,8 +68,8 @@ function assertSelection(runtime: ReturnType<typeof panel>, item: CatalogBody): 
   assert.equal(runtime.distanceCalls.at(-1), item.id);
 }
 
-for (const visible of [false, true]) test(`physical provenance and display estimates stay separate: visible=${visible}`, () => {
-  const moons = catalogs.get(visible)!.bodies.filter(item => item.type === 'moon');
+test('physical provenance and display estimates stay separate', () => {
+  const moons = catalog.bodies.filter(item => item.type === 'moon');
   assert.equal(moons.length, 423);
   assert.equal(moons.filter(item => item.radiusKm !== null).length, 46);
   for (const item of moons) {
@@ -130,8 +129,8 @@ test('canonical source identities remain intact and moons ship enabled', () => {
   assert.equal(visibilityNode!.kind, ts.SyntaxKind.TrueKeyword);
 });
 
-for (const visible of [false, true]) test(`panel reads preserve catalog, worker and shared orbit bindings: visible=${visible}`, () => {
-  const actual = catalogs.get(visible)!;
+for (const visible of [false, true]) test(`panel reads preserve catalog, worker and shared orbit bindings: includeMoons=${visible}`, () => {
+  const actual = createSolarSystemCatalog();
   const before = JSON.stringify(actual);
   const workerBefore = buildModelWorkerCatalog(actual.bodies, { includeMoons: visible });
   const runtime = panel(actual.bodies);

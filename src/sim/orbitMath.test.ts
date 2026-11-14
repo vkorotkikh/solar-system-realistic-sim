@@ -106,7 +106,7 @@ describe('orbit loop sampling', () => {
   it('closes every Sun-orbiting catalog loop without a jump at its seam', () => {
     const segments = 512;
     const out = new Float32Array(segments * 3);
-    for (const body of createSolarSystemCatalog({ moonsVisible: false }).bodies) {
+    for (const body of createSolarSystemCatalog().bodies) {
       if (!body.orbit || body.type === 'star' || body.type === 'moon') continue;
       expect(sampleOrbitLoop(body.orbit, segments, out), body.id).toBe(true);
       const chord = (k: number) => {

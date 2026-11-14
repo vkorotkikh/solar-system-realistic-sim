@@ -244,7 +244,7 @@ const moonEphemerides = await loadNamedMoonEphemerides().catch((error: unknown) 
 });
 if (startup.signal.aborted || !recovery.available) return;
 // Planets keep their enlarged sizes with moons on: moons move out to clear them instead.
-const catalog = createSolarSystemCatalog({ moonEphemerides, moonsVisible: false });
+const catalog = createSolarSystemCatalog({ moonEphemerides });
 const { isEarthMoonBody } = createBodyIdResolver(catalog);
 const modelWorkerCatalog: ModelWorkerCatalog = buildModelWorkerCatalog(catalog.bodies, {
   includeMoons: true

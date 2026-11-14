@@ -80,17 +80,13 @@ describe('moon catalog realism', () => {
   });
 });
 
-describe('moon-aware display radii (B024)', () => {
-  const visibleParentRadii = {
-    earth: 0.001670210938369994,
-    mars: 0.00004073420277632334,
-    jupiter: 0.0005561576485727347,
-    saturn: 0.0005804895456977919,
-    uranus: 0.00021618456097450325,
-    neptune: 0.00020942811454067043,
-    pluto: 0.0000851616399377,
-  } as const;
-  const hiddenParentRadii = {
+describe('display radii with moons shown (B024)', () => {
+  // Planets keep their enlarged display radii; the page moves each moon out by its
+  // parent's enlargement instead (owner decision 2026-11-08), so no moon orbit clamps a planet.
+  const enlargedRadii = {
+    sun: 0.24599820128898311,
+    mercury: 0.02074519414225859,
+    venus: 0.03267319268146289,
     earth: 0.03352378856871639,
     mars: 0.024452153279414884,
     jupiter: 0.1110508910364973,
@@ -104,54 +100,21 @@ describe('moon-aware display radii (B024)', () => {
     return catalog.bodies.find(body => body.id === id)!.displayRadiusAu;
   }
 
-  it('defaults to the existing visible-moon parent constraints', () => {
-    const defaultCatalog = createSolarSystemCatalog();
-    const visibleCatalog = createSolarSystemCatalog({ moonsVisible: true });
+  it('keeps every planet at its enlarged display radius', () => {
+    const catalog = createSolarSystemCatalog();
 
-    for (const [id, expected] of Object.entries(visibleParentRadii)) {
-      expect(radius(defaultCatalog, id), `${id} default`).toBeCloseTo(expected, 15);
-      expect(radius(visibleCatalog, id), `${id} explicit visible`).toBeCloseTo(expected, 15);
+    for (const [id, expected] of Object.entries(enlargedRadii)) {
+      expect(radius(catalog, id), id).toBeCloseTo(expected, 15);
     }
   });
 
-  it('restores only moon-hosting parent radii when moons are hidden', () => {
-    const visibleCatalog = createSolarSystemCatalog({ moonsVisible: true });
-    const hiddenCatalog = createSolarSystemCatalog({ moonsVisible: false });
+  it('retains every unique runtime moon and the Earth barycentric correction', () => {
+    const catalog = createSolarSystemCatalog();
 
-    for (const [id, expected] of Object.entries(hiddenParentRadii)) {
-      expect(radius(hiddenCatalog, id), `${id} hidden`).toBeCloseTo(expected, 15);
-      expect(radius(hiddenCatalog, id), `${id} must no longer be moon-clamped`)
-        .toBeGreaterThan(radius(visibleCatalog, id));
-    }
-    for (const [id, expected] of [
-      ['sun', 0.24599820128898311],
-      ['mercury', 0.02074519414225859],
-      ['venus', 0.03267319268146289],
-    ] as const) {
-      expect(radius(hiddenCatalog, id), `${id} hidden`).toBeCloseTo(expected, 15);
-      expect(radius(hiddenCatalog, id), `${id} unaffected`)
-        .toBe(radius(visibleCatalog, id));
-    }
-  });
+    expect(catalog.bodies.filter(body => body.type === 'moon')).toHaveLength(423);
 
-  it('retains every unique runtime moon and the Earth barycentric correction in hidden mode', () => {
-    const visibleCatalog = createSolarSystemCatalog({ moonsVisible: true });
-    const hiddenCatalog = createSolarSystemCatalog({ moonsVisible: false });
-    const visibleMoons = visibleCatalog.bodies.filter(body => body.type === 'moon');
-    const hiddenMoons = hiddenCatalog.bodies.filter(body => body.type === 'moon');
-
-    expect(hiddenCatalog.bodies.map(body => body.id)).toEqual(
-      visibleCatalog.bodies.map(body => body.id),
-    );
-    expect(hiddenCatalog.bodies.map(({ displayRadiusAu: _displayRadiusAu, ...body }) => body))
-      .toEqual(visibleCatalog.bodies.map(({ displayRadiusAu: _displayRadiusAu, ...body }) => body));
-    expect(hiddenMoons).toHaveLength(423);
-    expect(hiddenMoons).toEqual(visibleMoons);
-    expect(hiddenCatalog.jumpBodyIds).toEqual(visibleCatalog.jumpBodyIds);
-    expect(hiddenCatalog.plannerBodyIds).toEqual(visibleCatalog.plannerBodyIds);
-
-    const earth = hiddenCatalog.bodies.find(body => body.id === 'earth')!;
-    const moon = hiddenCatalog.bodies.find(body => (
+    const earth = catalog.bodies.find(body => body.id === 'earth')!;
+    const moon = catalog.bodies.find(body => (
       body.parentId === 'earth' && body.name === 'Moon'
     ))!;
     expect(earth.orbit?.barycentreCompanion?.orbit).toBe(moon.orbit);
