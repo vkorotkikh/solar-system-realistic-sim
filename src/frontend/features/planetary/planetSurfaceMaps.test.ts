@@ -1,4 +1,4 @@
-import { Group, PerspectiveCamera, Texture } from 'three';
+import { PerspectiveCamera, Texture } from 'three';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createPlanetSurfaceMaps } from './planetSurfaceMaps';
 import { PlanetQuadtree } from './quadtreeLOD';
@@ -6,41 +6,29 @@ import { PlanetQuadtree } from './quadtreeLOD';
 const trees: PlanetQuadtree[] = [];
 afterEach(() => { for (const tree of trees.splice(0)) tree.dispose(); vi.restoreAllMocks(); });
 
-function target(visualId: 'moon' | 'mars', cameraDistanceRadii: number) {
+function target(visualId: 'moon' | 'mars') {
   const tree = new PlanetQuadtree(visualId, 0.01, new PerspectiveCamera(), visualId);
   trees.push(tree);
-  tree.cameraLocalPosition.set(0, 0, cameraDistanceRadii * 0.01);
-  return { visualId, tree, node: new Group() };
+  return { visualId, tree };
 }
-const settle = () => new Promise(resolve => { setTimeout(resolve, 0); });
 const loaderFor = () => ({ loadAsync: vi.fn(async () => new Texture()) });
 
 describe('createPlanetSurfaceMaps', () => {
-  it('leaves distant bodies procedural and fetches nothing', async () => {
+  it('preloads every map at creation and hands each texture to the GPU upload', async () => {
     const textureLoader = loaderFor();
-    const moon = target('moon', 151);
-    createPlanetSurfaceMaps({ targets: [moon], textureLoader, maxAnisotropy: 8 }).update();
-    await settle();
-    expect(textureLoader.loadAsync).not.toHaveBeenCalled();
-    expect(moon.tree.material.uniforms.uTerrainMode.value).toBe(0);
+    const upload = vi.fn();
+    const maps = createPlanetSurfaceMaps({ targets: [target('moon'), target('mars')], textureLoader, maxAnisotropy: 8, upload });
+    // Requested at once: no camera distance or visibility gate.
+    expect(textureLoader.loadAsync).toHaveBeenCalledTimes(3);
+    await maps.ready;
+    expect(upload).toHaveBeenCalledTimes(3);
   });
 
-  it('does not fetch maps for a hidden body', async () => {
+  it('applies the Moon maps in true kilometres', async () => {
     const textureLoader = loaderFor();
-    const moon = target('moon', 2);
-    moon.node.visible = false;
-    createPlanetSurfaceMaps({ targets: [moon], textureLoader, maxAnisotropy: 8 }).update();
-    await settle();
-    expect(textureLoader.loadAsync).not.toHaveBeenCalled();
-  });
-
-  it('applies the Moon maps once, in true kilometres', async () => {
-    const textureLoader = loaderFor();
-    const moon = target('moon', 2);
+    const moon = target('moon');
     const maps = createPlanetSurfaceMaps({ targets: [moon], textureLoader, maxAnisotropy: 8 });
-    maps.update();
-    maps.update();
-    await settle();
+    await maps.ready;
     expect(textureLoader.loadAsync).toHaveBeenCalledTimes(2);
     const { uTerrainMode, uReliefZero, uDisplacementScale, uAlbedoReady } = moon.tree.material.uniforms;
     expect(uAlbedoReady.value).toBe(1);
@@ -54,9 +42,8 @@ describe('createPlanetSurfaceMaps', () => {
 
   it('gives Mars imagery on a smooth globe, since no real heights ship', async () => {
     const textureLoader = loaderFor();
-    const mars = target('mars', 2);
-    createPlanetSurfaceMaps({ targets: [mars], textureLoader, maxAnisotropy: 8 }).update();
-    await settle();
+    const mars = target('mars');
+    await createPlanetSurfaceMaps({ targets: [mars], textureLoader, maxAnisotropy: 8 }).ready;
     expect(textureLoader.loadAsync).toHaveBeenCalledTimes(1);
     expect(mars.tree.material.uniforms.uAlbedoReady.value).toBe(1);
     expect(mars.tree.material.uniforms.uTerrainMode.value).toBe(2);
@@ -64,11 +51,10 @@ describe('createPlanetSurfaceMaps', () => {
 
   it('keeps the procedural surface when a map fails', async () => {
     vi.spyOn(console, 'warn').mockImplementation(() => undefined);
-    const moon = target('moon', 2);
-    createPlanetSurfaceMaps({
+    const moon = target('moon');
+    await createPlanetSurfaceMaps({
       targets: [moon], maxAnisotropy: 8, textureLoader: { loadAsync: vi.fn(async () => { throw new Error('offline'); }) },
-    }).update();
-    await settle();
+    }).ready;
     expect(moon.tree.material.uniforms.uAlbedoReady.value).toBe(0);
     expect(moon.tree.material.uniforms.uTerrainMode.value).toBe(0);
   });
@@ -76,9 +62,8 @@ describe('createPlanetSurfaceMaps', () => {
   it('releases every loaded texture on dispose', async () => {
     const textures: Texture[] = [];
     const textureLoader = { loadAsync: vi.fn(async () => { const texture = new Texture(); textures.push(texture); return texture; }) };
-    const maps = createPlanetSurfaceMaps({ targets: [target('moon', 2)], textureLoader, maxAnisotropy: 8 });
-    maps.update();
-    await settle();
+    const maps = createPlanetSurfaceMaps({ targets: [target('moon')], textureLoader, maxAnisotropy: 8 });
+    await maps.ready;
     const released = textures.map(texture => { const spy = vi.fn(); texture.addEventListener('dispose', spy); return spy; });
     maps.dispose();
     for (const spy of released) expect(spy).toHaveBeenCalledTimes(1);

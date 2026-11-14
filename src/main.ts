@@ -612,13 +612,15 @@ for (const body of moonBodies) {
   if (cached) applyMap(cached);
 }
 
-const surfaceMaps = ownDisposable(createPlanetSurfaceMaps({
+// Preloaded at startup whatever the camera distance, and uploaded to the GPU on arrival.
+ownDisposable(createPlanetSurfaceMaps({
   targets: ([['moon', catalog.bodies.find(isEarthMoonBody)?.id], ['mars', 'mars']] as const).flatMap(([visualId, id]) => {
     const tree: PlanetQuadtree | undefined = id ? bodyMeshes.get(id)?.userData.quadtree : undefined;
-    return tree ? [{ visualId, tree, node: bodyNodes.get(id!) }] : [];
+    return tree ? [{ visualId, tree }] : [];
   }),
   textureLoader,
   maxAnisotropy,
+  upload: (texture) => renderer.initTexture(texture),
 }));
 
 // ── Asteroid & Kuiper Belts ──────────────────────────────────────────────────
@@ -1460,7 +1462,6 @@ const frameLifecycle = createFrameLifecycle({
       };
     }),
     { name: 'moon-orbits', run: refreshMoonOrbitLines },
-    { name: 'surface-maps', run: () => surfaceMaps.update() },
     { name: 'satellites', run: updateEarthSatellites },
     { name: 'background', run: () => { backgroundStars.position.copy(camera.position); } },
     { name: 'controls', run: () => { controls.update(); } },

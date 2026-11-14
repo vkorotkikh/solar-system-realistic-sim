@@ -1,9 +1,7 @@
-import { LinearFilter, NoColorSpace, RepeatWrapping, type Object3D, type Texture } from 'three';
+import { LinearFilter, NoColorSpace, RepeatWrapping, type Texture } from 'three';
 import type { PlanetQuadtree } from './quadtreeLOD';
 
 const TEXTURE_ROOT = `${import.meta.env.BASE_URL.replace(/\/?$/, '/')}textures/surfaces/`;
-/** Beyond this many radii the body spans about six pixels, so its maps are not worth fetching. */
-const LOAD_WITHIN_RADII = 150;
 
 /**
  * The Moon elevation map comes from NASA's CGI Moon Kit: half-metres above a 1727.4 km sphere,
@@ -19,12 +17,17 @@ export const PLANET_SURFACE_SOURCES = Object.freeze({
 });
 type SurfaceId = keyof typeof PLANET_SURFACE_SOURCES;
 
-interface SurfaceTarget { visualId: SurfaceId; tree: PlanetQuadtree; node: Object3D }
+interface SurfaceTarget { visualId: SurfaceId; tree: PlanetQuadtree }
 
-export function createPlanetSurfaceMaps({ targets, textureLoader, maxAnisotropy }: {
+/**
+ * Loads every map as soon as the page starts, whatever the camera distance or the
+ * Moons switch, and passes each texture to `upload` so it reaches the GPU on arrival
+ * rather than at the frame that first draws it.
+ */
+export function createPlanetSurfaceMaps({ targets, textureLoader, maxAnisotropy, upload }: {
   targets: readonly SurfaceTarget[]; textureLoader: { loadAsync(url: string): Promise<Texture> }; maxAnisotropy: number;
+  upload?: (texture: Texture) => void;
 }) {
-  const waiting = new Set(targets);
   const loaded: Texture[] = [];
   let disposed = false;
 
@@ -35,7 +38,7 @@ export function createPlanetSurfaceMaps({ targets, textureLoader, maxAnisotropy 
     texture.wrapS = RepeatWrapping;
     configure(texture);
     texture.needsUpdate = true;
-    if (disposed) texture.dispose(); else loaded.push(texture);
+    if (disposed) texture.dispose(); else { loaded.push(texture); upload?.(texture); }
     return texture;
   }
 
@@ -59,15 +62,11 @@ export function createPlanetSurfaceMaps({ targets, textureLoader, maxAnisotropy 
     }
   }
 
+  const ready = Promise.all(targets.map(load)).then(() => undefined);
+
   return {
-    update() {
-      for (const target of waiting) {
-        if (target.node.visible === false) continue;
-        if (target.tree.cameraLocalPosition.length() > target.tree.baseRadius * LOAD_WITHIN_RADII) continue;
-        waiting.delete(target);
-        void load(target);
-      }
-    },
+    /** Settles once every map has been applied or has failed back to the procedural surface. */
+    ready,
     dispose() {
       disposed = true;
       for (const texture of loaded) texture.dispose();
