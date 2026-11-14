@@ -511,6 +511,59 @@ describe('a backend state is labelled with its lag, then cleared when too old (H
     expect(shownEpoch(f)).toBe(2451552);
   });
 
+  it('counts a slow failed attempt\'s own time as time spent retrying', async () => {
+    const f = await fixture();
+    const open = (seconds: number) => { for (let i = 0; i < seconds; i += 1) f.tick(0.001, 1); }; // frames keep running
+    f.tick(2); // the failure rules apply once the state lags the clock by more than a day
+    f.setRetryAfter(90);
+    await f.fail(() => open(19)); // each attempt fails 19 s after it is sent, inside the 20 s timeout
+    for (let attempt = 2; attempt <= 4; attempt += 1) {
+      open(90); // the server's Retry-After
+      await f.fail(() => open(19));
+      f.tick(0.001);
+      // Each later failure adds 90 s of waiting and 19 s of attempt: 218 s after three, 327 s after four.
+      expect(shownEpoch(f)).toBe(attempt < 4 ? 2451552 : null);
+    }
+  });
+
+  it('starts counting afresh after a refresh succeeds', async () => {
+    const f = await fixture();
+    const open = (seconds: number) => { for (let i = 0; i < seconds; i += 1) f.tick(0.001, 1); };
+    f.tick(2);
+    f.setRetryAfter(120);
+    await f.fail();
+    for (let attempt = 2; attempt <= 4; attempt += 1) { open(120); await f.fail(); }
+    f.tick(0.001);
+    expect(shownEpoch(f)).toBeNull(); // six minutes of retrying cleared the state
+    f.setRetryAfter(null);
+    const next = atEpoch(payload(), f.state.julianDate);
+    await f.refresh(next);
+    f.tick(0.001);
+    expect(shownEpoch(f)).toBe(next.epoch_jd_tdb);
+    for (let i = 0; i < 3; i += 1) f.tick(1, 1); // the new state now lags by three days, and nothing has failed
+    expect(shownEpoch(f)).toBe(next.epoch_jd_tdb);
+  });
+
+  it('measures time spent retrying on the steady clock, not the wall clock', async () => {
+    const f = await fixture();
+    const open = (seconds: number) => { for (let i = 0; i < seconds; i += 1) f.tick(0.001, 1); };
+    f.tick(2);
+    f.setRetryAfter(120);
+    await f.fail();
+    open(120);
+    await f.fail(() => f.stepWallClock(3_600_000)); // an NTP or time-zone correction during the attempt
+    f.tick(0.001);
+    expect(shownEpoch(f)).toBe(2451552); // two minutes of retrying, not an hour
+    open(60); f.stepWallClock(-3_600_000); open(60); // and back again while the client waits
+    await f.fail();
+    f.tick(0.001);
+    expect(shownEpoch(f)).toBe(2451552); // four minutes
+    open(120);
+    await f.fail();
+    f.tick(0.001);
+    expect(shownEpoch(f)).toBeNull(); // six minutes
+  });
+
   it('keeps a state that is right for the paused date while refreshes fail, and says they fail', async () => {
     const f = await fixture();
     f.state.paused = true;
