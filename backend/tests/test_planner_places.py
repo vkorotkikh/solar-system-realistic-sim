@@ -20,7 +20,8 @@ MU_JUPITER = 126_691_562.6  # 1.8982e27 kg
 
 def test_every_body_the_solver_accepts_is_a_place_and_the_sun_is_not() -> None:
     # Breaks if the place list drops a body the transfer solver can fly to, or admits the Sun.
-    assert {place.id for place in PLACES} == set(eligible_endpoint_body_ids(ALL_BODIES))
+    # Moons are places too; test_planner_moons.py covers them.
+    assert {place.id for place in PLACES if place.kind != "moon"} == set(eligible_endpoint_body_ids(ALL_BODIES))
     assert get_place("sun") is None
     assert get_place("MARS").id == "mars"
 
@@ -28,13 +29,13 @@ def test_every_body_the_solver_accepts_is_a_place_and_the_sun_is_not() -> None:
 @pytest.mark.parametrize(
     ("query", "expected"),
     [
-        ("Europa", ["europa52"]),  # catalog name "Europa (52)"
+        ("Europa", ["europa52", "moon-jupiter-europa"]),  # asteroid "Europa (52)" and Jupiter's moon
         ("europa (52)", ["europa52"]),
         ("52", ["europa52"]),
         ("europa52", ["europa52"]),  # the id alone
-        ("METIS", ["metis"]),
+        ("METIS", ["metis", "moon-jupiter-metis"]),
         ("ms4", ["ms4"]),
-        ("ju", ["jupiter", "juno"]),  # catalog order among matches
+        ("ju", ["jupiter", "juno", "moon-uranus-juliet"]),  # catalog order among matches
         ("sun", []),
         ("   ", []),
         ("xyzzy", []),

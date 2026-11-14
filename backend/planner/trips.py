@@ -30,7 +30,8 @@ from trajectory.budget import (
 )
 from trajectory.contracts import PLANNING_JD_MAX, PLANNING_JD_MIN, TrajectoryRequestRejected
 
-from .places import Place, find_places, get_place, orbit_burn_km_s, orbit_json
+from .places import (Place, end_burn_km_s, find_places, get_place, orbit_json, planet_leg, shared_planet,
+                     sun_body)
 
 SEARCH_SECONDS = 10.0  # the whole search, inside the 12 s planner-call limit (spec done check 5)
 MAX_RANGE_DAYS = 3_653  # ten years of departures
@@ -139,12 +140,12 @@ def _refused(code: str, message: str, **extra) -> dict:
 
 def _grid(origin: Place, target: Place) -> tuple[float, float, float, float, float]:
     """Flight times bracketing the Hohmann time, and a departure step from the synodic period."""
-    a_origin, a_target = (float(_ORBITS[place.id]["a_au"]) for place in (origin, target))
+    a_origin, a_target = (float(_ORBITS[sun_body(place)]["a_au"]) for place in (origin, target))
     hohmann = math.pi * math.sqrt(((a_origin + a_target) / 2 * AU_KM) ** 3 / MU_SUN_KM3_S2) / 86_400
     tof_hi = float(min(3_650, round(1.6 * hohmann)))
     tof_lo = float(max(5, round(min(0.4 * hohmann, 0.5 * tof_hi))))
     tof_step = float(max(5, round((tof_hi - tof_lo) / 20)))
-    period_origin, period_target = (float(_ORBITS[place.id]["period_days"]) for place in (origin, target))
+    period_origin, period_target = (float(_ORBITS[sun_body(place)]["period_days"]) for place in (origin, target))
     gap = abs(1 / period_origin - 1 / period_target)
     synodic = 1 / gap if gap > 0 else math.inf
     dep_step = float(min(10, max(3, round(min(synodic, 300.0) / 30))))
@@ -158,8 +159,8 @@ def _candidate(point: dict, origin: Place, target: Place) -> _Candidate:
         flight_days=float(point["tofDays"]),
         v_inf_depart=v_depart,
         v_inf_arrive=v_arrive,
-        burn_depart=round(orbit_burn_km_s(v_depart, origin.mu_km3_s2, origin.default_orbit), 3),
-        burn_arrive=round(orbit_burn_km_s(v_arrive, target.mu_km3_s2, target.default_orbit), 3),
+        burn_depart=round(end_burn_km_s(origin, v_depart), 3),
+        burn_arrive=round(end_burn_km_s(target, v_arrive), 3),
     )
 
 
@@ -189,7 +190,7 @@ def _scan(origin: Place, target: Place, dep_lo: float, dep_hi: float, dep_step: 
         )
         try:
             scan = run_porkchop_scan(
-                ALL_BODIES, from_id=origin.id, to_id=target.id,
+                ALL_BODIES, from_id=sun_body(origin), to_id=sun_body(target),
                 departure_start_jd=dep, departure_end_jd=scan_end, departure_step_days=dep_step,
                 tof_min_days=tof_lo, tof_max_days=flight_max, tof_step_days=tof_step,
                 cancel_event=cancel, planning_context=context,
@@ -270,14 +271,21 @@ def _window_centres(pool: list[_Candidate], separation_days: float) -> list[_Can
     return centres
 
 
-def _approximations(*places: Place) -> list[str]:
-    notes = [
-        "Planet and asteroid positions come from catalog orbital elements, not a live ephemeris.",
-        "Burns are instant, and each orbit is assumed to lie in the plane of the path leaving or reaching it.",
-        "Departure dates come from a search grid and are good to a few days.",
-    ]
+def _approximations(origin: Place, target: Place, planet: Place | None = None) -> list[str]:
+    if planet is None:
+        notes = [
+            "Planet and asteroid positions come from catalog orbital elements, not a live ephemeris.",
+            "Burns are instant, and each orbit is assumed to lie in the plane of the path leaving or reaching it.",
+            "Departure dates come from a search grid and are good to a few days.",
+        ]
+        notes += [f"{place.name} is reached or left straight in: the path passes {get_place(place.around).name} "
+                  f"at {place.name}'s distance, moving with it. Real missions use moon flybys to brake for less."
+                  for place in (origin, target) if place.around != "sun"]
+    else:
+        notes = [f"Around {planet.name} the orbits are taken as circular and in one plane, and any departure day "
+                 "works: where a moon is along its orbit is not modelled."]
     notes += [f"{place.name} has no mass in the catalog, so it is treated as having no gravity."
-              for place in dict.fromkeys(places) if place.mu_km3_s2 == 0.0]
+              for place in dict.fromkeys((origin, target)) if place.mu_km3_s2 == 0.0]
     return notes
 
 
@@ -286,30 +294,36 @@ def _burn(place: Place, jd: float, delta_v: float) -> dict:
 
 
 def _leg(from_id: str, to_id: str, depart_jd: float, arrive_jd: float,
-         burns: list[dict], v_inf_depart: float, v_inf_arrive: float) -> dict:
-    return {
+         burns: list[dict], v_inf_depart: float, v_inf_arrive: float, around: str = "sun") -> dict:
+    leg = {
         "from": from_id,
         "to": to_id,
-        "around": "sun",
+        "around": around,
         "depart": {"date": jd_to_date(depart_jd), "jd": round(depart_jd, 4)},
         "arrive": {"date": jd_to_date(arrive_jd), "jd": round(arrive_jd, 4)},
         "flight_days": round(arrive_jd - depart_jd, 4),
         "burns": burns,
-        "excess_speed_km_s": {"depart": round(v_inf_depart, 3), "arrive": round(v_inf_arrive, 3)},
     }
+    if around == "sun":
+        leg["excess_speed_km_s"] = {"depart": round(v_inf_depart, 3), "arrive": round(v_inf_arrive, 3)}
+    else:
+        leg["any_day"] = True
+    return leg
 
 
-def _direct_trip(candidate: _Candidate, origin: Place, target: Place) -> dict:
+def _direct_trip(candidate: _Candidate, origin: Place, target: Place, planet: Place | None = None) -> dict:
+    """One leg: around the Sun between the places' Sun bodies, or around the planet both are at."""
     burns = [_burn(origin, candidate.depart_jd, candidate.burn_depart),
              _burn(target, candidate.arrive_jd, candidate.burn_arrive)]
-    leg = _leg(origin.id, target.id, candidate.depart_jd, candidate.arrive_jd, burns,
-               candidate.v_inf_depart, candidate.v_inf_arrive)
+    ends = (sun_body(origin), sun_body(target)) if planet is None else (origin.id, target.id)
+    leg = _leg(*ends, candidate.depart_jd, candidate.arrive_jd, burns, candidate.v_inf_depart,
+               candidate.v_inf_arrive, around="sun" if planet is None else planet.id)
     return {"total_delta_v_km_s": candidate.total, "total_days": leg["flight_days"], "legs": [leg],
-            "approximations": _approximations(origin, target)}
+            "approximations": _approximations(origin, target, planet)}
 
 
-def _round_trip(trip: _RoundTrip, origin: Place, target: Place) -> dict:
-    out, back = _direct_trip(trip.out, origin, target), _direct_trip(trip.back, target, origin)
+def _round_trip(trip: _RoundTrip, origin: Place, target: Place, planet: Place | None = None) -> dict:
+    out, back = _direct_trip(trip.out, origin, target, planet), _direct_trip(trip.back, target, origin, planet)
     return {
         "total_delta_v_km_s": trip.total,
         "total_days": round(trip.days, 4),
@@ -322,8 +336,8 @@ def _round_trip(trip: _RoundTrip, origin: Place, target: Place) -> dict:
 def _flyby_trip(route: dict, origin: Place, target: Place) -> dict:
     """A route from the existing flyby search: burns at both ends, unpowered flybys between."""
     raw_legs = route["legs"]
-    depart = round(orbit_burn_km_s(float(raw_legs[0]["deltaVDepartureKmS"]), origin.mu_km3_s2, origin.default_orbit), 3)
-    arrive = round(orbit_burn_km_s(float(raw_legs[-1]["deltaVArrivalKmS"]), target.mu_km3_s2, target.default_orbit), 3)
+    depart = round(end_burn_km_s(origin, float(raw_legs[0]["deltaVDepartureKmS"])), 3)
+    arrive = round(end_burn_km_s(target, float(raw_legs[-1]["deltaVArrivalKmS"])), 3)
     legs = []
     for index, raw in enumerate(raw_legs):
         burns = []
@@ -352,12 +366,44 @@ def _flyby_search(origin: Place, target: Place, depart_jd: float, flybys: int,
         min(remaining, HARD_MAX_PLANNING_TIMEOUT_SECONDS), limits=_FLYBY_LIMITS, cancel_event=cancel
     )
     try:
-        best = plan_interplanetary_route(ALL_BODIES, from_id=origin.id, to_id=target.id,
+        best = plan_interplanetary_route(ALL_BODIES, from_id=sun_body(origin), to_id=sun_body(target),
                                          departure_jd=depart_jd, max_assists=flybys,
                                          planning_context=context)["best"]
     except (PlanningDeadlineExceeded, PlanningBudgetExceeded, TrajectoryRequestRejected):
         return None, False
     return (best if best and best.get("assists") else None), True
+
+
+def _answer(origin: Place, target: Place, trips: list[dict], searched: dict) -> dict:
+    return {
+        "status": "ok",
+        "resolved": {place_key: {"id": place.id, "name": place.name, "orbit": orbit_json(place.default_orbit, place)}
+                     for place_key, place in (("from", origin), ("to", target))},
+        "trips": [{"id": f"t{number}", **trip} for number, trip in enumerate(trips, start=1)],
+        "searched": searched,
+    }
+
+
+def _planet_trip(request: TripSearchRequest, origin: Place, target: Place, planet: Place,
+                 first: float, last: float, min_stay: float, notes: list[str], started: float) -> dict:
+    """A trip around one planet. There is no launch window to search, so it leaves on the first day asked for."""
+    burn1, burn2, days, change1, change2 = planet_leg(origin, target, planet)
+    option: _Candidate | _RoundTrip = _Candidate(first, round(days, 4), change1, change2, round(burn1, 3), round(burn2, 3))
+    if request.trip == "round_trip":
+        back1, back2, back_days, back_change1, back_change2 = planet_leg(target, origin, planet)
+        option = _RoundTrip(option, _Candidate(option.arrive_jd + min_stay, round(back_days, 4),
+                                               back_change1, back_change2, round(back1, 3), round(back2, 3)))
+    if option.arrive_jd > PLANNING_JD_MAX:
+        return _refused("arrives_after_2050", "Trips must arrive by 2050-01-01, where the position data ends.")
+    notes.append("Any departure day works for a trip around one planet, so it leaves on the earliest day asked for.")
+    if request.flybys:
+        notes.append("The flyby search runs for transfers around the Sun only.")
+    build = _round_trip if request.trip == "round_trip" else _direct_trip
+    trips = [{"labels": labels, **build(choice, origin, target, planet)}
+             for choice, labels in _labelled([option], request.objective)]
+    return _answer(origin, target, trips, {
+        "earliest_departure": jd_to_date(first), "latest_departure": jd_to_date(last), "transfer_solves": 0,
+        "seconds": round(time.monotonic() - started, 2), "complete": True, "notes": notes})
 
 
 def search_trips(request: TripSearchRequest, *, today: date | None = None,
@@ -402,6 +448,9 @@ def search_trips(request: TripSearchRequest, *, today: date | None = None,
         first = PLANNING_JD_MIN
         notes.append("Departures before 1990-01-01 are outside the supported range and were not searched.")
 
+    planet = shared_planet(origin, target)
+    if planet is not None:
+        return _planet_trip(request, origin, target, planet, first, last, min_stay, notes, started)
     grid = _grid(origin, target)
     tof_lo, tof_hi, tof_step, dep_step, synodic = grid
     last = min(last, PLANNING_JD_MAX - tof_lo)
@@ -458,12 +507,4 @@ def search_trips(request: TripSearchRequest, *, today: date | None = None,
         searched["complete"] = searched["complete"] and complete
         searched["seconds"] = round(time.monotonic() - started, 2)
 
-    for number, trip in enumerate(trips, start=1):
-        trip["id"] = f"t{number}"
-    return {
-        "status": "ok",
-        "resolved": {place_key: {"id": place.id, "name": place.name, "orbit": orbit_json(place.default_orbit, place)}
-                     for place_key, place in (("from", origin), ("to", target))},
-        "trips": [{"id": trip.pop("id"), **trip} for trip in trips],
-        "searched": searched,
-    }
+    return _answer(origin, target, trips, searched)

@@ -160,7 +160,7 @@ def test_refusals_carry_a_code_and_a_plain_message(fields: dict, code: str) -> N
 
 
 def test_an_unknown_place_suggests_the_closest_names() -> None:
-    assert search(to="Europa")["suggestions"] == ["europa52"]
+    assert search(to="Europa")["suggestions"] == ["europa52", "moon-jupiter-europa"]
 
 
 def test_a_body_without_a_catalog_mass_is_reached_by_matching_its_speed() -> None:

@@ -163,9 +163,13 @@ curl http://127.0.0.1:8042/solar/realtime
 
 The reworked trip planner searches a date range for one-way trips and round
 trips (`"trip": "round_trip"` with `stay_days`, and `max_stay_days` for a
-range) between Sun-orbiting bodies, and prices each trip as burns from a
-default orbit at each end. A refusal is an answer with `"status": "refused"`,
-a `code` and a plain `message`, not an HTTP error. A plan puts several trips
+range) between planets, dwarf planets, asteroids and all 423 moons, and prices
+each trip as burns from a default orbit at each end. A moon is reached straight
+in at the end of a transfer to its planet, or by a transfer around the planet
+when both ends are there. Moon masses come from `backend/data/moon_gm.json`,
+which `scripts/generate_moon_gm.py` derives offline from the pinned JPL table.
+A refusal is an answer with `"status": "refused"`, a `code` and a plain
+`message`, not an HTTP error. A plan puts several trips
 on one date axis; a trip can be tied to leave no sooner than `gap_days` after
 another trip `departs` or `arrives`, and the plan reports its first departure,
 its last arrival and any problems (a loop of ties, a tie to a missing trip, a
