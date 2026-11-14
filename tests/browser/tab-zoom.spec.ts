@@ -19,7 +19,11 @@ test.describe('native Chromium tab zoom', () => {
       page.on('pageerror', (error) => errors.push(error.message));
       let failed = false;
       try {
-        await page.goto(baseURL, { waitUntil: 'networkidle' });
+        // Wait for the app's own readiness, not network idle: under SwiftShader the heavier
+        // startup leaves Playwright tracking the model worker's script request as open even
+        // though the worker runs, so 'networkidle' never settles.
+        await page.goto(baseURL, { waitUntil: 'load' });
+        await expect(page.locator('#status-zoom')).not.toHaveText('Range · —', { timeout: 90_000 });
         const canvas = page.locator('#space-canvas');
         const panel = page.locator('#control-panel');
         const toggle = page.locator('#panel-toggle');
