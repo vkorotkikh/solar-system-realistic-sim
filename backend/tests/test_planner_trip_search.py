@@ -146,7 +146,6 @@ def test_arrivals_are_kept_before_2050() -> None:
         ({"to": "Europa"}, "unknown_place"),
         ({"to": "sun"}, "unknown_place"),
         ({"from": "mars", "to": "MARS"}, "same_place"),
-        ({"to": "mars", "trip": "round_trip", "stay_days": 30}, "trip_kind_unsupported"),
         ({"to": "mars", "earliest_departure": "2030-01-01", "latest_departure": "2029-01-01"}, "invalid_date_range"),
         ({"to": "mars", "earliest_departure": "2026-01-01", "latest_departure": "2037-01-02"}, "date_range_too_long"),
         ({"to": "mars", "earliest_departure": "1980-01-01", "latest_departure": "1985-01-01"}, "departs_before_1990"),

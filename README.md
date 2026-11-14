@@ -161,10 +161,11 @@ curl http://127.0.0.1:8042/solar/realtime
 
 ### Trip planner endpoints
 
-The reworked trip planner searches a date range for one-way trips between
-Sun-orbiting bodies and prices each trip as burns from a default orbit at each
-end. A refusal is an answer with `"status": "refused"`, a `code` and a plain
-`message`, not an HTTP error.
+The reworked trip planner searches a date range for one-way trips and round
+trips (`"trip": "round_trip"` with `stay_days`, and `max_stay_days` for a
+range) between Sun-orbiting bodies, and prices each trip as burns from a
+default orbit at each end. A refusal is an answer with `"status": "refused"`,
+a `code` and a plain `message`, not an HTTP error.
 
 ```bash
 curl 'http://127.0.0.1:8042/planner/places?query=europa'

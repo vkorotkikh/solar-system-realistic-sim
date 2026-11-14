@@ -37,6 +37,10 @@ MAX_RANGE_DAYS = 3_653  # ten years of departures
 SCAN_POINTS = 500  # the scan returns at most 500 points; smaller scans keep every one
 MAX_EXTRA = 0.25  # the fastest and soonest trips may cost at most a quarter more than the cheapest
 REFINED_WINDOWS = 3
+RETURN_SOLVES = 15_000  # transfer solves spent on return legs, spread over the outbound options
+MAX_OUTBOUND_OPTIONS = 60
+ROUND_TRIP_NOTE = ("Round trips pair each of several outbound trips with the returns searched after it; "
+                   "the two legs are not optimised together.")
 MU_SUN_KM3_S2 = 1.32712440018e11
 AU_KM = 1.495978707e8
 _UNIX_EPOCH = date(1970, 1, 1)
@@ -77,8 +81,34 @@ class _Candidate:
         return self.depart_jd + self.flight_days
 
     @property
+    def days(self) -> float:
+        return self.flight_days
+
+    @property
     def total(self) -> float:
         return round(self.burn_depart + self.burn_arrive, 3)
+
+
+@dataclass(frozen=True, slots=True)
+class _RoundTrip:
+    out: _Candidate
+    back: _Candidate
+
+    @property
+    def depart_jd(self) -> float:
+        return self.out.depart_jd
+
+    @property
+    def arrive_jd(self) -> float:
+        return self.back.arrive_jd
+
+    @property
+    def days(self) -> float:
+        return self.back.arrive_jd - self.out.depart_jd
+
+    @property
+    def total(self) -> float:
+        return round(self.out.total + self.back.total, 3)
 
 
 @dataclass(slots=True)
@@ -176,8 +206,58 @@ def _scan(origin: Place, target: Place, dep_lo: float, dep_hi: float, dep_step: 
     return found
 
 
-def _cost_key(candidate: _Candidate) -> tuple[float, float, float]:
-    return candidate.total, candidate.flight_days, candidate.depart_jd
+def _cost_key(option: _Candidate | _RoundTrip) -> tuple[float, float, float]:
+    return option.total, option.days, option.depart_jd
+
+
+def _labelled(options: list, objective: str) -> list[tuple[_Candidate | _RoundTrip, list[str]]]:
+    """Cheapest, fastest and soonest, the objective's first; one entry per distinct option."""
+    cheapest = min(options, key=_cost_key)
+    affordable = [option for option in options if option.total <= cheapest.total * (1 + MAX_EXTRA)]
+    fastest = min(affordable, key=lambda option: (option.days, option.total, option.depart_jd))
+    soonest = min(affordable, key=lambda option: (option.arrive_jd, option.total))
+    ordered = {
+        "min_delta_v": (("cheapest", cheapest), ("fastest", fastest), ("soonest", soonest)),
+        "min_time": (("fastest", fastest), ("cheapest", cheapest), ("soonest", soonest)),
+        "earliest_arrival": (("soonest", soonest), ("cheapest", cheapest), ("fastest", fastest)),
+    }[objective]
+    labelled: list[tuple[_Candidate | _RoundTrip, list[str]]] = []
+    for label, option in ordered:
+        for chosen, labels in labelled:
+            if chosen == option:
+                labels.append(label)
+                break
+        else:
+            labelled.append((option, [label]))
+    return labelled
+
+
+def _spread(pool: list[_Candidate], count: int, gap_days: float = 3.0) -> list[_Candidate]:
+    """The cheapest candidates whose arrivals are at least gap_days apart."""
+    picked: list[_Candidate] = []
+    for candidate in sorted(pool, key=_cost_key):
+        if all(abs(candidate.arrive_jd - chosen.arrive_jd) >= gap_days for chosen in picked):
+            picked.append(candidate)
+            if len(picked) == count:
+                break
+    return picked
+
+
+def _round_trips(pool: list[_Candidate], origin: Place, target: Place, min_stay: float, max_stay: float,
+                 grid: tuple[float, float, float, float, float],
+                 cancel: threading.Event, deadline: float, progress: _Progress) -> list[_RoundTrip]:
+    """For several outbound trips, every return searched within the stay range of its arrival."""
+    tof_lo, tof_hi, tof_step, dep_step, _ = grid
+    window = max_stay - min_stay
+    # A short or exact stay is searched day by day with flights every five days; a long one on the coarse grid.
+    back_step, back_tof_step = (1.0, 5.0) if window < 30 else (dep_step, tof_step)
+    per_option = (math.floor(window / back_step) + 1) * (math.floor((tof_hi - tof_lo) / back_tof_step) + 1)
+    trips = []
+    for out in _spread(pool, max(3, min(MAX_OUTBOUND_OPTIONS, RETURN_SOLVES // per_option))):
+        returns = _scan(target, origin, out.arrive_jd + min_stay, out.arrive_jd + max_stay, back_step,
+                        tof_lo, tof_hi, back_tof_step, cancel, deadline, progress)
+        trips.extend(_RoundTrip(out, back) for back in returns)
+    return trips
 
 
 def _window_centres(pool: list[_Candidate], separation_days: float) -> list[_Candidate]:
@@ -226,6 +306,17 @@ def _direct_trip(candidate: _Candidate, origin: Place, target: Place) -> dict:
                candidate.v_inf_depart, candidate.v_inf_arrive)
     return {"total_delta_v_km_s": candidate.total, "total_days": leg["flight_days"], "legs": [leg],
             "approximations": _approximations(origin, target)}
+
+
+def _round_trip(trip: _RoundTrip, origin: Place, target: Place) -> dict:
+    out, back = _direct_trip(trip.out, origin, target), _direct_trip(trip.back, target, origin)
+    return {
+        "total_delta_v_km_s": trip.total,
+        "total_days": round(trip.days, 4),
+        "stay_days": round(trip.back.depart_jd - trip.out.arrive_jd, 4),
+        "legs": out["legs"] + back["legs"],
+        "approximations": out["approximations"] + [ROUND_TRIP_NOTE],
+    }
 
 
 def _flyby_trip(route: dict, origin: Place, target: Place) -> dict:
@@ -285,8 +376,16 @@ def search_trips(request: TripSearchRequest, *, today: date | None = None,
                             suggestions=[match.id for match in find_places(text)])
     if origin.id == target.id:
         return _refused("same_place", "A trip must go between two different places.")
-    if request.trip != "one_way":
-        return _refused("trip_kind_unsupported", "Only one-way trips can be planned so far.")
+    min_stay = max_stay = 0.0
+    if request.trip == "round_trip":
+        if request.stay_days is None:
+            return _refused("stay_days_required", "A round trip needs the number of days to stay before coming back.")
+        min_stay = request.stay_days
+        max_stay = request.stay_days if request.max_stay_days is None else request.max_stay_days
+        if max_stay < min_stay:
+            return _refused("invalid_stay_range", "The longest stay is shorter than the shortest stay.")
+    elif request.stay_days is not None or request.max_stay_days is not None:
+        return _refused("stay_needs_round_trip", "A stay only applies to a round trip.")
 
     today = today or datetime.now(timezone.utc).date()
     earliest = request.earliest_departure or today
@@ -303,7 +402,8 @@ def search_trips(request: TripSearchRequest, *, today: date | None = None,
         first = PLANNING_JD_MIN
         notes.append("Departures before 1990-01-01 are outside the supported range and were not searched.")
 
-    tof_lo, tof_hi, tof_step, dep_step, synodic = _grid(origin, target)
+    grid = _grid(origin, target)
+    tof_lo, tof_hi, tof_step, dep_step, synodic = grid
     last = min(last, PLANNING_JD_MAX - tof_lo)
     if last < first:
         return _refused("arrives_after_2050", "Trips must arrive by 2050-01-01, where the position data ends.")
@@ -316,9 +416,13 @@ def search_trips(request: TripSearchRequest, *, today: date | None = None,
                       max(first, centre.depart_jd - dep_step), min(last, centre.depart_jd + dep_step), 1.0,
                       max(tof_lo, centre.flight_days - 2 * tof_step), min(tof_hi, centre.flight_days + 2 * tof_step),
                       fine_tof_step, cancel, deadline, progress)
+    round_trips = (_round_trips(pool, origin, target, min_stay, max_stay, grid, cancel, deadline, progress)
+                   if request.trip == "round_trip" and pool else [])
     if progress.clipped or last < date_to_jd(latest):
         notes.append("Arrivals after 2050-01-01 are outside the supported range, "
                      "so late departures were searched with shorter flights or not at all.")
+    if request.trip == "round_trip" and request.flybys:
+        notes.append("The flyby search runs for one-way trips only.")
     searched = {
         "earliest_departure": jd_to_date(first),
         "latest_departure": jd_to_date(last),
@@ -332,26 +436,18 @@ def search_trips(request: TripSearchRequest, *, today: date | None = None,
                    else f"No transfer was found from {origin.name} to {target.name} in this date range.")
         return {"status": "no_route", "message": message, "searched": searched}
 
-    cheapest = min(pool, key=_cost_key)
-    affordable = [candidate for candidate in pool if candidate.total <= cheapest.total * (1 + MAX_EXTRA)]
-    fastest = min(affordable, key=lambda candidate: (candidate.flight_days, candidate.total, candidate.depart_jd))
-    soonest = min(affordable, key=lambda candidate: (candidate.arrive_jd, candidate.total))
-    ordered = {
-        "min_delta_v": (("cheapest", cheapest), ("fastest", fastest), ("soonest", soonest)),
-        "min_time": (("fastest", fastest), ("cheapest", cheapest), ("soonest", soonest)),
-        "earliest_arrival": (("soonest", soonest), ("cheapest", cheapest), ("fastest", fastest)),
-    }[request.objective]
-    labelled: list[tuple[_Candidate, list[str]]] = []
-    for label, candidate in ordered:
-        for chosen, labels in labelled:
-            if chosen == candidate:
-                labels.append(label)
-                break
-        else:
-            labelled.append((candidate, [label]))
-    trips = [{"labels": labels, **_direct_trip(candidate, origin, target)} for candidate, labels in labelled]
+    if request.trip == "round_trip":
+        if not round_trips:
+            return {"status": "no_route", "searched": searched,
+                    "message": f"No way back to {origin.name} was found within the stay range."}
+        trips = [{"labels": labels, **_round_trip(option, origin, target)}
+                 for option, labels in _labelled(round_trips, request.objective)]
+    else:
+        trips = [{"labels": labels, **_direct_trip(option, origin, target)}
+                 for option, labels in _labelled(pool, request.objective)]
 
-    if request.flybys:
+    if request.flybys and request.trip == "one_way":
+        cheapest = min(pool, key=_cost_key)
         route, complete = _flyby_search(origin, target, cheapest.depart_jd, request.flybys, cancel, deadline)
         flyby = _flyby_trip(route, origin, target) if route else None
         found_cheaper = flyby is not None and flyby["total_delta_v_km_s"] < cheapest.total
