@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
 import os
 import time
@@ -10,20 +9,13 @@ from pathlib import Path
 from typing import Any, Callable, Optional
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
-from urllib.error import URLError
 
 CACHE_DIR = Path(__file__).resolve().parent / ".cache"
-OUTPUT_DIR = Path(__file__).resolve().parent / "output"
 
 
 def ensure_cache_dir(cache_dir: Path = CACHE_DIR) -> Path:
     cache_dir.mkdir(parents=True, exist_ok=True)
     return cache_dir
-
-
-def ensure_output_dir(output_dir: Path = OUTPUT_DIR) -> Path:
-    output_dir.mkdir(parents=True, exist_ok=True)
-    return output_dir
 
 
 def http_get(
@@ -42,16 +34,6 @@ def http_get(
             req.add_header(key, value)
     with urlopen(req, timeout=timeout) as resp:
         return resp.read().decode("utf-8")
-
-
-def http_get_json(
-    url: str,
-    params: Optional[dict[str, Any]] = None,
-    timeout: float = 60.0,
-) -> Any:
-    """HTTP GET returning parsed JSON."""
-    text = http_get(url, params=params, timeout=timeout)
-    return json.loads(text)
 
 
 def load_or_fetch(
@@ -74,15 +56,6 @@ def load_or_fetch(
         json.dump(data, f)
     print(f"  Cached to {cache_path.name}")
     return data
-
-
-def parse_csv_text(text: str) -> list[dict[str, str]]:
-    """Parse CSV text into list of dicts using first row as headers."""
-    import csv
-    import io
-
-    reader = csv.DictReader(io.StringIO(text.strip()))
-    return [dict(row) for row in reader]
 
 
 def safe_float(value: Any, default: Optional[float] = None) -> Optional[float]:

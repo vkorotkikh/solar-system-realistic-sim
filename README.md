@@ -480,15 +480,8 @@ To intentionally publish the star catalog and enriched nearby-system CSV, add
 python scripts/fetch_gaia_catalog.py --write
 ```
 
-Legacy SBDB source publication is retired. The optional preview below may
-populate query caches but cannot write catalog sources. Use the maintained
-Phase 1 builder below for validated offline preview or explicit publication:
-
-```bash
-python scripts/fetch_jpl_sbdb.py --dry-run
-```
-
-Append mode requires both `backend/data/bodies.py` and the removed `src/data/planets.js`, so it is unavailable in the current checkout and fails before cache setup or provider requests. It does not target `planets.ts`. Use the separate supported Phase 1 dataset workflow below for the rendered asteroid catalog.
+The legacy SBDB preview (`scripts/fetch_jpl_sbdb.py --dry-run`) is retired. Use
+the Phase 1 dataset workflow below for the rendered asteroid catalog.
 
 Verify the committed REBOUND initial states and off-epoch accuracy fixtures
 against live JPL Horizons and the pinned DE440 GM kernel:
