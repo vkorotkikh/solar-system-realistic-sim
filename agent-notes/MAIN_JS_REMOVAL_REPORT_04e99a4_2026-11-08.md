@@ -61,7 +61,7 @@ Everything deleted is still in git history.
 |---|---|---|
 | Asteroid and Kuiper switches | Existing `setVisible` | None |
 | Asteroid ring band | New; real catalog | Density-shaded instead of uniform. See below |
-| Moons switch and picker | Existing catalog and ephemerides | Planets stay enlarged and moons sit at true altitude (owner decision), replacing the old planet shrink. The 21 named moons use fitted ephemerides. Startup cost: see the audit below |
+| Moons switch and picker | Existing catalog and ephemerides | Planets stay enlarged and moons sit at true altitude (owner decision), replacing the old planet shrink. All 423 moons use fitted ephemerides, preloaded at startup (since 2026-11-14). Startup cost: see the audit and the 2026-11-14 update below |
 | Moon quick views (Exosphere 15 km, LLO 100 km, NRHO 30,000 km) | Altitudes recovered from `visualProfiles.ts` | Guide rings not restored |
 | Earth satellites switch | Existing `satelliteSystem.ts` | Earth only. Defaults off, because switching on downloads orbits from CelesTrak |
 | Mission planner | Existing `plannerController`, `routeRenderer`, `createTrajectoryClient` | Route arcs stay at their computed departure and arrival positions |
@@ -98,8 +98,8 @@ Route arcs remain illustrative cubic curves between the correct endpoints, not p
 | Milky Way survey | `milkyWay.ts` remains; 2MASS texture in history | Small, needs a rights decision |
 | Adaptive near-surface zoom | `cameraController.ts` remains | Small |
 | Live REBOUND/TudatPy backend picker | Client and `/ws/sim` both remain | Medium |
-| Accurate small moons | 402 moons use mean elements; Himalia was 7–16 million km off. Their 410 fitted shards total 60 MB, so fetch one when its moon is selected | Medium |
-| Smaller moon-fit bundle | The 13 bundled fits are 6.4 MB of JavaScript (4.2 MB chunk) and trip Vite's 550 kB chunk warning | Medium |
+| ~~Accurate small moons~~ | Done 2026-11-14: all 410 shards are preloaded at startup, so no moon uses mean elements unless loading fails | |
+| Smaller moon-fit bundle | The 13 bundled fits are 6.4 MB of JavaScript (4.2 MB chunk) and trip Vite's 550 kB chunk warning. Size is not a concern for the owner (2026-11-14); the warning remains | Low |
 
 **Separate PR, as agreed:** nearby star systems (`nearbySystemsRenderer`, `localSystemRenderer`, `transitions`, star-system picker).
 
@@ -188,7 +188,7 @@ Headed: median of 3 in a visible browser window. Headless: median of 5 on a quie
   than 0.7 s.
 - About 4 s of `main`'s headed time is the driver (Mesa D3D12) building Earth's and Mars's terrain shaders on first draw.
 - After the first picture, the branch has one ~0.3 s pause and a few ~70 ms frames as the eight moon maps upload; steady frame time matches `main` (16.7 ms).
-- Transfer grows from 9.1 to 14.9 MB: moon fits and shards. The Moon's 13 MB of maps load only when the camera approaches.
+- Transfer grows from 9.1 to 14.9 MB: moon fits and shards. The Moon's 13 MB of maps load only when the camera approaches. (Superseded on 2026-11-14: see below.)
 
 **Checked and fine.** All 23 restored controls exist. Every one of the 423 moons is placed and drawn,
 none intersects its planet at either scale, and moon distances follow the true-altitude rule to 1e-16.
@@ -204,6 +204,42 @@ about 30 ms and the worker is ready in 0.3 s, well inside its 5 s limit.
 further from the Moon than set, 1.5 s after the click. Seven other runs, including frame-by-frame traces
 after replaying the audit's earlier steps, landed exactly. Cause unknown; treat the quick views as
 needing a second look if it recurs.
+
+## Update 2026-11-14: preload everything, planet shrink removed
+
+The owner asked to preload as much as possible and said CPU, RAM and GPU memory are not a
+concern. Three changes followed on this branch:
+
+- **All 423 moons fitted.** The page loads every one of the 410 shards (60 MB) at startup,
+  eight at a time, within a 15 s budget, with the 21 named moons' fits and then the 13 base fits
+  as fallbacks. Each shard is capped at 500 km and 10 m/s over 2000–2050, so Himalia goes from
+  7–16 million km off to within 500 km.
+- **Moon and Mars maps preloaded.** They load at startup whatever the camera distance, 14.7 MB in
+  all, and are uploaded to the GPU on arrival rather than when first drawn.
+- **Planet shrink removed.** The catalog's `moonsVisible` option shrank each moon-hosting planet to
+  fit inside its innermost moon. The page stopped using it on 2026-11-08; the option, its loop and
+  the tests that ran every assertion in both modes are gone (13 duplicate cases fewer).
+
+Startup, headless on the RTX 5090, median of four cold starts, load average 2–3, each arm switching
+one preload off in the same build:
+
+| | First complete picture | Moon fits | Worker ready after its init message |
+|---|---:|---:|---:|
+| Before the preloads | 4.69 s | 29 | 0.11 s |
+| Maps preloaded only | 5.40 s | 29 | |
+| All fits preloaded only | 5.72 s | 423 | |
+| Both (this branch) | 6.54 s | 423 | 0.42–0.59 s |
+
+- The first picture arrives about 1.85 s later; the two preloads add up (0.71 s and 1.03 s).
+- No frame stalls after startup in any arm (worst frame 17 ms over the following 8 s), because the
+  maps are on the GPU before the first frame.
+- The worker's init message grows from 12 MB to 74 MB. Sending it blocks the main thread for about
+  140 ms, and the worker is ready 0.4–0.6 s later, well inside its 5 s deadline.
+- Download grows by 55.7 MB of shards and 14.7 MB of maps.
+- Not done, and the obvious next steps if startup time matters: decode the maps off the main thread
+  (`ImageBitmapLoader`) and verify and parse the shards in a worker.
+
+Script: `measurements/2026-11-14-preload-cost/startup.mjs` on branch `lab/measurements`.
 
 ## Unrelated finding
 

@@ -343,7 +343,7 @@
     {
       "id": "surface-map:moon:cgi-moon-kit",
       "product": "NASA SVS CGI Moon Kit (ID 4720): lroc_color_poles_8k and ldem_16_uint, retained as an 8192 px JPEG and an 8-bit 5760 px PNG",
-      "use": "browser-loaded Earth Moon surface colour and elevation when the camera approaches the Moon",
+      "use": "browser-loaded Earth Moon surface colour and elevation, fetched at startup",
       "sourceUrls": [
         "https://svs.gsfc.nasa.gov/4720"
       ],
@@ -363,7 +363,7 @@
     {
       "id": "surface-map:mars:viking-colorized",
       "product": "Mars global colour map retained as a 4096 px JPEG; appears to derive from USGS Mars Viking Colorized Global Mosaic 232m",
-      "use": "browser-loaded Mars surface colour when the camera approaches Mars",
+      "use": "browser-loaded Mars surface colour, fetched at startup",
       "sourceUrls": [
         "https://astrogeology.usgs.gov/search/map/mars_viking_colorized_global_mosaic_232m"
       ],
@@ -581,7 +581,7 @@
     {
       "id": "horizons-solution:DE441",
       "product": "JPL Horizons numerical solution DE441",
-      "use": "offline-derived moon shard in public copy; the page fetches the shards of Moon at startup, others are opt-in",
+      "use": "offline-derived moon shard in public copy; the page fetches every shard at startup",
       "sourceUrls": [
         "https://ssd.jpl.nasa.gov/api/horizons.api"
       ],
@@ -599,7 +599,7 @@
     {
       "id": "horizons-solution:jup347_merged_DE442",
       "product": "JPL Horizons numerical solution jup347_merged_DE442",
-      "use": "offline-derived moon shard in public copy; loader opt-in, no active entry fetch",
+      "use": "offline-derived moon shard in public copy; the page fetches every shard at startup",
       "sourceUrls": [
         "https://ssd.jpl.nasa.gov/api/horizons.api"
       ],
@@ -617,7 +617,7 @@
     {
       "id": "horizons-solution:jup365_merged",
       "product": "JPL Horizons numerical solution jup365_merged",
-      "use": "offline-derived moon shard in public copy; the page fetches the shards of Io, Europa, Ganymede, Callisto at startup, others are opt-in",
+      "use": "offline-derived moon shard in public copy; the page fetches every shard at startup",
       "sourceUrls": [
         "https://ssd.jpl.nasa.gov/api/horizons.api"
       ],
@@ -635,7 +635,7 @@
     {
       "id": "horizons-solution:mar099",
       "product": "JPL Horizons numerical solution mar099",
-      "use": "offline-derived moon shard in public copy; the page fetches the shards of Deimos at startup, others are opt-in",
+      "use": "offline-derived moon shard in public copy; the page fetches every shard at startup",
       "sourceUrls": [
         "https://ssd.jpl.nasa.gov/api/horizons.api"
       ],
@@ -653,7 +653,7 @@
     {
       "id": "horizons-solution:nep098_merged",
       "product": "JPL Horizons numerical solution nep098_merged",
-      "use": "offline-derived moon shard in public copy; the page fetches the shards of Triton at startup, others are opt-in",
+      "use": "offline-derived moon shard in public copy; the page fetches every shard at startup",
       "sourceUrls": [
         "https://ssd.jpl.nasa.gov/api/horizons.api"
       ],
@@ -671,7 +671,7 @@
     {
       "id": "horizons-solution:nep104_merged",
       "product": "JPL Horizons numerical solution nep104_merged",
-      "use": "offline-derived moon shard in public copy; loader opt-in, no active entry fetch",
+      "use": "offline-derived moon shard in public copy; the page fetches every shard at startup",
       "sourceUrls": [
         "https://ssd.jpl.nasa.gov/api/horizons.api"
       ],
@@ -689,7 +689,7 @@
     {
       "id": "horizons-solution:plu060_merged",
       "product": "JPL Horizons numerical solution plu060_merged",
-      "use": "offline-derived moon shard in public copy; the page fetches the shards of Charon at startup, others are opt-in",
+      "use": "offline-derived moon shard in public copy; the page fetches every shard at startup",
       "sourceUrls": [
         "https://ssd.jpl.nasa.gov/api/horizons.api"
       ],
@@ -707,7 +707,7 @@
     {
       "id": "horizons-solution:sat415_merged_DE437",
       "product": "JPL Horizons numerical solution sat415_merged_DE437",
-      "use": "offline-derived moon shard in public copy; loader opt-in, no active entry fetch",
+      "use": "offline-derived moon shard in public copy; the page fetches every shard at startup",
       "sourceUrls": [
         "https://ssd.jpl.nasa.gov/api/horizons.api"
       ],
@@ -725,7 +725,7 @@
     {
       "id": "horizons-solution:sat441l",
       "product": "JPL Horizons numerical solution sat441l",
-      "use": "offline-derived moon shard in public copy; the page fetches the shards of Rhea, Tethys, Enceladus at startup, others are opt-in",
+      "use": "offline-derived moon shard in public copy; the page fetches every shard at startup",
       "sourceUrls": [
         "https://ssd.jpl.nasa.gov/api/horizons.api"
       ],
@@ -743,7 +743,7 @@
     {
       "id": "horizons-solution:sat455_merged_DE440",
       "product": "JPL Horizons numerical solution sat455_merged_DE440",
-      "use": "offline-derived moon shard in public copy; loader opt-in, no active entry fetch",
+      "use": "offline-derived moon shard in public copy; the page fetches every shard at startup",
       "sourceUrls": [
         "https://ssd.jpl.nasa.gov/api/horizons.api"
       ],
@@ -761,7 +761,7 @@
     {
       "id": "horizons-solution:sat456_merged_DE440",
       "product": "JPL Horizons numerical solution sat456_merged_DE440",
-      "use": "offline-derived moon shard in public copy; loader opt-in, no active entry fetch",
+      "use": "offline-derived moon shard in public copy; the page fetches every shard at startup",
       "sourceUrls": [
         "https://ssd.jpl.nasa.gov/api/horizons.api"
       ],
@@ -779,7 +779,7 @@
     {
       "id": "horizons-solution:sat457_merged_DE440",
       "product": "JPL Horizons numerical solution sat457_merged_DE440",
-      "use": "offline-derived moon shard in public copy; loader opt-in, no active entry fetch",
+      "use": "offline-derived moon shard in public copy; the page fetches every shard at startup",
       "sourceUrls": [
         "https://ssd.jpl.nasa.gov/api/horizons.api"
       ],
@@ -797,7 +797,7 @@
     {
       "id": "horizons-solution:ura184_merged",
       "product": "JPL Horizons numerical solution ura184_merged",
-      "use": "offline-derived moon shard in public copy; the page fetches the shards of Titania, Oberon, Umbriel, Ariel, Miranda at startup, others are opt-in",
+      "use": "offline-derived moon shard in public copy; the page fetches every shard at startup",
       "sourceUrls": [
         "https://ssd.jpl.nasa.gov/api/horizons.api"
       ],

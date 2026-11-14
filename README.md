@@ -9,7 +9,7 @@ define platform support, asteroid sampling, timing, decorative motion and
 backend configuration.
 
 - **Sun + 8 planets + Pluto** with axial tilt, spin, and search/focus controls for every rendered body
-- **423 moons** from the NASA/JPL satellite mean-elements table, behind a Moons switch. The 21 named moons use fitted JPL Horizons models; the rest use mean elements. At enlarged scale each moon keeps its true altitude above its enlarged planet
+- **423 moons** from the NASA/JPL satellite mean-elements table, behind a Moons switch that is on by default. All 423 use fitted JPL Horizons models, preloaded at startup. At enlarged scale each moon keeps its true altitude above its enlarged planet
 - **Synthetic Sun visualization** with physically inspired surface, corona, flare, magnetic-field and solar-wind layers; these are models, not a calibrated observation reconstruction
 - **SMBH/AGN experiments** with transient timelines and exotic hypothesis-model displays
 - **Adjustable simulation clock** with pause, reverse, time-warp, and a Now control
@@ -177,7 +177,7 @@ records the runtime owners.
 │   ├── data/
 │   │   ├── planets.ts                         # Planet orbital elements + metadata
 │   │   ├── moons.json                         # 423 unique moons (JPL SSD)
-│   │   ├── moonEphemerisChebyshev.json        # Validated Horizons fits for corrected moons (opt-in loader; not loaded by the shipped page)
+│   │   ├── moonEphemerisChebyshev.json        # Validated Horizons fits for corrected moons (loaded at startup with the 410 shards)
 │   │   ├── stars_catalog.json                 # Background star catalog (retained, not wired)
 │   │   ├── asteroidCatalogLoader.ts           # Phase 1 asteroid data loader
 │   │   ├── asteroidCatalogBinaryFormat.md     # Binary catalog format specification
@@ -238,7 +238,7 @@ records the runtime owners.
 │   │       ├── orbitRenderer.ts               # Orbit-line drawing (retained, not wired)
 │   │       └── lodManager.ts                  # Level-of-detail management (retained, not wired)
 │   ├── workers/
-│   │   ├── modelWorker.ts                     # Off-thread body propagation (shipped entry sends planets only)
+│   │   ├── modelWorker.ts                     # Off-thread body propagation (all 433 bodies, including the 423 moons and their fits)
 │   │   └── modelWorkerContract.ts             # Worker message contract (Float64 transport)
 ├── backend/
 │   ├── server.py                              # FastAPI entry point
@@ -291,6 +291,17 @@ The header shows the configured rate, such as "Simulation · +4.0 d/s", or "Paus
 - Solar magnetic-field visualization
 - Visual versus realistic body scale
 - Camera focus, orbit, zoom and reset controls
+- **Moons** (on by default): all 423 moons and their orbits
+- **Asteroid belt** (on by default): the asteroids and a band shaded by their orbit-averaged density
+- **Kuiper belt** (on by default): a modelled population, apart from eight named objects
+- **Earth satellites** (off by default): downloads current orbits from CelesTrak when switched on
+
+### Moon quick views
+
+Three buttons put the camera at a fixed height above Earth's Moon: **Exosphere**
+(15 km), **LLO** for low lunar orbit (100 km) and **NRHO** for near-rectilinear halo
+orbit (30,000 km). Each switches to realistic scale, follows the Moon and arrives over
+its sunlit side. They set a camera height; they do not simulate a spacecraft's orbit.
 
 ### Explorer
 
@@ -299,8 +310,8 @@ Search and focus the bodies rendered by the page, including all 423 moons while 
 ### Planet visuals
 
 - **Earth and Mars**: procedural quadtree surfaces with distance-based detail
-- **Earth's Moon**: quadtree terrain from NASA's CGI Moon Kit (LROC colour and LOLA elevation), loaded when the camera approaches
-- **Mars**: a NASA/USGS colour map once approached; its terrain stays procedural, because no elevation map ships
+- **Earth's Moon**: quadtree terrain from NASA's CGI Moon Kit (LROC colour and LOLA elevation), preloaded at startup and uploaded to the GPU on arrival
+- **Mars**: a NASA/USGS colour map, preloaded the same way; its terrain stays procedural, because no elevation map ships
 - **Named moons**: eight USGS-hosted maps, with generated maps for the rest
 - **Earth satellites**: current CelesTrak orbits when switched on, with built-in fallback records
 - **Other planets and Pluto**: colored sphere materials
@@ -400,8 +411,10 @@ cannot represent them. Ordinary midnight remains a valid precise input.
   models: 13 base models plus 410 lazy shards. The historical 424-row oracle
   remains unchanged and is explicitly projected onto active identities. Explicit library
   requests fetch only the required shards from `public/moon-ephemerides/`.
-  The page loads the 13 base models plus the shards of its other 16 named moons
-  at startup, waiting at most 4 s for those shards; the remaining moons use mean elements. Captured numerical-source
+  The page preloads all of them at startup: the 13 base models and all 410 shards
+  (60 MB), within a 15 s budget. If the shards fail or overrun it, the page falls back
+  to the 21 named moons' fits, then to the 13 base models, and the other moons use mean
+  elements. Each shard is capped at 500 km and 10 m/s over 2000–2050. Captured numerical-source
   agreement does not establish observational uncertainty or redistribution rights.
   A pinned JPL physical-parameter table supplies 46 mean radii with references
   and uncertainties. The other 377 physical radii are null; their finite display
@@ -529,8 +542,8 @@ non-publishing validation mode.
 - The retained NASA GIBS cloud pipeline is not connected to the page and is not numerical weather-prediction assimilation.
 - Retained gravity-vector UI/update hooks do not imply a shipped gravity-vector display.
 - The fitted moon ephemerides are validated only inside their declared 2000–2050 JDTDB
-  coverage. The 402 moons without a loaded fit use visualization-grade mean elements, which
-  can be far off for irregular moons: Himalia was 7–16 million km from JPL Horizons at three dates in 2026–2031.
+  coverage. Mean elements, used only when the fits fail to load, can be far off for
+  irregular moons: Himalia was 7–16 million km from JPL Horizons at three dates in 2026–2031.
 - The shipped asteroid display uses elliptic element propagation, not close-up N-body perturbations.
 - Backend gravity-assist planning uses Lambert legs with hard-constrained flyby turn feasibility; the page's offline fallback is patched-conic.
 - Transfer-arc rendering is illustrative, not a finite-burn trajectory integrator.

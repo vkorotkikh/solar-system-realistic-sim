@@ -34,9 +34,11 @@ contracts and tests. They are not implicitly wired into `main.ts`.
 
 On 2026-11-08 the moons, the planner panel and route display, Earth satellites
 and the curated moon maps were composed into `main.ts`, with acceptance in
-`tests/browser/restored-layers.spec.ts`. Moons default on; the 21 named moons
-use fitted ephemerides and the rest mean elements. Earth's Moon and Mars use
-measured maps on quadtree terrain once approached; Earth stays procedural.
+`tests/browser/restored-layers.spec.ts`. Moons default on. Planets keep their
+enlarged radii and each moon moves out by its parent's enlargement; the catalog
+no longer shrinks planets to fit their moons. Since 2026-11-14 the page preloads
+fitted ephemerides for all 423 moons and the Moon and Mars surface maps at
+startup, uploading the maps to the GPU on arrival; Earth stays procedural.
 
 Before activating a retained feature, its change must include the composition
 call, typed capability requirements, disposal ownership, real browser/API
