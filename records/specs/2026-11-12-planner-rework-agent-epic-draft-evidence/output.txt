@@ -1,0 +1,89 @@
+# run 2026-11-13T02:03Z on backend code of feat/restore-solar-system-layers@2497659 (planner backend identical to origin/main@fa132f9); load 0.14 0.27 0.26
+
+##### bench_planner.py
+
+== porkchop earth->mars 20x20 over 800 d: 0.13 s
+   keys: ['best', 'budgetExhausted', 'configuredGridCompleted', 'count', 'ephemerisProvider', 'ephemerisProviderChain', 'ephemerisProviderRequested', 'estimatedGridPointCount', 'estimatedUniqueEphemerisStates', 'evaluatedCount', 'failureCount', 'failures', 'fromId', 'grid', 'pareto', 'planningContext', 'points', 'retention', 'solver', 'successCount', 'terminationReason', 'toId', 'truncated']
+   best: {"departureJd": 2461356.5, "arrivalJd": 2461656.5, "tofDays": 300.0, "deltaVDepartureKmS": 3.308134316549728, "deltaVArrivalKmS": 2.5734612313953287, "totalDeltaVKmS": 5.881595547945057, "transferAngleDeg": 194.25728301660976, "computedTofDays": 299.9999999999568, "rootResidualDays": 4.320099833421409e-11, "rootBracketed": true}
+   counters: {"ephemeris_queries": 882, "unique_ephemeris_states": 228, "remote_ephemeris_states": 0, "external_requests": 0, "leg_requests": 441, "leg_evaluations": 441, "route_prefixes": 0, "cache_hits": 654, "request_cache_hits": 654, "shared_cache_hits": 0, "negative_cache_hits": 0, "provider_failures": 0, "circuit_open_rejections": 0, "cancellation_checks": 4224}
+
+== porkchop earth->mars 40x40 over 800 d: 0.53 s
+   keys: ['best', 'budgetExhausted', 'configuredGridCompleted', 'count', 'ephemerisProvider', 'ephemerisProviderChain', 'ephemerisProviderRequested', 'estimatedGridPointCount', 'estimatedUniqueEphemerisStates', 'evaluatedCount', 'failureCount', 'failures', 'fromId', 'grid', 'pareto', 'planningContext', 'points', 'retention', 'solver', 'successCount', 'terminationReason', 'toId', 'truncated']
+   best: {"departureJd": 2461356.5, "arrivalJd": 2461664.0, "tofDays": 307.5, "deltaVDepartureKmS": 3.286619842950535, "deltaVArrivalKmS": 2.5928989086827072, "totalDeltaVKmS": 5.879518751633242, "transferAngleDeg": 198.23041731236023, "computedTofDays": 307.4999999996101, "rootResidualDays": 3.8988900996628217e-10, "rootBracketed": true}
+   counters: {"ephemeris_queries": 3362, "unique_ephemeris_states": 468, "remote_ephemeris_states": 0, "external_requests": 0, "leg_requests": 1681, "leg_evaluations": 1681, "route_prefixes": 0, "cache_hits": 2894, "request_cache_hits": 2894, "shared_cache_hits": 0, "negative_cache_hits": 0, "provider_failures": 0, "circuit_open_rejections": 0, "cancellation_checks": 15644}
+
+== porkchop earth->mars 44x45 over 3650 d: 0.00 s  ERROR TrajectoryRequestRejected: Porkchop grid may contain at most 2000 points
+
+== plan_interplanetary_route earth->mars, 0 assists: 0.01 s
+   keys: ['alternatives', 'best', 'ephemerisProvider', 'ephemerisProviderChain', 'ephemerisProviderRequested', 'search', 'solver']
+   best: {"totalDeltaVKmS": 6.32081174085117, "totalTimeDays": 270.0}
+   leg0: {"tofDays": 270.0, "computedTofDays": 269.99999999977933, "solverZ": 10.095110516989541, "rootResidualDays": 2.2066615201765671e-10, "rootBracketed": true, "revolutions": 0, "pathSense": "prograde", "pathLengthAu": 2.54535992325652, "transferAngleDeg": 178.8609817106412, "deltaVDepartureKmS": 3.440266557893081, "deltaVArrivalKmS": 2.880545182958089, "solver": "lambert_universal", "fromId": "earth", "toId": "mars", "departureJd": 2461356.5, "arrivalJd": 2461626.5}
+
+== MissionPlannerAgent default payload: 0.09 s
+   status: no_verified_candidate
+   candidate 0: reasons=['vehicle_budget_not_feasible', 'no_returned_payload', 'risk_failure_probability_exceeds_threshold'] requestedDeltaV=31.042143071966713 feasible=False returnedPayloadKg=0.0
+   candidate 1: reasons=['vehicle_budget_not_feasible', 'no_returned_payload', 'risk_failure_probability_exceeds_threshold'] requestedDeltaV=24.285726420767574 feasible=False returnedPayloadKg=0.0
+   candidate 2: reasons=['vehicle_budget_not_feasible', 'no_returned_payload', 'risk_failure_probability_exceeds_threshold'] requestedDeltaV=25.156971107529813 feasible=False returnedPayloadKg=0.0
+   candidate 3: reasons=['vehicle_budget_not_feasible', 'no_returned_payload', 'risk_failure_probability_exceeds_threshold'] requestedDeltaV=28.075666748420137 feasible=False returnedPayloadKg=0.0
+
+##### capability_evidence.py
+E. planning range: 1990-01-01 to 2050-01-01; endpoint bodies accepted today: 40
+
+A. ten-year Earth->Mars window search, existing scan, chunked under the 2,000-point cap
+   9646 transfer solves in 3.04 s (3169/s); errors: []
+   window: leave 2026-11-12, arrive 2027-09-08, 300 d | scan 'delta-v' 5.88 (v-inf 3.31+2.57) | burns from 200 km Earth orbit to 400 km Mars orbit 3.71+2.04=5.76 km/s
+   window: leave 2028-11-21, arrive 2029-09-17, 300 d | scan 'delta-v' 6.01 (v-inf 3.04+2.97) | burns from 200 km Earth orbit to 400 km Mars orbit 3.64+2.24=5.88 km/s
+   window: leave 2030-12-31, arrive 2031-10-15, 288 d | scan 'delta-v' 6.76 (v-inf 3.18+3.58) | burns from 200 km Earth orbit to 400 km Mars orbit 3.68+2.59=6.27 km/s
+   window: leave 2033-04-19, arrive 2033-11-09, 204 d | scan 'delta-v' 6.36 (v-inf 3.04+3.32) | burns from 200 km Earth orbit to 400 km Mars orbit 3.64+2.44=6.07 km/s
+   window: leave 2035-06-28, arrive 2036-01-18, 204 d | scan 'delta-v' 5.86 (v-inf 3.23+2.63) | burns from 200 km Earth orbit to 400 km Mars orbit 3.69+2.07=5.76 km/s
+   window: leave 2036-11-09, arrive 2037-07-07, 240 d | scan 'delta-v' 18.43 (v-inf 11.64+6.79) | burns from 200 km Earth orbit to 400 km Mars orbit 8.24+4.92=13.16 km/s
+
+B. best direct one-way trip from Earth within 10 years, existing scan (v-inf sums, km/s)
+   mercury  NO RESULT (Hohmann time 105 d = 0.3 y): ['TrajectoryRequestRejected: Porkchop time-of-flight step must be at least 5.0 days']
+   venus    NO RESULT (Hohmann time 146 d = 0.4 y): ['TrajectoryRequestRejected: Porkchop time-of-flight step must be at least 5.0 days']
+   jupiter  leave 2028-12-21 arrive 2031-10-28   1041 d  v-inf 8.77+5.67=14.44  (9646 solves, 3.31 s) 
+   saturn   leave 2028-07-14 arrive 2034-06-17   2164 d  v-inf 10.32+5.74=16.07  (9646 solves, 3.71 s) 
+   uranus   NO RESULT (Hohmann time 5857 d = 16.0 y): ['TrajectoryRequestRejected: Porkchop time-of-flight window may not exceed 3650.0 days']
+   neptune  NO RESULT (Hohmann time 11182 d = 30.6 y): ['TrajectoryRequestRejected: `latest_arrival_jd` must lie in [2447892.5, 2469807.5] JDTDB']
+   pluto    NO RESULT (Hohmann time 16631 d = 45.5 y): ['TrajectoryRequestRejected: `latest_arrival_jd` must lie in [2447892.5, 2469807.5] JDTDB']
+   ceres    leave 2034-06-03 arrive 2035-12-07    553 d  v-inf 6.55+5.54=12.09  (9646 solves, 3.63 s) 
+   psyche   leave 2030-09-02 arrive 2031-12-21    476 d  v-inf 7.05+4.41=11.46  (9646 solves, 3.28 s) 
+
+C. existing flyby search, Earth->Jupiter and Earth->Saturn, fixed departure date
+   jupiter max_assists=0: 0.01 s, total 14.42 km/s, 1055 d, via ['jupiter'], alternatives 5, search {"strategy": "bounded_global_beam_v1", "configuredFrontierCompleted": true, "searchSpaceExhaustive": false, "optimalityGuaranteed": false, "truncated": false, "
+   jupiter max_assists=1: 0.08 s, total 14.42 km/s, 1055 d, via ['jupiter'], alternatives 5, search {"strategy": "bounded_global_beam_v1", "configuredFrontierCompleted": true, "searchSpaceExhaustive": false, "optimalityGuaranteed": false, "truncated": false, "
+   jupiter max_assists=2: 0.21 s, total 14.42 km/s, 1055 d, via ['jupiter'], alternatives 5, search {"strategy": "bounded_global_beam_v1", "configuredFrontierCompleted": true, "searchSpaceExhaustive": false, "optimalityGuaranteed": false, "truncated": false, "
+   saturn max_assists=0: 0.00 s, total 50.71 km/s, 2000 d, via ['saturn'], alternatives 5, search {"strategy": "bounded_global_beam_v1", "configuredFrontierCompleted": true, "searchSpaceExhaustive": false, "optimalityGuaranteed": false, "truncated": false, "
+   saturn max_assists=1: 0.04 s, total 50.71 km/s, 2000 d, via ['saturn'], alternatives 5, search {"strategy": "bounded_global_beam_v1", "configuredFrontierCompleted": true, "searchSpaceExhaustive": false, "optimalityGuaranteed": false, "truncated": false, "
+   saturn max_assists=2: 0.18 s, total 50.71 km/s, 2000 d, via ['saturn'], alternatives 5, search {"strategy": "bounded_global_beam_v1", "configuredFrontierCompleted": true, "searchSpaceExhaustive": false, "optimalityGuaranteed": false, "truncated": false, "
+
+D. what one scan returns besides 'best'
+   points kept 500 of 1924; pareto 16 entries; retention {"pointsReturned": 500, "pointsTotal": 1904, "pointsTruncated": true, "paretoReturned": 16, "paretoTotal": 16, "paretoTruncated": false, "failuresReturned": 20, "failuresTotal": 20, "failuresTruncated
+   pareto: leave 2026-12-22 120 d total 17.82
+   pareto: leave 2026-12-22 132 d total 15.89
+   pareto: leave 2026-12-12 144 d total 14.32
+   pareto: leave 2026-12-12 156 d total 12.92
+
+F. existing vehicle check on a one-way Earth->Mars trip (burns from A)
+   keys: ['burns', 'feasible', 'finalMassKg', 'payloadMassKg', 'propellantDiscardedKg', 'propellantMarginDefinition', 'propellantMarginKg', 'propellantOnboardKg', 'propellantReserveOnboardKg', 'reserveFraction', 'stageTelemetry', 'totalPropellantInitialKg', 'totalPropellantUsedKg', 'totalRequestedDeltaV_km_s', 'totalUnmetDeltaV_km_s', 'vehicle']
+   feasible: False | total requested: 5.7 | shortfall/extra: {'totalUnmetDeltaV_km_s': 1.9311360649336984, 'propellantMarginKg': 0.0, 'propellantMarginDefinition': 'onboard_usable_excluding_protected_reserves'}
+
+G. names: moons vs bodies the backend already knows
+   423 moons; 3 have only a provisional designation such as ['S/2004_S_26', 'S/2004_S_29']; duplicate moon names: []
+   moon names that also name a backend body: [('Europa', 'europa52'), ('Metis', 'metis')]
+   moons.json fields with a mass or GM: []
+
+H. SCRATCH MODEL (not repo code): two-body transfers stitched together
+   200 km Earth orbit -> 100 km lunar orbit: leave 3.13 + arrive 0.82 = 3.95 km/s, 5.0 d
+   200 km Earth orbit -> NRHO treated as a 3366 x 70000 km lunar ellipse: leave 3.13 + arrive 0.23 = 3.36 km/s
+   200 km Earth orbit -> geostationary orbit, same plane: 3.93 km/s
+   Earth -> Europa, straight in: leave Earth orbit 6.29 + brake into 100 km Europa orbit 5.40 = 11.69 km/s (arrival speed relative to Europa 6.50)
+   arriving 'at Jupiter': low circular orbit 17.09 km/s vs loose capture ellipse 0.44 km/s
+   400 km Mars orbit -> Phobos: 1.17 km/s
+
+##### inner_outer_planets.py
+mercury  leave 2032-05-14 arrive 2032-08-12 90 d v-inf 9.45+8.33=17.78 | burns 200 km Earth orbit to 400 km orbit 6.73+6.43=13.15 (7770 solves, 2.4 s) []
+venus    leave 2032-12-10 arrive 2033-05-19 160 d v-inf 3.36+2.68=6.04 | burns 200 km Earth orbit to 400 km orbit 3.73+3.29=7.02 (10759 solves, 3.1 s) []
+uranus   leave 2036-09-10 arrive 2046-09-08 3650 d v-inf 11.75+6.15=17.90 (9646 solves, 2.9 s) []
+neptune  leave 2027-05-21 arrive 2037-05-18 3650 d v-inf 13.37+11.82=25.19 (9646 solves, 3.0 s) []
+pluto    leave 2027-04-01 arrive 2037-03-29 3650 d v-inf 16.70+15.10=31.80 (9646 solves, 3.2 s) []
