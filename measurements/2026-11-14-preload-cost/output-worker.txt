@@ -1,0 +1,9 @@
+# node startup.mjs baseline=http://127.0.0.1:4201/ preload=http://127.0.0.1:4202/ 3
+# baseline = feat/restore-solar-system-layers @ 92b87b5; preload = 92b87b5 plus both preload changes (later 3953419 and 6d72040)
+# Printed to the console on 2026-11-14 and copied here verbatim; per-run rows were not kept.
+load average at start: 1.48
+baseline: first picture 4613 ms | 30 frames 5093 ms | worst frame next 8 s 17 ms | moon fits 29 (loaded at 253 ms) | maps ready NaN ms | worker init 11854595 B JSON, post blocked 14 ms, posted at 1451 ms, ready at 1560 ms
+  worker init to ready, per run: [114,109,114] ms
+preload: first picture 6398 ms | 30 frames 6866 ms | worst frame next 8 s 17 ms | moon fits 423 (loaded at 813 ms) | maps ready 6398 ms | worker init 73538686 B JSON, post blocked 146 ms, posted at 2919 ms, ready at 3359 ms
+  worker init to ready, per run: [415,440,588] ms
+load average at end: 1.56
