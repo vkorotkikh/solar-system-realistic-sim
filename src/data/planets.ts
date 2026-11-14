@@ -80,8 +80,9 @@ export const PLANETS = [
     color: '#4f8fdb',
     axialTiltDeg: 23.439281,
     rotationPeriodHours: 23.9344696,
-    // Align Earth day-map prime meridian with the orbital frame used in the scene.
-    rotationPhaseDeg: -90,
+    // Greenwich at J2000: NAIF BODY399_PM W0 = 190.147 deg from the node at RA 90 deg, i.e. RA 280.147 deg.
+    // The scene's pole frame puts unspun local +Z (the surface map's 0 deg E) at RA -90 deg, so 280.147 + 90 - 360.
+    rotationPhaseDeg: 10.147,
     orbit: {
       epochJd: J2000_JD,
       aAu: 1.00000261,
