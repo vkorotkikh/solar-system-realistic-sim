@@ -6,7 +6,7 @@ import { PlanetQuadtree } from './quadtreeLOD';
 const trees: PlanetQuadtree[] = [];
 afterEach(() => { for (const tree of trees.splice(0)) tree.dispose(); vi.restoreAllMocks(); });
 
-function target(visualId: 'moon' | 'mars', cameraDistanceRadii: number) {
+function target(visualId: 'moon' | 'mars' | 'earth', cameraDistanceRadii: number) {
   const tree = new PlanetQuadtree(visualId, 0.01, new PerspectiveCamera(), visualId);
   trees.push(tree);
   tree.cameraLocalPosition.set(0, 0, cameraDistanceRadii * 0.01);
@@ -60,6 +60,16 @@ describe('createPlanetSurfaceMaps', () => {
     expect(textureLoader.loadAsync).toHaveBeenCalledTimes(1);
     expect(mars.tree.material.uniforms.uAlbedoReady.value).toBe(1);
     expect(mars.tree.material.uniforms.uTerrainMode.value).toBe(2);
+  });
+
+  it('gives Earth its measured map on a smooth globe, not noise continents', async () => {
+    const textureLoader = loaderFor();
+    const earth = target('earth', 2);
+    createPlanetSurfaceMaps({ targets: [earth], textureLoader, maxAnisotropy: 8 }).update();
+    await settle();
+    expect(textureLoader.loadAsync).toHaveBeenCalledWith(expect.stringMatching(/earth_albedo_bmng_200408_5400\.jpg$/));
+    expect(earth.tree.material.uniforms.uAlbedoReady.value).toBe(1);
+    expect(earth.tree.material.uniforms.uTerrainMode.value).toBe(2);
   });
 
   it('keeps the procedural surface when a map fails', async () => {

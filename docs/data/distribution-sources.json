@@ -361,6 +361,26 @@
       ]
     },
     {
+      "id": "surface-map:earth:bmng-200408",
+      "product": "NASA Earth Observatory Blue Marble: Next Generation, August 2004 base map (world.200408.3x5400x2700.jpg, 5400 x 2700 px, 8 km/px), unmodified",
+      "use": "browser-loaded Earth surface colour when the camera approaches Earth",
+      "sourceUrls": [
+        "https://science.nasa.gov/earth/earth-observatory/blue-marble-next-generation/base-map/",
+        "https://assets.science.nasa.gov/content/dam/science/esd/eo/images/bmng/bmng-base/august/world.200408.3x5400x2700.jpg"
+      ],
+      "credit": "NASA Earth Observatory (Blue Marble: Next Generation by Reto Stockli, NASA Goddard Space Flight Center). No endorsement.",
+      "rightsStatus": "review-required",
+      "rightsEvidence": "Downloaded 2026-11-13 from the source URL; bytes match the recorded SHA-256. The product page asks: 'Anyone using or republishing Blue Marble: Next Generation please credit NASA Earth Observatory.' NASA media guidelines, retrieved 2026-11-13: NASA content 'generally are not subject to copyright in the United States' and factual use that does not imply endorsement needs no explicit permission. No explicit public-domain dedication on the product page, so not marked provider-declared-public-domain.",
+      "evidencePaths": [
+        "public/textures/surfaces/earth_albedo_bmng_200408_5400.jpg",
+        "src/frontend/features/planetary/planetSurfaceMaps.ts",
+        "NOTICE.md"
+      ],
+      "rightsPolicyUrls": [
+        "https://www.nasa.gov/nasa-brand-center/images-and-media/"
+      ]
+    },
+    {
       "id": "surface-map:mars:viking-colorized",
       "product": "Mars global colour map retained as a 4096 px JPEG; appears to derive from USGS Mars Viking Colorized Global Mosaic 232m",
       "use": "browser-loaded Mars surface colour when the camera approaches Mars",

@@ -613,7 +613,7 @@ for (const body of moonBodies) {
 }
 
 const surfaceMaps = ownDisposable(createPlanetSurfaceMaps({
-  targets: ([['moon', catalog.bodies.find(isEarthMoonBody)?.id], ['mars', 'mars']] as const).flatMap(([visualId, id]) => {
+  targets: ([['moon', catalog.bodies.find(isEarthMoonBody)?.id], ['mars', 'mars'], ['earth', 'earth']] as const).flatMap(([visualId, id]) => {
     const tree: PlanetQuadtree | undefined = id ? bodyMeshes.get(id)?.userData.quadtree : undefined;
     return tree ? [{ visualId, tree, node: bodyNodes.get(id!) }] : [];
   }),

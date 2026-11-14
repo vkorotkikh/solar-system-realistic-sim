@@ -9,6 +9,7 @@ const LOAD_WITHIN_RADII = 150;
  * The Moon elevation map comes from NASA's CGI Moon Kit: half-metres above a 1727.4 km sphere,
  * scaled here to 8 bits, so full range is 32.7675 km and the 1737.4 km datum sits 10 km up.
  * Mars has imagery only: the retained MOLA file is a shaded-relief picture, not heights.
+ * Earth is NASA Blue Marble Next Generation, August 2004 base map (cloud-free MODIS composite).
  */
 export const PLANET_SURFACE_SOURCES = Object.freeze({
   moon: {
@@ -16,6 +17,7 @@ export const PLANET_SURFACE_SOURCES = Object.freeze({
     relief: { file: 'moon_relief_ldem16_5760.png', zero: 10 / 32.7675, rangeOverRadius: 32.7675 / 1737.4 },
   },
   mars: { albedo: 'mars_albedo_usgs_4096.jpg' },
+  earth: { albedo: 'earth_albedo_bmng_200408_5400.jpg' },
 });
 type SurfaceId = keyof typeof PLANET_SURFACE_SOURCES;
 

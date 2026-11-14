@@ -28,6 +28,8 @@ Git history retains their bytes for provenance; this is not a history rewrite.
 Restoring one requires a current consumer, exact source and reuse terms.
 Three have been restored under `public/textures/surfaces` for the Moon and
 Mars terrain shader; the Mars map's exact source remains to be confirmed.
+The Earth map there is a new download (NASA Blue Marble: Next Generation,
+August 2004), not a restored file: the retired Earth textures had no source.
 
 ## Build boundary
 

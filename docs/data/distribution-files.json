@@ -8430,6 +8430,15 @@
       "releaseClass": "copied-public-asset"
     },
     {
+      "path": "public/textures/surfaces/earth_albedo_bmng_200408_5400.jpg",
+      "bytes": 1616254,
+      "sha256": "2048023ccc62250c677c0f4b03d4362f997b130eb0154a6cad00aa1b27c390b9",
+      "sourceProductIds": [
+        "surface-map:earth:bmng-200408"
+      ],
+      "releaseClass": "copied-public-asset"
+    },
+    {
       "path": "public/textures/surfaces/mars_albedo_usgs_4096.jpg",
       "bytes": 1659283,
       "sha256": "63b6afa8db88e00f4ee9c66650e15cd73ab225bacb7b45da14081b1282f49542",

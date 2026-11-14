@@ -56,7 +56,11 @@ Visualization Studio; LRO LROC and LOLA data), and a Mars colour map. The Mars
 map appears to derive from the USGS
 [Mars Viking Colorized Global Mosaic 232m](https://astrogeology.usgs.gov/search/map/mars_viking_colorized_global_mosaic_232m),
 but its exact product was not recorded when it was acquired. Confirm it before
-any release. Sizes and SHA-256 values are in `docs/data/distribution-files.json`.
+any release. The Earth colour map is NASA Earth Observatory's
+[Blue Marble: Next Generation](https://science.nasa.gov/earth/earth-observatory/blue-marble-next-generation/base-map/)
+August 2004 base map, unmodified (credit: NASA Earth Observatory; produced by
+Reto Stöckli, NASA Goddard Space Flight Center). Sizes and SHA-256 values are in
+`docs/data/distribution-files.json`.
 
 ## Bundled fonts
 
