@@ -63,6 +63,7 @@ import { generateMoonTexture, generatePlanetTexture } from './textures';
 import { updateSceneBodiesFromModel } from './frontend/app/bodyManager';
 import { createBodyIdResolver, createSimulationState } from './frontend/app/stateStore';
 import { MoonTexturePipeline } from './frontend/features/planetary/moonTexturePipeline';
+import { moonPositionStatusText } from './frontend/features/planetary/moonPositionStatus';
 import { OrbitalSatelliteSystem } from './frontend/features/planetary/satelliteSystem';
 import { createPlanetSurfaceMaps } from './frontend/features/planetary/planetSurfaceMaps';
 import { PlanetQuadtree } from './frontend/features/planetary/quadtreeLOD';
@@ -171,6 +172,7 @@ const dom = {
   planMission: elementById<HTMLButtonElement>('plan-mission'),
   clearRoute: elementById<HTMLButtonElement>('clear-route'),
   plannerOutput: elementById<HTMLElement>('planner-output'),
+  statusMoons: elementById<HTMLElement>('status-moons'),
   statusCatalog: elementById<HTMLElement>('status-catalog'),
   statusSolar: elementById<HTMLElement>('status-solar'),
   statusSolarAnnouncer: elementById<HTMLElement>('status-solar-announcer'),
@@ -893,6 +895,19 @@ function refreshBodyInfoDistance(timestamp: number) {
   updateBodyInfoDistance(bodyId);
 }
 
+const moonOrbits = moonBodies.flatMap((body) => (body.orbit ? [body.orbit] : []));
+let lastMoonStatusTimestamp: number | null = null;
+
+/** Outside the fitted years, or with fits missing, the status bar says how many moons are affected. */
+function refreshMoonStatus(timestamp: number) {
+  if (lastMoonStatusTimestamp !== null
+    && timestamp - lastMoonStatusTimestamp < BODY_INFO_DISTANCE_REFRESH_INTERVAL_MS) return;
+  lastMoonStatusTimestamp = timestamp;
+  const text = showMoons ? moonPositionStatusText(moonOrbits, simState.julianDate) : null;
+  dom.statusMoons.hidden = text === null;
+  if (text !== null && dom.statusMoons.textContent !== text) dom.statusMoons.textContent = text;
+}
+
 function updateBodyInfoPanel(bodyId: string) {
   const body = bodyById.get(bodyId);
   if (!body) return;
@@ -1470,6 +1485,7 @@ const frameLifecycle = createFrameLifecycle({
     { name: 'render', run: () => renderer.render(scene, camera) },
     { name: 'hud', run: () => timeController.updateHud() },
     { name: 'body-info', run: ({ timestamp }) => refreshBodyInfoDistance(timestamp) },
+    { name: 'moon-status', run: ({ timestamp }) => refreshMoonStatus(timestamp) },
     { name: 'zoom-status', run: updateZoomStatus }
   ]
 });
