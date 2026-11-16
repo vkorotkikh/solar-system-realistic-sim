@@ -362,7 +362,7 @@ The generated population and binary assumptions are visualization models, not a 
 
 ### Trajectory APIs and the mission planner panel
 
-The backend provides direct-transfer and multi-leg gravity-assist planning, including `POST /trajectory/lambert` and `POST /trajectory/porkchop`. The page's Mission planner panel calls these, falling back to the local patched-conic planner for route planning when the backend is unreachable. Plotted arcs are illustrative curves between the computed departure and arrival positions, not propagated conics. Mission plan uses the backend's default vehicle, which currently closes no round trip.
+The backend provides direct-transfer and multi-leg gravity-assist planning, including `POST /trajectory/lambert` and `POST /trajectory/porkchop`. The page's Mission planner panel calls these, falling back to the local patched-conic planner for route planning when the backend is unreachable. Porkchop best searches 220 days of departures and flight times from 70 days up to 1.6 Hohmann flight times (900 days at least, 3,720 at most, and no arrival after 2050); it prints the window it searched and says when the best point lies on the longest flight time. Plotted arcs are illustrative curves between the computed departure and arrival positions, not propagated conics. Mission plan uses the backend's default vehicle, which currently closes no round trip.
 
 ### Mission planner API
 
