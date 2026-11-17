@@ -174,6 +174,7 @@ const dom = {
   statusCatalog: elementById<HTMLElement>('status-catalog'),
   statusSolar: elementById<HTMLElement>('status-solar'),
   statusSolarAnnouncer: elementById<HTMLElement>('status-solar-announcer'),
+  statusSatellites: elementById<HTMLElement>('status-satellites'),
   zoomSensitivity: elementById<HTMLInputElement>('zoom-sensitivity'),
   zoomSensitivityValue: elementById<HTMLOutputElement>('zoom-sensitivity-value'),
   focusMoonSkim: elementById<HTMLButtonElement>('focus-moon-skim'),
@@ -950,11 +951,15 @@ async function applySatelliteVisibility() {
     system.attachTo(bodyNodes.get('earth'));
     await system.initialize();
     if (startup.signal.aborted) return;
-    if (system.lastError) console.warn('[satellites] using fallback orbits:', system.lastError);
+    if (system.dataNote) console.warn('[satellites]', system.dataNote);
     applySatelliteScale();
   }
   earthSatellites?.setVisible(dom.toggleEarthSatellites.checked);
   earthSatellites?.setOrbitVisibility(dom.toggleOrbits.checked);
+  // A failed or partial download draws sample orbits: say so where the user looks.
+  const note = dom.toggleEarthSatellites.checked ? earthSatellites?.dataNote : null;
+  dom.statusSatellites.hidden = !note;
+  if (note) dom.statusSatellites.textContent = `Earth satellites · ${note}`;
 }
 
 void applySatelliteVisibility(); // Browsers may restore the switch on reload.
