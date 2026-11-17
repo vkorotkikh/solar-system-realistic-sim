@@ -229,7 +229,7 @@ def end_burn_km_s(place: Place, v_infinity_km_s: float) -> float:
     return orbit_burn_km_s(relative, place.mu_km3_s2, place.default_orbit)
 
 
-def _around_planet(place: Place, planet: Place) -> tuple[float, float, Place | None]:
+def around_planet(place: Place, planet: Place) -> tuple[float, float, Place | None]:
     """Distance from the planet's centre, the speed there, and the moon to escape or enter (if any)."""
     if body_id(place) == planet.id:  # an orbit around the planet itself, at its periapsis
         orbit = place.default_orbit
@@ -244,7 +244,7 @@ def planet_leg(origin: Place, target: Place, planet: Place) -> tuple[float, floa
     Returns the burn at the origin, the burn at the target, the flight in days,
     and the speed differences at each end before any moon's gravity is counted.
     """
-    (r1, v1, moon1), (r2, v2, moon2) = _around_planet(origin, planet), _around_planet(target, planet)
+    (r1, v1, moon1), (r2, v2, moon2) = around_planet(origin, planet), around_planet(target, planet)
     mu = planet.mu_km3_s2
     semi_major_axis = (r1 + r2) / 2.0
     change1 = abs(math.sqrt(mu * (2.0 / r1 - 1.0 / semi_major_axis)) - v1)

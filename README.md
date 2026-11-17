@@ -206,6 +206,51 @@ curl -X POST http://127.0.0.1:8042/planner/vehicle-check \
   -d '{"burns_km_s": [3.71, 2.04], "payload_mass_kg": 6500, "stages": [{"name": "main", "dry_mass_kg": 6500, "propellant_mass_kg": 18000, "isp_s": 360}]}'
 ```
 
+**Torch ships.** A search can also be flown by a ship that thrusts the whole
+way: it accelerates, flips at about the middle and decelerates, like the drives
+in The Expanse. Add `"drive": {"kind": "torch", "acceleration_g": 1.0}` (0.1 to
+12 g, held constant). The course is solved under the Sun's gravity between the
+two bodies' centres; the orbits at each end are named, not flown, and each leg
+prints the most they could add (`ends_bound_percent`). A course that would pass
+within 0.1 AU of the Sun is bent around it (`detour`). Any day works for a
+torch ship, so the answer holds the trip leaving on the first day asked for
+(`soonest`) and the trip leaving on the quickest day in the range (`fastest`,
+`cheapest`). A moon is reached only as far as its planet (`unflown_km`), and a
+trip around one planet is a straight flip-and-burn across the gap between the
+two orbits. `exhaust_velocity_km_s` adds the share of the ship's mass burned as
+propellant, and `"include": ["path"]` adds 181 sampled positions to each leg
+around the Sun, rocket legs included.
+
+```bash
+curl -X POST http://127.0.0.1:8042/planner/trips/search \
+  -H 'Content-Type: application/json' \
+  -d '{"from": "earth", "to": "mars", "earliest_departure": "2026-11-12", "latest_departure": "2028-11-12",
+       "drive": {"kind": "torch", "acceleration_g": 1.0, "exhaust_velocity_km_s": 11000}}'
+```
+
+The first of the two trips in the answer, without its notes: leaving that day
+takes 3.3 days; waiting for the opposition of 2027-02-19 takes 2.35 days.
+
+```json
+{"id": "t1", "labels": ["soonest"], "total_delta_v_km_s": 2791.026, "total_days": 3.294, "propellant_fraction": 0.2241,
+ "legs": [{
+   "from": "earth", "to": "mars", "around": "sun",
+   "drive": {"kind": "torch", "acceleration_g": 1.0, "exhaust_velocity_km_s": 11000.0},
+   "depart": {"date": "2026-11-12", "jd": 2461356.5}, "arrive": {"date": "2026-11-15", "jd": 2461359.794},
+   "flight_days": 3.294,
+   "thrust": [
+     {"phase": "accelerate", "start": {"date": "2026-11-12", "jd": 2461356.5},
+      "end": {"date": "2026-11-13", "jd": 2461358.1385}, "hours": 39.32, "delta_v_km_s": 1388.269},
+     {"phase": "decelerate", "start": {"date": "2026-11-13", "jd": 2461358.1385},
+      "end": {"date": "2026-11-15", "jd": 2461359.794}, "hours": 39.73, "delta_v_km_s": 1402.757}],
+   "peak_speed_km_s": 1418.1, "closest_sun_approach_au": 0.9862, "detour": false,
+   "ends_bound_percent": 0.4, "unflown_km": {"depart": 0.0, "arrive": 0.0}}]}
+```
+
+Every leg, rocket or torch, carries its `drive`, and `searched.objective` says
+which objective ordered the trips: the least delta-v for rockets and the
+earliest arrival for torch ships unless the request names one.
+
 ### Route-planning agent
 
 `POST /planner/agent` answers a trip prompt in plain words, such as "Earth to
