@@ -192,6 +192,42 @@ curl -X POST http://127.0.0.1:8042/planner/vehicle-check \
   -d '{"burns_km_s": [3.71, 2.04], "payload_mass_kg": 6500, "stages": [{"name": "main", "dry_mass_kg": 6500, "propellant_mass_kg": 18000, "isp_s": 360}]}'
 ```
 
+### Route-planning agent
+
+`POST /planner/agent` answers a trip prompt in plain words, such as "Earth to
+Mars and back with a 30 day stay". A Claude model calls the planner above as
+tools and can also queue three app actions (move the camera, set the date,
+switch a layer). The browser sends the conversation so far, the current plan
+and a short app state with every prompt; the backend stores nothing. The reply
+carries the answer text, the planner's own trip or plan to show, the queued
+actions, a `check` of the answer, and the token usage.
+
+Every number in an answer must match the planner's results or the user's own
+words, after rounding, or be a count of ten or less. A failing answer gets one
+corrective retry, then is replaced by a sentence built from the trip. One
+prompt makes at most 6 model calls and 8 tool calls in 30 seconds, and a
+prompt is at most 2,000 characters.
+
+The agent is off until a model is chosen; there is no default model:
+
+| Setting | Meaning |
+|---|---|
+| `PLANNER_AGENT_MODEL` | Model id, for example `claude-opus-5-5`. Unset turns the agent off, and `GET /planner/capabilities` reports it off. |
+| `ANTHROPIC_API_KEY` | The API key, or sign in once with `ant auth login`; the Anthropic SDK finds either. |
+| `PLANNER_AGENT_MAX_PROMPTS_PER_DAY` | Prompts answered per UTC day by this backend process, default 200. |
+
+```bash
+PLANNER_AGENT_MODEL=claude-opus-5-5 npm run dev:full
+curl http://127.0.0.1:8042/planner/capabilities
+curl -X POST http://127.0.0.1:8042/planner/agent \
+  -H 'Content-Type: application/json' \
+  -d '{"messages": [{"role": "user", "text": "Earth to Mars"}], "app": {"date": "2026-11-16", "focused": "earth"}}'
+```
+
+The model call is in `backend/planner/agent/provider_anthropic.py`, the only
+file that imports the Anthropic SDK; another provider would be a sibling
+module with the same `call_model` function.
+
 ## Project Structure
 
 Inventory of active and retained modules; this is not a live wiring diagram.
