@@ -1,4 +1,4 @@
-"""Planner agent (epic issue C10): the loop, its tools, the number check and the provider call.
+"""Planner agent (epic issue C10): the loop, its tools, the number check, the endpoint and the provider call.
 
 No live model runs here. A scripted stand-in returns what a model would: tool
 calls, then a JSON answer. The tools run for real, so every trip and plan is
@@ -19,8 +19,10 @@ import anthropic
 import httpx2
 import pytest
 from anthropic.types.beta import BetaMessage
+from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
+import server
 from planner.agent import provider_anthropic
 from planner.agent.loop import (ANSWER_SCHEMA, MAX_MODEL_CALLS, MAX_TOOL_CALLS, STOP_TEXT, TOOL_LIMIT_NOTE,
                                 AgentRequest, AssistantText, DailyLimit, ModelReply, ProviderError, ToolCall,
@@ -34,6 +36,13 @@ TODAY = date(2026, 11, 12)
 MARS = {"from": "earth", "to": "mars", "trip": "one_way", "objective": "min_delta_v", "flybys": 0,
         "earliest_departure": "2026-11-12", "latest_departure": "2027-01-31"}
 STAGES = [{"name": "main", "dry_mass_kg": 6_500.0, "propellant_mass_kg": 18_000.0, "isp_s": 360.0}]
+client = TestClient(server.app, raise_server_exceptions=False)
+
+
+@pytest.fixture(autouse=True)
+def _fresh_middleware_stack(monkeypatch) -> None:
+    # Keep these requests out of the suite-wide trajectory rate-limit window.
+    monkeypatch.setattr(server.app, "middleware_stack", None)
 
 
 class Script:
@@ -329,6 +338,67 @@ def test_the_daily_limit_restarts_each_utc_day() -> None:
     limit = DailyLimit(1)
     assert [limit.take(date(2026, 11, 12)), limit.take(date(2026, 11, 12)), limit.take(date(2026, 11, 13))] \
         == [True, False, True]
+
+
+# The endpoint.
+
+BODY = {"messages": [{"role": "user", "text": "Earth to Mars"}]}
+
+
+@pytest.fixture
+def agent_on(monkeypatch):
+    def turn_on(provider, limit: int = 200) -> None:
+        monkeypatch.setattr(server, "PLANNER_AGENT_MODEL", "test-model")
+        monkeypatch.setattr(server, "PLANNER_AGENT_PROVIDER", provider)
+        monkeypatch.setattr(server, "PLANNER_AGENT_DAILY_LIMIT", DailyLimit(limit))
+    return turn_on
+
+
+def test_with_no_model_set_the_agent_is_off(monkeypatch) -> None:
+    monkeypatch.setattr(server, "PLANNER_AGENT_MODEL", None)
+    agent = client.get("/planner/capabilities").json()["agent"]
+    assert (agent["enabled"], agent["model"]) == (False, None)
+    response = client.post("/planner/agent", json=BODY)
+    assert response.status_code == 503 and response.json()["detail"]["code"] == "planner_agent_disabled"
+
+
+def test_the_endpoint_answers_a_prompt(agent_on) -> None:
+    agent_on(Script(tool("search_trips", **MARS), cheapest_answer))
+    assert client.get("/planner/capabilities").json()["agent"] == {
+        "enabled": True, "model": "test-model", "max_prompt_chars": 2_000, "max_prompts_per_day": 200}
+    response = client.post("/planner/agent", json=BODY)
+    assert response.status_code == 200
+    body = response.json()
+    assert (body["status"], body["show"]["trip_id"], body["check"]["result"]) == ("ok", "s1-t1", "passed")
+
+
+def test_the_daily_limit_refuses_prompts_past_it_and_frees_the_slot(agent_on) -> None:
+    agent_on(Script(answer("Hello.")), limit=1)
+    assert client.post("/planner/agent", json=BODY).status_code == 200
+    for _ in range(3):  # more refusals than the two agent slots: a refusal that kept its slot would turn into 503
+        response = client.post("/planner/agent", json=BODY)
+        assert response.status_code == 429 and response.json()["detail"]["code"] == "planner_agent_daily_limit"
+    agent_on(Script(answer("Hello again.")), limit=1)
+    assert client.post("/planner/agent", json=BODY).status_code == 200
+
+
+@pytest.mark.parametrize(("retryable", "status"), [(True, 503), (False, 502)])
+def test_provider_failures_become_gateway_errors(agent_on, retryable, status) -> None:
+    def failing(**_call):
+        raise ProviderError("model_error", "The model provider returned HTTP 500.", retryable=retryable)
+    agent_on(failing)
+    response = client.post("/planner/agent", json=BODY)
+    assert response.status_code == status
+    assert response.json()["detail"] == {"code": "model_error", "message": "The model provider returned HTTP 500.",
+                                         "retryable": retryable, "context": {}}
+
+
+def test_an_overlong_prompt_is_rejected_before_any_model_call(agent_on) -> None:
+    script = Script()
+    agent_on(script)
+    response = client.post("/planner/agent", json={"messages": [{"role": "user", "text": "x" * 2_001}]})
+    assert response.status_code == 422
+    assert response.json()["detail"]["code"] == "trajectory_request_validation_error" and script.calls == []
 
 
 # The Anthropic provider.
