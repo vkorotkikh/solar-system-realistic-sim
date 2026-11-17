@@ -251,6 +251,18 @@ Every leg, rocket or torch, carries its `drive`, and `searched.objective` says
 which objective ordered the trips: the least delta-v for rockets and the
 earliest arrival for torch ships unless the request names one.
 
+**Course report.** `"include": ["course"]` adds to each leg around the Sun,
+for either drive, what the course passes: its closest approach to the Sun; the
+dates it is inside the asteroid belt (2.06 to 3.28 AU from the Sun) and the
+Kuiper belt (30 to 50 AU); the three nearest catalog bodies; and the nearest of
+the 100,000 catalogued main-belt asteroids the app draws, with how many pass
+within 1.5 million km. The belts are bands of distance, not obstacles: a 1 g
+course to Jupiter spends under a day in the asteroid belt and passes about a
+million km from the nearest catalogued asteroid. The asteroid screen takes
+about half a second a leg; when the search is nearly out of time it is left out
+(`"status": "not_searched"`) and `searched.complete` is false. Dust and rocks
+too small to be catalogued are not estimated.
+
 ### Route-planning agent
 
 `POST /planner/agent` answers a trip prompt in plain words, such as "Earth to

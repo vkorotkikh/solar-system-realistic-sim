@@ -118,7 +118,9 @@ class TripSearchRequest(BaseModel):
     objective: Literal["min_delta_v", "min_time", "earliest_arrival"] | None = None
     flybys: StrictInt = Field(0, ge=0, le=2)
     drive: Drive = Field(default_factory=Drive)
-    include: list[Literal["path"]] = Field(default_factory=list, max_length=1)  # extras that cost time or size
+    # Extras for each leg around the Sun, left out unless asked for because they cost size or time: "path" is
+    # 181 sampled positions, "course" is what the leg passes (the Sun, the belts, nearby bodies and asteroids).
+    include: list[Literal["path", "course"]] = Field(default_factory=list, max_length=2)
 
 
 @dataclass(frozen=True, slots=True)
@@ -500,6 +502,37 @@ def _rows(path: np.ndarray) -> list[list[float]]:
     return [[round(jd, 4), round(x, 6), round(y, 6), round(z, 6)] for jd, x, y, z in path.tolist()]
 
 
+def _dated(value):
+    """A course report for the answer: a calendar date beside each Julian date, distances in whole km, the rest to 4 places."""
+    if isinstance(value, dict):
+        out = {key: round(item) if key.endswith("_km") and isinstance(item, float) else _dated(item)
+               for key, item in value.items()}
+        return {"date": jd_to_date(value["jd"]), **out} if "jd" in value else out
+    if isinstance(value, list):
+        return [_dated(item) for item in value]
+    return round(value, 4) if isinstance(value, float) else value
+
+
+def _extras(ends: tuple[str, str], path: np.ndarray, sun: tuple[float, float] | None, include: list[str], deadline: float) -> dict:
+    """What the request asked to include for a leg around the Sun. `sun` is its closest approach when known exactly."""
+    out = {}
+    if "path" in include:
+        out["path"] = _rows(path)
+    if "course" in include:
+        out["course"] = _dated(course.report(path, skip=ends, sun=sun, deadline=deadline))
+    return out
+
+
+def _finish(origin: Place, target: Place, trips: list[dict], searched: dict, started: float) -> dict:
+    """The answer. A course report whose asteroid screen was left out for lack of time makes the search incomplete."""
+    if any(leg.get("course", {}).get("nearest_asteroid", {}).get("status") == "not_searched"
+           for trip in trips for leg in trip["legs"]):
+        searched["complete"] = False
+        searched["notes"].append("The search ran out of time before every leg's asteroid screen: those legs say not_searched.")
+    searched["seconds"] = round(time.monotonic() - started, 2)
+    return _answer(origin, target, trips, searched)
+
+
 def _orbit_speed(place: Place) -> float:
     """km/s of a circular orbit with the energy of the place's orbit, plus a moon's own speed around its planet."""
     orbit = place.default_orbit
@@ -509,7 +542,8 @@ def _orbit_speed(place: Place) -> float:
     return speed
 
 
-def _torch_leg(leg: _TorchLeg, origin: Place, target: Place, planet: Place | None, drive: Drive, with_path: bool) -> dict:
+def _torch_leg(leg: _TorchLeg, origin: Place, target: Place, planet: Place | None, drive: Drive,
+               include: list[str], deadline: float) -> dict:
     flip = leg.depart_jd + leg.burn_days[0]
     arcs = (("accelerate", leg.depart_jd, flip, leg.delta_v[0]), ("decelerate", flip, leg.arrive_jd, leg.delta_v[1]))
     out = {
@@ -532,9 +566,8 @@ def _torch_leg(leg: _TorchLeg, origin: Place, target: Place, planet: Place | Non
     # The orbits at the ends are not flown. Matching their speeds is the most they could add to the delta-v.
     out["ends_bound_percent"] = round(100.0 * (_orbit_speed(origin) + _orbit_speed(target)) / leg.total, 2)
     out["unflown_km"] = {"depart": origin.orbit_radius_km, "arrive": target.orbit_radius_km}  # a moon's distance from its planet
-    if with_path:
-        out["path"] = _rows(leg.sun.path)
-    return out
+    return out | _extras((out["from"], out["to"]), leg.sun.path, (leg.sun.closest_sun_au, leg.sun.closest_sun_jd),
+                         include, deadline)
 
 
 def _torch_notes(origin: Place, target: Place, planet: Place | None, g: float, ranked: bool, detour: bool) -> list[str]:
@@ -716,7 +749,7 @@ def _torch_search(request: TripSearchRequest, objective: str, origin: Place, tar
     trips = []
     for option, labels in _labelled(options, objective, max_extra=None):
         flown = ((option, origin, target),) if stay is None else ((option.out, origin, target), (option.back, target, origin))
-        legs = [_torch_leg(leg, a, b, planet, request.drive, "path" in request.include) for leg, a, b in flown]
+        legs = [_torch_leg(leg, a, b, planet, request.drive, request.include, deadline) for leg, a, b in flown]
         trip = {"labels": labels, "total_delta_v_km_s": option.total, "total_days": round(option.days, 4)}
         if stay is not None:
             trip["stay_days"] = round(option.back.depart_jd - option.out.arrive_jd, 4)
@@ -729,7 +762,7 @@ def _torch_search(request: TripSearchRequest, objective: str, origin: Place, tar
             trip["approximations"].append("The way out and the way back are solved separately: the return leaves on the "
                                           "first day the stay allows, or on the quickest day inside the stay range.")
         trips.append(trip)
-    return _answer(origin, target, trips, searched)
+    return _finish(origin, target, trips, searched, started)
 
 
 def _resolve(end: str | OrbitChoice) -> Place | dict:
@@ -868,10 +901,13 @@ def search_trips(request: TripSearchRequest, *, today: date | None = None,
         searched["complete"] = searched["complete"] and complete
         searched["seconds"] = round(time.monotonic() - started, 2)
 
-    if "path" in request.include:
+    if request.include:
+        extras: dict[tuple, dict] = {}  # trips can share a leg
         for trip in trips:
             for leg in trip["legs"]:
-                path = course.rocket_path(leg["from"], leg["to"], leg["depart"]["jd"], leg["arrive"]["jd"])
-                if path is not None:
-                    leg["path"] = _rows(path)
-    return _answer(origin, target, trips, searched)
+                key = (leg["from"], leg["to"], leg["depart"]["jd"], leg["arrive"]["jd"])
+                if key not in extras:
+                    path = course.rocket_path(*key)
+                    extras[key] = {} if path is None else _extras(key[:2], path, None, request.include, deadline)
+                leg.update(extras[key])
+    return _finish(origin, target, trips, searched, started)
