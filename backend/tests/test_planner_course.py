@@ -112,6 +112,17 @@ def test_the_closest_approach_to_the_sun_of_a_line_is_the_foot_of_the_perpendicu
     assert outward["au"] == pytest.approx(1.0, abs=1e-12) and outward["jd"] == pytest.approx(JD_2026, abs=1e-6)
 
 
+def test_the_closest_approach_to_the_sun_on_an_orbit_is_its_perihelion() -> None:
+    # An orbit with perihelion 0.7 AU and semi-major axis 1 AU, sampled from 60 days before perihelion to 100 after.
+    # The perihelion falls between two rows; straight segments between rows would cut 12,000 km inside it.
+    speed = math.sqrt(MU * (2 / 0.7 - 1 / 1.0))  # vis-viva at perihelion
+    days = np.linspace(-60.0, 100.0, 181)
+    after = course.two_body([0.7, 0.0, 0.0], [0.0, speed, 0.0], np.abs(days))
+    after[days < 0, 1] *= -1.0  # before perihelion the orbit is the mirror image of after it
+    found = course.sun_approach(np.column_stack([JD_2026 + 60.0 + days, after]))
+    assert found["au"] == pytest.approx(0.7, abs=1e-7) and found["jd"] == pytest.approx(JD_2026 + 60.0, abs=1e-3)
+
+
 def test_a_radial_course_to_jupiters_distance_crosses_the_asteroid_belt_once() -> None:
     # 1 to 5.2 AU in 300 days: at 2.06 AU after 300 x 1.06/4.2 days, at 3.28 AU after 300 x 2.28/4.2 days.
     crossings = course.belt_crossings(straight([1.0, 0.0, 0.0], [5.2, 0.0, 0.0], 300.0))

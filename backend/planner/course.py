@@ -2,9 +2,10 @@
 
 A course is a path: rows of [Julian date, x, y, z] in AU, heliocentric ecliptic
 J2000, evenly spaced in time. A torch leg brings its own path; a rocket leg is
-sampled here from its transfer orbit. Between two rows everything is taken to
-move in a straight line at constant speed, so a closest approach is good to the
-sag of the path between rows.
+sampled here from its transfer orbit. Between two rows a body or asteroid and the
+ship are taken to move in straight lines at constant speed, so their closest
+approach is good to the sag of the paths between rows: a few thousand km on a
+rocket leg, less on a torch leg.
 
 The belts are bands of distance from the Sun, by convention: the asteroid belt
 from 2.06 to 3.28 AU (between the 4:1 and 2:1 Kirkwood gaps) and the Kuiper belt
@@ -122,8 +123,21 @@ def _when(times: np.ndarray, segment, along) -> float:
 
 
 def sun_approach(path: np.ndarray) -> dict:
-    distance, segment, along = _closest_on_segments(path[:, 1:])
-    return {"au": float(distance), "jd": _when(path[:, 0], segment, along)}
+    """The course's closest approach to the Sun, from a parabola through the squared distance at the three nearest rows.
+
+    That is exact for a straight course at constant speed and good to a few km on an orbit, where straight segments
+    would cut inside the curve by the sag between rows (15,000 km on a rocket leg near Earth).
+    """
+    times, squared = path[:, 0], (path[:, 1:] ** 2).sum(axis=1)
+    row = int(squared.argmin())
+    if 0 < row < len(times) - 1:
+        before, here, after = squared[row - 1:row + 2]
+        bend = before - 2.0 * here + after
+        if bend > 0.0:
+            shift = 0.5 * (before - after) / bend  # in rows, from the nearest row
+            return {"au": float(math.sqrt(max(here - 0.25 * (before - after) * shift, 0.0))),
+                    "jd": float(times[row] + shift * (times[row + 1] - times[row]))}
+    return {"au": float(math.sqrt(squared[row])), "jd": float(times[row])}
 
 
 def belt_crossings(path: np.ndarray) -> list[dict]:
