@@ -705,6 +705,47 @@ def test_network_authentication_is_inside_exact_origin_cors(monkeypatch) -> None
     assert preflight.headers["access-control-allow-origin"] == origin
 
 
+@pytest.mark.parametrize(
+    "requested",
+    ["x-api-key", "authorization", "authorization,content-type,x-api-key"],
+)
+def test_production_cors_preflight_allows_the_credential_headers(requested: str) -> None:
+    # The key-bearing request is the network profile's only access path; a browser
+    # sends this preflight first, and Starlette answers 400 if the real app's
+    # allow_headers list loses a header (audit finding engines-04).
+    origin = server._HTTP_CORS_ALLOWED_ORIGINS[0]
+
+    preflight = client.options(
+        "/trajectory/plan",
+        headers={
+            "origin": origin,
+            "access-control-request-method": "POST",
+            "access-control-request-headers": requested,
+        },
+    )
+
+    assert preflight.status_code == 200
+    assert preflight.headers["access-control-allow-origin"] == origin
+    allowed = {
+        name.strip().lower()
+        for name in preflight.headers["access-control-allow-headers"].split(",")
+    }
+    assert set(requested.split(",")) <= allowed
+
+
+def test_production_cors_preflight_still_refuses_an_unlisted_header() -> None:
+    preflight = client.options(
+        "/trajectory/plan",
+        headers={
+            "origin": server._HTTP_CORS_ALLOWED_ORIGINS[0],
+            "access-control-request-method": "POST",
+            "access-control-request-headers": "x-not-a-listed-header",
+        },
+    )
+
+    assert preflight.status_code == 400
+
+
 def test_network_public_route_allowlist_cannot_expand_with_registered_routes() -> None:
     registered_http_routes = {
         (method, route.path)
