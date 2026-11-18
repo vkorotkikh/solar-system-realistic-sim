@@ -55,3 +55,25 @@ describe('H29 slipstream strength against independent references', () => {
     expect(strength(1e56, 90)).toBeCloseTo(0.12980252528697012, 12);
   });
 });
+
+describe('the Sun when the H29 front arrives', () => {
+  // The implementation plan makes the passage "silent": distances shift without flare
+  // activity. The front arrives together with the gravitational wave and the neutrinos.
+  it('flares only for the co-arriving gravitational wave, never for the warp front itself', () => {
+    const flares: string[] = [];
+    const engine = createAgnShockwaveEngine(null, {
+      triggerFlareBurst: (_intensity, count) => flares.push(`burst of ${count}`),
+      triggerMassiveAgnFlare: () => flares.push('massive flare'),
+    });
+    engine.triggerEvent('SagittariusA', 8, 1.4, { preset: 'SgrA_WarpWave_H29' });
+    const fired = () => engine.getTimeline()!.channels.filter(channel => channel.fired).map(channel => channel.key);
+    let steps = 0;
+    while (!fired().includes('metric_slipstream')) {
+      expect(flares, 'no flare before the front arrives').toEqual([]);
+      engine.update(0.001);
+      expect(++steps).toBeLessThan(9000);
+    }
+    expect(fired().sort()).toEqual(['gw', 'metric_slipstream', 'neutrino']);
+    expect(flares, 'one burst: the wave flares the Sun once and neutrinos do not').toEqual(['burst of 1']);
+  });
+});
