@@ -132,12 +132,19 @@ accepted only from `SOLAR_TRUSTED_PROXY_CIDRS`; otherwise the immediate socket
 peer is used for rate limiting. Keep Uvicorn proxy-header rewriting disabled so
 the application can verify that immediate peer itself.
 
+In the network profile every HTTP route except `GET /health/live` needs one of
+the keys, sent as `X-API-Key: <key>` or `Authorization: Bearer <key>`; a key in
+the query string is refused, and a request without a key gets HTTP 401. The page
+itself sends no key, so against a network-profile backend it shows the
+procedural Sun and the status bar says the server requires an API key. To use
+the page there, serve it from the same origin as a reverse proxy that adds the
+key to backend requests. The profile does not replace production TLS or proxy
+policy.
+
 Solar rate-limit identity stores have fixed memory ceilings and TTL expiry.
 Under more simultaneous valid peer identities than the configured ceiling,
 the least-recently-used identity is evicted; this is memory containment, not a
 replacement for an edge rate limiter in a network deployment.
-`SOLAR_SECURITY_PROFILE` covers the solar HTTP endpoints in this tranche; it
-does not add route-wide authentication or replace production TLS/proxy policy.
 
 ### WebSocket tuning
 
