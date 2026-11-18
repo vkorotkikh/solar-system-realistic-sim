@@ -243,6 +243,56 @@ describe('SolarPhysicsClient time contract', () => {
     expect(new URL(requestUrl).searchParams.get('jd_tdb')).toBe('2461308.55000000');
   });
 
+  // Audit finding solar-client-01: the request/response epoch gate had no test. A reply is only
+  // drawn if it answers the epoch that was asked for ("no mixed-epoch geometry",
+  // docs/solar-render-delivery.md); the wire carries epochs in whole 1e-8 d units, so the only
+  // legitimate disagreement is the rounding of that encoding, at most half a unit (5e-9 d).
+  describe('request/response epoch gate', () => {
+    const REQUESTED = 2_460_000.5;
+    const HALF_WIRE_UNIT = 0.5e-8;
+
+    it.each([-30, -0.4, -0.01, -1e-6, 1e-6, 0.01, 0.4, 30])(
+      'rejects as an invalid response a reply for an epoch %s d away from the one requested', async (offset) => {
+        vi.stubGlobal('fetch', vi.fn(async () => responseWith(validPayload(REQUESTED + offset))));
+        const client = new SolarPhysicsClient({ baseUrl: () => 'http://backend.test' });
+
+        await expect(client.maybeRefresh(REQUESTED, true)).resolves.toBe(false);
+
+        expect(client.latestState()).toBeNull();
+        expect(client.status().lastFailure?.kind).toBe('invalid-response');
+        expect(client.lastError).toContain('does not match the requested epoch');
+      }
+    );
+
+    it('does not let a late reply for the previous 0.01 d step replace the drawn state', async () => {
+      const fetchMock = vi.fn()
+        .mockResolvedValueOnce(responseWith(validPayload(REQUESTED)))
+        .mockResolvedValueOnce(responseWith(validPayload(REQUESTED))); // stale: asked for REQUESTED + 0.01
+      vi.stubGlobal('fetch', fetchMock);
+      const client = new SolarPhysicsClient({ baseUrl: () => 'http://backend.test' });
+
+      await expect(client.maybeRefresh(REQUESTED, true)).resolves.toBe(true);
+      const drawn = client.latestState();
+      await expect(client.maybeRefresh(REQUESTED + 0.01, true)).resolves.toBe(false);
+
+      expect(new URL(String(fetchMock.mock.calls[1][0])).searchParams.get('jd_tdb')).toBe('2460000.51000000');
+      expect(client.latestState()).toBe(drawn);
+      expect(client.lastError).toContain('does not match the requested epoch');
+    });
+
+    it.each([0, HALF_WIRE_UNIT * 0.8, -HALF_WIRE_UNIT * 0.8])(
+      'accepts a reply whose epoch differs by %s d, inside the rounding of the 1e-8 d wire encoding', async (offset) => {
+        vi.stubGlobal('fetch', vi.fn(async () => responseWith(validPayload(REQUESTED + offset))));
+        const client = new SolarPhysicsClient({ baseUrl: () => 'http://backend.test' });
+
+        await expect(client.maybeRefresh(REQUESTED, true)).resolves.toBe(true);
+
+        expect(client.latestState()?.epoch_jd_tdb).toBe(REQUESTED + offset);
+        expect(client.status().lastFailure).toBeNull();
+      }
+    );
+  });
+
   it.each([
     [{ ...validPayload(), jd_time_scale: 'UTC' }, 'time scale'],
     [{ ...validPayload(), epoch_jd_tdb: Number.NaN }, 'epoch_jd_tdb'],
