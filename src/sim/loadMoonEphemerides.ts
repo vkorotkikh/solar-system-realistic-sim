@@ -2,59 +2,63 @@ import { parseMoonEphemerisArtifact, type GeneratedMoonChebyshevEphemeris } from
 import type { LazyMoonLoaderOptions } from './lazyMoonEphemerides';
 import { MAJOR_MOONS } from '../data/planets';
 
-/** Startup waits this long for the 16 extra fits (about 4 MB) before carrying on without them. */
-const NAMED_MOON_FIT_BUDGET_MS = 4_000;
-
-/**
- * Fits for every named moon: mean elements alone put Rhea on the wrong side of Saturn.
- * Small moons stay on mean elements, because all 410 shards total 60 MB.
- */
-export async function loadNamedMoonEphemerides(lazyOptions?: LazyMoonLoaderOptions, budgetMs = NAMED_MOON_FIT_BUDGET_MS) {
-  const { BASE_MOON_EPHEMERIS_KEYS } = await import('./lazyMoonEphemerides');
-  const additionalBodyKeys = [...MAJOR_MOONS].map(name => name.toLowerCase())
-    .filter(key => !BASE_MOON_EPHEMERIS_KEYS.has(key));
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  const overBudget = new Promise<never>((_, reject) => {
-    timer = setTimeout(() => reject(new Error(`named-moon fits took longer than ${budgetMs} ms`)), budgetMs);
-  });
-  try {
-    return await Promise.race([loadMoonEphemerides({ additionalBodyKeys, lazyOptions }), overBudget]);
-  } catch (error) {
-    console.warn('[moons] named-moon fits unavailable; keeping the bundled fits:', error);
-    return loadMoonEphemerides();
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-/** Startup waits this long for every moon's fit (410 shards, about 59 MB) before using the named-moon fits. */
+/** Startup waits at most this long for the 410 shards (about 59 MB), then keeps what has arrived. */
 const ALL_MOON_FIT_BUDGET_MS = 15_000;
 
 /**
  * Fits for all 423 moons, so none falls back to mean elements (Himalia was millions of km
- * off on them). Falls back to the named-moon fits if the shards fail or overrun the budget.
+ * off on them). Named moons are fetched first. Every shard that arrives within the budget
+ * is kept, a failed shard is retried once, and no request starts after the budget, so a
+ * slow link or one bad shard costs only the moons it did not deliver.
  */
 export async function loadAllMoonEphemerides(
   lazyOptions: LazyMoonLoaderOptions = { maxConcurrentRequests: 8 },
   budgetMs = ALL_MOON_FIT_BUDGET_MS,
-  namedBudgetMs = NAMED_MOON_FIT_BUDGET_MS,
 ) {
-  const { createLazyMoonEphemerisLoader } = await import('./lazyMoonEphemerides');
+  const bodies = await loadMoonEphemerides();
+  const concurrency = lazyOptions.maxConcurrentRequests ?? 8;
+  const fitted: Record<string, GeneratedMoonChebyshevEphemeris> = {};
+  const failures: unknown[] = [];
+  let open = true;
   let timer: ReturnType<typeof setTimeout> | undefined;
-  const overBudget = new Promise<never>((_, reject) => {
-    timer = setTimeout(() => reject(new Error(`moon fits took longer than ${budgetMs} ms`)), budgetMs);
-  });
+  const budget = new Promise<void>(resolve => { timer = setTimeout(resolve, budgetMs); });
+  const fetchAll = async () => {
+    const { createLazyMoonEphemerisLoader } = await import('./lazyMoonEphemerides');
+    // One worker per loader slot, so no request waits inside the loader past the budget.
+    const loader = createLazyMoonEphemerisLoader({ ...lazyOptions, maxConcurrentRequests: concurrency });
+    const named = new Set([...MAJOR_MOONS].map(name => name.toLowerCase()));
+    const queue = Object.keys((await loader.getManifest()).bodies)
+      .filter(key => !(key in bodies))
+      .sort((a, b) => Number(named.has(b)) - Number(named.has(a)));
+    const worker = async () => {
+      while (open && queue.length > 0) {
+        const key = queue.shift()!;
+        for (let attempt = 1; attempt <= 2 && open; attempt += 1) {
+          try {
+            Object.assign(fitted, await loader.load([key]));
+            break;
+          } catch (error) {
+            if (attempt === 2) failures.push(error);
+          }
+        }
+      }
+    };
+    await Promise.all(Array.from({ length: concurrency }, worker));
+  };
   try {
-    return await Promise.race([(async () => {
-      const manifest = await createLazyMoonEphemerisLoader(lazyOptions).getManifest();
-      return loadMoonEphemerides({ additionalBodyKeys: Object.keys(manifest.bodies), lazyOptions });
-    })(), overBudget]);
+    await Promise.race([fetchAll(), budget]);
   } catch (error) {
-    console.warn('[moons] not every moon fit loaded; using the named-moon fits:', error);
-    return loadNamedMoonEphemerides(lazyOptions, namedBudgetMs);
+    failures.push(error); // the manifest itself: keep the bundled fits
   } finally {
+    open = false;
     clearTimeout(timer);
   }
+  const loaded = Object.keys(fitted).length;
+  if (failures.length > 0 || loaded < 410) {
+    console.warn(`[moons] ${loaded} of 410 moon shards loaded within ${budgetMs} ms; the other moons use mean elements.`,
+      failures[0] ?? '');
+  }
+  return { ...bodies, ...fitted };
 }
 
 /** Called only by consumers that opt into fitted moon propagation. */
