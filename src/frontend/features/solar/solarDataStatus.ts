@@ -90,6 +90,8 @@ function failureReason(failure: SolarPhysicsFailure, input: SolarDataStatusInput
       return 'solar server ran out of compute time, HTTP 503';
     case 'rate-limited':
       return 'solar server rate limit reached, HTTP 429';
+    case 'auth':
+      return `solar server requires an API key, HTTP ${failure.httpStatus ?? 401}`;
     case 'http':
       return `solar server error, HTTP ${failure.httpStatus ?? 'unknown'}`;
     case 'server-error':
@@ -133,7 +135,7 @@ function describeObservationImage(input: SolarDataStatusInput): string {
 }
 
 /** Failure kinds a listener would act on the same way are announced as one situation. */
-function failureFamily(kind: SolarPhysicsFailureKind): 'slow' | 'blocked' | 'unreachable' | 'server-error' {
+function failureFamily(kind: SolarPhysicsFailureKind): 'slow' | 'blocked' | 'auth' | 'unreachable' | 'server-error' {
   switch (kind) {
     case 'timeout':
     case 'busy':
@@ -142,6 +144,8 @@ function failureFamily(kind: SolarPhysicsFailureKind): 'slow' | 'blocked' | 'unr
       return 'slow';
     case 'blocked':
       return 'blocked';
+    case 'auth':
+      return 'auth';
     case 'unreachable':
     case 'network':
       return 'unreachable';
@@ -153,6 +157,7 @@ function failureFamily(kind: SolarPhysicsFailureKind): 'slow' | 'blocked' | 'unr
 const FAMILY_ANNOUNCEMENTS = {
   slow: 'solar server too slow or busy',
   blocked: "solar server does not allow this page's origin",
+  auth: 'solar server requires an API key',
   unreachable: 'solar server not reachable',
   'server-error': 'solar server error',
 } as const;
@@ -163,6 +168,9 @@ function failureRemedy(family: keyof typeof FAMILY_ANNOUNCEMENTS, input: SolarDa
       return `Add ${input.pageOrigin || "this page's origin"} to SOLAR_CORS_ALLOWED_ORIGINS on the backend `
         + '(the variable replaces the default list, so keep the origins you still use), '
         + 'or open the page at http://localhost:5173.';
+    case 'auth':
+      return 'This page sends no API key. Serve it behind a same-origin proxy that adds X-API-Key, '
+        + 'or run the backend with SOLAR_SECURITY_PROFILE=local on loopback.';
     case 'unreachable':
       return `Start the backend so that it answers at ${input.backendBaseUrl}: `
         + 'cd backend && python -m uvicorn server:app --port 8042';

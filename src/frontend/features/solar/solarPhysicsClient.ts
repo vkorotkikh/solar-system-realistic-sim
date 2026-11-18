@@ -175,6 +175,7 @@ export type SolarPhysicsFailureKind =
   | 'busy'
   | 'server-timeout'
   | 'rate-limited'
+  | 'auth'
   | 'http'
   | 'server-error'
   | 'blocked'
@@ -275,6 +276,8 @@ export function formatSeconds(ms: number): string {
 /** The backend reports overload and its own deadline as distinct 503 codes. */
 function classifyHttpFailure(status: number, code: string | null): SolarPhysicsFailureKind {
   if (status === 429) return 'rate-limited';
+  // The network profile answers every request without a key this way; the page sends none.
+  if (status === 401) return 'auth';
   if (code === 'solar_compute_saturated') return 'busy';
   if (code === 'solar_compute_timeout') return 'server-timeout';
   return 'http';
