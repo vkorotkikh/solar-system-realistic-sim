@@ -208,5 +208,8 @@ def test_native_rebound_finite_state_survives_strict_normalization():
     assert result["force_models"] == raw["force_models"]
     assert result["position_units"] == "AU"
     assert result["velocity_units"] == "AU/day"
+    assert result["position_frame"] == result["velocity_frame"] == "barycentric"
+    # Earth moves about 0.017 AU/day; AU/yr labelled as AU/day would read about 6.3.
+    assert math.hypot(*result["bodies"]["earth"]["vel"]) < 0.1
     assert math.isfinite(result["energy_error"])
     json.dumps(result, allow_nan=False)
