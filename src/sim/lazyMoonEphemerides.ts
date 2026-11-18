@@ -1,5 +1,6 @@
 import rawMoons from '../data/moons.json';
 import { parseMoonEphemerisArtifact, type GeneratedMoonChebyshevEphemeris } from './moonEphemeris';
+import { sha256Hex } from './sha256';
 
 export const BASE_MOON_EPHEMERIS_KEYS: ReadonlySet<string> = new Set(['titan', 'iapetus', 'phoebe', 'cordelia', 'carme', 'dione', 'mimas', 'neso', 'phobos', 's2021_n1', 's2025_u_1', 'daphnis', 's2023_s38']);
 const CENTERS: Record<string, string> = { Earth: '399', Mars: '499', Jupiter: '599', Saturn: '699', Uranus: '799', Neptune: '899', Pluto: '999' };
@@ -240,7 +241,7 @@ export function createLazyMoonEphemerisLoader(options: LazyMoonLoaderOptions = {
       const raw = await boundedBytes(root + entry.path, MAX_SHARD_BYTES, entry.bytes);
       const buffer = new ArrayBuffer(raw.byteLength);
       new Uint8Array(buffer).set(raw);
-      const digest = Array.from(new Uint8Array(await globalThis.crypto.subtle.digest('SHA-256', buffer)), byte => byte.toString(16).padStart(2, '0')).join('');
+      const digest = await sha256Hex(buffer);
       if (digest !== entry.sha256) throw new Error(`Moon shard integrity failure: ${key}`);
       const artifact = parseMoonEphemerisArtifact(JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(raw)));
       const body = artifact.bodies[key];

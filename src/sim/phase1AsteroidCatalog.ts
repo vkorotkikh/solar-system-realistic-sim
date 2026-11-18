@@ -4,6 +4,7 @@ import {
   colorForTaxonomy
 } from './asteroidBelt';
 import { readAsteroidCatalogBinary, type PackedAsteroidRecord } from '../data/asteroidCatalogLoader';
+import { sha256Hex } from './sha256';
 
 export type Phase1TaxonomyCode = 'C' | 'S' | 'M' | 'unknown';
 
@@ -334,13 +335,7 @@ function makeColor(taxonomy: AsteroidTaxonomy, seed: number): number {
 }
 
 async function checksumSHA256(buffer: ArrayBuffer): Promise<string> {
-  const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
-  const hashArray = new Uint8Array(hashBuffer);
-  let hex = '';
-  for (let i = 0; i < hashArray.length; i += 1) {
-    hex += hashArray[i].toString(16).padStart(2, '0');
-  }
-  return hex;
+  return sha256Hex(buffer);
 }
 
 function parseTaxonomyCounts(asteroids: readonly AsteroidDef[]): Phase1TaxonomyCounts {
