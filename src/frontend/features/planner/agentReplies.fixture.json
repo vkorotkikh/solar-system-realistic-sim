@@ -1,0 +1,900 @@
+{
+ "mars": {
+  "status": "ok",
+  "reply": {
+   "kind": "answer",
+   "text": "Earth to Mars, one way, low Earth orbit to low Mars orbit, cheapest: leave 2026-11-12, arrive 2027-09-12, 304 days, 5.76 km/s in burns.",
+   "options": []
+  },
+  "show": {
+   "kind": "trip",
+   "trip_id": "s1-t1",
+   "trip": {
+    "id": "s1-t1",
+    "labels": [
+     "cheapest"
+    ],
+    "total_delta_v_km_s": 5.756,
+    "total_days": 304.0,
+    "legs": [
+     {
+      "from": "earth",
+      "to": "mars",
+      "around": "sun",
+      "depart": {
+       "date": "2026-11-12",
+       "jd": 2461356.5
+      },
+      "arrive": {
+       "date": "2027-09-12",
+       "jd": 2461660.5
+      },
+      "flight_days": 304.0,
+      "burns": [
+       {
+        "at": "earth",
+        "orbit": "leo",
+        "date": "2026-11-12",
+        "delta_v_km_s": 3.709
+       },
+       {
+        "at": "mars",
+        "orbit": "lmo",
+        "date": "2027-09-12",
+        "delta_v_km_s": 2.047
+       }
+      ],
+      "excess_speed_km_s": {
+       "depart": 3.297,
+       "arrive": 2.579
+      }
+     }
+    ],
+    "approximations": [
+     "Planet and asteroid positions come from catalog orbital elements, not a live ephemeris.",
+     "Burns are instant, and each orbit is assumed to lie in the plane of the path leaving or reaching it.",
+     "Departure dates come from a search grid and are good to a few days."
+    ]
+   },
+   "resolved": {
+    "from": {
+     "id": "earth",
+     "name": "Earth",
+     "orbit": {
+      "id": "leo",
+      "name": "Low Earth orbit, 200 km",
+      "periapsis_altitude_km": 200.0,
+      "apoapsis_altitude_km": 200.0
+     }
+    },
+    "to": {
+     "id": "mars",
+     "name": "Mars",
+     "orbit": {
+      "id": "lmo",
+      "name": "Low Mars orbit, 400 km",
+      "periapsis_altitude_km": 400.0,
+      "apoapsis_altitude_km": 400.0
+     }
+    }
+   },
+   "searched": {
+    "earliest_departure": "2026-11-12",
+    "latest_departure": "2027-01-31",
+    "transfer_solves": 323,
+    "seconds": 0.09,
+    "complete": true,
+    "notes": []
+   },
+   "request": {
+    "from": "earth",
+    "to": "mars",
+    "trip": "one_way",
+    "earliest_departure": "2026-11-12",
+    "latest_departure": "2027-01-31",
+    "stay_days": null,
+    "max_stay_days": null,
+    "objective": "min_delta_v",
+    "flybys": 0
+   }
+  },
+  "actions": [],
+  "check": {
+   "result": "passed",
+   "problems": []
+  },
+  "usage": {
+   "input_tokens": 2200,
+   "output_tokens": 130,
+   "model_calls": 2,
+   "tool_calls": 1,
+   "models": [
+    "test-model"
+   ],
+   "seconds": 0.09
+  }
+ },
+ "marsRoundTrip": {
+  "status": "ok",
+  "reply": {
+   "kind": "answer",
+   "text": "Earth to Mars and back with a 30 day stay.",
+   "options": []
+  },
+  "show": {
+   "kind": "trip",
+   "trip_id": "s1-t1",
+   "trip": {
+    "id": "s1-t1",
+    "labels": [
+     "cheapest"
+    ],
+    "total_delta_v_km_s": 17.014,
+    "total_days": 852.0,
+    "stay_days": 30.0,
+    "legs": [
+     {
+      "from": "earth",
+      "to": "mars",
+      "around": "sun",
+      "depart": {
+       "date": "2027-01-11",
+       "jd": 2461416.5
+      },
+      "arrive": {
+       "date": "2028-02-23",
+       "jd": 2461824.5
+      },
+      "flight_days": 408.0,
+      "burns": [
+       {
+        "at": "earth",
+        "orbit": "leo",
+        "date": "2027-01-11",
+        "delta_v_km_s": 3.837
+       },
+       {
+        "at": "mars",
+        "orbit": "lmo",
+        "date": "2028-02-23",
+        "delta_v_km_s": 5.119
+       }
+      ],
+      "excess_speed_km_s": {
+       "depart": 3.719,
+       "arrive": 7.023
+      }
+     },
+     {
+      "from": "mars",
+      "to": "earth",
+      "around": "sun",
+      "depart": {
+       "date": "2028-03-24",
+       "jd": 2461854.5
+      },
+      "arrive": {
+       "date": "2029-05-12",
+       "jd": 2462268.5
+      },
+      "flight_days": 414.0,
+      "burns": [
+       {
+        "at": "mars",
+        "orbit": "lmo",
+        "date": "2028-03-24",
+        "delta_v_km_s": 4.002
+       },
+       {
+        "at": "earth",
+        "orbit": "leo",
+        "date": "2029-05-12",
+        "delta_v_km_s": 4.056
+       }
+      ],
+      "excess_speed_km_s": {
+       "depart": 5.623,
+       "arrive": 4.357
+      }
+     }
+    ],
+    "approximations": [
+     "Planet and asteroid positions come from catalog orbital elements, not a live ephemeris.",
+     "Burns are instant, and each orbit is assumed to lie in the plane of the path leaving or reaching it.",
+     "Departure dates come from a search grid and are good to a few days.",
+     "Round trips pair each of several outbound trips with the returns searched after it; the two legs are not optimised together."
+    ]
+   },
+   "resolved": {
+    "from": {
+     "id": "earth",
+     "name": "Earth",
+     "orbit": {
+      "id": "leo",
+      "name": "Low Earth orbit, 200 km",
+      "periapsis_altitude_km": 200.0,
+      "apoapsis_altitude_km": 200.0
+     }
+    },
+    "to": {
+     "id": "mars",
+     "name": "Mars",
+     "orbit": {
+      "id": "lmo",
+      "name": "Low Mars orbit, 400 km",
+      "periapsis_altitude_km": 400.0,
+      "apoapsis_altitude_km": 400.0
+     }
+    }
+   },
+   "searched": {
+    "earliest_departure": "2026-11-12",
+    "latest_departure": "2027-01-31",
+    "transfer_solves": 4103,
+    "seconds": 1.3,
+    "complete": true,
+    "notes": []
+   },
+   "request": {
+    "from": "earth",
+    "to": "mars",
+    "trip": "round_trip",
+    "earliest_departure": "2026-11-12",
+    "latest_departure": "2027-01-31",
+    "stay_days": 30.0,
+    "max_stay_days": null,
+    "objective": "min_delta_v",
+    "flybys": 0
+   }
+  },
+  "actions": [],
+  "check": {
+   "result": "passed",
+   "problems": []
+  },
+  "usage": {
+   "input_tokens": 2200,
+   "output_tokens": 130,
+   "model_calls": 2,
+   "tool_calls": 1,
+   "models": [
+    "test-model"
+   ],
+   "seconds": 1.31
+  }
+ },
+ "moon": {
+  "status": "ok",
+  "reply": {
+   "kind": "answer",
+   "text": "Low Earth orbit to low lunar orbit.",
+   "options": []
+  },
+  "show": {
+   "kind": "trip",
+   "trip_id": "s1-t1",
+   "trip": {
+    "id": "s1-t1",
+    "labels": [
+     "cheapest",
+     "fastest",
+     "soonest"
+    ],
+    "total_delta_v_km_s": 3.955,
+    "total_days": 4.9777,
+    "legs": [
+     {
+      "from": "earth",
+      "to": "moon-earth-moon",
+      "around": "earth",
+      "depart": {
+       "date": "2026-11-12",
+       "jd": 2461356.5
+      },
+      "arrive": {
+       "date": "2026-11-16",
+       "jd": 2461361.4777
+      },
+      "flight_days": 4.9777,
+      "burns": [
+       {
+        "at": "earth",
+        "orbit": "leo",
+        "date": "2026-11-12",
+        "delta_v_km_s": 3.133
+       },
+       {
+        "at": "moon-earth-moon",
+        "orbit": "llo",
+        "date": "2026-11-16",
+        "delta_v_km_s": 0.822
+       }
+      ],
+      "any_day": true
+     }
+    ],
+    "approximations": [
+     "Around Earth the orbits are taken as circular and in one plane, and any departure day works: where a moon is along its orbit is not modelled."
+    ]
+   },
+   "resolved": {
+    "from": {
+     "id": "earth",
+     "name": "Earth",
+     "orbit": {
+      "id": "leo",
+      "name": "Low Earth orbit, 200 km",
+      "periapsis_altitude_km": 200.0,
+      "apoapsis_altitude_km": 200.0
+     }
+    },
+    "to": {
+     "id": "moon-earth-moon",
+     "name": "Moon",
+     "orbit": {
+      "id": "llo",
+      "name": "Low lunar orbit, 100 km",
+      "periapsis_altitude_km": 100.0,
+      "apoapsis_altitude_km": 100.0
+     }
+    }
+   },
+   "searched": {
+    "earliest_departure": "2026-11-12",
+    "latest_departure": "2027-01-31",
+    "transfer_solves": 0,
+    "seconds": 0.0,
+    "complete": true,
+    "notes": [
+     "Any departure day works for a trip around one planet, so it leaves on the earliest day asked for."
+    ]
+   },
+   "request": {
+    "from": "earth",
+    "to": "moon-earth-moon",
+    "trip": "one_way",
+    "earliest_departure": "2026-11-12",
+    "latest_departure": "2027-01-31",
+    "stay_days": null,
+    "max_stay_days": null,
+    "objective": "min_delta_v",
+    "flybys": 0
+   }
+  },
+  "actions": [],
+  "check": {
+   "result": "passed",
+   "problems": []
+  },
+  "usage": {
+   "input_tokens": 2200,
+   "output_tokens": 130,
+   "model_calls": 2,
+   "tool_calls": 1,
+   "models": [
+    "test-model"
+   ],
+   "seconds": 0.0
+  }
+ },
+ "plan": {
+  "status": "ok",
+  "reply": {
+   "kind": "answer",
+   "text": "The crew leaves 60 days after the cargo arrives.",
+   "options": []
+  },
+  "show": {
+   "kind": "plan",
+   "request": {
+    "trips": [
+     {
+      "key": "cargo",
+      "search": {
+       "from": "earth",
+       "to": "mars",
+       "trip": "one_way",
+       "earliest_departure": "2026-11-12",
+       "latest_departure": "2027-01-31",
+       "stay_days": null,
+       "max_stay_days": null,
+       "objective": "min_delta_v",
+       "flybys": 0
+      },
+      "after": null
+     },
+     {
+      "key": "crew",
+      "search": {
+       "from": "earth",
+       "to": "mars",
+       "trip": "one_way",
+       "earliest_departure": "2026-11-12",
+       "latest_departure": "2029-12-31",
+       "stay_days": null,
+       "max_stay_days": null,
+       "objective": "min_delta_v",
+       "flybys": 0
+      },
+      "after": {
+       "trip": "cargo",
+       "event": "arrives",
+       "gap_days": 60.0
+      }
+     }
+    ]
+   },
+   "plan": {
+    "status": "ok",
+    "trips": {
+     "cargo": {
+      "status": "ok",
+      "chosen": {
+       "id": "p1-cargo-t1",
+       "labels": [
+        "cheapest"
+       ],
+       "total_delta_v_km_s": 5.756,
+       "total_days": 304.0,
+       "legs": [
+        {
+         "from": "earth",
+         "to": "mars",
+         "around": "sun",
+         "depart": {
+          "date": "2026-11-12",
+          "jd": 2461356.5
+         },
+         "arrive": {
+          "date": "2027-09-12",
+          "jd": 2461660.5
+         },
+         "flight_days": 304.0,
+         "burns": [
+          {
+           "at": "earth",
+           "orbit": "leo",
+           "date": "2026-11-12",
+           "delta_v_km_s": 3.709
+          },
+          {
+           "at": "mars",
+           "orbit": "lmo",
+           "date": "2027-09-12",
+           "delta_v_km_s": 2.047
+          }
+         ],
+         "excess_speed_km_s": {
+          "depart": 3.297,
+          "arrive": 2.579
+         }
+        }
+       ],
+       "approximations": [
+        "Planet and asteroid positions come from catalog orbital elements, not a live ephemeris.",
+        "Burns are instant, and each orbit is assumed to lie in the plane of the path leaving or reaching it.",
+        "Departure dates come from a search grid and are good to a few days."
+       ]
+      },
+      "alternatives": [
+       {
+        "id": "p1-cargo-t2",
+        "labels": [
+         "fastest"
+        ],
+        "total_delta_v_km_s": 6.974,
+        "total_days": 216.0,
+        "legs": [
+         {
+          "from": "earth",
+          "to": "mars",
+          "around": "sun",
+          "depart": {
+           "date": "2026-12-02",
+           "jd": 2461376.5
+          },
+          "arrive": {
+           "date": "2027-07-06",
+           "jd": 2461592.5
+          },
+          "flight_days": 216.0,
+          "burns": [
+           {
+            "at": "earth",
+            "orbit": "leo",
+            "date": "2026-12-02",
+            "delta_v_km_s": 4.096
+           },
+           {
+            "at": "mars",
+            "orbit": "lmo",
+            "date": "2027-07-06",
+            "delta_v_km_s": 2.878
+           }
+          ],
+          "excess_speed_km_s": {
+           "depart": 4.462,
+           "arrive": 4.042
+          }
+         }
+        ],
+        "approximations": [
+         "Planet and asteroid positions come from catalog orbital elements, not a live ephemeris.",
+         "Burns are instant, and each orbit is assumed to lie in the plane of the path leaving or reaching it.",
+         "Departure dates come from a search grid and are good to a few days."
+        ]
+       },
+       {
+        "id": "p1-cargo-t3",
+        "labels": [
+         "soonest"
+        ],
+        "total_delta_v_km_s": 7.056,
+        "total_days": 216.0,
+        "legs": [
+         {
+          "from": "earth",
+          "to": "mars",
+          "around": "sun",
+          "depart": {
+           "date": "2026-11-22",
+           "jd": 2461366.5
+          },
+          "arrive": {
+           "date": "2027-06-26",
+           "jd": 2461582.5
+          },
+          "flight_days": 216.0,
+          "burns": [
+           {
+            "at": "earth",
+            "orbit": "leo",
+            "date": "2026-11-22",
+            "delta_v_km_s": 3.885
+           },
+           {
+            "at": "mars",
+            "orbit": "lmo",
+            "date": "2027-06-26",
+            "delta_v_km_s": 3.171
+           }
+          ],
+          "excess_speed_km_s": {
+           "depart": 3.867,
+           "arrive": 4.481
+          }
+         }
+        ],
+        "approximations": [
+         "Planet and asteroid positions come from catalog orbital elements, not a live ephemeris.",
+         "Burns are instant, and each orbit is assumed to lie in the plane of the path leaving or reaching it.",
+         "Departure dates come from a search grid and are good to a few days."
+        ]
+       }
+      ],
+      "resolved": {
+       "from": {
+        "id": "earth",
+        "name": "Earth",
+        "orbit": {
+         "id": "leo",
+         "name": "Low Earth orbit, 200 km",
+         "periapsis_altitude_km": 200.0,
+         "apoapsis_altitude_km": 200.0
+        }
+       },
+       "to": {
+        "id": "mars",
+        "name": "Mars",
+        "orbit": {
+         "id": "lmo",
+         "name": "Low Mars orbit, 400 km",
+         "periapsis_altitude_km": 400.0,
+         "apoapsis_altitude_km": 400.0
+        }
+       }
+      },
+      "searched": {
+       "earliest_departure": "2026-11-12",
+       "latest_departure": "2027-01-31",
+       "transfer_solves": 323,
+       "seconds": 0.1,
+       "complete": true,
+       "notes": []
+      },
+      "after": null
+     },
+     "crew": {
+      "status": "ok",
+      "chosen": {
+       "id": "p1-crew-t1",
+       "labels": [
+        "cheapest"
+       ],
+       "total_delta_v_km_s": 5.878,
+       "total_days": 299.0,
+       "legs": [
+        {
+         "from": "earth",
+         "to": "mars",
+         "around": "sun",
+         "depart": {
+          "date": "2028-11-23",
+          "jd": 2462098.5
+         },
+         "arrive": {
+          "date": "2029-09-18",
+          "jd": 2462397.5
+         },
+         "flight_days": 299.0,
+         "burns": [
+          {
+           "at": "earth",
+           "orbit": "leo",
+           "date": "2028-11-23",
+           "delta_v_km_s": 3.634
+          },
+          {
+           "at": "mars",
+           "orbit": "lmo",
+           "date": "2029-09-18",
+           "delta_v_km_s": 2.244
+          }
+         ],
+         "excess_speed_km_s": {
+          "depart": 3.025,
+          "arrive": 2.97
+         }
+        }
+       ],
+       "approximations": [
+        "Planet and asteroid positions come from catalog orbital elements, not a live ephemeris.",
+        "Burns are instant, and each orbit is assumed to lie in the plane of the path leaving or reaching it.",
+        "Departure dates come from a search grid and are good to a few days."
+       ]
+      },
+      "alternatives": [
+       {
+        "id": "p1-crew-t2",
+        "labels": [
+         "fastest"
+        ],
+        "total_delta_v_km_s": 7.252,
+        "total_days": 200.0,
+        "legs": [
+         {
+          "from": "earth",
+          "to": "mars",
+          "around": "sun",
+          "depart": {
+           "date": "2029-01-14",
+           "jd": 2462150.5
+          },
+          "arrive": {
+           "date": "2029-08-02",
+           "jd": 2462350.5
+          },
+          "flight_days": 200.0,
+          "burns": [
+           {
+            "at": "earth",
+            "orbit": "leo",
+            "date": "2029-01-14",
+            "delta_v_km_s": 4.201
+           },
+           {
+            "at": "mars",
+            "orbit": "lmo",
+            "date": "2029-08-02",
+            "delta_v_km_s": 3.051
+           }
+          ],
+          "excess_speed_km_s": {
+           "depart": 4.735,
+           "arrive": 4.304
+          }
+         }
+        ],
+        "approximations": [
+         "Planet and asteroid positions come from catalog orbital elements, not a live ephemeris.",
+         "Burns are instant, and each orbit is assumed to lie in the plane of the path leaving or reaching it.",
+         "Departure dates come from a search grid and are good to a few days."
+        ]
+       },
+       {
+        "id": "p1-crew-t3",
+        "labels": [
+         "soonest"
+        ],
+        "total_delta_v_km_s": 7.324,
+        "total_days": 248.0,
+        "legs": [
+         {
+          "from": "earth",
+          "to": "mars",
+          "around": "sun",
+          "depart": {
+           "date": "2028-11-05",
+           "jd": 2462080.5
+          },
+          "arrive": {
+           "date": "2029-07-11",
+           "jd": 2462328.5
+          },
+          "flight_days": 248.0,
+          "burns": [
+           {
+            "at": "earth",
+            "orbit": "leo",
+            "date": "2028-11-05",
+            "delta_v_km_s": 3.898
+           },
+           {
+            "at": "mars",
+            "orbit": "lmo",
+            "date": "2029-07-11",
+            "delta_v_km_s": 3.426
+           }
+          ],
+          "excess_speed_km_s": {
+           "depart": 3.905,
+           "arrive": 4.845
+          }
+         }
+        ],
+        "approximations": [
+         "Planet and asteroid positions come from catalog orbital elements, not a live ephemeris.",
+         "Burns are instant, and each orbit is assumed to lie in the plane of the path leaving or reaching it.",
+         "Departure dates come from a search grid and are good to a few days."
+        ]
+       }
+      ],
+      "resolved": {
+       "from": {
+        "id": "earth",
+        "name": "Earth",
+        "orbit": {
+         "id": "leo",
+         "name": "Low Earth orbit, 200 km",
+         "periapsis_altitude_km": 200.0,
+         "apoapsis_altitude_km": 200.0
+        }
+       },
+       "to": {
+        "id": "mars",
+        "name": "Mars",
+        "orbit": {
+         "id": "lmo",
+         "name": "Low Mars orbit, 400 km",
+         "periapsis_altitude_km": 400.0,
+         "apoapsis_altitude_km": 400.0
+        }
+       }
+      },
+      "searched": {
+       "earliest_departure": "2027-11-11",
+       "latest_departure": "2029-12-31",
+       "transfer_solves": 2294,
+       "seconds": 0.63,
+       "complete": true,
+       "notes": []
+      },
+      "after": {
+       "trip": "cargo",
+       "event": "arrives",
+       "gap_days": 60.0
+      }
+     }
+    },
+    "first_departure": {
+     "date": "2026-11-12",
+     "jd": 2461356.5
+    },
+    "last_arrival": {
+     "date": "2029-09-18",
+     "jd": 2462397.5
+    },
+    "problems": []
+   }
+  },
+  "actions": [],
+  "check": {
+   "result": "passed",
+   "problems": []
+  },
+  "usage": {
+   "input_tokens": 2200,
+   "output_tokens": 130,
+   "model_calls": 2,
+   "tool_calls": 1,
+   "models": [
+    "test-model"
+   ],
+   "seconds": 0.73
+  }
+ },
+ "question": {
+  "status": "ok",
+  "reply": {
+   "kind": "question",
+   "text": "Which Europa do you mean?",
+   "options": [
+    "Europa (52)",
+    "Europa"
+   ]
+  },
+  "show": null,
+  "actions": [],
+  "check": {
+   "result": "passed",
+   "problems": []
+  },
+  "usage": {
+   "input_tokens": 2200,
+   "output_tokens": 130,
+   "model_calls": 2,
+   "tool_calls": 1,
+   "models": [
+    "test-model"
+   ],
+   "seconds": 0.0
+  }
+ },
+ "actions": {
+  "status": "ok",
+  "reply": {
+   "kind": "answer",
+   "text": "Europa is in view on 2027-09-08, with the asteroid belt hidden.",
+   "options": []
+  },
+  "show": null,
+  "actions": [
+   {
+    "type": "focus_on",
+    "place_id": "moon-jupiter-europa",
+    "follow": true
+   },
+   {
+    "type": "set_date",
+    "date": "2027-09-08"
+   },
+   {
+    "type": "set_layer",
+    "layer": "asteroid_belt",
+    "on": false
+   }
+  ],
+  "check": {
+   "result": "passed",
+   "problems": []
+  },
+  "usage": {
+   "input_tokens": 2200,
+   "output_tokens": 130,
+   "model_calls": 2,
+   "tool_calls": 3,
+   "models": [
+    "test-model"
+   ],
+   "seconds": 0.0
+  }
+ },
+ "stopped": {
+  "status": "stopped",
+  "code": "refusal",
+  "reply": {
+   "kind": "answer",
+   "text": "The model declined to answer this prompt. Try asking about a trip or about what the app shows.",
+   "options": []
+  },
+  "show": null,
+  "actions": [],
+  "check": null,
+  "usage": {
+   "model_calls": 1,
+   "tool_calls": 0,
+   "models": [],
+   "seconds": 0.0
+  }
+ }
+}
