@@ -159,6 +159,20 @@ curl http://127.0.0.1:8042/solar/physics
 curl http://127.0.0.1:8042/solar/realtime
 ```
 
+### Trip planner endpoints
+
+The reworked trip planner searches a date range for one-way trips between
+Sun-orbiting bodies and prices each trip as burns from a default orbit at each
+end. A refusal is an answer with `"status": "refused"`, a `code` and a plain
+`message`, not an HTTP error.
+
+```bash
+curl 'http://127.0.0.1:8042/planner/places?query=europa'
+curl -X POST http://127.0.0.1:8042/planner/trips/search \
+  -H 'Content-Type: application/json' \
+  -d '{"from": "earth", "to": "mars", "earliest_departure": "2026-11-12", "latest_departure": "2028-11-12"}'
+```
+
 ## Project Structure
 
 Inventory of active and retained modules; this is not a live wiring diagram.
@@ -253,6 +267,7 @@ records the runtime owners.
 │   │   ├── solar_realtime_data.py             # SDO/AIA, SWPC, SILSO ingestion
 │   │   ├── kuiper.py                          # Kuiper belt physics + binary KBOs
 │   │   └── radiation_pressure.py              # SRP, Poynting-Robertson, Yarkovsky
+│   ├── planner/                               # Trip planner: places, launch-window search
 │   ├── trajectory/                            # Lambert solver, MGA optimizer, planner
 │   ├── mission/                               # Multi-agent mission planner + services
 │   ├── benchmark/                             # Accuracy benchmarks + calibration protocol
