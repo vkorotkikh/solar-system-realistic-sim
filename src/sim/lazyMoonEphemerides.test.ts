@@ -414,22 +414,84 @@ describe('loadAllMoonEphemerides', () => {
     });
     expect(Object.keys(bodies)).toHaveLength(423);
     expect(bodies.himalia).toBeDefined();
-    // The manifest twice (key listing, then loading) and each of the 410 shards once.
-    expect(requests.filter(url => url.endsWith('manifest.json'))).toHaveLength(2);
+    // The manifest once and each of the 410 shards once.
+    expect(requests.filter(url => url.endsWith('manifest.json'))).toHaveLength(1);
     expect(new Set(requests.filter(url => !url.endsWith('manifest.json'))).size).toBe(410);
-    expect(requests).toHaveLength(412);
+    expect(requests).toHaveLength(411);
   }, 60_000);
 
-  it('falls back to the named-moon fits when the shards overrun the budget', async () => {
+  it('keeps every other fit when one shard fails (orbits-03)', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const { loadAllMoonEphemerides } = await import('./loadMoonEphemerides');
+    const himaliaPath = shardPath('himalia');
+    const bodies = await loadAllMoonEphemerides({
+      fetch: ((input: RequestInfo | URL) => String(input).endsWith(himaliaPath)
+        ? Promise.resolve(new Response('missing', { status: 404 }))
+        : publicShardFetch(input)) as typeof fetch,
+    });
+    expect(bodies.himalia).toBeUndefined();
+    expect(Object.keys(bodies)).toHaveLength(422);
+    vi.restoreAllMocks();
+  }, 60_000);
+
+  it('retries a shard that failed once', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const { loadAllMoonEphemerides } = await import('./loadMoonEphemerides');
+    const himaliaPath = shardPath('himalia');
+    let himaliaAttempts = 0;
+    const bodies = await loadAllMoonEphemerides({
+      fetch: ((input: RequestInfo | URL) => {
+        if (String(input).endsWith(himaliaPath) && ++himaliaAttempts === 1) return Promise.reject(new TypeError('dropped'));
+        return publicShardFetch(input);
+      }) as typeof fetch,
+    });
+    expect(himaliaAttempts).toBe(2);
+    expect(bodies.himalia).toBeDefined();
+    expect(Object.keys(bodies)).toHaveLength(423);
+    vi.restoreAllMocks();
+  }, 60_000);
+
+  it('keeps the fits that arrived when the budget runs out, named moons first (orbits-02)', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const { loadAllMoonEphemerides } = await import('./loadMoonEphemerides');
+    const { MAJOR_MOONS } = await import('../data/planets');
+    // Answer the manifest and the first 40 shard requests; hold every later one until it is aborted.
+    let answered = 0;
+    const requests: string[] = [];
+    const gated = ((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      requests.push(url);
+      if (url.endsWith('manifest.json') || answered < 40) {
+        if (!url.endsWith('manifest.json')) answered += 1;
+        return publicShardFetch(input);
+      }
+      return new Promise<Response>((_, reject) => {
+        init?.signal?.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')));
+      });
+    }) as typeof fetch;
+    const bodies = await loadAllMoonEphemerides({ fetch: gated, requestTimeoutMs: 100 }, 4_000);
+    // Named moons were asked for first, so they are among the arrivals; on a loaded
+    // machine a few of the 40 answered shards may still be parsing at the deadline.
+    for (const name of MAJOR_MOONS) expect(bodies[name.toLowerCase()], name).toBeDefined();
+    const kept = Object.keys(bodies).length;
+    expect(kept).toBeGreaterThan(13 + MAJOR_MOONS.size);
+    expect(kept).toBeLessThanOrEqual(13 + 40);
+    // Nothing new starts once the budget is spent.
+    const requestsAtDeadline = requests.length;
+    await new Promise(resolve => setTimeout(resolve, 400));
+    expect(requests.length).toBe(requestsAtDeadline);
+    vi.restoreAllMocks();
+  }, 60_000);
+
+  it('keeps only the bundled fits when no shard arrives within the budget', async () => {
     vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     const { loadAllMoonEphemerides } = await import('./loadMoonEphemerides');
     const stalled = ((_input: RequestInfo | URL, init?: RequestInit) => new Promise<Response>((_, reject) => {
       init?.signal?.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')));
     })) as typeof fetch;
     const started = Date.now();
-    const bodies = await loadAllMoonEphemerides({ fetch: stalled, requestTimeoutMs: 2_000 }, 50, 50);
+    const bodies = await loadAllMoonEphemerides({ fetch: stalled, requestTimeoutMs: 2_000 }, 50);
     expect(Date.now() - started).toBeLessThan(1_500);
-    // Both budgets ran out, so only the bundled fits remain.
     expect(bodies.titan).toBeDefined();
     expect(bodies.himalia).toBeUndefined();
     vi.restoreAllMocks();
@@ -454,40 +516,7 @@ describe('loadAllMoonEphemerides', () => {
   });
 });
 
-describe('loadNamedMoonEphemerides', () => {
-  it('gives every named moon a fit, fetching only the ones not bundled', async () => {
-    const { MAJOR_MOONS } = await import('../data/planets');
-    const { loadNamedMoonEphemerides } = await import('./loadMoonEphemerides');
-    const requests: string[] = [];
-    const bodies = await loadNamedMoonEphemerides({
-      fetch: ((input: RequestInfo | URL) => { requests.push(String(input)); return publicShardFetch(input); }) as typeof fetch,
-    });
-    for (const name of MAJOR_MOONS) expect(bodies[name.toLowerCase()], name).toBeDefined();
-    // The manifest plus one shard for each of the 16 named moons outside the 13 bundled fits.
-    expect(requests).toHaveLength(17);
-  });
-
-  it('starts with the bundled fits when the extra fits are slower than the budget', async () => {
-    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
-    const { loadNamedMoonEphemerides } = await import('./loadMoonEphemerides');
-    // A request that never answers, but honours its abort signal.
-    const stalled = ((_input: RequestInfo | URL, init?: RequestInit) => new Promise<Response>((_, reject) => {
-      init?.signal?.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')));
-    })) as typeof fetch;
-    const started = Date.now();
-    const bodies = await loadNamedMoonEphemerides({ fetch: stalled, requestTimeoutMs: 2_000 }, 50);
-    expect(Date.now() - started).toBeLessThan(1_500);
-    expect(bodies.titan).toBeDefined();
-    expect(bodies.moon).toBeUndefined();
-    vi.restoreAllMocks();
-  });
-
-  it('keeps the bundled fits when a shard cannot be loaded', async () => {
-    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
-    const { loadNamedMoonEphemerides } = await import('./loadMoonEphemerides');
-    const bodies = await loadNamedMoonEphemerides({ fetch: (async () => { throw new TypeError('offline'); }) as typeof fetch });
-    expect(bodies.titan).toBeDefined();
-    expect(bodies.moon).toBeUndefined();
-    vi.restoreAllMocks();
-  });
-});
+function shardPath(key: string): string {
+  const manifest = JSON.parse(readFileSync(new URL('../../public/moon-ephemerides/manifest.json', import.meta.url), 'utf8')) as { bodies: Record<string, { path: string }> };
+  return manifest.bodies[key].path;
+}
