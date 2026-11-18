@@ -304,6 +304,35 @@
           </div>
         </details>
 
+        <details class="panel-disclosure" id="trip-assistant">
+          <summary aria-controls="assistant-controls" aria-expanded="false">
+            <span class="section-heading" role="heading" aria-level="2">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 5.5h16v10.5H10.5L6 19.5V16H4V5.5Z" />
+                <path d="M8 9.5h8M8 12.5h5" />
+              </svg>
+              Trip assistant
+            </span>
+            <svg class="disclosure-chevron" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="m8 10 4 4 4-4" />
+            </svg>
+          </summary>
+          <div class="section-content" id="assistant-controls">
+            <p id="assistant-status" class="assistant-status" role="status" hidden></p>
+            <div id="assistant-log" class="assistant-log" role="log" aria-live="polite" aria-label="Conversation with the trip planner" tabindex="0"></div>
+            <section id="assistant-card" class="body-card assistant-card" aria-label="Trip shown" hidden></section>
+            <form id="assistant-form" class="field-stack">
+              <label for="assistant-prompt">Ask for a trip</label>
+              <input id="assistant-prompt" type="text" autocomplete="off" maxlength="2000" placeholder="Earth to Mars, cheapest in the next ten years" aria-describedby="assistant-help" disabled />
+              <div class="button-row button-row--two">
+                <button id="assistant-clear" class="button button--ghost" type="button" disabled>New chat</button>
+                <button id="assistant-send" class="button button--secondary" type="submit" disabled>Ask</button>
+              </div>
+            </form>
+            <p id="assistant-help" class="control-help">An AI model answers with the trip planner's results, and can move the camera, set the date and switch layers when you ask. Trips start from Earth unless you say otherwise.</p>
+          </div>
+        </details>
+
         <details class="panel-disclosure">
           <summary aria-controls="planner-controls" aria-expanded="false">
             <span class="section-heading" role="heading" aria-level="2">
