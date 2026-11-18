@@ -102,6 +102,18 @@ function validPayload(imageId = 'hv-193-42'): SolarRealtimePayload {
   };
 }
 
+// The one projection contract the client accepts for a surface texture.
+function surfaceProjection(overrides: Record<string, unknown> = {}) {
+  return {
+    schema: { name: 'solar_surface_texture_projection', version: 1 },
+    projection: 'equirectangular',
+    coordinate_frame: 'iau_sun_body_fixed',
+    coverage: 'full_surface',
+    uv_mapping: 'sun_surface_uv_v1',
+    ...overrides
+  };
+}
+
 function projectedPayload({
   fetchedAtUtc = '2026-09-26T15:00:00Z',
   imageDateUtc = '2026-09-26T14:59:00Z'
@@ -119,13 +131,7 @@ function projectedPayload({
   channel.spatial_use = {
     eligible: true,
     reason: null,
-    contract: {
-      schema: { name: 'solar_surface_texture_projection', version: 1 },
-      projection: 'equirectangular',
-      coordinate_frame: 'iau_sun_body_fixed',
-      coverage: 'full_surface',
-      uv_mapping: 'sun_surface_uv_v1'
-    }
+    contract: surfaceProjection()
   };
   return payload;
 }
@@ -778,15 +784,14 @@ describe('SolarRealtimeClient delivery contract', () => {
     );
   });
 
-  it('rejects an eligibility flag without a supported spatial projection contract', () => {
+  it.each([
+    ['an unknown projection schema', { schema: { name: 'unknown_projection', version: 1 } }],
+    ['a projected-surface contract on a viewport artifact', surfaceProjection()]
+  ])('does not render an eligibility flag with %s', (_label, contract) => {
     const payload = structuredClone(validPayload()) as SolarRealtimePayload;
     const channel = payload.snapshot.sdo_aia?.channels.aia_193;
     if (!channel) throw new Error('fixture channel missing');
-    channel.spatial_use = {
-      eligible: true,
-      reason: null,
-      contract: { schema: { name: 'unknown_projection', version: 1 } }
-    };
+    channel.spatial_use = { eligible: true, reason: null, contract };
 
     const state = observationStateFromSolarRealtime(payload);
 
@@ -797,75 +802,21 @@ describe('SolarRealtimeClient delivery contract', () => {
     expect(pickAiaObservationChannel(state)).toBeNull();
   });
 
-  it('does not let a viewport artifact masquerade as a projected surface', () => {
+  it.each([
+    ['a viewport artifact that claims spatial eligibility', false, surfaceProjection(),
+      'viewport artifact must disable spatial use'],
+    ['a surface artifact without the exact eligible projection contract', true,
+      surfaceProjection({ coverage: 'partial' }), 'surface artifact projection contract is invalid']
+  ] as const)('rejects %s', (_label, surfaceArtifact, contract, message) => {
     const payload = structuredClone(validPayload()) as SolarRealtimePayload;
     const channel = payload.snapshot.sdo_aia?.channels.aia_193;
     if (!channel) throw new Error('fixture channel missing');
-    channel.spatial_use = {
-      eligible: true,
-      reason: null,
-      contract: {
-        schema: { name: 'solar_surface_texture_projection', version: 1 },
-        projection: 'equirectangular',
-        coordinate_frame: 'iau_sun_body_fixed',
-        coverage: 'full_surface',
-        uv_mapping: 'sun_surface_uv_v1'
-      }
-    };
+    if (surfaceArtifact) {
+      channel.artifact = { schema: { name: 'solar_surface_texture', version: 1 }, delivery: 'raw_on_demand' };
+    }
+    channel.spatial_use = { eligible: true, reason: null, contract };
 
-    const state = observationStateFromSolarRealtime(payload);
-
-    expect(inspectAiaObservationChannel(state)).toMatchObject({
-      spatialUse: 'unsupported',
-      reason: 'unsupported_spatial_projection_contract'
-    });
-    expect(pickAiaObservationChannel(state)).toBeNull();
-  });
-
-  it('rejects a viewport artifact that claims spatial eligibility', () => {
-    const payload = structuredClone(validPayload()) as SolarRealtimePayload;
-    const channel = payload.snapshot.sdo_aia?.channels.aia_193;
-    if (!channel) throw new Error('fixture channel missing');
-    channel.spatial_use = {
-      eligible: true,
-      reason: null,
-      contract: {
-        schema: { name: 'solar_surface_texture_projection', version: 1 },
-        projection: 'equirectangular',
-        coordinate_frame: 'iau_sun_body_fixed',
-        coverage: 'full_surface',
-        uv_mapping: 'sun_surface_uv_v1'
-      }
-    };
-
-    expect(() => validateSolarRealtimePayload(payload)).toThrow(
-      'viewport artifact must disable spatial use'
-    );
-  });
-
-  it('rejects a surface artifact without the exact eligible projection contract', () => {
-    const payload = structuredClone(validPayload()) as SolarRealtimePayload;
-    const channel = payload.snapshot.sdo_aia?.channels.aia_193;
-    if (!channel) throw new Error('fixture channel missing');
-    channel.artifact = {
-      schema: { name: 'solar_surface_texture', version: 1 },
-      delivery: 'raw_on_demand'
-    };
-    channel.spatial_use = {
-      eligible: true,
-      reason: null,
-      contract: {
-        schema: { name: 'solar_surface_texture_projection', version: 1 },
-        projection: 'equirectangular',
-        coordinate_frame: 'iau_sun_body_fixed',
-        coverage: 'partial',
-        uv_mapping: 'sun_surface_uv_v1'
-      }
-    };
-
-    expect(() => validateSolarRealtimePayload(payload)).toThrow(
-      'surface artifact projection contract is invalid'
-    );
+    expect(() => validateSolarRealtimePayload(payload)).toThrow(message);
   });
 
   it('accepts only the complete projected surface artifact union member', () => {
@@ -879,13 +830,7 @@ describe('SolarRealtimeClient delivery contract', () => {
     channel.spatial_use = {
       eligible: true,
       reason: null,
-      contract: {
-        schema: { name: 'solar_surface_texture_projection', version: 1 },
-        projection: 'equirectangular',
-        coordinate_frame: 'iau_sun_body_fixed',
-        coverage: 'full_surface',
-        uv_mapping: 'sun_surface_uv_v1'
-      }
+      contract: surfaceProjection()
     };
 
     const validated = validateSolarRealtimePayload(payload);
@@ -916,13 +861,7 @@ describe('SolarRealtimeClient delivery contract', () => {
       spatial_use: {
         eligible: true,
         reason: null,
-        contract: {
-          schema: { name: 'solar_surface_texture_projection', version: 1 },
-          projection: 'equirectangular',
-          coordinate_frame: 'iau_sun_body_fixed',
-          coverage: 'full_surface',
-          uv_mapping: 'sun_surface_uv_v1'
-        }
+        contract: surfaceProjection()
       }
     };
 
