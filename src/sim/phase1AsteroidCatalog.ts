@@ -180,6 +180,8 @@ const PHASE1_DEFAULT_URL = `${PHASE1_ASSET_BASE_URL}data/asteroid-phase1/asteroi
 const PHASE1_DEFAULT_META_URL = `${PHASE1_ASSET_BASE_URL}data/asteroid-phase1/asteroid_phase1_main_100000.meta.json`;
 const PHASE1_DEFAULT_MAX_RECORDS = 15_000;
 export const PHASE1_LOAD_LATENCY_BUDGET_MS = 2_000;
+/** The page's transfer bound: startup waits only 10 s of it, then adopts a late catalog. */
+export const PHASE1_PAGE_LOAD_TIMEOUT_MS = 60_000;
 const ASPH_MAGIC = 'ASPH';
 const ACBF_MAGIC = 'ACBF';
 const HEADER_SIZE_BYTES = 12;

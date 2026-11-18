@@ -92,13 +92,15 @@ import {
   loadPhase1AsteroidCatalog,
   PHASE1_CATALOG_URL,
   PHASE1_CATALOG_META_URL,
-  PHASE1_LOAD_LATENCY_BUDGET_MS
+  PHASE1_LOAD_LATENCY_BUDGET_MS,
+  PHASE1_PAGE_LOAD_TIMEOUT_MS
 } from './sim/phase1AsteroidCatalog';
 import { createKuiperBeltRenderer } from './frontend/features/asteroids/beltRenderer';
 import { beltSurfaceDensity, createBeltDensityBand } from './frontend/features/asteroids/beltDensityBand';
 import { createStartupAsteroidBelt } from './frontend/features/asteroids/startupBelt';
 import {
   failedAsteroidCatalogStatus,
+  lateAsteroidCatalogStatus,
   rejectedAsteroidCatalogStatus,
   renderAsteroidCatalogSourceStatus,
   verifiedAsteroidCatalogStatus,
@@ -280,6 +282,8 @@ const modelWorkerController = ownDisposable(createModelWorkerController({
 }));
 let lastModelWorkerAppliedSequence = -1;
 const ASTEROID_BELT_TARGET_COUNT = 50_000;
+/** After this the page starts with the procedural belt and swaps in the catalog when it arrives. */
+const ASTEROID_STARTUP_DEADLINE_MS = 10_000;
 const ASTEROID_BELT_PHASE1_SOURCE_LIMIT = 100_000;
 
 const TWO_PI = Math.PI * 2;
@@ -314,10 +318,12 @@ addDefaultLighting(scene);
 
 // Dispatch transfer/integrity work before synchronous textures and scene assembly.
 // The loader owns its shared bounded transport; startup owns only its adoption.
+// The download may run its full bound; startup waits ASTEROID_STARTUP_DEADLINE_MS of it.
 const asteroidCatalogPromise = loadPhase1AsteroidCatalog({
   maxRecords: ASTEROID_BELT_PHASE1_SOURCE_LIMIT,
   loadLatencyBudgetMs: PHASE1_LOAD_LATENCY_BUDGET_MS,
   metaUrl: PHASE1_CATALOG_META_URL,
+  timeoutMs: PHASE1_PAGE_LOAD_TIMEOUT_MS,
 });
 // Setup may fail before reaching the await. Observe rejection immediately.
 void asteroidCatalogPromise.catch(() => {});
@@ -626,12 +632,12 @@ ownDisposable(createPlanetSurfaceMaps({
 // ── Asteroid & Kuiper Belts ──────────────────────────────────────────────────
 
 const asteroidStartup = await createStartupAsteroidBelt(asteroidCatalogPromise, {
-  targetCount: ASTEROID_BELT_TARGET_COUNT, seed: 42,
+  targetCount: ASTEROID_BELT_TARGET_COUNT, seed: 42, deadlineMs: ASTEROID_STARTUP_DEADLINE_MS,
   signal: startup.signal, getScaleMode: () => dom.toggleRealisticScale.checked,
 });
-const asteroidBeltRenderer = ownDisposable(asteroidStartup.renderer);
+let asteroidBeltRenderer = ownDisposable(asteroidStartup.renderer);
 if (startup.signal.aborted || !recovery.available) return;
-const asteroidPop = asteroidStartup.population;
+let asteroidPop = asteroidStartup.population;
 simState.useRealisticScale = dom.toggleRealisticScale.checked;
 const kuiperPop = generateKuiperBelt(5_000);
 
@@ -670,12 +676,13 @@ function syncAsteroidBeltInputs() {
   asteroidBeltRenderer.setPerturberPositions(asteroidJupiterPositionAu, asteroidSaturnPositionAu);
 }
 
-const phaseOneCatalog = asteroidStartup.catalog;
 // Only the verified catalog may draw a band that claims to show measured density.
-const asteroidDensityBand = asteroidStartup.source === 'catalog' && phaseOneCatalog
-  ? ownDisposable(createBeltDensityBand(beltSurfaceDensity(phaseOneCatalog.asteroids.map(({ orbit }) => orbit))))
-  : null;
-if (asteroidDensityBand) solarSystemGroup.add(asteroidDensityBand.group);
+let asteroidDensityBand: ReturnType<typeof createBeltDensityBand> | null = null;
+function addAsteroidDensityBand(catalog: NonNullable<typeof asteroidStartup.catalog>) {
+  asteroidDensityBand = ownDisposable(createBeltDensityBand(beltSurfaceDensity(catalog.asteroids.map(({ orbit }) => orbit))));
+  solarSystemGroup.add(asteroidDensityBand.group);
+}
+if (asteroidStartup.source === 'catalog' && asteroidStartup.catalog) addAsteroidDensityBand(asteroidStartup.catalog);
 
 function applyBeltVisibility() {
   asteroidBeltRenderer.setVisible(dom.toggleAsteroids.checked);
@@ -683,34 +690,65 @@ function applyBeltVisibility() {
   kuiperBeltRenderer.setVisible(dom.toggleKuiper.checked);
 }
 applyBeltVisibility();
-if (asteroidStartup.source === 'catalog' && phaseOneCatalog) {
-  const gate = phaseOneCatalog.acceptance;
-  if (!gate.latency.passed && gate.latency.reason) {
-    console.warn('[phase-1] Catalog load exceeded its performance budget:', gate.latency.reason);
+function reportAsteroidCatalog(
+  source: typeof asteroidStartup.source,
+  phaseOneCatalog: typeof asteroidStartup.catalog,
+  error: unknown,
+) {
+  if (source === 'loading') {
+    renderAsteroidCatalogSourceStatus(dom.statusCatalog, lateAsteroidCatalogStatus(ASTEROID_STARTUP_DEADLINE_MS));
+    return;
   }
-  renderAsteroidCatalogSourceStatus(dom.statusCatalog, verifiedAsteroidCatalogStatus(phaseOneCatalog.sourceCount));
-  console.info(
-    `[phase-1] Loaded deterministic catalog from ${PHASE1_CATALOG_URL} (` +
-    `${phaseOneCatalog.sourceCount.toLocaleString()} source rows, ` +
-    `${phaseOneCatalog.asteroids.length.toLocaleString()} parsed records, ` +
-    `version=${phaseOneCatalog.catalogVersion}, ` +
-    `checksum=${phaseOneCatalog.checksumActual}, ` +
-    `load=${phaseOneCatalog.loadMs.toFixed(1)}ms (budget ${phaseOneCatalog.loadLatencyBudgetMs}ms), ` +
-    `taxonomyC=${phaseOneCatalog.taxonomyCheck.counts.C}, ` +
-    `taxonomyS=${phaseOneCatalog.taxonomyCheck.counts.S}, ` +
-    `taxonomyM=${phaseOneCatalog.taxonomyCheck.counts.M}, ` +
-    `target=${ASTEROID_BELT_TARGET_COUNT.toLocaleString()}).`
-  );
-} else if (asteroidStartup.source === 'rejected' && phaseOneCatalog) {
-  const rejections = phaseOneCatalog.acceptance.rejections;
-  renderAsteroidCatalogSourceStatus(dom.statusCatalog, rejectedAsteroidCatalogStatus(rejections));
-  console.warn('[phase-1] Acceptance gates failed; using procedural fallback:',
-    rejections.map(({ code, message }) => `[${code}] ${message}`).join(' | '));
-} else {
-  renderAsteroidCatalogSourceStatus(dom.statusCatalog, failedAsteroidCatalogStatus());
-  console.warn('[phase-1] Using procedural fallback for asteroid belt:',
-    asteroidStartup.error ?? 'accepted catalog contained no usable asteroid records');
+  if (source === 'catalog' && phaseOneCatalog) {
+    const gate = phaseOneCatalog.acceptance;
+    if (!gate.latency.passed && gate.latency.reason) {
+      console.warn('[phase-1] Catalog load exceeded its performance budget:', gate.latency.reason);
+    }
+    renderAsteroidCatalogSourceStatus(dom.statusCatalog, verifiedAsteroidCatalogStatus(phaseOneCatalog.sourceCount));
+    console.info(
+      `[phase-1] Loaded deterministic catalog from ${PHASE1_CATALOG_URL} (` +
+      `${phaseOneCatalog.sourceCount.toLocaleString()} source rows, ` +
+      `${phaseOneCatalog.asteroids.length.toLocaleString()} parsed records, ` +
+      `version=${phaseOneCatalog.catalogVersion}, ` +
+      `checksum=${phaseOneCatalog.checksumActual}, ` +
+      `load=${phaseOneCatalog.loadMs.toFixed(1)}ms (budget ${phaseOneCatalog.loadLatencyBudgetMs}ms), ` +
+      `taxonomyC=${phaseOneCatalog.taxonomyCheck.counts.C}, ` +
+      `taxonomyS=${phaseOneCatalog.taxonomyCheck.counts.S}, ` +
+      `taxonomyM=${phaseOneCatalog.taxonomyCheck.counts.M}, ` +
+      `target=${ASTEROID_BELT_TARGET_COUNT.toLocaleString()}).`
+    );
+  } else if (source === 'rejected' && phaseOneCatalog) {
+    const rejections = phaseOneCatalog.acceptance.rejections;
+    renderAsteroidCatalogSourceStatus(dom.statusCatalog, rejectedAsteroidCatalogStatus(rejections));
+    console.warn('[phase-1] Acceptance gates failed; using procedural fallback:',
+      rejections.map(({ code, message }) => `[${code}] ${message}`).join(' | '));
+  } else {
+    renderAsteroidCatalogSourceStatus(dom.statusCatalog, failedAsteroidCatalogStatus());
+    console.warn('[phase-1] Using procedural fallback for asteroid belt:',
+      error ?? 'accepted catalog contained no usable asteroid records');
+  }
 }
+reportAsteroidCatalog(asteroidStartup.source, asteroidStartup.catalog, asteroidStartup.error);
+
+// A catalog that missed the startup deadline replaces the procedural belt when it arrives.
+// The callback runs after startup's synchronous setup: the next await is warmupRenderer.
+void asteroidStartup.late?.then((late) => {
+  if (startup.signal.aborted) { late.belt?.renderer.dispose(); return; }
+  if (late.belt && late.catalog) {
+    solarSystemGroup.remove(asteroidBeltRenderer.mesh);
+    asteroidBeltRenderer.dispose();
+    asteroidBeltRenderer = ownDisposable(late.belt.renderer);
+    asteroidPop = late.belt.population;
+    asteroidBeltRenderer.setPerturberMasses(jupiterPerturbationMu, saturnPerturbationMu);
+    asteroidBeltRenderer.setScaleMode(simState.useRealisticScale);
+    solarSystemGroup.add(asteroidBeltRenderer.mesh);
+    addAsteroidDensityBand(late.catalog);
+    applyBeltVisibility();
+    syncAsteroidBeltInputs();
+    refillBodyList();
+  }
+  reportAsteroidCatalog(late.source, late.catalog, late.error);
+}, () => {});
 
 kuiperBeltUpdater.update(simState.julianDate);
 syncAsteroidBeltInputs();
