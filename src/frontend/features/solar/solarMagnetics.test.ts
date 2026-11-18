@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { Line, Vector3 } from 'three';
+import { Line, LineBasicMaterial, Vector3 } from 'three';
+import captured from '../../../../backend/tests/fixtures/solar_frames/synthetic_state_2451552.json';
 import {
     computeMagneticField,
     createMagneticFieldLines,
@@ -83,6 +84,59 @@ describe('PFSS topology display', () => {
             { is_open: true, polarity: 1, arc }, { is_open: false, arc }
         ] }, 1, 0);
         expect(group.children.map(line => line.userData.isOpen)).toEqual([true, false]);
+    });
+});
+
+// Audit finding solar-visuals-03 (2026-11-17 record): inverting the open-line polarity test for backend
+// PFSS lines left the whole vitest suite green. A palette cannot be derived, so the colour of each
+// polarity is read from the analytic fallback of this same module, whose polarity is defined by
+// the backend's own rule (backend/sim/pfss_tracing.py: polarity = +1 where the field at the
+// footpoint points outward, B . r > 0, else -1) and computed here from computeMagneticField.
+describe('open PFSS line polarity colour (backend payload convention)', () => {
+    const colorOf = (line: Line) => (line.material as LineBasicMaterial).color.getHex();
+    const ACTIVITY = 0.5;
+
+    function analyticOpenColorByPolarity(): Map<number, number> {
+        const colors = new Map<number, Set<number>>();
+        for (const child of createMagneticFieldLines(ENLARGED_SUN_AU, ACTIVITY).children as Line[]) {
+            if (!child.userData.isOpen) continue;
+            const footpoint = vertex(child, 0);
+            const radialField = computeMagneticField(footpoint.x, footpoint.y, footpoint.z, ACTIVITY).dot(footpoint);
+            if (Math.abs(radialField) < 1e-3) continue; // too close to the sign change for float32 positions to tell
+            const polarity = radialField > 0 ? 1 : -1;
+            colors.set(polarity, (colors.get(polarity) ?? new Set()).add(colorOf(child)));
+        }
+        // One colour per polarity, and the two polarities differ.
+        expect([...colors.values()].map(set => set.size)).toEqual([1, 1]);
+        const [positive, negative] = [colors.get(1)!, colors.get(-1)!].map(set => [...set][0]);
+        expect(positive).not.toBe(negative);
+        return new Map([[1, positive], [-1, negative]]);
+    }
+
+    const fixtureLines = captured.pfss_field_lines.lines;
+    const group = createMagneticFieldLinesFromPFSS(captured.pfss_field_lines, ENLARGED_SUN_AU, ACTIVITY);
+
+    it('draws every captured backend line, open ones of both polarities and closed ones', () => {
+        expect(group.children).toHaveLength(fixtureLines.length);
+        const open = fixtureLines.filter(line => line.state === 'open');
+        expect(new Set(open.map(line => line.polarity))).toEqual(new Set([1, -1]));
+        expect(fixtureLines.some(line => line.state === 'closed')).toBe(true);
+    });
+
+    it('colours an open backend line like the analytic open line of the same outward/inward field', () => {
+        const byPolarity = analyticOpenColorByPolarity();
+        fixtureLines.forEach((line, index) => {
+            if (line.state !== 'open') return;
+            expect(colorOf(group.children[index] as Line)).toBe(byPolarity.get(line.polarity));
+        });
+    });
+
+    it('colours closed backend lines the same whatever their polarity, apart from both open colours', () => {
+        const byPolarity = analyticOpenColorByPolarity();
+        const closed = new Set(fixtureLines.flatMap((line, index) => line.state === 'closed' ? [colorOf(group.children[index] as Line)] : []));
+        expect(closed.size).toBe(1);
+        expect(byPolarity.get(1)).not.toBe([...closed][0]);
+        expect(byPolarity.get(-1)).not.toBe([...closed][0]);
     });
 });
 
