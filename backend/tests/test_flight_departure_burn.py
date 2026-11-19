@@ -18,6 +18,7 @@ import math
 import numpy as np
 import pytest
 
+from flight.catalog import get_vehicle
 from flight.guidance import asymptote, parking_basis, parking_state, solve_departure
 from flight.integrators import integrate
 from flight.dynamics import POSITION, VELOCITY, point_mass_derivative, point_mass_state
@@ -89,6 +90,19 @@ def test_the_solved_burn_meets_the_planned_departure() -> None:
     assert burn.speed_miss_m_s < 1.0
     assert burn.direction_miss_deg < 0.05
     assert 250.0 < burn.burn_s < 330.0
+
+
+def test_the_catalog_starship_meets_a_mars_like_departure() -> None:
+    """The shipped Block 3 ship, full (1,685 t at 16.18 MN, about 0.98 g, stage Isp 364.4 s),
+    leaves 200 km at 3 km/s. It needs about 1,074 t of its 1,600 t."""
+    ship = get_vehicle("starship-block3-ship")
+    loads = np.array([tank.capacity_kg for tank in ship.tanks])
+    burn = solve_departure(ship, loads, mu=MU, radius_m=RADIUS, v_inf_m_s=TARGET, step_s=0.5)
+    assert burn.stop == "cutoff"
+    assert burn.speed_miss_m_s < 1.0
+    assert burn.direction_miss_deg < 0.05
+    used = float(np.sum(loads - burn.run.y[-1][7:]))
+    assert 1_000_000.0 < used < 1_150_000.0
 
 
 def gravity_loss(thrust_scale: float) -> float:

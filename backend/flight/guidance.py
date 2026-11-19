@@ -21,7 +21,7 @@ import numpy as np
 
 from .dynamics import DV_SPENT, LOADS, POSITION, VELOCITY, point_mass_derivative, point_mass_state
 from .integrators import Event, Run, integrate
-from .vehicle import MassModel, Vehicle, tank_flow_kg_s
+from .vehicle import MassModel, Vehicle, net_thrust_n, tank_flow_kg_s
 
 ECLIPTIC_NORTH = np.array([0.0, 0.0, 1.0])
 MAX_BURN_S = 1_800.0
@@ -89,7 +89,7 @@ def _first_guess(vehicle: Vehicle, loads: np.ndarray, mu: float, radius: float, 
     circular = math.sqrt(mu / radius)
     dv = math.sqrt(v_inf ** 2 + 2.0 * mu / radius) - circular
     flow = float(np.sum(tank_flow_kg_s(vehicle)))
-    exhaust = sum(engine.thrust_n for engine in vehicle.engines) / flow
+    exhaust = net_thrust_n(vehicle) / flow
     start_mass = MassModel(vehicle).dry_mass + float(np.sum(loads))
     burn = start_mass * (1.0 - math.exp(-dv / exhaust)) / flow
     return periapsis_angle - (circular / radius) * burn / 2.0

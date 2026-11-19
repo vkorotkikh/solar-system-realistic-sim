@@ -18,7 +18,7 @@ import pytest
 
 from flight.dynamics import DV_SPENT, LOADS, POSITION, VELOCITY, point_mass_derivative, point_mass_state
 from flight.integrators import Event, integrate
-from flight.vehicle import Engine, Structure, Tank, Vehicle
+from flight.vehicle import Engine, Structure, Tank, Vehicle, to_stage
 
 KICK = Vehicle(
     vehicle_id="kick", name="Kick stage", tier="flown",
@@ -48,6 +48,34 @@ def test_a_burn_with_no_gravity_obeys_the_rocket_equation() -> None:
     assert end[VELOCITY] == pytest.approx([4_734.958291, 0.0, 0.0], rel=1e-6)
     assert end[DV_SPENT] == pytest.approx(4_734.958291, rel=1e-6)
     assert end[POSITION][0] == pytest.approx(413_822.294, rel=1e-6)
+
+
+CANT = math.radians(30.0)
+CANTED = Vehicle(
+    vehicle_id="canted", name="Canted pair", tier="flown",
+    structures=(Structure("body", 2_000.0, np.zeros(3), np.zeros((3, 3))),),
+    tanks=(Tank("main", 8_000.0, 1.0, 3.0, np.zeros(3)),),
+    engines=tuple(
+        Engine(name, np.zeros(3), np.array([side * math.sin(CANT), 0.0, math.cos(CANT)]), 100_000.0, 300.0, None,
+               None, None, (("main", 1.0),))
+        for name, side in (("left", 1.0), ("right", -1.0))
+    ),
+)
+
+
+def test_canted_engines_pay_their_cosine_loss() -> None:
+    """Two 100 kN engines canted 30 degrees either side: net thrust 2 * 100 * cos 30 =
+    173.205 kN for a flow of 67.981 kg/s, an effective exhaust speed of 2,547.84 m/s.
+    Burning 8,000 of 10,000 kg gives 2,547.84 ln 5 = 4,100.59 m/s, not 4,734.96."""
+    f = point_mass_derivative(CANTED, mu=0.0, steer=fixed_east)
+    y0 = point_mass_state(np.zeros(3), np.zeros(3), np.array([8_000.0]))
+    run = integrate(f, 0.0, y0, 0.5, max_steps=1_000, events=[Event("propellant_exhausted", empty)])
+    assert run.t[-1] == pytest.approx(117.6798, rel=1e-6)
+    assert run.y[-1][VELOCITY][0] == pytest.approx(4_100.594166, rel=1e-6)
+
+
+def test_the_stage_export_charges_canted_engines_their_cosine_loss() -> None:
+    assert to_stage(CANTED, np.array([8_000.0])).isp_s == pytest.approx(259.8076211, rel=1e-9)
 
 
 def test_half_throttle_halves_the_flow_and_doubles_the_burn() -> None:

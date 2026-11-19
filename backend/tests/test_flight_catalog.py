@@ -11,9 +11,11 @@ from __future__ import annotations
 import copy
 import json
 
+import numpy as np
 import pytest
 
-from flight.catalog import CatalogError, load_catalog
+from flight.catalog import CatalogError, UnknownVehicle, get_vehicle, load_catalog
+from flight.vehicle import to_stage
 
 SOURCE = {"kind": "secondary", "url": "https://example.org/spec", "retrieved": "2026-11-18", "note": ""}
 
@@ -128,6 +130,43 @@ def test_an_engine_whose_tank_shares_do_not_sum_to_one_is_refused(tmp_path) -> N
 
 def test_an_unknown_tier_is_refused(tmp_path) -> None:
     assert _refusal(tmp_path, entry("concept-art")).code == "unknown_tier"
+
+
+def test_engine_limits_that_are_not_published_load_as_unknown(tmp_path) -> None:
+    raw = entry()
+    for key in ("throttle_min", "throttle_max", "swivel_limit_deg"):
+        del raw["engines"][0][key]
+    engine = load_catalog(write(tmp_path, {"lander": raw}))["lander"].engines[0]
+    assert (engine.throttle_min, engine.throttle_max, engine.swivel_limit_deg) == (None, None, None)
+
+
+def test_a_published_engine_limit_is_still_held_to_the_rules(tmp_path) -> None:
+    raw = entry()
+    raw["engines"][0]["swivel_limit_deg"] = num(8.0, source=None)
+    assert _refusal(tmp_path, raw).code == "unsourced_number"
+
+
+def test_every_shipped_vehicle_obeys_the_rules_and_is_found_by_id() -> None:
+    ship = get_vehicle("starship-block3-ship")
+    assert ship.tier == "flown"
+    assert ship.name == "Starship ship, Block 3"
+
+
+def test_an_unknown_vehicle_id_is_named_in_the_error() -> None:
+    with pytest.raises(UnknownVehicle) as caught:
+        get_vehicle("enterprise")
+    assert caught.value.vehicle_id == "enterprise"
+
+
+def test_the_shipped_starship_carries_1600_t_split_at_a_mixture_ratio_of_3_6() -> None:
+    """1,600 t (Wikipedia, Block 3) split 3.6 : 1 gives 1,252,173.9 kg of oxygen and
+    347,826.1 kg of methane; equal-thrust engines at 350 s and 380 s give a stage
+    specific impulse of 2 / (1/350 + 1/380) = 364.3836 s."""
+    ship = get_vehicle("starship-block3-ship")
+    capacities = {tank.name: tank.capacity_kg for tank in ship.tanks}
+    assert capacities == pytest.approx({"lox": 1_252_173.913, "ch4": 347_826.087})
+    assert len(ship.engines) == 6
+    assert to_stage(ship, np.array([1_252_173.913, 347_826.087])).isp_s == pytest.approx(364.3835616, rel=1e-9)
 
 
 def test_a_source_of_unknown_kind_is_refused(tmp_path) -> None:

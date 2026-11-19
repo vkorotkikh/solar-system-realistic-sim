@@ -14,12 +14,14 @@ states its formula. A number's value may be a scalar or a list (a vector).
 from __future__ import annotations
 
 import json
+from functools import lru_cache
 from pathlib import Path
 
 import numpy as np
 
 from .vehicle import TIERS, Engine, Structure, Tank, Vehicle
 
+DEFAULT_CATALOG = Path(__file__).with_name("catalog.json")
 SOURCE_KINDS = ("primary", "secondary", "estimate", "derived")
 _FEED_SHARE_TOLERANCE = 1e-9
 
@@ -31,6 +33,12 @@ class CatalogError(ValueError):
         super().__init__(f"{path}: {message}")
         self.code = code
         self.path = path
+
+
+class UnknownVehicle(LookupError):
+    def __init__(self, vehicle_id: str) -> None:
+        super().__init__(f"no vehicle {vehicle_id!r} in the catalog")
+        self.vehicle_id = vehicle_id
 
 
 def _number(record, path: str, tier: str, sources: dict):
@@ -70,6 +78,9 @@ def _vehicle(vehicle_id: str, raw: dict) -> Vehicle:
     def n(record, path):
         return _number(record, f"{vehicle_id}.{path}", tier, sources)
 
+    def optional(part, key, path):
+        return n(part[key], path) if key in part else None
+
     structures = tuple(
         Structure(
             name=part["name"],
@@ -105,9 +116,10 @@ def _vehicle(vehicle_id: str, raw: dict) -> Vehicle:
             axis=axis / np.linalg.norm(axis),
             thrust_n=n(part["thrust_n"], f"engines[{i}].thrust_n"),
             isp_vac_s=n(part["isp_vac_s"], f"engines[{i}].isp_vac_s"),
-            throttle_min=n(part["throttle_min"], f"engines[{i}].throttle_min"),
-            throttle_max=n(part["throttle_max"], f"engines[{i}].throttle_max"),
-            swivel_limit_deg=n(part["swivel_limit_deg"], f"engines[{i}].swivel_limit_deg"),
+            # Limits a maker has not published are unknown (None), never invented.
+            throttle_min=optional(part, "throttle_min", f"engines[{i}].throttle_min"),
+            throttle_max=optional(part, "throttle_max", f"engines[{i}].throttle_max"),
+            swivel_limit_deg=optional(part, "swivel_limit_deg", f"engines[{i}].swivel_limit_deg"),
             feeds=feeds,
         ))
     return Vehicle(vehicle_id=vehicle_id, name=raw["name"], tier=tier, structures=structures,
@@ -123,3 +135,16 @@ def _inertia_matrix(six) -> np.ndarray:
 def load_catalog(path: Path | str) -> dict[str, Vehicle]:
     raw = json.loads(Path(path).read_text())
     return {vehicle_id: _vehicle(vehicle_id, entry) for vehicle_id, entry in raw["vehicles"].items()}
+
+
+@lru_cache(maxsize=1)
+def _shipped_catalog() -> dict[str, Vehicle]:
+    return load_catalog(DEFAULT_CATALOG)
+
+
+def get_vehicle(vehicle_id: str) -> Vehicle:
+    """A vehicle from the shipped catalog, which is loaded and checked once per process."""
+    try:
+        return _shipped_catalog()[vehicle_id]
+    except KeyError:
+        raise UnknownVehicle(vehicle_id) from None

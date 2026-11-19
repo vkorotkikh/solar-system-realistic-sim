@@ -43,9 +43,9 @@ class Engine:
     axis: np.ndarray  # unit vector of the force the engine puts on the vehicle, body frame
     thrust_n: float  # vacuum thrust at full throttle
     isp_vac_s: float
-    throttle_min: float
-    throttle_max: float
-    swivel_limit_deg: float
+    throttle_min: float | None  # None: not published
+    throttle_max: float | None
+    swivel_limit_deg: float | None
     feeds: tuple[tuple[str, float], ...]  # (tank name, share of this engine's mass flow)
 
 
@@ -123,6 +123,11 @@ class MassModel:
         return MassProperties(mass_kg=mass, com_m=com, inertia_kg_m2=inertia)
 
 
+def net_thrust_n(vehicle: Vehicle) -> float:
+    """Size of the summed thrust vectors at full throttle: canted engines pay their cosine loss."""
+    return float(np.linalg.norm(sum((engine.thrust_n * engine.axis for engine in vehicle.engines), np.zeros(3))))
+
+
 def tank_flow_kg_s(vehicle: Vehicle, throttle: float = 1.0) -> np.ndarray:
     """Propellant drawn from each tank per second with every engine at this throttle."""
     index = {tank.name: i for i, tank in enumerate(vehicle.tanks)}
@@ -137,14 +142,13 @@ def tank_flow_kg_s(vehicle: Vehicle, throttle: float = 1.0) -> np.ndarray:
 def to_stage(vehicle: Vehicle, loads_kg: np.ndarray):
     """One rocket-equation stage for the planner's vehicle check (design completion C7).
 
-    The engines collapse to one specific impulse: total thrust over total mass flow,
+    The engines collapse to one specific impulse: net thrust over total mass flow,
     which keeps the stage's thrust and propellant use equal to the vehicle's.
     """
-    total_thrust = sum(engine.thrust_n for engine in vehicle.engines)
     total_flow = sum(engine.thrust_n / engine.isp_vac_s for engine in vehicle.engines)
     return StageDefinition(
         name=vehicle.name,
         dry_mass_kg=MassModel(vehicle).dry_mass,
         propellant_mass_kg=float(np.sum(loads_kg)),
-        isp_s=total_thrust / total_flow,
+        isp_s=net_thrust_n(vehicle) / total_flow,
     )

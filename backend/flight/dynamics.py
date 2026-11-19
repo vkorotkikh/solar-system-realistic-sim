@@ -19,7 +19,7 @@ import math
 
 import numpy as np
 
-from .vehicle import MassModel, Vehicle, tank_flow_kg_s
+from .vehicle import MassModel, Vehicle, net_thrust_n, tank_flow_kg_s
 
 POSITION = slice(0, 3)
 VELOCITY = slice(3, 6)
@@ -37,7 +37,7 @@ def point_mass_derivative(vehicle: Vehicle, *, mu: float, steer: Steering, throt
     if not 0.0 <= throttle <= 1.0:
         raise ValueError("throttle must lie in 0..1")
     dry_mass = MassModel(vehicle).dry_mass
-    thrust = throttle * sum(engine.thrust_n for engine in vehicle.engines)
+    thrust = throttle * net_thrust_n(vehicle)
     drain = -tank_flow_kg_s(vehicle, throttle)
 
     def derivative(t: float, y: np.ndarray) -> np.ndarray:
