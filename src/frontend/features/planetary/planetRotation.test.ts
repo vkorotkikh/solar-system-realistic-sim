@@ -15,6 +15,35 @@ const FIXTURES = [
 const radians = Math.PI / 180;
 const bodies = createSolarSystemCatalog().bodies;
 
+describe('Earth surface map longitude', () => {
+  // planetShaders surfaceUv: longitude = atan2(local x, local z), so the map's 0 deg E is local +Z, 90 deg E is +X.
+  const earth = bodies.find((body) => body.id === 'earth')!;
+  const tilt = earth.axialTiltDeg! * radians;
+  const longitude = earth.spinAxisLongitudeDeg! * radians;
+  const poleFrame = new Group();
+  poleFrame.quaternion.setFromUnitVectors(new Vector3(0, 1, 0), new Vector3(Math.sin(tilt) * Math.cos(longitude), Math.sin(tilt) * Math.sin(longitude), Math.cos(tilt)));
+  const surface = new Group();
+  poleFrame.add(surface);
+  const eclipticToEquatorial = new Matrix4().makeRotationX(23.439291111 * radians);
+  const rightAscensionDeg = (local: Vector3, jd: number) => {
+    applyBodySpin(surface, (jd - 2451545) * 86_400, earth.rotationPeriodHours!, (earth.rotationPhaseDeg ?? 0) * radians);
+    poleFrame.updateMatrixWorld(true);
+    const v = local.clone().applyMatrix4(surface.matrixWorld).applyMatrix4(eclipticToEquatorial);
+    return Math.atan2(v.y, v.x) / radians;
+  };
+  const wrapDeg = (angle: number) => ((angle % 360) + 540) % 360 - 180;
+
+  // NAIF pck00011 BODY399_PM: W = 190.147 + 360.9856235 d, measured from the node at RA 90 deg.
+  it.each([2451545.0, 2461988.5, 2462000.75])('puts Greenwich at the IAU prime meridian at JD %s', (jd) => {
+    const greenwichRa = rightAscensionDeg(new Vector3(0, 0, 1), jd);
+    expect(Math.abs(wrapDeg(greenwichRa - (90 + 190.147 + 360.9856235 * (jd - 2451545))))).toBeLessThan(0.01);
+    // Independent cross-check: GMST (IAU 1982) differs only by UT1-TT, precession and rate rounding.
+    expect(Math.abs(wrapDeg(greenwichRa - (280.46061837 + 360.98564736629 * (jd - 2451545))))).toBeLessThan(0.7);
+    // East is east: 90 deg E lies 90 deg further along in right ascension.
+    expect(wrapDeg(rightAscensionDeg(new Vector3(1, 0, 0), jd) - greenwichRa)).toBeCloseTo(90, 6);
+  });
+});
+
 describe('IAU cartographic poles and signed rotation', () => {
   it.each(fixture.bodies)('$id matches an independent CSPICE J2000 pole and signed mean angular velocity', ({ id, poleEcliptic, rateDegPerDay }) => {
     const body = bodies.find((body) => body.id === id)!;
