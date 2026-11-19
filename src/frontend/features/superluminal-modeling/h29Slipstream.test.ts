@@ -23,8 +23,8 @@ describe('H29 slipstream strength against independent references', () => {
     // a front 13,591 yr ahead of light over 26,675 yr. At today's 8.178 kpc the same inputs
     // give 13,589.5 yr ahead over 26,673.1 yr.
     const preset = EVENT_PRESETS.SgrA_WarpWave_H29;
-    const timeline = computeMultiMessengerTimeline(SOURCE_CATALOG[preset.sourceKey], preset.energyErg, 35 * DEG,
-      { scenario: preset.hypothesis });
+    expect(preset.sourceKey).toBe('SagittariusA');
+    const timeline = computeMultiMessengerTimeline(sgrA, preset.energyErg, 35 * DEG, { scenario: preset.hypothesis });
     expect(timeline.h29!.shiftStrength).toBeCloseTo(0.20624631870774895, 12);
     expect(timeline.h29!.frameSpeedOverC).toBeCloseTo(2.0386754448832125, 12);
     expect(timeline.lightTravelTimeYr).toBeCloseTo(26673.06856967527, 6);
