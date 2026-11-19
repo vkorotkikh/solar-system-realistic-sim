@@ -28,6 +28,10 @@ Git history retains their bytes for provenance; this is not a history rewrite.
 Restoring one requires a current consumer, exact source and reuse terms.
 Three have been restored under `public/textures/surfaces` for the Moon and
 Mars terrain shader; the Mars map's exact source remains to be confirmed.
+Earth's four maps there are not restored files: the retired Earth textures were
+copies of three.js example images with no recorded source. They are rebuilt by
+`scripts/build_earth_surface_maps.py` from pinned NASA, NOAA and Natural Earth
+downloads, whose bytes, hashes and terms are in the source register.
 
 ## Build boundary
 

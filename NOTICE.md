@@ -58,6 +58,26 @@ map appears to derive from the USGS
 but its exact product was not recorded when it was acquired. Confirm it before
 any release. Sizes and SHA-256 values are in `docs/data/distribution-files.json`.
 
+Earth's four maps there are built by `scripts/build_earth_surface_maps.py` from
+pinned downloads:
+
+- Colour: NASA Earth Observatory's
+  [Blue Marble: Next Generation](https://science.nasa.gov/earth/earth-observatory/blue-marble-next-generation/base-map/)
+  August 2004 base map, resampled from NASA's 21600 x 10800 original (credit:
+  NASA Earth Observatory; Blue Marble: Next Generation by Reto Stöckli, NASA
+  Goddard Space Flight Center).
+- Relief shading: slopes from NOAA National Centers for Environmental
+  Information, 2022: ETOPO 2022 15 Arc-Second Global Relief Model (60
+  arc-second release), [DOI 10.25921/fd45-gt74](https://doi.org/10.25921/fd45-gt74).
+- Water mask: made with [Natural Earth](https://www.naturalearthdata.com/)
+  1:10m land, lakes and Antarctic ice shelves (public domain).
+- Clouds: NASA's
+  [Blue Marble](https://science.nasa.gov/earth/earth-observatory/the-blue-marble-true-color-global-imagery-at-1km-resolution/)
+  cloud layer, unmodified (credit: NASA Goddard Space Flight Center; image by
+  Reto Stöckli; enhancements by Robert Simmon).
+
+NASA, NOAA and Natural Earth do not endorse this project.
+
 ## Bundled fonts
 
 The interface typefaces are self-hosted Latin subsets, so no visit contacts a

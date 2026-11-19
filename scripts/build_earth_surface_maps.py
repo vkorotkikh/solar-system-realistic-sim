@@ -210,6 +210,14 @@ def area_resample(grid, width, height):
     return _area_weights(grid.shape[0], height) @ across.T  # (height, width)
 
 
+def relief_heights(z, width, height):
+    """Heights of the visible surface, area-averaged: the sea surface (0 m) instead of the sea
+    floor, so a coastal or island pixel does not average in depths and tilt toward the sea.
+    ponytail: land below sea level (Dead Sea, Qattara, Death Valley shores) is read as 0 m, so
+    those basins shade flat-bottomed; a full-resolution land mask would keep them."""
+    return area_resample(np.maximum(np.asarray(z, float), 0.0), width, height)
+
+
 def lat_centres(rows):
     return 90 - (np.arange(rows) + 0.5) * 180 / rows
 
@@ -247,7 +255,7 @@ def build(inputs, out=OUT):
                             _polygons(path('shelves')), WIDTH, HEIGHT)
     _write(out / OUTPUTS['water'], lambda p: Image.fromarray(water, 'L').save(p, 'PNG', optimize=True))
 
-    height = area_resample(read_etopo(path('etopo')), WIDTH, HEIGHT)
+    height = relief_heights(read_etopo(path('etopo')), WIDTH, HEIGHT)
     ge, gn = slopes(height, water > 127, lat_centres(HEIGHT))
     rgb = encode_slopes(ge, gn)
     _write(out / OUTPUTS['normal'], lambda p: Image.fromarray(rgb, 'RGB').save(p, 'PNG', optimize=True))

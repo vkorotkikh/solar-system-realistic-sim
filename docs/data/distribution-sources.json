@@ -341,6 +341,93 @@
       ]
     },
     {
+      "id": "surface-map:earth:bmng-200408",
+      "product": "NASA Earth Observatory Blue Marble: Next Generation, August 2004 base map (world.200408.3x21600x10800.jpg, 21600 x 10800 px, 2 km/px), Lanczos-resampled to an 8192 x 4096 JPEG by scripts/build_earth_surface_maps.py",
+      "use": "browser-loaded Earth surface colour, fetched at startup",
+      "sourceUrls": [
+        "https://science.nasa.gov/earth/earth-observatory/blue-marble-next-generation/base-map/",
+        "https://assets.science.nasa.gov/content/dam/science/esd/eo/images/bmng/bmng-base/august/world.200408.3x21600x10800.jpg"
+      ],
+      "credit": "NASA Earth Observatory (Blue Marble: Next Generation by Reto Stöckli, NASA Goddard Space Flight Center). No endorsement.",
+      "rightsStatus": "review-required",
+      "rightsEvidence": "Downloaded 2026-11-18: world.200408.3x21600x10800.jpg 21,206,743 bytes, SHA-256 926be7253be90a1fd57071a33afbfe7a712a2dfe0d5b5b4602bc5dfbcfdc2c89; the generator refuses any other bytes. The product page asks, retrieved 2026-11-13: 'Anyone using or republishing Blue Marble: Next Generation please credit NASA Earth Observatory.' NASA media guidelines, retrieved 2026-11-18: NASA content 'generally are not subject to copyright in the United States' and 'NASA should be acknowledged as the source of the material.'",
+      "evidencePaths": [
+        "public/textures/surfaces/earth_albedo_bmng_200408_8192.jpg",
+        "scripts/build_earth_surface_maps.py",
+        "src/frontend/features/planetary/planetSurfaceMaps.ts",
+        "NOTICE.md"
+      ],
+      "rightsPolicyUrls": [
+        "https://www.nasa.gov/nasa-brand-center/images-and-media/"
+      ]
+    },
+    {
+      "id": "surface-map:earth:etopo-2022",
+      "product": "NOAA NCEI ETOPO 2022 v1 60 arc-second global relief model, ice-surface elevations (ETOPO_2022_v1_60s_N90W180_surface.nc), reduced to 8192 x 4096 east/north surface slopes on land and ice by scripts/build_earth_surface_maps.py",
+      "use": "browser-loaded Earth relief shading (normal map), fetched at startup",
+      "sourceUrls": [
+        "https://www.ncei.noaa.gov/products/etopo-global-relief-model",
+        "https://doi.org/10.25921/fd45-gt74",
+        "https://www.ngdc.noaa.gov/thredds/fileServer/global/ETOPO2022/60s/60s_surface_elev_netcdf/ETOPO_2022_v1_60s_N90W180_surface.nc"
+      ],
+      "credit": "NOAA National Centers for Environmental Information. 2022: ETOPO 2022 15 Arc-Second Global Relief Model. DOI: 10.25921/fd45-gt74. No endorsement.",
+      "rightsStatus": "provider-declared-public-domain",
+      "rightsEvidence": "Downloaded 2026-11-18: ETOPO_2022_v1_60s_N90W180_surface.nc 478,290,125 bytes, SHA-256 74bbc5c23e85188d93f0beba8116babf69e1a8f160e8dc9f053bf8df01b197b6; the generator refuses any other bytes. The data.gov catalog entry for ETOPO 2022 (publisher NOAA National Centers for Environmental Information), retrieved 2026-11-18, gives the license https://creativecommons.org/publicdomain/zero/1.0/. The NCEI product page gives the citation and DOI and states no other terms.",
+      "evidencePaths": [
+        "public/textures/surfaces/earth_normal_etopo2022_8192.png",
+        "scripts/build_earth_surface_maps.py",
+        "NOTICE.md"
+      ],
+      "rightsPolicyUrls": [
+        "https://catalog.data.gov/dataset/etopo-2022-15-arc-second-global-relief-model",
+        "https://creativecommons.org/publicdomain/zero/1.0/"
+      ]
+    },
+    {
+      "id": "surface-map:earth:natural-earth-10m",
+      "product": "Natural Earth 1:10m physical vectors v5.1.2 (ne_10m_land, ne_10m_lakes and ne_10m_antarctic_ice_shelves_polys GeoJSON), rasterized to an 8192 x 4096 water mask by scripts/build_earth_surface_maps.py; the mask also zeroes the relief map on water",
+      "use": "browser-loaded Earth water mask for the ocean sun glint, fetched at startup",
+      "sourceUrls": [
+        "https://www.naturalearthdata.com/downloads/10m-physical-vectors/",
+        "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.2/geojson/ne_10m_land.geojson",
+        "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.2/geojson/ne_10m_lakes.geojson",
+        "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.2/geojson/ne_10m_antarctic_ice_shelves_polys.geojson"
+      ],
+      "credit": "Made with Natural Earth.",
+      "rightsStatus": "provider-declared-public-domain",
+      "rightsEvidence": "Downloaded 2026-11-18 from the v5.1.2 tag: ne_10m_land.geojson 10,157,965 bytes, SHA-256 1ac90796408bc6ad6911d69448485d3c4dbf2190370080368a09976e1c9f7416; ne_10m_lakes.geojson 5,043,554 bytes, SHA-256 2d036f53dedec578001c5c30c2959ee7d4eebc1306900fa4367c49929ec8f2d9; ne_10m_antarctic_ice_shelves_polys.geojson 561,580 bytes, SHA-256 8f9bf62368695f5664b5fcd9bc0e2baea66da295aea014ce0e9cf510f209898d; the generator refuses any other bytes. Terms of use page, retrieved 2026-11-18: 'All versions of Natural Earth raster + vector map data found on this website are in the public domain.' and 'No permission is needed to use Natural Earth.'",
+      "evidencePaths": [
+        "public/textures/surfaces/earth_water_ne10m_8192.png",
+        "public/textures/surfaces/earth_normal_etopo2022_8192.png",
+        "scripts/build_earth_surface_maps.py",
+        "NOTICE.md"
+      ],
+      "rightsPolicyUrls": [
+        "https://www.naturalearthdata.com/about/terms-of-use/"
+      ]
+    },
+    {
+      "id": "surface-map:earth:bluemarble-clouds",
+      "product": "NASA Earth Observatory The Blue Marble (2002) cloud layer, cloud_combined_2048.jpg (2048 x 1024 px), unmodified",
+      "use": "browser-loaded Earth cloud layer, fetched at startup",
+      "sourceUrls": [
+        "https://science.nasa.gov/earth/earth-observatory/the-blue-marble-true-color-global-imagery-at-1km-resolution/",
+        "https://assets.science.nasa.gov/content/dam/science/esd/eo/content-feature/bluemarble/images/cloud_combined_2048.jpg"
+      ],
+      "credit": "NASA Goddard Space Flight Center. Image by Reto Stöckli (land surface, shallow water, clouds). Enhancements by Robert Simmon (ocean color, compositing, 3D globes, animation). No endorsement.",
+      "rightsStatus": "review-required",
+      "rightsEvidence": "Downloaded 2026-11-18: cloud_combined_2048.jpg 829,367 bytes, SHA-256 daddaad84d7a33bbbc86cdda3f591099f57cee8607b7bcf3b67eb7e4f7a1c793; shipped byte for byte and pinned by the generator. The product page, retrieved 2026-11-18, credits 'NASA Goddard Space Flight Center' and 'Image by Reto Stöckli (land surface, shallow water, clouds). Enhancements by Robert Simmon (ocean color, compositing, 3D globes, animation).' NASA media guidelines, retrieved 2026-11-18: NASA content 'generally are not subject to copyright in the United States' and 'NASA should be acknowledged as the source of the material.' NASA no longer serves the 8192 px version at any path tried on 2026-11-18.",
+      "evidencePaths": [
+        "public/textures/surfaces/earth_clouds_bmng_2048.jpg",
+        "scripts/build_earth_surface_maps.py",
+        "src/frontend/features/planetary/planetSurfaceMaps.ts",
+        "NOTICE.md"
+      ],
+      "rightsPolicyUrls": [
+        "https://www.nasa.gov/nasa-brand-center/images-and-media/"
+      ]
+    },
+    {
       "id": "surface-map:moon:cgi-moon-kit",
       "product": "NASA SVS CGI Moon Kit (ID 4720): lroc_color_poles_8k and ldem_16_uint, retained as an 8192 px JPEG and an 8-bit 5760 px PNG",
       "use": "browser-loaded Earth Moon surface colour and elevation, fetched at startup",

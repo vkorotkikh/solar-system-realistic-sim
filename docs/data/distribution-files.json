@@ -8430,6 +8430,43 @@
       "releaseClass": "copied-public-asset"
     },
     {
+      "path": "public/textures/surfaces/earth_albedo_bmng_200408_8192.jpg",
+      "bytes": 4799933,
+      "sha256": "5fdc0bba838a3e3aac82667c6ac254a46d86ab77614cdd1e615362e1c39bb3b9",
+      "sourceProductIds": [
+        "surface-map:earth:bmng-200408"
+      ],
+      "releaseClass": "copied-public-asset"
+    },
+    {
+      "path": "public/textures/surfaces/earth_clouds_bmng_2048.jpg",
+      "bytes": 829367,
+      "sha256": "daddaad84d7a33bbbc86cdda3f591099f57cee8607b7bcf3b67eb7e4f7a1c793",
+      "sourceProductIds": [
+        "surface-map:earth:bluemarble-clouds"
+      ],
+      "releaseClass": "copied-public-asset"
+    },
+    {
+      "path": "public/textures/surfaces/earth_normal_etopo2022_8192.png",
+      "bytes": 14939647,
+      "sha256": "5ef7315ef7958dfc2b01e935621b7e7068ff0cbf43c7a9c39a7356925cc7dc53",
+      "sourceProductIds": [
+        "surface-map:earth:etopo-2022",
+        "surface-map:earth:natural-earth-10m"
+      ],
+      "releaseClass": "copied-public-asset"
+    },
+    {
+      "path": "public/textures/surfaces/earth_water_ne10m_8192.png",
+      "bytes": 398771,
+      "sha256": "139be0b02648ba6f0d2972420454878b36958d50e934996f344feaa03b0f4f6d",
+      "sourceProductIds": [
+        "surface-map:earth:natural-earth-10m"
+      ],
+      "releaseClass": "copied-public-asset"
+    },
+    {
       "path": "public/textures/surfaces/mars_albedo_usgs_4096.jpg",
       "bytes": 1659283,
       "sha256": "63b6afa8db88e00f4ee9c66650e15cd73ab225bacb7b45da14081b1282f49542",
