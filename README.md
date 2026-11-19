@@ -9,7 +9,7 @@ define platform support, asteroid sampling, timing, decorative motion and
 backend configuration.
 
 - **Sun + 8 planets + Pluto** with axial tilt, spin, and search/focus controls for every rendered body
-- **423 moons** from the NASA/JPL satellite mean-elements table, behind a Moons switch that is on by default. All 423 use fitted JPL Horizons models, preloaded at startup. At enlarged scale each moon keeps its true altitude above its enlarged planet
+- **423 moons** from the NASA/JPL satellite mean-elements table, behind a Moons switch that is on by default. All 423 use fitted JPL Horizons models for 2000–2050, preloaded at startup; outside those years the status bar says the moons are approximate. At enlarged scale each moon keeps its true altitude above its enlarged planet
 - **Synthetic Sun visualization** with physically inspired surface, corona, flare, magnetic-field and solar-wind layers; these are models, not a calibrated observation reconstruction
 - **SMBH/AGN experiments** with transient timelines and exotic hypothesis-model displays
 - **Adjustable simulation clock** with pause, reverse, time-warp, and a Now control
@@ -556,8 +556,10 @@ non-publishing validation mode.
 - The retained NASA GIBS cloud pipeline is not connected to the page and is not numerical weather-prediction assimilation.
 - Retained gravity-vector UI/update hooks do not imply a shipped gravity-vector display.
 - The fitted moon ephemerides are validated only inside their declared 2000–2050 JDTDB
-  coverage. Mean elements, used only when the fits fail to load, can be far off for
-  irregular moons: Himalia was 7–16 million km from JPL Horizons at three dates in 2026–2031.
+  coverage. Outside those years, or when the fits fail to load, 419 moons use mean elements and
+  Titan, Iapetus, Phoebe and Cordelia are hidden; the status bar then says how many moons are
+  approximate or hidden. Mean elements can be far off for irregular moons: Himalia was
+  7–16 million km from JPL Horizons at three dates in 2026–2031.
 - The shipped asteroid display uses elliptic element propagation, not close-up N-body perturbations.
 - Backend gravity-assist planning uses Lambert legs with hard-constrained flyby turn feasibility; the page's offline fallback is patched-conic.
 - Transfer-arc rendering is illustrative, not a finite-burn trajectory integrator.
