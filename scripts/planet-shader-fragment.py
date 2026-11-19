@@ -1,4 +1,4 @@
-"""Run the production planet fragment shader on EGL, one pixel per case.
+"""Run a production planet or cloud-shell fragment shader on EGL, one RGBA pixel per case.
 
 Invoked by planetShaderFragment.test.mjs. Each case supplies the varyings a quadtree
 vertex would; uniforms and small RGBA8 textures are shared. Requires the explicitly
@@ -51,7 +51,7 @@ if context.error != "GL_NO_ERROR":
     raise RuntimeError(f"Fragment render failed: {context.error}")
 values = array.array("f")
 values.frombytes(target.read(components=4, dtype="f4"))
-colours = [list(values[i * 4:i * 4 + 3]) for i in range(count)]
+colours = [list(values[i * 4:i * 4 + 4]) for i in range(count)]
 if not all(math.isfinite(v) for colour in colours for v in colour):
     raise AssertionError("Production planet fragment shader emitted a nonfinite colour")
 print(json.dumps({"renderer": context.info["GL_RENDERER"], "colours": colours}))

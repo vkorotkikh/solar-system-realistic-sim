@@ -8,6 +8,18 @@ vec2 surfaceUv(vec3 p) {
 }
 `;
 
+/** Map coordinate for a body-fixed unit vector, seam-safe at 180 deg; shared by every map. */
+export const mapUvGLSL = /* glsl */`
+${surfaceUvGLSL}
+vec2 mapUv(vec3 p) {
+    vec2 uv = surfaceUv(p);
+    // The longitude coordinate jumps at the map edge; use the branch that is smooth at this pixel.
+    float wrapped = fract(uv.x + 0.5) - 0.5;
+    if (fwidth(wrapped) < fwidth(uv.x)) uv.x = wrapped;
+    return uv;
+}
+`;
+
 const fbmGLSL = /* glsl */`
 // Hash and noise functions for GLSL
 vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
@@ -248,14 +260,7 @@ ${fbmGLSL}
 #ifdef PLANET_HAS_MAPS
 uniform sampler2D uAlbedoMap;
 uniform float uAlbedoReady;
-${surfaceUvGLSL}
-vec2 mapUv(vec3 p) {
-    vec2 uv = surfaceUv(p);
-    // The longitude coordinate jumps at the map edge; use the branch that is smooth at this pixel.
-    float wrapped = fract(uv.x + 0.5) - 0.5;
-    if (fwidth(wrapped) < fwidth(uv.x)) uv.x = wrapped;
-    return uv;
-}
+${mapUvGLSL}
 #endif
 
 #ifdef PLANET_EARTH_MAPS

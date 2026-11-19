@@ -1,5 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { describe, expect, it } from 'vitest';
+import { Texture } from 'three';
+import { CLOUD_OPACITY, CloudShell } from '../src/frontend/features/planetary/cloudShell';
 import { createPlanetShaderMaterial } from '../src/frontend/features/planetary/planetShaders';
 
 // Run explicitly with PLANET_SHADER_GPU_TEST=1, like planetShaderGeometry.test.mjs: the
@@ -11,22 +13,20 @@ const unit = (v) => { const l = Math.hypot(...v); return v.map((x) => x / l); };
 const dot = (a, b) => a.reduce((sum, x, i) => sum + x * b[i], 0);
 const at = (p) => ({ sphere: unit(p), position: unit(p), normal: unit(p) });
 
-function render(cases, { normal = solid(128, 128), water = solid(0, 0), light = [0, 0, 1], camera = [0, 0, 10], planet = 'earth' } = {}) {
-  const material = createPlanetShaderMaterial(planet, 1);
-  const defines = Object.entries(material.defines).map(([name, value]) => `#define ${name} ${value}\n`).join('');
-  const output = JSON.parse(execFileSync('uv', ['run', '--python', '3.12', '--with', 'moderngl', 'python', 'scripts/planet-shader-fragment.py'], {
-    input: JSON.stringify({
-      defines,
-      shader: material.fragmentShader,
-      uniforms: { uAlbedoReady: 1, uNormalReady: 1, uWaterReady: 1, uLightDirection: light, uCameraPositionLocal: camera, uColorBase: [1, 1, 1] },
-      textures: { uAlbedoMap: solid(255, 255, 255), uNormalMap: normal, uWaterMap: water },
-      cases,
-    }),
+function run(material, cases, uniforms, textures) {
+  const defines = Object.entries(material.defines ?? {}).map(([name, value]) => `#define ${name} ${value}\n`).join('');
+  return JSON.parse(execFileSync('uv', ['run', '--python', '3.12', '--with', 'moderngl', 'python', 'scripts/planet-shader-fragment.py'], {
+    input: JSON.stringify({ defines, shader: material.fragmentShader, uniforms, textures, cases }),
     encoding: 'utf8',
     timeout: 90_000,
     env: { ...process.env, LIBGL_ALWAYS_SOFTWARE: '1' },
-  }));
-  return output.colours.map(([red]) => red);
+  })).colours;
+}
+
+function render(cases, { normal = solid(128, 128), water = solid(0, 0), light = [0, 0, 1], camera = [0, 0, 10], planet = 'earth' } = {}) {
+  return run(createPlanetShaderMaterial(planet, 1), cases,
+    { uAlbedoReady: 1, uNormalReady: 1, uWaterReady: 1, uLightDirection: light, uCameraPositionLocal: camera, uColorBase: [1, 1, 1] },
+    { uAlbedoMap: solid(255, 255, 255), uNormalMap: normal, uWaterMap: water }).map(([red]) => red);
 }
 
 describe.skipIf(process.env.PLANET_SHADER_GPU_TEST !== '1')('Earth fragment shader on EGL', () => {
@@ -68,6 +68,17 @@ describe.skipIf(process.env.PLANET_SHADER_GPU_TEST !== '1')('Earth fragment shad
   it.each(['moon', 'mars'])('%s keeps its own map shading', (planet) => {
     const [lit] = render([equator], { planet });
     expect(lit).toBeCloseTo(1.05, 2); // white map, sun overhead, camera overhead: no rim, no glint
+  }, 120_000);
+
+  it('lights the cloud shell with the ground formula and covers it by the cloud map', () => {
+    const shell = new CloudShell(new Texture(), 1).mesh.material;
+    const light = [Math.sin(Math.PI / 3), 0, Math.cos(Math.PI / 3)]; // sun 60 deg from overhead
+    const [[r, g, b, cover]] = run(shell, [equator], { uLightDirection: light }, { uCloudMap: solid(255, 255, 255) });
+    const groundWhite = render([equator], { light })[0];
+    for (const channel of [r, g, b]) expect(channel).toBeCloseTo(groundWhite, 3); // lit like white ground
+    expect(cover).toBeCloseTo(CLOUD_OPACITY, 3);
+    const [[, , , clear]] = run(shell, [equator], { uLightDirection: light }, { uCloudMap: solid(0, 0, 0) });
+    expect(clear).toBe(0);
   }, 120_000);
 
   it('stays flat and finite at the pole, where the map has no east', () => {

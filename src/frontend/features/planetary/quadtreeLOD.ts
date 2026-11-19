@@ -13,6 +13,7 @@ import {
     type Texture,
     type Object3D
 } from 'three';
+import { CloudShell } from './cloudShell';
 import { createPlanetShaderMaterial } from './planetShaders';
 
 const MAX_LOD_LEVEL = 7; // Approx 2^13 segments across equator, enough to see canyons
@@ -201,6 +202,8 @@ export class PlanetQuadtree {
     group: Group;
     faces: QuadtreeNode[] = [];
     material: ShaderMaterial;
+    /** Earth's cloud layer, once its map has loaded. */
+    clouds?: CloudShell;
     readonly cameraLocalPosition = new Vector3();
     private disposed = false;
 
@@ -280,11 +283,12 @@ export class PlanetQuadtree {
         this.baseRadius = radius;
         this.material.uniforms.uRadius.value = radius;
         this.material.uniforms.uDisplacementScale.value *= ratio;
+        this.clouds?.setRadius(radius);
         this.update();
     }
 
     /** Replace procedural shading with measured imagery and, when given, measured heights. */
-    setSurfaceMaps({ albedo, relief, normal, water }: PlanetSurfaceMaps) {
+    setSurfaceMaps({ albedo, relief, normal, water, clouds }: PlanetSurfaceMaps) {
         const uniforms = this.material.uniforms;
         uniforms.uAlbedoMap.value = albedo;
         uniforms.uAlbedoReady.value = 1;
@@ -302,10 +306,17 @@ export class PlanetQuadtree {
             uniforms.uWaterMap.value = water;
             uniforms.uWaterReady.value = 1;
         }
+        if (clouds) {
+            this.clouds?.dispose();
+            this.clouds = new CloudShell(clouds, this.baseRadius);
+            this.clouds.setLightDirection(uniforms.uLightDirection.value);
+            this.group.add(this.clouds.mesh);
+        }
     }
 
     setLightDirection(dir: Vector3) {
         this.material.uniforms.uLightDirection.value.copy(dir).normalize();
+        this.clouds?.setLightDirection(dir);
     }
 
     dispose() {
@@ -315,6 +326,8 @@ export class PlanetQuadtree {
             face.destroy();
         }
         this.faces.length = 0;
+        this.clouds?.dispose();
+        this.clouds = undefined;
         this.group.clear();
         this.material.dispose();
     }
