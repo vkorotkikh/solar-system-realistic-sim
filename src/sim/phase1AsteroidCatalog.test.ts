@@ -11,6 +11,7 @@ import {
 } from '../data/asteroidCatalogLoader';
 import {
   failedAsteroidCatalogStatus,
+  lateAsteroidCatalogStatus,
   rejectedAsteroidCatalogStatus,
   renderAsteroidCatalogSourceStatus,
   verifiedAsteroidCatalogStatus,
@@ -328,6 +329,10 @@ describe('Phase-1 asteroid catalog source status', () => {
     ]));
     expect(element.dataset.catalogState).toBe('fallback');
     expect(element.textContent).toContain('metadata-missing, sha256-missing');
+
+    renderAsteroidCatalogSourceStatus(element, lateAsteroidCatalogStatus(10_000));
+    expect(element.dataset.catalogState).toBe('loading');
+    expect(element.textContent).toBe('Asteroids: procedural belt until the catalog arrives (still loading after 10 s)');
 
     renderAsteroidCatalogSourceStatus(element, failedAsteroidCatalogStatus());
     expect(element.dataset.catalogState).toBe('error');

@@ -41,6 +41,14 @@ export function rejectedAsteroidCatalogStatus(
   };
 }
 
+/** The catalog missed the startup deadline and is still downloading; the page swaps it in when it arrives. */
+export function lateAsteroidCatalogStatus(deadlineMs: number): AsteroidCatalogSourceStatus {
+  return {
+    state: 'loading',
+    text: `Asteroids: procedural belt until the catalog arrives (still loading after ${Math.round(deadlineMs / 1_000)} s)`,
+  };
+}
+
 export function failedAsteroidCatalogStatus(): AsteroidCatalogSourceStatus {
   return {
     state: 'error',

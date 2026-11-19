@@ -14,7 +14,7 @@ backend configuration.
 - **SMBH/AGN experiments** with transient timelines and exotic hypothesis-model displays
 - **Adjustable simulation clock** with pause, reverse, time-warp, and a Now control
 - **6,000 procedural background stars**, rather than catalog proper-motion or survey-sky rendering
-- **Asteroid belt** targeting 50,000 displayed objects from an accepted Phase 1 subset of up to 100,000 source rows, with deterministic procedural fallback
+- **Asteroid belt** targeting 50,000 displayed objects from an accepted Phase 1 subset of up to 100,000 source rows, with deterministic procedural fallback. If the catalog takes longer than 10 s, the page starts with the procedural belt and swaps in the catalog when it arrives; the status bar says which is drawn
 - **5,000-object Kuiper field** including binary companions
 
 Catalog-star proper motion, nearby-system navigation, Earth clouds and Oort-related UI/update hooks remain repository modules/assets, not enabled features of this entry. Backend APIs are described separately below.
