@@ -6,22 +6,45 @@ import { PlanetQuadtree } from './quadtreeLOD';
 const trees: PlanetQuadtree[] = [];
 afterEach(() => { for (const tree of trees.splice(0)) tree.dispose(); vi.restoreAllMocks(); });
 
-function target(visualId: 'moon' | 'mars') {
+function target(visualId: 'moon' | 'mars' | 'earth') {
   const tree = new PlanetQuadtree(visualId, 0.01, new PerspectiveCamera(), visualId);
   trees.push(tree);
   return { visualId, tree };
 }
-const loaderFor = () => ({ loadAsync: vi.fn(async () => new Texture()) });
+const loaderFor = () => ({ loadAsync: vi.fn(async (_url: string) => new Texture()) });
+const failing = (file: string) => ({
+  loadAsync: vi.fn(async (url: string) => { if (url.endsWith(file)) throw new Error('offline'); return new Texture(); }),
+});
 
 describe('createPlanetSurfaceMaps', () => {
   it('preloads every map at creation and hands each texture to the GPU upload', async () => {
     const textureLoader = loaderFor();
     const upload = vi.fn();
-    const maps = createPlanetSurfaceMaps({ targets: [target('moon'), target('mars')], textureLoader, maxAnisotropy: 8, upload });
-    // Requested at once: no camera distance or visibility gate.
-    expect(textureLoader.loadAsync).toHaveBeenCalledTimes(3);
+    const maps = createPlanetSurfaceMaps({ targets: [target('moon'), target('mars'), target('earth')], textureLoader, maxAnisotropy: 8, upload });
+    // Requested at once: no camera distance or visibility gate. Moon 2, Mars 1, Earth 4.
+    expect(textureLoader.loadAsync).toHaveBeenCalledTimes(7);
     await maps.ready;
-    expect(upload).toHaveBeenCalledTimes(3);
+    expect(upload).toHaveBeenCalledTimes(7);
+  });
+
+  it('gives Earth the NASA colour map on a smooth globe, with relief shading and the water mask', async () => {
+    const textureLoader = loaderFor();
+    const earth = target('earth');
+    await createPlanetSurfaceMaps({ targets: [earth], textureLoader, maxAnisotropy: 8 }).ready;
+    const urls = textureLoader.loadAsync.mock.calls.map(([url]) => url);
+    expect(urls).toEqual([
+      expect.stringMatching(/\/textures\/surfaces\/earth_albedo_bmng_200408_8192\.jpg$/),
+      expect.stringMatching(/\/earth_normal_etopo2022_8192\.png$/),
+      expect.stringMatching(/\/earth_water_ne10m_8192\.png$/),
+      expect.stringMatching(/\/earth_clouds_bmng_2048\.jpg$/),
+    ]);
+    const { uAlbedoReady, uTerrainMode, uNormalReady, uWaterReady, uNormalMap, uWaterMap } = earth.tree.material.uniforms;
+    expect(uAlbedoReady.value).toBe(1);
+    expect(uTerrainMode.value).toBe(2);
+    expect(uNormalReady.value).toBe(1);
+    expect(uWaterReady.value).toBe(1);
+    expect(uNormalMap.value).toBeInstanceOf(Texture);
+    expect(uWaterMap.value).toBeInstanceOf(Texture);
   });
 
   it('applies the Moon maps in true kilometres', async () => {
@@ -49,14 +72,32 @@ describe('createPlanetSurfaceMaps', () => {
     expect(mars.tree.material.uniforms.uTerrainMode.value).toBe(2);
   });
 
-  it('keeps the procedural surface when a map fails', async () => {
+  it.each([
+    ['earth', 'earth_albedo_bmng_200408_8192.jpg'],
+    ['moon', 'moon_albedo_lroc_8192.jpg'],
+  ] as const)('keeps the procedural %s when its colour map fails', async (visualId, file) => {
     vi.spyOn(console, 'warn').mockImplementation(() => undefined);
-    const moon = target('moon');
-    await createPlanetSurfaceMaps({
-      targets: [moon], maxAnisotropy: 8, textureLoader: { loadAsync: vi.fn(async () => { throw new Error('offline'); }) },
-    }).ready;
-    expect(moon.tree.material.uniforms.uAlbedoReady.value).toBe(0);
-    expect(moon.tree.material.uniforms.uTerrainMode.value).toBe(0);
+    const body = target(visualId);
+    await createPlanetSurfaceMaps({ targets: [body], maxAnisotropy: 8, textureLoader: failing(file) }).ready;
+    expect(body.tree.material.uniforms.uAlbedoReady.value).toBe(0);
+    expect(body.tree.material.uniforms.uTerrainMode.value).toBe(0);
+  });
+
+  it.each([
+    ['earth', 'earth_normal_etopo2022_8192.png', 'uNormalReady'],
+    ['earth', 'earth_water_ne10m_8192.png', 'uWaterReady'],
+    ['earth', 'earth_clouds_bmng_2048.jpg', undefined],
+    ['moon', 'moon_relief_ldem16_5760.png', undefined],
+  ] as const)('drops only the failed layer when %s %s fails', async (visualId, file, flag) => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const body = target(visualId);
+    await createPlanetSurfaceMaps({ targets: [body], maxAnisotropy: 8, textureLoader: failing(file) }).ready;
+    const uniforms = body.tree.material.uniforms;
+    expect(uniforms.uAlbedoReady.value).toBe(1);
+    expect(uniforms.uTerrainMode.value).toBe(2); // smooth globe: the Moon without its relief too
+    if (flag) expect(uniforms[flag].value).toBe(0);
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(String(warn.mock.calls[0][0])).toContain(file);
   });
 
   it('releases every loaded texture on dispose', async () => {

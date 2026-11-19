@@ -406,7 +406,8 @@ export function createPlanetShaderMaterial(planetId: string, radius: number): Sh
         displacementScale = radius * 0.06; // Olympus Mons / Valles Marineris is huge
     }
 
-    const hasMaps = planetId === 'moon' || planetId === 'mars';
+    const hasMaps = planetId === 'moon' || planetId === 'mars' || planetId === 'earth';
+    const isEarth = planetId === 'earth';
 
     return new ShaderMaterial({
         vertexShader: planetVertexShader,
@@ -422,6 +423,12 @@ export function createPlanetShaderMaterial(planetId: string, radius: number): Sh
                 uReliefMap: { value: null },
                 uTerrainMode: { value: 0 },
                 uReliefZero: { value: 0 }
+            } : {}),
+            ...(isEarth ? {
+                uNormalMap: { value: null },
+                uNormalReady: { value: 0 },
+                uWaterMap: { value: null },
+                uWaterReady: { value: 0 }
             } : {}),
             uPatchToCube: { value: new Matrix4() },
             uSkirtDepth: { value: 0 },

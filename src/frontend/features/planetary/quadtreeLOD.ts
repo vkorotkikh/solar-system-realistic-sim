@@ -189,6 +189,12 @@ class QuadtreeNode {
 export interface PlanetSurfaceMaps {
     albedo: Texture;
     relief?: { map: Texture; zero: number; rangeOverRadius: number };
+    /** Earth: east/north slopes for relief shading on a smooth globe (encoding in planetShaders.ts). */
+    normal?: Texture;
+    /** Earth: 1 where water, for the sun glint. */
+    water?: Texture;
+    /** Earth: cloud cover, drawn on a shell just above the ground. */
+    clouds?: Texture;
 }
 
 export class PlanetQuadtree {
@@ -278,7 +284,7 @@ export class PlanetQuadtree {
     }
 
     /** Replace procedural shading with measured imagery and, when given, measured heights. */
-    setSurfaceMaps({ albedo, relief }: PlanetSurfaceMaps) {
+    setSurfaceMaps({ albedo, relief, normal, water }: PlanetSurfaceMaps) {
         const uniforms = this.material.uniforms;
         uniforms.uAlbedoMap.value = albedo;
         uniforms.uAlbedoReady.value = 1;
@@ -287,6 +293,14 @@ export class PlanetQuadtree {
             uniforms.uReliefMap.value = relief.map;
             uniforms.uReliefZero.value = relief.zero;
             uniforms.uDisplacementScale.value = this.baseRadius * relief.rangeOverRadius;
+        }
+        if (normal) {
+            uniforms.uNormalMap.value = normal;
+            uniforms.uNormalReady.value = 1;
+        }
+        if (water) {
+            uniforms.uWaterMap.value = water;
+            uniforms.uWaterReady.value = 1;
         }
     }
 
