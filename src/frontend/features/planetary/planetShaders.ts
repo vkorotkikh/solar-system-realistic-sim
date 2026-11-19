@@ -268,7 +268,7 @@ uniform sampler2D uNormalMap;
 uniform float uNormalReady;
 uniform sampler2D uWaterMap;
 uniform float uWaterReady;
-const float GLINT_SHININESS = 60.0; // about a 10 deg glitter patch, as wind-roughened sea gives
+const float GLINT_SHININESS = 160.0; // a glitter patch about 5 deg across, tuned against GPU captures
 
 // East/north slopes, square-root companded about byte 128 (scripts/build_earth_surface_maps.py).
 vec2 decodeSlope(vec2 texel) {
