@@ -103,6 +103,10 @@ async function controlExternalRequests(page:Page){
 }
 test('actual app composes camera, drawer, search and experiment with a nondefault backend origin',async({page})=>{
   test.setTimeout(90_000);const errors:string[]=[];page.on('pageerror',error=>errors.push(error.message));const requests:string[]=[];page.on('request',request=>requests.push(request.url()));await controlExternalRequests(page);
+  // three.js reports a GLSL compile failure through console.error, not as a page error.
+  const consoleProblems:string[]=[];page.on('console',message=>{const text=message.text();if((message.type()==='error'&&/THREE\.WebGLProgram|Shader Error/.test(text))||(message.type()==='warning'&&text.includes('[surface-maps] earth')))consoleProblems.push(text);});
+  const earthMaps=['earth_albedo_bmng_200408_8192.jpg','earth_normal_etopo2022_8192.png','earth_water_ne10m_8192.png','earth_clouds_bmng_2048.jpg'];const loadedMaps:string[]=[];
+  page.on('requestfinished',async request=>{const file=earthMaps.find(name=>request.url().endsWith(`/textures/surfaces/${name}`));if(file&&(await request.response())?.ok())loadedMaps.push(file);});
   await page.goto('/?uiWidth=500&uiHeight=700&renderScale=0.5&maxPixelRatio=1');
   await expect(page.locator('#status-zoom')).not.toHaveText('Range · —',{timeout:60_000});
   const graphics = await page.locator('#space-canvas').evaluate((canvas:HTMLCanvasElement)=>{
@@ -121,6 +125,9 @@ test('actual app composes camera, drawer, search and experiment with a nondefaul
   await page.locator('.panel-disclosure--danger summary').click();await page.locator('#agn-hypothesis').selectOption('h29');await expect(page.locator('#trigger-agn-shockwave')).toHaveText('Trigger H29 slipstream');await page.locator('#trigger-agn-shockwave').click();
   await page.setViewportSize({width:390,height:844});await page.locator('#panel-toggle').click();await expect(page.locator('#panel-close')).toBeFocused();await expect(page.locator('#viewport-shell')).toHaveAttribute('inert','');await page.keyboard.press('Escape');await expect(page.locator('#panel-toggle')).toBeFocused();
   expect(requests.some(url=>url.startsWith('http://127.0.0.1:9142/'))).toBe(true);expect(requests.some(url=>url.includes(':8042/'))).toBe(false);expect(errors).toEqual([]);
+  // Earth's NASA, NOAA and Natural Earth maps load at startup and the Earth and cloud shaders compile.
+  await expect.poll(()=>[...new Set(loadedMaps)].sort(),{timeout:60_000}).toEqual([...earthMaps].sort());
+  expect(consoleProblems).toEqual([]);
 });
 test('no-WebGL constructor failure exposes an accessible reload path and working drawer',async({page})=>{
   await controlExternalRequests(page);await page.addInitScript(()=>{const get=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(this:HTMLCanvasElement,type:string,...args:unknown[]){if(type==='webgl'||type==='webgl2'||type==='experimental-webgl')return null;return Reflect.apply(get,this,[type,...args]);} as typeof get;});
