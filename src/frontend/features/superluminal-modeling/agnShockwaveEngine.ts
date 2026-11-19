@@ -33,7 +33,6 @@ type GwDisplayer = Pick<ReturnType<typeof createGWVisualization>, 'toggle' | 'se
 interface SolarResponder {
     triggerFlareBurst?: (intensity: number, count: number) => void;
     triggerMassiveAgnFlare?: (intensity: number) => void;
-    triggerWarpWaveImpact?: (energyErg: number, smbhMassG: number) => void;
 }
 
 export interface AgnEventOptions {
@@ -238,12 +237,6 @@ export function createAgnShockwaveEngine(
 
     function emitChannel(channel: DisplayChannel, elapsedFraction: number) {
         channel.fired = true;
-
-        // Let the sunController know if the warp wave hit
-        if (isMetricSlipstreamChannel(channel) && solarResponder?.triggerWarpWaveImpact) {
-            solarResponder.triggerWarpWaveImpact(currentEnergyErg, currentSource.massG);
-        }
-
         triggerSolarResponse(channel);
 
         if (!gwDisplayer) return;
