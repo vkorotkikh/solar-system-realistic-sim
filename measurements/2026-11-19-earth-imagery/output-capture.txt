@@ -1,5 +1,10 @@
-maps ready 7430 ms after navigation
+renderer: ANGLE (Microsoft Corporation, D3D12 (NVIDIA GeForce RTX 5090), OpenGL ES 3.1)
+maps ready 6744 ms after navigation
 01-day-side-africa: 2026-03-20T11:00:00Z lat 10 lon 15 at 3 R, relief on, Earth radius drawn 6371 km, realistic true
+03c-himalaya-morning-sun: 2026-03-20T02:30:00Z lat 28.5 lon 86.5 at 1.12 R, relief on, Earth radius drawn 6371 km, realistic true
+03d-himalaya-morning-sun-no-relief: 2026-03-20T02:30:00Z lat 28.5 lon 86.5 at 1.12 R, relief off, Earth radius drawn 6371 km, realistic true
+07-clouds-realistic-far-20R: 2026-03-20T15:00:00Z lat 0 lon -45 at 20 R, relief on, Earth radius drawn 6371 km, realistic true
+07-clouds-realistic-far-60R: 2026-03-20T15:00:00Z lat 0 lon -45 at 60 R, relief on, Earth radius drawn 6371 km, realistic true
 02-glint-pacific: 2026-03-20T22:00:00Z lat 0 lon 0 at 2.5 R (from the Sun), relief on, Earth radius drawn 6371 km, realistic true
 03-himalaya-low-sun: 2026-03-20T00:40:00Z lat 28.5 lon 86.5 at 1.12 R, relief on, Earth radius drawn 6371 km, realistic true
 03b-himalaya-low-sun-no-relief: 2026-03-20T00:40:00Z lat 28.5 lon 86.5 at 1.12 R, relief off, Earth radius drawn 6371 km, realistic true

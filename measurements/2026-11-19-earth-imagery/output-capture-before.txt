@@ -1,0 +1,5 @@
+renderer: ANGLE (Microsoft Corporation, D3D12 (NVIDIA GeForce RTX 5090), OpenGL ES 3.1)
+maps ready 5876 ms after navigation
+01-day-side-africa: 2026-03-20T11:00:00Z lat 10 lon 15 at 3 R, relief on, Earth radius drawn 6371 km, realistic true
+02-glint-pacific: 2026-03-20T22:00:00Z lat 0 lon 0 at 2.5 R (from the Sun), relief on, Earth radius drawn 6371 km, realistic true
+problems: []

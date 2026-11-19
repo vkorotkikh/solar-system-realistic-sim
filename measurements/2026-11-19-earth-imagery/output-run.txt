@@ -1,0 +1,34 @@
+renderer: ANGLE (Microsoft Corporation, D3D12 (NVIDIA GeForce RTX 5090), OpenGL ES 3.1)
+maps ready 6744 ms after navigation
+01-day-side-africa: 2026-03-20T11:00:00Z lat 10 lon 15 at 3 R, relief on, Earth radius drawn 6371 km, realistic true
+03c-himalaya-morning-sun: 2026-03-20T02:30:00Z lat 28.5 lon 86.5 at 1.12 R, relief on, Earth radius drawn 6371 km, realistic true
+03d-himalaya-morning-sun-no-relief: 2026-03-20T02:30:00Z lat 28.5 lon 86.5 at 1.12 R, relief off, Earth radius drawn 6371 km, realistic true
+07-clouds-realistic-far-20R: 2026-03-20T15:00:00Z lat 0 lon -45 at 20 R, relief on, Earth radius drawn 6371 km, realistic true
+07-clouds-realistic-far-60R: 2026-03-20T15:00:00Z lat 0 lon -45 at 60 R, relief on, Earth radius drawn 6371 km, realistic true
+02-glint-pacific: 2026-03-20T22:00:00Z lat 0 lon 0 at 2.5 R (from the Sun), relief on, Earth radius drawn 6371 km, realistic true
+03-himalaya-low-sun: 2026-03-20T00:40:00Z lat 28.5 lon 86.5 at 1.12 R, relief on, Earth radius drawn 6371 km, realistic true
+03b-himalaya-low-sun-no-relief: 2026-03-20T00:40:00Z lat 28.5 lon 86.5 at 1.12 R, relief off, Earth radius drawn 6371 km, realistic true
+04-greenland-ice-low-sun: 2026-03-20T09:00:00Z lat 72 lon -40 at 1.5 R, relief on, Earth radius drawn 6371 km, realistic true
+05-clouds-realistic-3R: 2026-03-20T15:00:00Z lat 0 lon -45 at 3 R, relief on, Earth radius drawn 6371 km, realistic true
+05-clouds-realistic-1.5R: 2026-03-20T15:00:00Z lat 0 lon -45 at 1.5 R, relief on, Earth radius drawn 6371 km, realistic true
+05-clouds-realistic-1.12R: 2026-03-20T15:00:00Z lat 0 lon -45 at 1.12 R, relief on, Earth radius drawn 6371 km, realistic true
+06-clouds-enlarged-3R: 2026-03-20T15:00:00Z lat 0 lon -45 at 3 R, relief on, Earth radius drawn 5015087 km, realistic false
+06-clouds-enlarged-1.5R: 2026-03-20T15:00:00Z lat 0 lon -45 at 1.5 R, relief on, Earth radius drawn 5015087 km, realistic false
+06-clouds-enlarged-1.12R: 2026-03-20T15:00:00Z lat 0 lon -45 at 1.12 R, relief on, Earth radius drawn 5015087 km, realistic false
+problems: []
+renderer: ANGLE (Microsoft Corporation, D3D12 (NVIDIA GeForce RTX 5090), OpenGL ES 3.1)
+maps ready 5876 ms after navigation
+01-day-side-africa: 2026-03-20T11:00:00Z lat 10 lon 15 at 3 R, relief on, Earth radius drawn 6371 km, realistic true
+02-glint-pacific: 2026-03-20T22:00:00Z lat 0 lon 0 at 2.5 R (from the Sun), relief on, Earth radius drawn 6371 km, realistic true
+problems: []
+load average at start: 1.74
+before: first picture 6093 ms | 30 frames 6574 ms | worst frame next 8 s 17 ms | moon fits 423 (loaded at 808 ms) | maps ready 6094 ms | worker init 73538685 B JSON, post blocked 135 ms, posted at 2798 ms, ready at 3227 ms
+  worker init to ready, per run: [411,429,414,429,414] ms
+  runs [{"moonFits":423,"fitsLoaded":808,"workerInitPosted":2827,"workerInitJsonBytes":73538686,"workerPostBlockedMs":135,"workerReady":3238,"renderReturned":6094,"firstPicture":6113,"mapsReady":6113,"thirtyFrames":6589,"worstFrameNext8s":17},{"moonFits":423,"fitsLoaded":820,"workerInitPosted":2847,"workerInitJsonBytes":73538686,"workerPostBlockedMs":136,"workerReady":3276,"renderReturned":6107,"firstPicture":6126,"mapsReady":6126,"thirtyFrames":6598,"worstFrameNext8s":17},{"moonFits":423,"fitsLoaded":802,"workerInitPosted":2797,"workerInitJsonBytes":73538685,"workerPostBlockedMs":133,"workerReady":3211,"renderReturned":5995,"firstPicture":6013,"mapsReady":6013,"thirtyFrames":6489,"worstFrameNext8s":17},{"moonFits":423,"fitsLoaded":813,"workerInitPosted":2798,"workerInitJsonBytes":73538685,"workerPostBlockedMs":144,"workerReady":3227,"renderReturned":6073,"firstPicture":6093,"mapsReady":6094,"thirtyFrames":6574,"worstFrameNext8s":17},{"moonFits":423,"fitsLoaded":797,"workerInitPosted":2734,"workerInitJsonBytes":73538685,"workerPostBlockedMs":135,"workerReady":3148,"renderReturned":5997,"firstPicture":6017,"mapsReady":6017,"thirtyFrames":6497,"worstFrameNext8s":17}]
+after: first picture 6807 ms | 30 frames 7281 ms | worst frame next 8 s 17 ms | moon fits 423 (loaded at 805 ms) | maps ready 6808 ms | worker init 73538685 B JSON, post blocked 137 ms, posted at 3552 ms, ready at 3976 ms
+  worker init to ready, per run: [424,415,414,417,424] ms
+  runs [{"moonFits":423,"fitsLoaded":823,"workerInitPosted":3545,"workerInitJsonBytes":73538685,"workerPostBlockedMs":138,"workerReady":3969,"renderReturned":6779,"firstPicture":6800,"mapsReady":6800,"thirtyFrames":7275,"worstFrameNext8s":17},{"moonFits":423,"fitsLoaded":796,"workerInitPosted":3688,"workerInitJsonBytes":73538685,"workerPostBlockedMs":134,"workerReady":4103,"renderReturned":6939,"firstPicture":6958,"mapsReady":6958,"thirtyFrames":7438,"worstFrameNext8s":17},{"moonFits":423,"fitsLoaded":805,"workerInitPosted":3569,"workerInitJsonBytes":73538685,"workerPostBlockedMs":133,"workerReady":3983,"renderReturned":6785,"firstPicture":6807,"mapsReady":6808,"thirtyFrames":7281,"worstFrameNext8s":17},{"moonFits":423,"fitsLoaded":793,"workerInitPosted":3536,"workerInitJsonBytes":73538686,"workerPostBlockedMs":137,"workerReady":3953,"renderReturned":6783,"firstPicture":6803,"mapsReady":6803,"thirtyFrames":7269,"worstFrameNext8s":17},{"moonFits":423,"fitsLoaded":827,"workerInitPosted":3552,"workerInitJsonBytes":73538686,"workerPostBlockedMs":146,"workerReady":3976,"renderReturned":6836,"firstPicture":6856,"mapsReady":6856,"thirtyFrames":7332,"worstFrameNext8s":17}]
+load average at end: 1
+wrote /home/nomad/ai/projects/worktrees/lab-measurements-earth-imagery/measurements/2026-11-19-earth-imagery/report/index.html with 17 images
+report: /home/nomad/ai/projects/worktrees/lab-measurements-earth-imagery/measurements/2026-11-19-earth-imagery/report/index.html
+exit=0

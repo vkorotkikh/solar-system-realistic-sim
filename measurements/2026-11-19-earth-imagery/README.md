@@ -14,8 +14,23 @@ Baseline: `dfecb4a`, the `main` commit that branch starts from.
 
 ## Run
 
-Two Vite dev servers, one per checkout (`npx vite --host 127.0.0.1 --port 5191 --strictPort`
-in the branch, port 5192 in the baseline), then from this branch's checkout:
+One command rebuilds everything, the report page included. You need a checkout of the branch
+to show and one of the commit to compare against, `npm ci` in both and in this lab checkout,
+and Node 22 on PATH:
+
+```
+measurements/2026-11-19-earth-imagery/run.sh <branch checkout> <baseline checkout> [startup runs]
+```
+
+It starts both apps (`node_modules/.bin/vite` on ports 5191 and 5192; override with
+`AFTER_PORT` and `BEFORE_PORT`), takes every shot into `captures/` and the two baseline shots
+into `captures-before/`, times startup into `output-startup.txt`, writes `output-meta.txt`,
+then runs `report.mjs`, which writes the self-contained `report/` folder: open
+`report/index.html` in any browser, or copy the folder anywhere. The servers stop when it
+exits. To rebuild only the page from existing outputs:
+`node measurements/2026-11-19-earth-imagery/report.mjs <branch checkout>`.
+
+The pieces also run alone, against dev servers you started yourself:
 
 ```
 node measurements/2026-11-19-earth-imagery/capture.mjs http://127.0.0.1:5191/ measurements/2026-11-19-earth-imagery/captures
@@ -50,18 +65,23 @@ Screenshots (`captures/`, raw console in `output-capture.txt`; no shader error o
   holes at any of the eight distances, so the cloud shell needed no polygon offset. Up close
   the 2048 px cloud map (about 20 km per pixel) is soft, as expected.
 
-Startup (`output-startup.txt`): medians of 5 cold-browser runs per arm on Vite dev servers,
-real GPU, load average 0.8 at the start and 2.2 at the end (the machine had just rebooted).
+Startup: medians of 5 cold-browser runs per arm on Vite dev servers, real GPU. Two runs:
 
-| | before (`dfecb4a`) | after | change |
-|---|---|---|---|
-| First picture | 8,254 ms | 10,553 ms | +2.3 s |
-| All surface maps ready | 8,254 ms | 11,661 ms | +3.4 s |
-| 30 frames | 8,732 ms | 12,115 ms | +3.4 s |
-| Worst frame in the next 8 s | 567 ms | 617 ms | +50 ms |
+| | run 1 before | run 1 after | run 2 before | run 2 after |
+|---|---|---|---|---|
+| First picture | 8,254 ms | 10,553 ms (+2.3 s) | 6,093 ms | 6,807 ms (+0.7 s) |
+| All surface maps ready | 8,254 ms | 11,661 ms (+3.4 s) | 6,094 ms | 6,808 ms (+0.7 s) |
+| 30 frames | 8,732 ms | 12,115 ms (+3.4 s) | 6,574 ms | 7,281 ms (+0.7 s) |
+| Worst frame in the next 8 s | 567 ms | 617 ms | 17 ms | 17 ms |
 
-The four Earth files add 20,967,718 bytes (colour 4.8 MB, relief 14.9 MB, water mask 0.4 MB,
-clouds 0.8 MB). Both arms are bimodal run to run (before: 8.0 to 11.3 s maps ready; after:
-9.7 to 12.3 s), so treat the medians as a 2 to 3.5 s added wait on this machine, not a
-precise figure. Stalls after startup did not grow beyond noise. The relief PNG is the
-largest file; a smaller one (for example 4096 px) would cut the wait if it matters.
+Run 1 (output in commit 85b46ec) ran minutes after a reboot, load 0.8 to 2.2, with cold file
+caches; its runs were bimodal on both sides (before 8.0 to 11.3 s maps ready, after 9.7 to
+12.3 s). Run 2 (`output-startup.txt` now, made by `run.sh` at branch commit ae40e1a) ran with
+warm caches at load 1.7 to 1.9. Read the added wait as 0.7 s warm and up to 2 to 3.5 s cold,
+not as one precise figure. Stalls after startup did not grow in either run. The four Earth
+files add 20,967,718 bytes (colour 4.8 MB, relief 14.9 MB, water mask 0.4 MB, clouds 0.8 MB);
+the relief PNG is the largest, and a 4096 px one would cut the cold wait if it matters.
+
+The run 2 captures include the three review fixes: in `02-glint-pacific` the orbit line now
+passes over the clouds instead of cutting a cloudless slit through them (compare with the
+same file in commit 85b46ec).

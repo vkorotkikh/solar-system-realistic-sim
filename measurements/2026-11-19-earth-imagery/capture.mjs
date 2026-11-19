@@ -5,7 +5,7 @@
 // body-fixed latitude/longitude. Times are 2026-03-20 (equinox), so the Sun is overhead at
 // the equator at the longitude where it is local noon.
 import { mkdir, writeFile } from 'node:fs/promises';
-import { launch } from '../lib/headless-gpu.mjs';
+import { assertRenderer, launch } from '../lib/headless-gpu.mjs';
 
 const [url, outDir] = process.argv.slice(2);
 if (!url || !outDir) throw new Error('usage: node capture.mjs <app url> <output dir>');
@@ -17,6 +17,7 @@ const MAPS = /ownDisposable\(createPlanetSurfaceMaps\(\{/;
 
 const browser = await launch();
 const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+console.log(`renderer: ${await assertRenderer(page)}`);
 const problems = [];
 page.on('console', (message) => { if (/WebGLProgram|Shader Error|\[surface-maps\]/.test(message.text())) problems.push(message.text()); });
 page.on('pageerror', (error) => problems.push(error.message));
@@ -57,7 +58,7 @@ let shot = async function shot(name, { time, lat = 0, lon = 0, distance = 3, fro
     c.simState.julianDate = t;
     c.focusBody('earth', true);
     const tree = c.bodyMeshes.get('earth').userData.quadtree;
-    tree.material.uniforms.uNormalReady.value = relief ? 1 : 0;
+    if (tree.material.uniforms.uNormalReady) tree.material.uniforms.uNormalReady.value = relief ? 1 : 0; // absent before this branch
   }, { t: jd(time), lat, lon, distance, fromSun, relief });
   await frames(4); // positions and spin follow the new time
   const placed = await page.evaluate(({ lat, lon, distance, fromSun }) => {
