@@ -22,7 +22,10 @@ describe('Earth cloud shell', () => {
     expect(shell.material.uniforms.uCloudMap.value).toBe(clouds);
     expect(shell.material.transparent).toBe(true);
     expect(shell.material.depthWrite).toBe(false);
-    expect(shell.renderOrder).toBeGreaterThan(0);
+    // Before the default see-through objects: orbit lines write depth, so drawn first they cut
+    // slits through the clouds. After the background layers: belts at -4/-5, the sky further back.
+    expect(shell.renderOrder).toBeLessThan(0);
+    expect(shell.renderOrder).toBeGreaterThan(-4);
     expect(shell.scale.x).toBeCloseTo(0.01 * (1 + CLOUD_LIFT_KM / 6371.0088), 15);
   });
 

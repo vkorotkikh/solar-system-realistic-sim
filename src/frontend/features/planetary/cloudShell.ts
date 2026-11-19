@@ -44,10 +44,13 @@ export class CloudShell {
             fragmentShader,
             uniforms: { uCloudMap: { value: map }, uLightDirection: { value: new Vector3(1, 0, 0) } },
             transparent: true,
-            // Writes no depth and draws after the ground, so it never hides what lies behind it.
+            // Writes no depth, so it never hides what lies behind it.
             depthWrite: false,
         }));
-        this.mesh.renderOrder = 1;
+        // Opaque ground always draws first. Among see-through objects the clouds go before the
+        // default ones: orbit lines write depth, and drawn first they would cut slits through the
+        // clouds. The background layers (belts at -4 and -5, the sky further back) stay behind.
+        this.mesh.renderOrder = -1;
         this.setRadius(radius);
     }
 
