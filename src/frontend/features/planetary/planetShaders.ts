@@ -249,12 +249,35 @@ ${fbmGLSL}
 uniform sampler2D uAlbedoMap;
 uniform float uAlbedoReady;
 ${surfaceUvGLSL}
-vec3 mappedAlbedo(vec3 p) {
+vec2 mapUv(vec3 p) {
     vec2 uv = surfaceUv(p);
     // The longitude coordinate jumps at the map edge; use the branch that is smooth at this pixel.
     float wrapped = fract(uv.x + 0.5) - 0.5;
     if (fwidth(wrapped) < fwidth(uv.x)) uv.x = wrapped;
-    return texture2D(uAlbedoMap, uv).rgb;
+    return uv;
+}
+#endif
+
+#ifdef PLANET_EARTH_MAPS
+uniform sampler2D uNormalMap;
+uniform float uNormalReady;
+uniform sampler2D uWaterMap;
+uniform float uWaterReady;
+const float GLINT_SHININESS = 60.0; // about a 10 deg glitter patch, as wind-roughened sea gives
+
+// East/north slopes, square-root companded about byte 128 (scripts/build_earth_surface_maps.py).
+vec2 decodeSlope(vec2 texel) {
+    vec2 s = (texel * 255.0 - 128.0) / 127.0;
+    return sign(s) * s * s;
+}
+
+// The map's east is undefined at the poles, so the surface stays radial there.
+vec3 reliefNormal(vec3 up, vec2 slope) {
+    float r2 = up.x * up.x + up.z * up.z;
+    if (r2 < 1e-8) return up;
+    vec3 east = vec3(up.z, 0.0, -up.x) / sqrt(r2);
+    vec3 north = cross(up, east);
+    return normalize(up - slope.x * east - slope.y * north);
 }
 #endif
 
@@ -327,10 +350,12 @@ vec3 getMoonColor(float h, vec3 p, vec3 normal) {
 
 void main() {
     vec3 baseColor = uColorBase;
+    vec3 up = normalize(vSpherePosition);
 
 #ifdef PLANET_HAS_MAPS
+    vec2 mapCoord = mapUv(vSpherePosition);
     if (uAlbedoReady > 0.5) {
-        baseColor = mappedAlbedo(vSpherePosition);
+        baseColor = texture2D(uAlbedoMap, mapCoord).rgb;
     } else
 #endif
     if (uPlanetType == 0) {
@@ -355,6 +380,10 @@ void main() {
     // Noise finer than a pixel would only speckle measured imagery; keep it for close approach.
     if (uAlbedoReady > 0.5) grit *= smoothstep(0.35, 0.02, length(uCameraPositionLocal - vPosition) / length(vPosition));
 #endif
+#ifdef PLANET_EARTH_MAPS
+    // Earth's maps are measured; invented grain would read as false terrain on sea and ice.
+    if (uAlbedoReady > 0.5) grit = 0.0;
+#endif
 
     // Apply grit to base color
 #ifdef PLANET_HAS_MAPS
@@ -371,19 +400,36 @@ void main() {
     // We shift the normal slightly toward the tangent based on the noise derivative 
     // This gives a nice rocky self-shadowing effect without true tangents
     vec3 perturbedNormal = normalize(vNormal + (vSpherePosition * grit * 5.0));
-    
+#ifdef PLANET_EARTH_MAPS
+    // Sampled outside any per-pixel branch so mip selection keeps its derivatives.
+    vec2 slope = decodeSlope(texture2D(uNormalMap, mapCoord).rg);
+    float water = texture2D(uWaterMap, mapCoord).r * uWaterReady;
+    if (uNormalReady > 0.5) perturbedNormal = reliefNormal(up, slope);
+#endif
+
     float diffuse = max(0.0, dot(perturbedNormal, lightDir));
     float ambient = 0.05;
-    
+
     vec3 finalColor = baseColor * (diffuse + ambient);
-    
+    float rimLight = diffuse;
+#ifdef PLANET_EARTH_MAPS
+    // Sun glint on water: normalized Blinn-Phong with a Schlick Fresnel term, sun up only.
+    vec3 toCamera = normalize(uCameraPositionLocal - vPosition);
+    vec3 halfway = normalize(lightDir + toCamera);
+    float fresnel = 0.02 + 0.98 * pow(1.0 - max(dot(halfway, toCamera), 0.0), 5.0);
+    float glint = fresnel * (GLINT_SHININESS + 8.0) / 8.0 * pow(max(dot(up, halfway), 0.0), GLINT_SHININESS);
+    finalColor += vec3(1.0, 0.97, 0.92) * water * glint * max(dot(up, lightDir), 0.0);
+    // The rim glow follows the smooth globe, so relief does not speckle the limb.
+    rimLight = max(0.0, dot(up, lightDir));
+#endif
+
     // Atmospheric scattering rim for Earth/Mars
     if (uPlanetType == 0 || uPlanetType == 2) {
         vec3 viewDir = normalize(uCameraPositionLocal - vPosition);
         float rim = 1.0 - max(0.0, dot(viewDir, normalize(vSpherePosition)));
         rim = smoothstep(0.6, 1.0, rim);
         vec3 atmosColor = uPlanetType == 0 ? vec3(0.3, 0.6, 1.0) : vec3(0.8, 0.4, 0.2);
-        finalColor += atmosColor * rim * 0.4 * diffuse;
+        finalColor += atmosColor * rim * 0.4 * rimLight;
     }
 
     gl_FragColor = vec4(finalColor, 1.0);
@@ -415,7 +461,7 @@ export function createPlanetShaderMaterial(planetId: string, radius: number): Sh
         // A material's body identity never changes. Specialize before driver
         // compilation so every terrain/normal evaluation excludes the other
         // planets' noise branches; geometry, octaves and shading stay intact.
-        defines: { PLANET_TYPE: planetType, ...(hasMaps ? { PLANET_HAS_MAPS: 1 } : {}) },
+        defines: { PLANET_TYPE: planetType, ...(hasMaps ? { PLANET_HAS_MAPS: 1 } : {}), ...(isEarth ? { PLANET_EARTH_MAPS: 1 } : {}) },
         uniforms: {
             ...(hasMaps ? {
                 uAlbedoMap: { value: null },
