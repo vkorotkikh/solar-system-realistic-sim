@@ -126,7 +126,10 @@ test('actual app composes camera, drawer, search and experiment with a nondefaul
   await page.setViewportSize({width:390,height:844});await page.locator('#panel-toggle').click();await expect(page.locator('#panel-close')).toBeFocused();await expect(page.locator('#viewport-shell')).toHaveAttribute('inert','');await page.keyboard.press('Escape');await expect(page.locator('#panel-toggle')).toBeFocused();
   expect(requests.some(url=>url.startsWith('http://127.0.0.1:9142/'))).toBe(true);expect(requests.some(url=>url.includes(':8042/'))).toBe(false);expect(errors).toEqual([]);
   // Earth's NASA, NOAA and Natural Earth maps load at startup and the Earth and cloud shaders compile.
+  // The cloud shell exists only once every map is applied, and compiles on the next frame.
   await expect.poll(()=>[...new Set(loadedMaps)].sort(),{timeout:60_000}).toEqual([...earthMaps].sort());
+  await expect(page.locator('#space-canvas')).toHaveAttribute('data-surface-maps','ready',{timeout:60_000});
+  await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
   expect(consoleProblems).toEqual([]);
 });
 test('no-WebGL constructor failure exposes an accessible reload path and working drawer',async({page})=>{

@@ -613,7 +613,7 @@ for (const body of moonBodies) {
 }
 
 // Preloaded at startup whatever the camera distance, and uploaded to the GPU on arrival.
-ownDisposable(createPlanetSurfaceMaps({
+const surfaceMaps = ownDisposable(createPlanetSurfaceMaps({
   targets: ([['moon', catalog.bodies.find(isEarthMoonBody)?.id], ['mars', 'mars'], ['earth', 'earth']] as const).flatMap(([visualId, id]) => {
     const tree: PlanetQuadtree | undefined = id ? bodyMeshes.get(id)?.userData.quadtree : undefined;
     return tree ? [{ visualId, tree }] : [];
@@ -622,6 +622,9 @@ ownDisposable(createPlanetSurfaceMaps({
   maxAnisotropy,
   upload: (texture) => renderer.initTexture(texture),
 }));
+// Marks the canvas once every map is applied or has fallen back, so browser tests can wait for
+// the cloud shell, which exists only then and compiles on the next frame.
+void surfaceMaps.ready.then(() => { dom.canvas.dataset.surfaceMaps = 'ready'; });
 
 // ── Asteroid & Kuiper Belts ──────────────────────────────────────────────────
 
