@@ -14,8 +14,11 @@ ${surfaceUvGLSL}
 vec2 mapUv(vec3 p) {
     vec2 uv = surfaceUv(p);
     // The longitude coordinate jumps at the map edge; use the branch that is smooth at this pixel.
+    // Away from either jump the two widths differ only by rounding, so a plain < would flip per
+    // pixel; a pixel quad that mixed the branches would see a jump of 1 and sample the coarsest
+    // mip. The factor of 2 keeps the choice consistent and still picks the seam-free branch.
     float wrapped = fract(uv.x + 0.5) - 0.5;
-    if (fwidth(wrapped) < fwidth(uv.x)) uv.x = wrapped;
+    if (2.0 * fwidth(wrapped) < fwidth(uv.x)) uv.x = wrapped;
     return uv;
 }
 `;

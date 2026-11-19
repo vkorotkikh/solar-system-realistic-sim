@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { describe, expect, it } from 'vitest';
 import { Texture } from 'three';
 import { CLOUD_OPACITY, CloudShell } from '../src/frontend/features/planetary/cloudShell';
-import { createPlanetShaderMaterial } from '../src/frontend/features/planetary/planetShaders';
+import { createPlanetShaderMaterial, mapUvGLSL } from '../src/frontend/features/planetary/planetShaders';
 
 // Run explicitly with PLANET_SHADER_GPU_TEST=1, like planetShaderGeometry.test.mjs: the
 // production Earth fragment shader runs on EGL, one pixel per case, on a white colour map.
@@ -79,6 +79,19 @@ describe.skipIf(process.env.PLANET_SHADER_GPU_TEST !== '1')('Earth fragment shad
     expect(cover).toBeCloseTo(CLOUD_OPACITY, 3);
     const [[, , , clear]] = run(shell, [equator], { uLightDirection: light }, { uCloudMap: solid(0, 0, 0) });
     expect(clear).toBe(0);
+  }, 120_000);
+
+  it('keeps the finest map level on every pixel of a magnified view, at the 180 deg seam and away from it', () => {
+    // A 2x2 pixel quad whose pixels choose different longitude branches sees a coordinate jump
+    // of 1 and samples the coarsest mip; drivers with per-pixel derivatives (llvmpipe) expose it.
+    const views = [115, -40, 180, 0].map((lon) => ({ lon, lat: 20, spanDeg: 2 }));
+    const output = JSON.parse(execFileSync('uv', ['run', '--python', '3.12', '--with', 'moderngl', 'python', 'scripts/planet-shader-seam.py'], {
+      input: JSON.stringify({ mapUv: mapUvGLSL, views }),
+      encoding: 'utf8',
+      timeout: 90_000,
+      env: { ...process.env, LIBGL_ALWAYS_SOFTWARE: '1' },
+    }));
+    expect(output.coarse).toEqual([0, 0, 0, 0]);
   }, 120_000);
 
   it('stays flat and finite at the pole, where the map has no east', () => {
