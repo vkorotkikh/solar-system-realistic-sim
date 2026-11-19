@@ -54,10 +54,14 @@ test('moons, belts and satellites switches show and hide their layers', async ({
   await expect(page.locator('#status-focus')).toHaveText('Focused · Europa');
 
   // CelesTrak is blocked here, so this also exercises the built-in fallback orbits.
+  await expect(page.locator('#status-satellites')).toBeHidden();
   await flip(page, 'toggle-earth-satellites');
   await expect(page.locator('#toggle-earth-satellites')).toBeChecked();
+  await expect(page.locator('#status-satellites')).toHaveText(/^Earth satellites · sample orbits, not current data \(/);
   await page.waitForTimeout(1_000);
   expect(errors).toEqual([]);
+  await flip(page, 'toggle-earth-satellites');
+  await expect(page.locator('#status-satellites')).toBeHidden();
 });
 
 test('moons outside the fitted years say so in the status bar', async ({ page }) => {

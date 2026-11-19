@@ -334,7 +334,7 @@ Search and focus the bodies rendered by the page, including all 423 moons while 
 - **Earth's Moon**: quadtree terrain from NASA's CGI Moon Kit (LROC colour and LOLA elevation), preloaded at startup and uploaded to the GPU on arrival
 - **Mars**: a NASA/USGS colour map, preloaded the same way; its terrain stays procedural, because no elevation map ships
 - **Named moons**: eight USGS-hosted maps, with generated maps for the rest
-- **Earth satellites**: current CelesTrak orbits when switched on, with built-in fallback records
+- **Earth satellites**: current CelesTrak orbits when switched on. If the download fails or is incomplete, three built-in sample orbits (or the part that arrived) are drawn and the status bar says so
 - **Other planets and Pluto**: colored sphere materials
 - Axial tilt and spin use the rendered bodies' orientation metadata
 
