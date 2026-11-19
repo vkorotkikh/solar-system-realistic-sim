@@ -1444,6 +1444,7 @@ dom.canvas.addEventListener('dblclick', (e) => {
 const routeGroup = new Group();
 solarSystemGroup.add(routeGroup);
 const routeTarget = { routeGroup, simState, statusRouteElement: dom.statusRoute };
+const curvePoints = (leg: unknown, segments: number) => buildTransferCurvePoints(leg as Parameters<typeof buildTransferCurvePoints>[0], segments);
 function clearPlottedRoute() {
   clearRouteVisualization(routeTarget);
   dom.statusRoute.hidden = true;
@@ -1461,8 +1462,7 @@ const planner = createPlannerController({
       if (startup.signal.aborted) return; // A reply that lands after shutdown has nothing to draw into.
       plotRoute({
         ...routeTarget, route, bodyById,
-        // The trajectory client hydrates both endpoints of every leg.
-        buildTransferCurvePoints: (leg, segments) => buildTransferCurvePoints(leg as Parameters<typeof buildTransferCurvePoints>[0], segments),
+        buildTransferCurvePoints: curvePoints, // the trajectory client hydrates both endpoints of every leg
       });
       dom.statusRoute.hidden = false;
     },
@@ -1494,7 +1494,7 @@ createPromptBox({
     section: dom.assistant, status: dom.assistantStatus, log: dom.assistantLog, card: dom.assistantCard, form: dom.assistantForm,
     input: dom.assistantPrompt, send: dom.assistantSend, clear: dom.assistantClear,
   },
-  capabilities: agentClient.capabilities,
+  enabled: agentClient.enabled,
   conversation: createAgentConversation(agentClient),
   app: {
     focus: (bodyId, follow) => {
@@ -1526,18 +1526,13 @@ createPromptBox({
     };
   },
   drawRoute: (shown) => {
-    const { route, label, undrawn } = routeFor(
-      shown,
-      (bodyId, julianDate) => model.sampleBodyStateAt(bodyId, julianDate)?.position ?? null,
-      (bodyId) => bodyById.get(bodyId)?.name ?? bodyId,
-    );
-    if (route.legs.length === 0) {
-      clearPlottedRoute();
-      return undrawn;
+    const { route, label, undrawn } = routeFor(shown, (bodyId, julianDate) => model.sampleBodyStateAt(bodyId, julianDate)?.position ?? null);
+    clearPlottedRoute();
+    if (route.legs.length) {
+      plotRoute({ ...routeTarget, route, bodyById, buildTransferCurvePoints: curvePoints });
+      if (label) dom.statusRoute.textContent = label;
+      dom.statusRoute.hidden = false;
     }
-    plotRoute({ ...routeTarget, route, bodyById, buildTransferCurvePoints: (leg, segments) => buildTransferCurvePoints(leg as Parameters<typeof buildTransferCurvePoints>[0], segments) });
-    dom.statusRoute.textContent = label;
-    dom.statusRoute.hidden = false;
     return undrawn;
   },
   clearRoute: clearPlottedRoute,

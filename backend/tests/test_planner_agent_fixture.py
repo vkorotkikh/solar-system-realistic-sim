@@ -52,7 +52,6 @@ def build() -> dict:
                   ("set_date", {"date": "2027-09-08"}),
                   ("set_layer", {"layer": "asteroid_belt", "on": False})),
             answer("Europa is in view on 2027-09-08, with the asteroid belt hidden."))),
-        "stopped": run(Script(ModelReply("refusal"))),
     }
     return json.loads(json.dumps(replies))
 

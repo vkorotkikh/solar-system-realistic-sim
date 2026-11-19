@@ -14,15 +14,13 @@ const MAX_MESSAGES = 40; // the backend's limit on one request
 const MAX_TEXT_CHARS = 4_000; // and on one message
 const MAX_BODY_BYTES = 24 * 1_024; // under the route's 32 KiB body limit
 
-export interface AgentMessage { role: 'user' | 'assistant'; text: string }
+interface AgentMessage { role: 'user' | 'assistant'; text: string }
 export interface AgentAppState { date: string | null; focused: string | null; layers: Record<AgentLayer, boolean> }
 export interface AgentReply {
-  status: 'ok' | 'stopped';
   reply: { kind: 'answer' | 'question'; text: string; options: string[] };
   show: Shown | null;
   actions: unknown[];
 }
-export interface AgentCapabilities { enabled: boolean; maxPromptChars: number }
 
 async function failure(response: Response): Promise<Error> {
   const payload = await response.json().catch(() => null) as { detail?: { message?: unknown } } | null;
@@ -48,14 +46,12 @@ export function createAgentClient({ backendBaseUrl }: { backendBaseUrl: () => st
   }
 
   return {
-    async capabilities(signal: AbortSignal): Promise<AgentCapabilities> {
+    /** Whether the backend has a model configured. */
+    async enabled(signal: AbortSignal): Promise<boolean> {
       const payload = await request('/planner/capabilities', {}, CAPABILITIES_TIMEOUT_MS, signal) as {
-        agent?: { enabled?: unknown; max_prompt_chars?: unknown };
+        agent?: { enabled?: unknown };
       };
-      return {
-        enabled: payload.agent?.enabled === true,
-        maxPromptChars: Number(payload.agent?.max_prompt_chars) || 2_000,
-      };
+      return payload.agent?.enabled === true;
     },
     async ask(body: unknown, signal: AbortSignal): Promise<AgentReply> {
       return await request('/planner/agent', {

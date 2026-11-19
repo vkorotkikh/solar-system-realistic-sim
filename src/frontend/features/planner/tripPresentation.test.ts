@@ -9,8 +9,6 @@ const mars = replies.mars.show as unknown as ShownTrip;
 const roundTrip = replies.marsRoundTrip.show as unknown as ShownTrip;
 const moon = replies.moon.show as unknown as ShownTrip;
 const plan = replies.plan.show as unknown as ShownPlan;
-const NAMES: Record<string, string> = { earth: 'Earth', mars: 'Mars' };
-const nameOf = (bodyId: string) => NAMES[bodyId] ?? bodyId;
 
 /** A stand-in for the model: a position that encodes which body and date were asked for. */
 function sampler() {
@@ -91,34 +89,34 @@ describe('routeFor', () => {
   it('draws a leg from where its start is on the departure date to where its end is on the arrival date', () => {
     const { asked, positionAt } = sampler();
     const leg = mars.trip.legs[0];
-    const { route, label, undrawn } = routeFor(mars, positionAt, nameOf);
+    const { route, label, undrawn } = routeFor(mars, positionAt);
     expect(asked).toEqual([['earth', leg.depart.jd], ['mars', leg.arrive.jd]]);
     expect(route.bodyRoute).toEqual(['earth', 'mars']);
     expect(route.legs).toEqual([{
       fromId: 'earth', toId: 'mars',
       startPosition: new Vector3(5, leg.depart.jd, 0), endPosition: new Vector3(4, leg.arrive.jd, 0),
     }]);
-    expect([label, undrawn]).toEqual(['Route: Earth -> Mars', 0]);
+    expect([label, undrawn]).toEqual([null, 0]); // the route display names a trip's bodies itself
   });
 
   it('draws both legs of a round trip', () => {
-    const { route, label } = routeFor(roundTrip, sampler().positionAt, nameOf);
-    expect([route.bodyRoute, route.legs.length, label]).toEqual([['earth', 'mars', 'earth'], 2, 'Route: Earth -> Mars -> Earth']);
+    const { route } = routeFor(roundTrip, sampler().positionAt);
+    expect([route.bodyRoute, route.legs.length]).toEqual([['earth', 'mars', 'earth'], 2]);
   });
 
   it('draws every scheduled trip of a plan', () => {
-    const { route, label, undrawn } = routeFor(plan, sampler().positionAt, nameOf);
+    const { route, label, undrawn } = routeFor(plan, sampler().positionAt);
     expect([route.legs.length, label, undrawn]).toEqual([2, 'Route: plan of 2 trips', 0]);
   });
 
   it('counts a leg around a planet as not drawn, without asking for positions', () => {
     const { asked, positionAt } = sampler();
-    const { route, undrawn } = routeFor(moon, positionAt, nameOf);
+    const { route, undrawn } = routeFor(moon, positionAt);
     expect([route.legs, undrawn, asked]).toEqual([[], 1, []]);
   });
 
   it('counts a leg whose body has no position on its date as not drawn', () => {
-    const { route, undrawn } = routeFor(mars, (bodyId) => (bodyId === 'mars' ? null : new Vector3()), nameOf);
+    const { route, undrawn } = routeFor(mars, (bodyId) => (bodyId === 'mars' ? null : new Vector3()));
     expect([route.legs, undrawn]).toEqual([[], 1]);
   });
 });

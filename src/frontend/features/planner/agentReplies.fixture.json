@@ -82,7 +82,7 @@
     "earliest_departure": "2026-11-12",
     "latest_departure": "2027-01-31",
     "transfer_solves": 323,
-    "seconds": 0.09,
+    "seconds": 0.1,
     "complete": true,
     "notes": []
    },
@@ -111,7 +111,7 @@
    "models": [
     "test-model"
    ],
-   "seconds": 0.09
+   "seconds": 0.1
   }
  },
  "marsRoundTrip": {
@@ -231,7 +231,7 @@
     "earliest_departure": "2026-11-12",
     "latest_departure": "2027-01-31",
     "transfer_solves": 4103,
-    "seconds": 1.3,
+    "seconds": 1.37,
     "complete": true,
     "notes": []
    },
@@ -260,7 +260,7 @@
    "models": [
     "test-model"
    ],
-   "seconds": 1.31
+   "seconds": 1.38
   }
  },
  "moon": {
@@ -598,7 +598,7 @@
        "earliest_departure": "2026-11-12",
        "latest_departure": "2027-01-31",
        "transfer_solves": 323,
-       "seconds": 0.1,
+       "seconds": 0.13,
        "complete": true,
        "notes": []
       },
@@ -775,7 +775,7 @@
        "earliest_departure": "2027-11-11",
        "latest_departure": "2029-12-31",
        "transfer_solves": 2294,
-       "seconds": 0.63,
+       "seconds": 0.79,
        "complete": true,
        "notes": []
       },
@@ -810,7 +810,7 @@
    "models": [
     "test-model"
    ],
-   "seconds": 0.73
+   "seconds": 0.93
   }
  },
  "question": {
@@ -876,24 +876,6 @@
    "models": [
     "test-model"
    ],
-   "seconds": 0.0
-  }
- },
- "stopped": {
-  "status": "stopped",
-  "code": "refusal",
-  "reply": {
-   "kind": "answer",
-   "text": "The model declined to answer this prompt. Try asking about a trip or about what the app shows.",
-   "options": []
-  },
-  "show": null,
-  "actions": [],
-  "check": null,
-  "usage": {
-   "model_calls": 1,
-   "tool_calls": 0,
-   "models": [],
    "seconds": 0.0
   }
  }

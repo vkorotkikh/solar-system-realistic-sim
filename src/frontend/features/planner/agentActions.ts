@@ -19,7 +19,6 @@ export interface AgentApp {
   setLayer(layer: AgentLayer, on: boolean): void;
 }
 
-const MAX_ACTIONS = 8; // the backend runs at most eight tool calls per prompt
 const FIRST_DATE = '1990-01-01';
 const LAST_DATE = '2050-01-01';
 const LAYER_NAMES: Record<AgentLayer, string> = {
@@ -54,5 +53,5 @@ function apply(action: unknown, app: AgentApp): string {
 /** Applies the actions in order and returns one plain sentence per action. */
 export function applyAgentActions(actions: unknown, app: AgentApp): string[] {
   if (!Array.isArray(actions)) return [];
-  return actions.slice(0, MAX_ACTIONS).map((action) => apply(action, app));
+  return actions.map((action) => apply(action, app));
 }

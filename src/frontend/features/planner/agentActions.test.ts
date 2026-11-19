@@ -52,11 +52,9 @@ describe('applyAgentActions', () => {
     expect(calls).toEqual([]);
   });
 
-  it('applies nothing when the actions are not a list, and at most eight when they are', () => {
+  it('applies nothing when the actions are not a list', () => {
     const { app, calls } = recordingApp();
     expect(applyAgentActions({ type: 'set_layer', layer: 'moons', on: true }, app)).toEqual([]);
-    const many = Array.from({ length: 12 }, () => ({ type: 'set_layer', layer: 'moons', on: true }));
-    expect(applyAgentActions(many, app)).toHaveLength(8);
-    expect(calls).toHaveLength(8);
+    expect(calls).toEqual([]);
   });
 });

@@ -7,7 +7,7 @@
  */
 
 import { applyAgentActions, type AgentApp } from './agentActions';
-import type { AgentAppState, AgentCapabilities, AgentConversation } from './agentClient';
+import type { AgentAppState, AgentConversation } from './agentClient';
 import { cardFor, type Shown } from './tripPresentation';
 
 const OFF = 'The trip assistant is off. To turn it on, start the backend with PLANNER_AGENT_MODEL set to a '
@@ -19,7 +19,8 @@ export interface PromptBoxArgs {
     section: HTMLDetailsElement; status: HTMLElement; log: HTMLElement; card: HTMLElement; form: HTMLFormElement;
     input: HTMLInputElement; send: HTMLButtonElement; clear: HTMLButtonElement;
   };
-  capabilities: (signal: AbortSignal) => Promise<AgentCapabilities>;
+  /** Whether the backend has a model configured. */
+  enabled: (signal: AbortSignal) => Promise<boolean>;
   conversation: AgentConversation;
   app: AgentApp;
   appState: () => AgentAppState;
@@ -31,7 +32,7 @@ export interface PromptBoxArgs {
 }
 
 export function createPromptBox({
-  dom, capabilities, conversation, app, appState, drawRoute, clearRoute, signal,
+  dom, enabled, conversation, app, appState, drawRoute, clearRoute, signal,
 }: PromptBoxArgs): void {
   const document = dom.log.ownerDocument;
   let busy = false;
@@ -103,11 +104,9 @@ export function createPromptBox({
       if (signal.aborted) return;
       waiting.remove();
       say('assistant', reply.reply.text);
-      if (reply.reply.kind === 'question' && Array.isArray(reply.reply.options) && reply.reply.options.length > 0) {
-        offer(reply.reply.options.map(String));
-      }
+      if (reply.reply.kind === 'question' && reply.reply.options.length) offer(reply.reply.options);
       if (reply.show) showCard(reply.show, drawRoute(reply.show));
-      for (const note of applyAgentActions(reply.status === 'ok' ? reply.actions : [], app)) say('note', note);
+      for (const note of applyAgentActions(reply.actions, app)) say('note', note); // a stopped prompt sends none
     } catch (error) {
       if (signal.aborted) return;
       waiting.remove();
@@ -149,13 +148,11 @@ export function createPromptBox({
     availability = 'checking';
     status('Checking whether the trip assistant is on…');
     try {
-      const { enabled, maxPromptChars } = await capabilities(signal);
+      const on = await enabled(signal);
       if (signal.aborted) return;
-      availability = enabled ? 'on' : 'unknown';
-      status(enabled ? '' : OFF);
-      if (!enabled) return;
-      dom.input.maxLength = maxPromptChars;
-      dom.input.disabled = dom.clear.disabled = dom.send.disabled = false;
+      availability = on ? 'on' : 'unknown';
+      status(on ? '' : OFF);
+      if (on) dom.input.disabled = dom.clear.disabled = dom.send.disabled = false;
     } catch (error) {
       if (signal.aborted) return;
       availability = 'unknown';

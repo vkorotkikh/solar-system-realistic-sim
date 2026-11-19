@@ -82,12 +82,14 @@ describe('createAgentClient', () => {
   const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
 
   it('reads whether the agent is on', async () => {
-    const fetchStub = vi.fn(async (_url: string) => json({ agent: { enabled: true, model: 'm', max_prompt_chars: 1_500 } }));
+    const fetchStub = vi.fn(async (_url: string) => json({ agent: { enabled: true, model: 'm', max_prompt_chars: 2_000 } }));
     vi.stubGlobal('fetch', fetchStub);
-    expect(await client.capabilities(signal)).toEqual({ enabled: true, maxPromptChars: 1_500 });
+    expect(await client.enabled(signal)).toBe(true);
     expect(fetchStub.mock.calls[0][0]).toBe('http://backend.test/planner/capabilities');
     vi.stubGlobal('fetch', async () => json({ agent: { enabled: false, model: null } }));
-    expect((await client.capabilities(signal)).enabled).toBe(false);
+    expect(await client.enabled(signal)).toBe(false);
+    vi.stubGlobal('fetch', async () => json({ agent: { enabled: 'yes' } }));
+    expect(await client.enabled(signal)).toBe(false); // only a real true turns it on
   });
 
   it('posts a prompt as JSON and returns the reply', async () => {

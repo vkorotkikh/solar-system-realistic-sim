@@ -9,18 +9,9 @@
 import type { Vector3 } from 'three';
 
 interface DatedEnd { date: string; jd: number }
-interface Burn { at: string; orbit: string; date: string; delta_v_km_s: number }
-export interface TripLeg {
-  from: string;
-  to: string;
-  around: string;
-  depart: DatedEnd;
-  arrive: DatedEnd;
-  flight_days: number;
-  burns: Burn[];
-}
-export interface Trip {
-  id: string;
+interface Burn { orbit: string; date: string; delta_v_km_s: number }
+interface TripLeg { from: string; to: string; around: string; depart: DatedEnd; arrive: DatedEnd; burns: Burn[] }
+interface Trip {
   labels: string[];
   total_delta_v_km_s: number;
   total_days: number;
@@ -28,16 +19,15 @@ export interface Trip {
   legs: TripLeg[];
   approximations: string[];
 }
-interface ResolvedEnd { id: string; name: string; orbit: { id: string; name: string } }
+interface ResolvedEnd { name: string; orbit: { id: string; name: string } }
 interface Resolved { from: ResolvedEnd; to: ResolvedEnd }
 export interface ShownTrip {
   kind: 'trip';
-  trip_id: string;
   trip: Trip;
   resolved: Resolved;
   request: Record<string, unknown>;
 }
-interface PlanEntry { status: string; chosen?: Trip; resolved?: Resolved; message?: string }
+interface PlanEntry { status: string; chosen?: Trip; resolved?: Resolved }
 export interface ShownPlan {
   kind: 'plan';
   request: { trips: unknown[] };
@@ -51,7 +41,7 @@ export interface ShownPlan {
 }
 export type Shown = ShownTrip | ShownPlan;
 
-export interface Card {
+interface Card {
   title: string;
   badge: string;
   rows: Array<{ label: string; value: string }>;
@@ -59,18 +49,13 @@ export interface Card {
   notes: string[];
 }
 
-export interface DrawableRoute {
+interface DrawableRoute {
   bodyRoute: string[];
   legs: Array<{ fromId: string; toId: string; startPosition: Vector3; endPosition: Vector3 }>;
 }
 
 const days = (value: number) => `${value < 30 ? value.toFixed(1) : value.toFixed(0)} days`;
 const speed = (value: number) => `${value.toFixed(2)} km/s`;
-
-function tripLine(trip: Trip, resolved: Resolved): string {
-  return `${resolved.from.name} to ${resolved.to.name}: leave ${trip.legs[0].depart.date}, arrive `
-    + `${trip.legs[trip.legs.length - 1].arrive.date}, ${speed(trip.total_delta_v_km_s)}`;
-}
 
 function tripCard({ trip, resolved }: ShownTrip): Card {
   const first = trip.legs[0];
@@ -102,10 +87,10 @@ function planCard({ plan }: ShownPlan): Card {
       { label: 'First departure', value: plan.first_departure?.date ?? 'none' },
       { label: 'Last arrival', value: plan.last_arrival?.date ?? 'none' },
     ],
-    lines: entries.map(([key, entry]) => (
-      entry.status === 'ok' && entry.chosen && entry.resolved
-        ? `${key}: ${tripLine(entry.chosen, entry.resolved)}`
-        : `${key}: not scheduled`)),
+    lines: entries.map(([key, { status, chosen: trip, resolved }]) => (status === 'ok' && trip && resolved
+      ? `${key}: ${resolved.from.name} to ${resolved.to.name}: leave ${trip.legs[0].depart.date}, arrive `
+        + `${trip.legs[trip.legs.length - 1].arrive.date}, ${speed(trip.total_delta_v_km_s)}`
+      : `${key}: not scheduled`)),
     notes: plan.problems.map((problem) => problem.message),
   };
 }
@@ -117,13 +102,13 @@ export function cardFor(shown: Shown): Card {
 /**
  * The legs around the Sun as arcs between where the bodies are on the departure
  * and arrival dates. Legs around a planet are not drawn yet: `undrawn` counts
- * them, together with any leg whose body has no position on its date.
+ * them, together with any leg whose body has no position on its date. A plan
+ * gets its own status label; for a trip the route display names the bodies.
  */
 export function routeFor(
   shown: Shown,
   positionAt: (bodyId: string, julianDate: number) => Vector3 | null,
-  nameOf: (bodyId: string) => string,
-): { route: DrawableRoute; label: string; undrawn: number } {
+): { route: DrawableRoute; label: string | null; undrawn: number } {
   const trips = shown.kind === 'trip'
     ? [shown.trip]
     : Object.values(shown.plan.trips).flatMap((entry) => (entry.status === 'ok' && entry.chosen ? [entry.chosen] : []));
@@ -140,9 +125,7 @@ export function routeFor(
     route.bodyRoute.push(leg.to);
     route.legs.push({ fromId: leg.from, toId: leg.to, startPosition: start.clone(), endPosition: end.clone() });
   }
-  const label = shown.kind === 'trip'
-    ? `Route: ${route.bodyRoute.map(nameOf).join(' -> ')}`
-    : `Route: plan of ${trips.length} ${trips.length === 1 ? 'trip' : 'trips'}`;
+  const label = shown.kind === 'plan' ? `Route: plan of ${trips.length} ${trips.length === 1 ? 'trip' : 'trips'}` : null;
   return { route, label, undrawn };
 }
 
