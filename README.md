@@ -433,8 +433,8 @@ cannot represent them. Ordinary midnight remains a valid precise input.
   remains unchanged and is explicitly projected onto active identities. Explicit library
   requests fetch only the required shards from `public/moon-ephemerides/`.
   The page preloads all of them at startup: the 13 base models and all 410 shards
-  (60 MB), within a 15 s budget. If the shards fail or overrun it, the page falls back
-  to the 21 named moons' fits, then to the 13 base models, and the other moons use mean
+  (60 MB), named moons first, waiting at most 15 s. It keeps every shard that arrived
+  by then and retries a failed shard once; a moon whose shard did not arrive uses mean
   elements. Each shard is capped at 500 km and 10 m/s over 2000–2050. Captured numerical-source
   agreement does not establish observational uncertainty or redistribution rights.
   A pinned JPL physical-parameter table supplies 46 mean radii with references
