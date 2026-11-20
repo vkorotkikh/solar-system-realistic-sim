@@ -165,6 +165,33 @@ test('fetch failure preserves existing fallback and diagnostic', async () => {
   expect(JSON.stringify(result.status)).toMatch(/Failed TLE fetch \(503\)/);
 });
 
+// A fallback must show: the page prints dataNote in its status bar.
+test('a failed download says the drawn orbits are samples', async () => {
+  const result = await load({ stations: tle(0), geo: tle(1) }, { primaryId: 'earth', failFetch: true });
+  expect(result.records.map(s => s.name)).toEqual(['ISS (fallback)', 'GOES-16 (fallback)', 'GOES-18 (fallback)']);
+  expect(result.status.dataNote).toBe('sample orbits, not current data (Failed TLE fetch (503))');
+});
+
+test('a 200 reply without orbit records is reported instead of passing silently', async () => {
+  const result = await load({ stations: '<html>Rate limit</html>', geo: 'Invalid query' }, { primaryId: 'earth' });
+  expect(result.status.lastError).toBe('No orbit records in the stations and geo download');
+  expect(result.status.dataNote).toBe(
+    'sample orbits, not current data (No orbit records in the stations and geo download)'
+  );
+});
+
+test('one empty group is reported while the other group is drawn', async () => {
+  const result = await load({ stations: tle(0, 'ISS (ZARYA)'), geo: 'Invalid query' }, { primaryId: 'earth' });
+  expect(result.records.map(s => s.name)).toEqual(['ISS (ZARYA)']);
+  expect(result.status.dataNote).toBe('incomplete (No orbit records in the geo download)');
+});
+
+test('a complete download carries no note', async () => {
+  const result = await load({ stations: tle(0, 'ISS (ZARYA)'), geo: tle(1, 'GEO', { motion: 1 }) }, { primaryId: 'earth' });
+  expect(result.records).toHaveLength(2);
+  expect(result.status.dataNote).toBeNull();
+});
+
 // Literal fixed-width public TLE shape. These tests certify record retention,
 // not SGP4 accuracy: the retained model uses mean Kepler elements and optional J2.
 const line1 = '1 25544U 98067A   24001.50000000  .00000000  00000-0  00000-0 0  9992';

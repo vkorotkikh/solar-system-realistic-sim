@@ -15,6 +15,14 @@ from functools import lru_cache
 import astropy.units as u
 import erfa
 from astropy.time import Time, TimeDelta
+from astropy.utils import iers
+
+# Never fetch at run time (audit item G02). astropy would otherwise download a
+# fresh leap-second table at the first UTC conversion of every process once the
+# bundled one nears its expiry (from 2027-01-29 with the pinned astropy-iers-data),
+# and a network that drops packets then stalls each solar worker past its deadline.
+# The bundled table stays in use: update astropy-iers-data to refresh it.
+iers.conf.auto_download = False
 
 CARRINGTON_ROTATION_1_EPOCH_JD_TT = 2_398_167.4
 CARRINGTON_MEAN_SYNODIC_PERIOD_DAYS = 27.2753
