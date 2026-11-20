@@ -38,7 +38,9 @@ and the curated moon maps were composed into `main.ts`, with acceptance in
 enlarged radii and each moon moves out by its parent's enlargement; the catalog
 no longer shrinks planets to fit their moons. Since 2026-11-14 the page preloads
 fitted ephemerides for all 423 moons and the Moon and Mars surface maps at
-startup, uploading the maps to the GPU on arrival; Earth stays procedural.
+startup, uploading the maps to the GPU on arrival. Earth's NASA Blue Marble
+colour, ETOPO 2022 relief shading, Natural Earth water mask and NASA cloud
+shell are preloaded the same way.
 
 Before activating a retained feature, its change must include the composition
 call, typed capability requirements, disposal ownership, real browser/API

@@ -17,7 +17,7 @@ backend configuration.
 - **Asteroid belt** targeting 50,000 displayed objects from an accepted Phase 1 subset of up to 100,000 source rows, with deterministic procedural fallback
 - **5,000-object Kuiper field** including binary companions
 
-Catalog-star proper motion, nearby-system navigation, Earth clouds and Oort-related UI/update hooks remain repository modules/assets, not enabled features of this entry. Backend APIs are described separately below.
+Catalog-star proper motion, nearby-system navigation, live Earth clouds and Oort-related UI/update hooks remain repository modules/assets, not enabled features of this entry. Backend APIs are described separately below.
 
 See [CONTRIBUTING](CONTRIBUTING.md) for pinned toolchains and test commands,
 [ADR 0006](docs/adr/0006-runtime-composition-and-retained-apis.md) for ownership,
@@ -330,7 +330,7 @@ Search and focus the bodies rendered by the page, including all 423 moons while 
 
 ### Planet visuals
 
-- **Earth and Mars**: procedural quadtree surfaces with distance-based detail
+- **Earth**: NASA Blue Marble: Next Generation colour (August 2004, 8192 px), relief shading from NOAA ETOPO 2022, sun glint on water from a Natural Earth mask and NASA's cloud map on a thin shell (cleared over the ice sheets, where NASA's composite reads ice as cloud), all preloaded at startup; the globe itself stays smooth
 - **Earth's Moon**: quadtree terrain from NASA's CGI Moon Kit (LROC colour and LOLA elevation), preloaded at startup and uploaded to the GPU on arrival
 - **Mars**: a NASA/USGS colour map, preloaded the same way; its terrain stays procedural, because no elevation map ships
 - **Named moons**: eight USGS-hosted maps, with generated maps for the rest
@@ -338,7 +338,7 @@ Search and focus the bodies rendered by the page, including all 423 moons while 
 - **Other planets and Pluto**: colored sphere materials
 - Axial tilt and spin use the rendered bodies' orientation metadata
 
-The retained cloud module is not assembled by this entry. The page also has no Saturn-ring or oblate-body assembly. Repository assets and alternative renderers are not a claim that the page displays them.
+The retained live cloud module is not assembled by this entry; Earth's clouds come from a fixed NASA map. The page also has no Saturn-ring or oblate-body assembly. Repository assets and alternative renderers are not a claim that the page displays them.
 
 ### Solar model
 
@@ -577,9 +577,10 @@ Provenance does not itself establish redistribution permission; see `NOTICE.md`.
 | Eight curated moon maps | USGS-hosted products; public attribution manifest; drawn on their named moons |
 | Moon and Mars surface maps | NASA SVS CGI Moon Kit (colour, elevation); Mars colour map whose exact USGS product is unconfirmed |
 | Asteroid catalog | Pinned JPL SBDB source, ACBF v2 bundle and SHA-256 metadata |
-| Planet appearance | Procedural maps and Earth/Mars quadtree terrain; former unused photographic files retired |
+| Earth surface maps | NASA Blue Marble: Next Generation colour and clouds, NOAA ETOPO 2022 relief, Natural Earth water mask; built by `scripts/build_earth_surface_maps.py` from SHA-256-pinned downloads |
+| Planet appearance | Procedural maps elsewhere and Mars quadtree terrain; former unused photographic files retired |
 | Catalog stars and Gaia enrichment | Retained offline/dormant modules; no default catalog-star rendering |
-| Earth clouds / satellite elements | Retained GIBS pipeline, not activated; CelesTrak fetched when the satellites switch is on |
+| Earth clouds / satellite elements | Fixed NASA Blue Marble cloud map; the retained live GIBS pipeline is not activated; CelesTrak fetched when the satellites switch is on |
 | Solar observation context | SDO/AIA via Helioviewer, NOAA SWPC and SILSO; source-specific terms apply |
 
 The [distribution policy](docs/distribution-policy.md) covers noncommercial
