@@ -330,7 +330,7 @@ Search and focus the bodies rendered by the page, including all 423 moons while 
 
 ### Planet visuals
 
-- **Earth**: NASA Blue Marble: Next Generation colour (August 2004, 8192 px), relief shading from NOAA ETOPO 2022, sun glint on water from a Natural Earth mask and NASA's cloud map on a thin shell (cleared over the ice sheets, where NASA's composite reads ice as cloud), all preloaded at startup; the globe itself stays smooth
+- **Earth**: NASA Blue Marble: Next Generation colour (August 2004, 8192 px), relief shading from NOAA ETOPO 2022, sun glint on water from a Natural Earth mask and NASA's cloud map on a thin shell (cleared over polar ice poleward of 60°, where NASA's composite reads ice as cloud), all preloaded at startup; the globe itself stays smooth
 - **Earth's Moon**: quadtree terrain from NASA's CGI Moon Kit (LROC colour and LOLA elevation), preloaded at startup and uploaded to the GPU on arrival
 - **Mars**: a NASA/USGS colour map, preloaded the same way; its terrain stays procedural, because no elevation map ships
 - **Named moons**: eight USGS-hosted maps, with generated maps for the rest

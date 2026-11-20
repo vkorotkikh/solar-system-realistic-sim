@@ -12,7 +12,7 @@ before anything is written, and two runs give byte-identical files:
   earth_normal_etopo2022_8192.png    surface slopes from NOAA ETOPO 2022 60" (ice surface) on
                                      land and ice only: R = east, G = north, square-root
                                      companded and dithered, 128 = flat (see encode_slopes)
-  earth_clouds_bmng_2048.jpg         NASA Blue Marble clouds as grey, cleared over the ice sheets,
+  earth_clouds_bmng_2048.jpg         NASA Blue Marble clouds as grey, cleared over polar ice,
                                      where NASA's composite reads ice as cloud (clear_ice_clouds)
 
 Needs numpy, SciPy and Pillow, plus h5py to read the ETOPO netCDF-4 file. h5py is not a
@@ -221,7 +221,7 @@ def relief_heights(z, width, height):
 
 
 def clear_ice_clouds(clouds, colour, water, lat_deg):
-    """NASA's cloud cover with the ice sheets cleared, as 8-bit grey. The composite cannot tell
+    """NASA's cloud cover with polar ice cleared, as 8-bit grey. The composite cannot tell
     cloud from ice: it reports 0.8 cover on the East Antarctic plateau, one of the clearest
     places on Earth. Ice is white land poleward of ICE_LAT_DEG; the edge is feathered over
     two pixels each way (wrapping in longitude) so the cloud does not end in a hard line.

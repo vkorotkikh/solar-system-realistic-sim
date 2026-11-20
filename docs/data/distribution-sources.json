@@ -408,7 +408,7 @@
     },
     {
       "id": "surface-map:earth:bluemarble-clouds",
-      "product": "NASA Earth Observatory The Blue Marble (2002) cloud layer, cloud_combined_2048.jpg (2048 x 1024 px), as grey with cloud cleared over the ice sheets",
+      "product": "NASA Earth Observatory The Blue Marble (2002) cloud layer, cloud_combined_2048.jpg (2048 x 1024 px), as grey with cloud cleared over polar ice (white land poleward of 60 deg)",
       "use": "browser-loaded Earth cloud layer, fetched at startup",
       "sourceUrls": [
         "https://science.nasa.gov/earth/earth-observatory/the-blue-marble-true-color-global-imagery-at-1km-resolution/",
@@ -416,7 +416,7 @@
       ],
       "credit": "NASA Goddard Space Flight Center. Image by Reto Stöckli (land surface, shallow water, clouds). Enhancements by Robert Simmon (ocean color, compositing, 3D globes, animation). No endorsement.",
       "rightsStatus": "review-required",
-      "rightsEvidence": "Downloaded 2026-11-18: cloud_combined_2048.jpg 829,367 bytes, SHA-256 daddaad84d7a33bbbc86cdda3f591099f57cee8607b7bcf3b67eb7e4f7a1c793; pinned by the generator, which clears cloud over the ice sheets (land poleward of 60 deg that is ice-white in the colour map), because the composite reads ice as cloud (0.8 cover on the East Antarctic plateau), and saves it as an 869,428-byte grey JPEG, SHA-256 d9c4ccbfa9bd62e1c361c847b0e7eedbbda4eb24c859be12d890b46529bad453. The product page, retrieved 2026-11-18, credits 'NASA Goddard Space Flight Center' and 'Image by Reto Stöckli (land surface, shallow water, clouds). Enhancements by Robert Simmon (ocean color, compositing, 3D globes, animation).' NASA media guidelines, retrieved 2026-11-18: NASA content 'generally are not subject to copyright in the United States' and 'NASA should be acknowledged as the source of the material.' NASA no longer serves the 8192 px version at any path tried on 2026-11-18.",
+      "rightsEvidence": "Downloaded 2026-11-18: cloud_combined_2048.jpg 829,367 bytes, SHA-256 daddaad84d7a33bbbc86cdda3f591099f57cee8607b7bcf3b67eb7e4f7a1c793; pinned by the generator, which clears cloud over polar ice (land poleward of 60 deg that is ice-white in the colour map), because the composite reads ice as cloud (0.8 cover on the East Antarctic plateau), and saves it as an 869,428-byte grey JPEG, SHA-256 d9c4ccbfa9bd62e1c361c847b0e7eedbbda4eb24c859be12d890b46529bad453. The product page, retrieved 2026-11-18, credits 'NASA Goddard Space Flight Center' and 'Image by Reto Stöckli (land surface, shallow water, clouds). Enhancements by Robert Simmon (ocean color, compositing, 3D globes, animation).' NASA media guidelines, retrieved 2026-11-18: NASA content 'generally are not subject to copyright in the United States' and 'NASA should be acknowledged as the source of the material.' NASA no longer serves the 8192 px version at any path tried on 2026-11-18.",
       "evidencePaths": [
         "public/textures/surfaces/earth_clouds_bmng_2048.jpg",
         "scripts/build_earth_surface_maps.py",

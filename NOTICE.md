@@ -74,8 +74,9 @@ pinned downloads:
 - Clouds: NASA's
   [Blue Marble](https://science.nasa.gov/earth/earth-observatory/the-blue-marble-true-color-global-imagery-at-1km-resolution/)
   cloud layer (credit: NASA Goddard Space Flight Center; image by Reto Stöckli;
-  enhancements by Robert Simmon), with cloud cleared over the Antarctic and
-  Greenland ice sheets, where the composite reads ice as cloud.
+  enhancements by Robert Simmon), with cloud cleared over polar ice (white land
+  poleward of 60 degrees: Antarctica, Greenland and the Arctic ice caps), where
+  the composite reads ice as cloud.
 
 NASA, NOAA and Natural Earth do not endorse this project.
 
