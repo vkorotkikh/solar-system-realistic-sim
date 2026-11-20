@@ -120,6 +120,9 @@ from mission.ephemeris_service import (
     HORIZONS_SUCCESS_CACHE_MAXSIZE,
     TRAJECTORY_STATE_CONTRACT,
 )
+from planner.places import PLACES, find_places, place_json
+from planner.trips import SEARCH_SECONDS as PLANNER_SEARCH_SECONDS, TripSearchRequest, search_trips
+from planner.vehicle import VehicleCheckRequest, check_vehicle
 from sim.base import SimulationEngine
 from sim.contracts import attach_runtime_telemetry, normalize_state_update
 from sim.kuiper import KuiperActivationError, KuiperBeltEngine
@@ -1394,6 +1397,8 @@ TRAJECTORY_INGRESS_PATHS = {
     "/mission/plan",
     "/benchmark/accuracy",
     "/benchmark/accuracy/report",
+    "/planner/trips/search",
+    "/planner/vehicle-check",
 }
 
 
@@ -1489,6 +1494,10 @@ _trajectory_plan_concurrent_guard = threading.BoundedSemaphore(TRAJECTORY_PLAN_C
 _trajectory_lambert_concurrent_guard = threading.BoundedSemaphore(TRAJECTORY_LAMBERT_CONCURRENT_REQUEST_LIMIT)
 _trajectory_porkchop_concurrent_guard = threading.BoundedSemaphore(TRAJECTORY_PORKCHOP_CONCURRENT_REQUEST_LIMIT)
 _mission_plan_concurrent_guard = threading.BoundedSemaphore(MISSION_PLAN_CONCURRENT_REQUEST_LIMIT)
+# Each trip search holds a compute thread for up to PLANNER_SEARCH_SECONDS; the
+# endpoint waits a little longer so the search's own deadline ends first.
+_planner_search_guard = threading.BoundedSemaphore(2)
+PLANNER_SEARCH_TIMEOUT_SECONDS = PLANNER_SEARCH_SECONDS + 1.5
 _benchmark_concurrent_guard = threading.BoundedSemaphore(BENCHMARK_CONCURRENT_REQUEST_LIMIT)
 _ws_sim_connection_guard = threading.BoundedSemaphore(WS_SIM_CONNECTION_LIMIT)
 _ws_sim_connection_lock = threading.Lock()
@@ -4584,6 +4593,53 @@ async def mission_plan(request: Request, payload: MissionPlanRequest):
             str(result.get("status", "No feasible mission recommendation")),
         )
     return result
+
+
+@app.get("/planner/places")
+async def planner_places(query: str | None = Query(None, max_length=100)):
+    """Every place a trip can start or end at, or the lookup's matches for a query."""
+    places = PLACES if query is None else find_places(query)
+    return {"places": [place_json(place) for place in places]}
+
+
+@app.post("/planner/trips/search")
+async def planner_trip_search(request: Request, payload: TripSearchRequest):
+    """Search a date range for trips between two places. Refusals are answers (status 200)."""
+    if not _acquire_nonblocking(_planner_search_guard):
+        raise _trajectory_http_exception(
+            503,
+            "planner_search_busy",
+            "The trip planner is busy. Retry shortly.",
+            retryable=True,
+            headers={"Retry-After": "2"},
+        )
+    owner_context = PlanningContext.with_timeout(PLANNER_SEARCH_TIMEOUT_SECONDS)
+    try:
+        return await _run_request_owned_thread(
+            request,
+            search_trips,
+            payload,
+            guard=_planner_search_guard,
+            executor=_heavy_compute_executor,
+            timeout_seconds=PLANNER_SEARCH_TIMEOUT_SECONDS,
+            owner_context=owner_context,
+            cancel_event=owner_context.cancel_event,
+        )
+    except asyncio.TimeoutError as exc:
+        owner_context.cancel("endpoint_timeout")
+        raise _trajectory_http_exception(
+            504, "planner_search_timeout", "The trip search took too long and was stopped."
+        ) from exc
+    except PlanningCancelled as exc:
+        raise _trajectory_http_exception(503, exc.code, str(exc), retryable=True) from exc
+    except EphemerisError as exc:
+        raise _ephemeris_http_exception(exc) from exc
+
+
+@app.post("/planner/vehicle-check")
+async def planner_vehicle_check(payload: VehicleCheckRequest):
+    """Whether staged propulsion closes a list of burns. At most 32 burns and 12 stages: no pool needed."""
+    return check_vehicle(payload)
 
 
 @app.get("/benchmark/accuracy")

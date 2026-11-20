@@ -3,6 +3,34 @@ import type { SimulationStateStore } from './stateStore';
 
 interface BodyNameLike {
   name: string;
+  orbit?: { aAu?: number } | null;
+}
+
+// Backend PLANNING_JD_MAX (2050-01-01 TDB): it refuses any arrival after this date.
+const PLANNING_END_JD = 2_469_807.5;
+
+/**
+ * Porkchop grid for two Sun-orbiting bodies. The flight-time axis reaches 1.6
+ * Hohmann flight times, so the cheap slow transfer to an outer planet is inside
+ * it: a fixed 900 days put Saturn's best on the grid edge at 26.6 km/s, against
+ * 16.5 km/s at 2,230 days. The backend allows a 3,650-day axis and 2,000 points.
+ */
+export function porkchopSearchGrid(
+  fromAu: number | undefined,
+  toAu: number | undefined,
+  departureJd: number
+) {
+  const departureWindowDays = 220;
+  const tofMinDays = 70;
+  const hohmannDays = fromAu && toAu ? 0.5 * 365.25 * ((fromAu + toAu) / 2) ** 1.5 : 0;
+  const tofMaxDays = Math.max(900, Math.min(
+    1.6 * hohmannDays,
+    tofMinDays + 3_650,
+    PLANNING_END_JD - departureJd - departureWindowDays - 1
+  ));
+  // At most 81 flight times for the 23 departure dates.
+  const tofStepDays = Math.max(20, 10 * Math.ceil((tofMaxDays - tofMinDays) / 800));
+  return { departureWindowDays, departureStepDays: 10, tofMinDays, tofMaxDays, tofStepDays };
 }
 
 interface RouteLegLike {
@@ -516,16 +544,22 @@ export function createPlannerController({
     }
 
     dom.plannerOutput.textContent = 'Scanning porkchop window...';
+    const grid = porkchopSearchGrid(
+      bodyById.get(fromId)?.orbit?.aAu, bodyById.get(toId)?.orbit?.aAu, departureJd
+    );
+    // The backend samples the flight time from the minimum upwards in whole steps.
+    const longestTofDays = grid.tofMinDays
+      + Math.floor((grid.tofMaxDays - grid.tofMinDays) / grid.tofStepDays + 1e-12) * grid.tofStepDays;
     try {
       const window = await scanPorkchopWindow({
         fromId,
         toId,
         departureStartJd: departureJd,
-        departureEndJd: departureJd + 220,
-        departureStepDays: 10,
-        tofMinDays: 70,
-        tofMaxDays: 900,
-        tofStepDays: 20,
+        departureEndJd: departureJd + grid.departureWindowDays,
+        departureStepDays: grid.departureStepDays,
+        tofMinDays: grid.tofMinDays,
+        tofMaxDays: grid.tofMaxDays,
+        tofStepDays: grid.tofStepDays,
         ephemerisProvider,
         prograde
       });
@@ -563,6 +597,11 @@ export function createPlannerController({
           : window.configuredGridCompleted
             ? 'Porkchop search: configured grid completed'
             : null,
+        `Searched: departures over ${grid.departureWindowDays} days every ${grid.departureStepDays} d; `
+          + `flight times ${grid.tofMinDays} to ${longestTofDays} d every ${grid.tofStepDays} d`,
+        window.best.arrivalJd - window.best.departureJd > longestTofDays - grid.tofStepDays / 2
+          ? 'Best is at the longest flight time searched: a longer flight may need less delta-v.'
+          : null,
         `Porkchop points scanned: ${window.count}`,
         `Best total delta-v: ${window.best.totalDeltaVKmS.toFixed(2)} km/s`,
         `Solver: Porkchop + Lambert (${window.ephemerisProvider ?? ephemerisProvider})`
