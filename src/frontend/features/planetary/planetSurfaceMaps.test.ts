@@ -96,6 +96,20 @@ describe('createPlanetSurfaceMaps', () => {
     expect(released).toHaveLength(others);
   });
 
+  it('names the layer, and keeps the colour map, when applying one layer throws', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const earth = target('earth');
+    const apply = earth.tree.setSurfaceMaps.bind(earth.tree);
+    vi.spyOn(earth.tree, 'setSurfaceMaps').mockImplementation((maps) => {
+      if (maps.clouds) throw new Error('context lost');
+      apply(maps);
+    });
+    await createPlanetSurfaceMaps({ targets: [earth], textureLoader: loaderFor(), maxAnisotropy: 8 }).ready;
+    expect(earth.tree.material.uniforms.uAlbedoReady.value).toBe(1);
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(String(warn.mock.calls[0][0])).toMatch(/earth: clouds .*drawing without it/);
+  });
+
   it('draws the colour map without waiting for a slow layer, then adds the layer when it lands', async () => {
     let release!: (texture: Texture) => void;
     const textureLoader = { loadAsync: vi.fn((url: string) => url.endsWith('earth_normal_etopo2022_8192.png')

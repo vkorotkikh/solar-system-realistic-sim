@@ -67,24 +67,24 @@ export function createPlanetSurfaceMaps({ targets, textureLoader, maxAnisotropy,
       return undefined;
     };
     // `ready` must settle for every body, so a throw here cannot strand the others.
-    const apply = (maps: Partial<PlanetSurfaceMaps>) => {
+    const apply = (maps: Partial<PlanetSurfaceMaps>, outcome: string) => {
       if (disposed) return false;
       try {
         tree.setSurfaceMaps(maps);
         return true;
       } catch (error) {
-        console.warn(`[surface-maps] ${visualId}: keeping procedural surface:`, error);
+        console.warn(`[surface-maps] ${visualId}: ${Object.keys(maps).join(', ')} failed to apply, ${outcome}:`, error);
         return false;
       }
     };
     // Every map loads at once. The colour map is drawn on arrival and is the only one
     // required; each other layer is drawn when it lands, or freed if the colour map failed.
     const colour = loadTexture(source.albedo, filtered)
-      .then((albedo) => apply({ albedo }), failed(source.albedo, 'keeping procedural surface'))
+      .then((albedo) => apply({ albedo }, 'keeping procedural surface'), failed(source.albedo, 'keeping procedural surface'))
       .then(Boolean);
     const layer = (file: string | undefined, configure: (texture: Texture) => void,
       maps: (texture: Texture) => Partial<PlanetSurfaceMaps>) => file && loadTexture(file, configure).then(
-      async (texture) => { if (await colour) apply(maps(texture)); else texture.dispose(); },
+      async (texture) => { if (await colour) apply(maps(texture), 'drawing without it'); else texture.dispose(); },
       failed(file, 'drawing without it'),
     );
     const { relief } = source;
