@@ -251,7 +251,9 @@ describe('SolarPhysicsClient time contract', () => {
     const REQUESTED = 2_460_000.5;
     const HALF_WIRE_UNIT = 0.5e-8;
 
-    it.each([-30, -0.4, -0.01, -1e-6, 1e-6, 0.01, 0.4, 30])(
+    // +-1e-8 d is the neighbouring wire epoch: together with the accepted 0.8 half-units below it
+    // brackets the tolerance between 4e-9 and 1e-8 d, where every tolerance treats wire epochs alike.
+    it.each([-30, -0.4, -0.01, -1e-6, -2 * HALF_WIRE_UNIT, 2 * HALF_WIRE_UNIT, 1e-6, 0.01, 0.4, 30])(
       'rejects as an invalid response a reply for an epoch %s d away from the one requested', async (offset) => {
         vi.stubGlobal('fetch', vi.fn(async () => responseWith(validPayload(REQUESTED + offset))));
         const client = new SolarPhysicsClient({ baseUrl: () => 'http://backend.test' });
