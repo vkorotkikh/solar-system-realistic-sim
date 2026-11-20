@@ -20,12 +20,14 @@ function makeScene() {
 }
 
 describe('H29 scene-only offsets (SCN-023)', () => {
+  // Amplitudes are hand-derived from the catalog (1e56 erg, each source's jet angle) and the
+  // strength formula, outside this code; h29Slipstream.test.ts shows the derivation.
   it.each([
-    ['SagittariusA', 1.4],
-    ['CentaurusA', 1.1],
-    ['Maffei1', 0.7],
-    ['M87', 0.5]
-  ])('makes the %s H29 front visible at its displayed arrival', (source, intensity) => {
+    ['SagittariusA', 1.4, 0.3081063120763661],
+    ['CentaurusA', 1.1, 0.40566896913710493],
+    ['Maffei1', 0.7, 0.23746043117575497],
+    ['M87', 0.5, 0.16880602836128375]
+  ])('makes the %s H29 front visible at its displayed arrival', (source, intensity, expectedAmplitude) => {
     const engine = createAgnShockwaveEngine(null, null);
     engine.triggerEvent(source, 8, intensity, { hypothesis: 'h29' });
     const { model, nodes } = makeScene();
@@ -39,7 +41,6 @@ describe('H29 scene-only offsets (SCN-023)', () => {
     applyMetricDisplayOffsets(model, nodes, warp);
 
     const sunOffset = nodes.get('sun')!.position.clone().sub(model.getState('sun')!.worldPosition);
-    const expectedAmplitude = Math.min(1, engine.getPhysics()!.h29!.shiftStrength * intensity);
     expect(Math.abs(warp.positionCm)).toBeLessThan(1);
     expect(warp.amplitude).toBeCloseTo(expectedAmplitude, 12);
     expect(sunOffset.length()).toBeCloseTo(H29_DISPLAY_PEAK_AU * expectedAmplitude, 12);
