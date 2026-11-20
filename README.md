@@ -122,7 +122,10 @@ The page's mission planner uses the trajectory and mission services when the
 backend is reachable; without it, route planning falls back to a local solver.
 
 The default `SOLAR_SECURITY_PROFILE=local` keeps solar endpoints available
-without a key and should stay bound to loopback. To expose the backend on a
+without a key and should stay bound to loopback. If `SOLAR_PHYSICS_API_KEYS` is
+set, `/solar/physics`, `/solar/realtime` and `/solar/realtime/aia-tile` need a
+key in this profile too, and the page, which sends none, shows the procedural
+Sun. To expose the backend on a
 network, explicitly set `SOLAR_SECURITY_PROFILE=network`, provide one or more
 comma-separated `SOLAR_PHYSICS_API_KEYS`, configure exact
 `SOLAR_CORS_ALLOWED_ORIGINS`, and pass a non-loopback host to Uvicorn without

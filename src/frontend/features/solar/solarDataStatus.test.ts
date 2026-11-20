@@ -109,9 +109,11 @@ describe('describeSolarDataStatus', () => {
   it('says the page sends no API key when the backend asks for one', () => {
     const status = describeSolarDataStatus(input({ lastFailure: failure('auth', 401) }));
     expect(status.announcement).toBe('Sun data unavailable: solar server requires an API key. Showing the procedural Sun.');
+    // The local profile also asks for a key on the solar routes while SOLAR_PHYSICS_API_KEYS
+    // is set (backend/server.py authentication_required), so the profile alone is not the fix.
     expect(status.remedy).toBe(
       'This page sends no API key. Serve it behind a same-origin proxy that adds X-API-Key, '
-        + 'or run the backend with SOLAR_SECURITY_PROFILE=local on loopback.'
+        + 'or run the backend on loopback with SOLAR_SECURITY_PROFILE=local and SOLAR_PHYSICS_API_KEYS unset.'
     );
   });
 

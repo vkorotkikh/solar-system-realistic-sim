@@ -170,7 +170,7 @@ function failureRemedy(family: keyof typeof FAMILY_ANNOUNCEMENTS, input: SolarDa
         + 'or open the page at http://localhost:5173.';
     case 'auth':
       return 'This page sends no API key. Serve it behind a same-origin proxy that adds X-API-Key, '
-        + 'or run the backend with SOLAR_SECURITY_PROFILE=local on loopback.';
+        + 'or run the backend on loopback with SOLAR_SECURITY_PROFILE=local and SOLAR_PHYSICS_API_KEYS unset.';
     case 'unreachable':
       return `Start the backend so that it answers at ${input.backendBaseUrl}: `
         + 'cd backend && python -m uvicorn server:app --port 8042';
