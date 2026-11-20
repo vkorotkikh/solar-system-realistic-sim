@@ -22,6 +22,10 @@ describe('Earth cloud shell', () => {
     expect(shell.material.uniforms.uCloudMap.value).toBe(clouds);
     expect(shell.material.transparent).toBe(true);
     expect(shell.material.depthWrite).toBe(false);
+    // Beyond ~10 radii the 10 km lift is under one depth step; without an offset toward the
+    // camera the ground's depth cuts triangular holes in the clouds (real-GPU measurement).
+    expect(shell.material.polygonOffset).toBe(true);
+    expect(shell.material.polygonOffsetUnits).toBeLessThan(0);
     // Before the default see-through objects: orbit lines write depth, so drawn first they cut
     // slits through the clouds. After the background layers: belts at -4/-5, the sky further back.
     expect(shell.renderOrder).toBeLessThan(0);

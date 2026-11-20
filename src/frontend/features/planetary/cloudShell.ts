@@ -46,6 +46,11 @@ export class CloudShell {
             transparent: true,
             // Writes no depth, so it never hides what lies behind it.
             depthWrite: false,
+            // Beyond ~10 Earth radii the 10 km lift is under one depth step, and the ground's
+            // depth cut triangular holes in up to 30% of the clouds (real GPU, 60 radii). An
+            // offset of 2 steps closed every hole at 10-60 radii; 4 leaves margin for other GPUs.
+            polygonOffset: true,
+            polygonOffsetUnits: -4,
         }));
         // Opaque ground always draws first. Among see-through objects the clouds go before the
         // default ones: orbit lines write depth, and drawn first they would cut slits through the
