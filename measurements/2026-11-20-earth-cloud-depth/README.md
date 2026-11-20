@@ -57,6 +57,47 @@ low-orbit satellites drawn in front of Earth. After the fix (`output-analysis-af
 `evidence-after/views.json` records the served offset), A loses **0** pixels in all eight
 views, and the control still loses about 180,000 per view.
 
-Not measured: other GPUs or depth formats, the enlarged scale mode (its near plane is fixed, so
-a far view there is a different case), and motion. A still frame shows the same failures that
-would flicker.
+Not measured here: other GPUs or depth formats, and motion. A still frame shows the same
+failures that would flicker. The enlarged scale is covered by the satellite check below.
+
+## Follow-up: do the clouds cover satellite markers? (`satellite-overdraw.mjs`)
+
+The offset pulls the clouds toward the camera by 4 depth steps. In enlarged scale the near plane
+is fixed (0.0001 AU), so a step is about z^2 / 1678 AU: 4 steps are 0.0024 AU at 1 AU (7% of
+Earth's enlarged radius) and 0.02 AU at 3 AU. The enlarged cloud lift is also 10/6371 of an
+enlarged radius, about 7,900 km, while satellites keep their true altitude. Opaque markers draw
+before every see-through object, so any marker within that reach ended up under the clouds.
+
+Method: with every orbit line off and the Earth-satellites layer on (29 built-in records here;
+CelesTrak was not reached), each magnified view is drawn as Z (no satellites, no clouds), N
+(satellites, no clouds) and S (satellites and clouds). Marker pixels are where N differs from Z;
+covered ones are those S changes by more than 8 levels. Edge pixels blend with whatever is
+behind a marker, so "interior" drops pixels within 1 px of a marker's edge. Four facings
+(-45, 45, 135, -135 deg) at enlarged 6, 30 and 90 radii (0.2, 1 and 3 AU) and realistic 60 and
+200 radii.
+
+```
+node measurements/2026-11-20-earth-cloud-depth/satellite-overdraw.mjs http://127.0.0.1:5193/ <out dir>
+python -I measurements/2026-11-20-earth-cloud-depth/analyze-satellites.py <out dir>
+```
+
+Before (branch at ee2b835, `output-analysis-satellites-before.txt`): at 1 and 3 AU in enlarged
+scale the clouds covered 48 to 97% of interior marker pixels (32 to 98 of 51 to 140 per view);
+at 200 radii in realistic scale, 13 of 25 in the one view with a marker in front; none at 0.2
+AU or at 60 radii. `evidence-satellites/markers-1AU-before-after.png`: a row of geostationary
+markers at 1 AU without clouds, with clouds before the fix (two dimmed), and after.
+
+Fix on the branch: the opaque marker styles (spheres, instanced spheres) are drawn as
+see-through objects at full opacity with a render order above the clouds' (`CLOUD_RENDER_ORDER`
+in cloudShell.ts), as sprite markers and satellite orbit lines already were. The clouds write no
+depth, so whatever the depth precision or the lift, they can no longer cover a marker. After
+(`output-analysis-satellites-after.txt`): 0 to 3 interior pixels change per view. Every one of
+them is within 2 px of a marker's edge and changes by only 9 to 25 levels: antialiasing, not
+cover.
+
+Still open: other opaque bodies in front of Earth within the offset's reach. In realistic scale
+the Moon is never that close. In enlarged scale the Moon's front sits about 0.02 AU above Earth's
+surface, inside the offset's reach beyond about 2.9 AU, where Earth is about 18 px across in a
+900 px tall window (58 deg field of view). There the Moon passing in front of Earth's disk could
+get a faint cloud veil where the two overlap; not measured.
+Bounding the offset instead would bring the cloud holes back on exactly those small Earths.

@@ -1,0 +1,202 @@
+[
+  {
+    "name": "enlarged-6R-lon-45",
+    "distance": 6,
+    "lon": -45,
+    "radiusAu": 0.03352378856871639,
+    "rangeAu": 0.20114273141229835,
+    "realistic": false,
+    "fill": 0.8,
+    "markersInFront": 16
+  },
+  {
+    "name": "enlarged-6R-lon45",
+    "distance": 6,
+    "lon": 45,
+    "radiusAu": 0.03352378856871639,
+    "rangeAu": 0.20114273141229835,
+    "realistic": false,
+    "fill": 0.8,
+    "markersInFront": 15
+  },
+  {
+    "name": "enlarged-6R-lon135",
+    "distance": 6,
+    "lon": 135,
+    "radiusAu": 0.03352378856871639,
+    "rangeAu": 0.20114273141229835,
+    "realistic": false,
+    "fill": 0.8,
+    "markersInFront": 12
+  },
+  {
+    "name": "enlarged-6R-lon-135",
+    "distance": 6,
+    "lon": -135,
+    "radiusAu": 0.03352378856871639,
+    "rangeAu": 0.20114273141229835,
+    "realistic": false,
+    "fill": 0.8,
+    "markersInFront": 12
+  },
+  {
+    "name": "enlarged-30R-lon-45",
+    "distance": 30,
+    "lon": -45,
+    "radiusAu": 0.03352378856871639,
+    "rangeAu": 1.0057136570614917,
+    "realistic": false,
+    "fill": 0.8,
+    "markersInFront": 16
+  },
+  {
+    "name": "enlarged-30R-lon45",
+    "distance": 30,
+    "lon": 45,
+    "radiusAu": 0.03352378856871639,
+    "rangeAu": 1.0057136570614917,
+    "realistic": false,
+    "fill": 0.8,
+    "markersInFront": 15
+  },
+  {
+    "name": "enlarged-30R-lon135",
+    "distance": 30,
+    "lon": 135,
+    "radiusAu": 0.03352378856871639,
+    "rangeAu": 1.0057136570614917,
+    "realistic": false,
+    "fill": 0.8,
+    "markersInFront": 12
+  },
+  {
+    "name": "enlarged-30R-lon-135",
+    "distance": 30,
+    "lon": -135,
+    "radiusAu": 0.03352378856871639,
+    "rangeAu": 1.0057136570614917,
+    "realistic": false,
+    "fill": 0.8,
+    "markersInFront": 12
+  },
+  {
+    "name": "enlarged-90R-lon-45",
+    "distance": 90,
+    "lon": -45,
+    "radiusAu": 0.03352378856871639,
+    "rangeAu": 3.0171409711844754,
+    "realistic": false,
+    "fill": 0.8,
+    "markersInFront": 16
+  },
+  {
+    "name": "enlarged-90R-lon45",
+    "distance": 90,
+    "lon": 45,
+    "radiusAu": 0.03352378856871639,
+    "rangeAu": 3.0171409711844754,
+    "realistic": false,
+    "fill": 0.8,
+    "markersInFront": 15
+  },
+  {
+    "name": "enlarged-90R-lon135",
+    "distance": 90,
+    "lon": 135,
+    "radiusAu": 0.03352378856871639,
+    "rangeAu": 3.0171409711844754,
+    "realistic": false,
+    "fill": 0.8,
+    "markersInFront": 12
+  },
+  {
+    "name": "enlarged-90R-lon-135",
+    "distance": 90,
+    "lon": -135,
+    "radiusAu": 0.03352378856871639,
+    "rangeAu": 3.0171409711844754,
+    "realistic": false,
+    "fill": 0.8,
+    "markersInFront": 12
+  },
+  {
+    "name": "realistic-60R-lon-45",
+    "distance": 60,
+    "lon": -45,
+    "radiusAu": 0.00004258750455597227,
+    "rangeAu": 0.002555250273358336,
+    "realistic": true,
+    "fill": 0.8,
+    "markersInFront": 2
+  },
+  {
+    "name": "realistic-60R-lon45",
+    "distance": 60,
+    "lon": 45,
+    "radiusAu": 0.00004258750455597227,
+    "rangeAu": 0.002555250273358336,
+    "realistic": true,
+    "fill": 0.8,
+    "markersInFront": 3
+  },
+  {
+    "name": "realistic-60R-lon135",
+    "distance": 60,
+    "lon": 135,
+    "radiusAu": 0.00004258750455597227,
+    "rangeAu": 0.002555250273358336,
+    "realistic": true,
+    "fill": 0.8,
+    "markersInFront": 1
+  },
+  {
+    "name": "realistic-60R-lon-135",
+    "distance": 60,
+    "lon": -135,
+    "radiusAu": 0.00004258750455597227,
+    "rangeAu": 0.002555250273358336,
+    "realistic": true,
+    "fill": 0.8,
+    "markersInFront": 1
+  },
+  {
+    "name": "realistic-200R-lon-45",
+    "distance": 200,
+    "lon": -45,
+    "radiusAu": 0.00004258750455597227,
+    "rangeAu": 0.008517500911194454,
+    "realistic": true,
+    "fill": 0.8,
+    "markersInFront": 2
+  },
+  {
+    "name": "realistic-200R-lon45",
+    "distance": 200,
+    "lon": 45,
+    "radiusAu": 0.00004258750455597227,
+    "rangeAu": 0.008517500911194454,
+    "realistic": true,
+    "fill": 0.8,
+    "markersInFront": 3
+  },
+  {
+    "name": "realistic-200R-lon135",
+    "distance": 200,
+    "lon": 135,
+    "radiusAu": 0.00004258750455597227,
+    "rangeAu": 0.008517500911194454,
+    "realistic": true,
+    "fill": 0.8,
+    "markersInFront": 1
+  },
+  {
+    "name": "realistic-200R-lon-135",
+    "distance": 200,
+    "lon": -135,
+    "radiusAu": 0.00004258750455597227,
+    "rangeAu": 0.008517500911194454,
+    "realistic": true,
+    "fill": 0.8,
+    "markersInFront": 1
+  }
+]

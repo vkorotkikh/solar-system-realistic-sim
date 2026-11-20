@@ -1,0 +1,22 @@
+renderer: ANGLE (Microsoft Corporation, D3D12 (NVIDIA GeForce RTX 5090), OpenGL ES 3.1)
+enlarged-6R-lon-45: range 0.201 AU, Earth radius drawn 0.0335 AU, 16 markers in front of the disk
+enlarged-6R-lon45: range 0.201 AU, Earth radius drawn 0.0335 AU, 15 markers in front of the disk
+enlarged-6R-lon135: range 0.201 AU, Earth radius drawn 0.0335 AU, 12 markers in front of the disk
+enlarged-6R-lon-135: range 0.201 AU, Earth radius drawn 0.0335 AU, 12 markers in front of the disk
+enlarged-30R-lon-45: range 1.01 AU, Earth radius drawn 0.0335 AU, 16 markers in front of the disk
+enlarged-30R-lon45: range 1.01 AU, Earth radius drawn 0.0335 AU, 15 markers in front of the disk
+enlarged-30R-lon135: range 1.01 AU, Earth radius drawn 0.0335 AU, 12 markers in front of the disk
+enlarged-30R-lon-135: range 1.01 AU, Earth radius drawn 0.0335 AU, 12 markers in front of the disk
+enlarged-90R-lon-45: range 3.02 AU, Earth radius drawn 0.0335 AU, 16 markers in front of the disk
+enlarged-90R-lon45: range 3.02 AU, Earth radius drawn 0.0335 AU, 15 markers in front of the disk
+enlarged-90R-lon135: range 3.02 AU, Earth radius drawn 0.0335 AU, 12 markers in front of the disk
+enlarged-90R-lon-135: range 3.02 AU, Earth radius drawn 0.0335 AU, 12 markers in front of the disk
+realistic-60R-lon-45: range 0.00256 AU, Earth radius drawn 0.0000426 AU, 2 markers in front of the disk
+realistic-60R-lon45: range 0.00256 AU, Earth radius drawn 0.0000426 AU, 3 markers in front of the disk
+realistic-60R-lon135: range 0.00256 AU, Earth radius drawn 0.0000426 AU, 1 markers in front of the disk
+realistic-60R-lon-135: range 0.00256 AU, Earth radius drawn 0.0000426 AU, 1 markers in front of the disk
+realistic-200R-lon-45: range 0.00852 AU, Earth radius drawn 0.0000426 AU, 2 markers in front of the disk
+realistic-200R-lon45: range 0.00852 AU, Earth radius drawn 0.0000426 AU, 3 markers in front of the disk
+realistic-200R-lon135: range 0.00852 AU, Earth radius drawn 0.0000426 AU, 1 markers in front of the disk
+realistic-200R-lon-135: range 0.00852 AU, Earth radius drawn 0.0000426 AU, 1 markers in front of the disk
+problems: []
