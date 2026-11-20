@@ -10,7 +10,7 @@ import {
   HEALTH_PROBE_TIMEOUT_MS, SOLAR_PHYSICS_ERROR_BACKOFF_MS, SOLAR_PHYSICS_POLL_INTERVAL_MS, SOLAR_PHYSICS_REQUEST_TIMEOUT_MS,
   solarPhysicsRequestJd, type SolarPhysicsStatePayload
 } from './frontend/features/solar/solarPhysicsClient';
-import type { SolarDataSourceStatus } from './frontend/features/solar/solarDataStatus';
+import { solarStateLagLabelDays, type SolarDataSourceStatus } from './frontend/features/solar/solarDataStatus';
 import { readCoronalHoles, readSunspotSeeds, updateSunCoronalLoopsFromBlendView } from './frontend/features/solar/sunVisuals';
 import { SolarFlareManager } from './frontend/features/solar/solarFlares';
 
@@ -399,7 +399,8 @@ describe('a backend state is labelled with its lag, then cleared when too old (H
       const f = await reverseTo(-1, gapSec * 0.95);
       expect(shownEpoch(f)).toBe(SNAPSHOT_JD);
       f.tick(0, 0.6); // the label republishes at most twice a second
-      expect(f.lastStatus().text).toMatch(/ · time-lapse: state lags 9\d d · /); // an absolute lag, not -9x
+      // An absolute lag, in the chip's own rounding: a signed lag would be negative and print no label.
+      expect(f.lastStatus().text).toContain(` · time-lapse: state lags ${solarStateLagLabelDays(gapSec * 0.95)} d · `);
     });
 
     it('sets the limit from the absolute reverse rate: -4 d/s tolerates four times the lag that 1 d/s does', async () => {
