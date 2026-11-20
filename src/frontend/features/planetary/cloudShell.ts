@@ -5,6 +5,9 @@ import { mapUvGLSL } from './planetShaders';
 export const CLOUD_LIFT_KM = 10;
 /** Opacity of a fully cloudy pixel: from orbit thick cloud still lets a little ground through. */
 export const CLOUD_OPACITY = 0.9;
+/** Draw order among see-through objects. Anything that sits above the clouds, such as
+ * satellite markers, must be see-through with a higher order so the clouds never cover it. */
+export const CLOUD_RENDER_ORDER = -1;
 const EARTH_MEAN_RADIUS_KM = 6371.0088;
 
 const vertexShader = /* glsl */`
@@ -55,7 +58,7 @@ export class CloudShell {
         // Opaque ground always draws first. Among see-through objects the clouds go before the
         // default ones: orbit lines write depth, and drawn first they would cut slits through the
         // clouds. The background layers (belts at -4 and -5, the sky further back) stay behind.
-        this.mesh.renderOrder = -1;
+        this.mesh.renderOrder = CLOUD_RENDER_ORDER;
         this.setRadius(radius);
     }
 

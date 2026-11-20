@@ -825,7 +825,8 @@ export class OrbitalSatelliteSystem {
   buildInstancedMarkers(): void {
     const material = new MeshBasicMaterial({
       color: new Color('#ffffff'),
-      vertexColors: true
+      vertexColors: true,
+      transparent: true // fully opaque, but drawn after Earth's clouds (see CLOUD_RENDER_ORDER)
     });
     const instancedMesh = new InstancedMesh(this.markerGeometry, material, this.satellites.length);
     instancedMesh.instanceMatrix.setUsage(DynamicDrawUsage);
@@ -870,7 +871,8 @@ export class OrbitalSatelliteSystem {
       } else {
         marker = new Mesh(
           this.markerGeometry,
-          new MeshBasicMaterial({ color: new Color(markerColor(sat.category, this.markerColorOverrides)) })
+          // Fully opaque, but drawn after Earth's clouds (see CLOUD_RENDER_ORDER).
+          new MeshBasicMaterial({ color: new Color(markerColor(sat.category, this.markerColorOverrides)), transparent: true })
         );
       }
 
