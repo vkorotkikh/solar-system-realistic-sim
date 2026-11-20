@@ -12,7 +12,8 @@ before anything is written, and two runs give byte-identical files:
   earth_normal_etopo2022_8192.png    surface slopes from NOAA ETOPO 2022 60" (ice surface) on
                                      land and ice only: R = east, G = north, square-root
                                      companded and dithered, 128 = flat (see encode_slopes)
-  earth_clouds_bmng_2048.jpg         NASA Blue Marble clouds, copied byte for byte
+  earth_clouds_bmng_2048.jpg         NASA Blue Marble clouds as grey, cleared over the ice sheets,
+                                     where NASA's composite reads ice as cloud (clear_ice_clouds)
 
 Needs numpy, SciPy and Pillow, plus h5py to read the ETOPO netCDF-4 file. h5py is not a
 project dependency: run this from a throwaway venv, with the downloads at the paths in INPUTS:
@@ -24,12 +25,11 @@ import hashlib
 import json
 import os
 from pathlib import Path
-import shutil
 import sys
 
 import numpy as np
 from PIL import Image, ImageChops, ImageDraw
-from scipy import sparse
+from scipy import ndimage, sparse
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / 'public/textures/surfaces'
@@ -37,6 +37,8 @@ WIDTH, HEIGHT = 8192, 4096
 R_EARTH = 6_371_008.8  # IUGG mean radius, metres
 POLAR_CAP_DEG = 89.5  # poleward of this the longitude step is under ~43 m; slopes are set to 0
 DITHER_SEED = 20261118
+ICE_LAT_DEG = 60  # ice sheets and caps; the August colour map has no seasonal snow
+ICE_WHITE = 180  # colour-map luminance: Antarctica reads 234-242, snow-free tundra 30-104
 
 _NASA = 'https://assets.science.nasa.gov/content/dam/science/esd/eo/'
 _NE = 'https://raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.2/geojson/'
@@ -218,6 +220,18 @@ def relief_heights(z, width, height):
     return area_resample(np.maximum(np.asarray(z, float), 0.0), width, height)
 
 
+def clear_ice_clouds(clouds, colour, water, lat_deg):
+    """NASA's cloud cover with the ice sheets cleared, as 8-bit grey. The composite cannot tell
+    cloud from ice: it reports 0.8 cover on the East Antarctic plateau, one of the clearest
+    places on Earth. Ice is white land poleward of ICE_LAT_DEG; the edge is feathered over
+    two pixels each way (wrapping in longitude) so the cloud does not end in a hard line.
+    Arguments are north-up grids at the cloud map's size; `colour` is luminance 0-255."""
+    ice = (np.asarray(water) < 128) & (np.asarray(colour) > ICE_WHITE)
+    ice &= (np.abs(np.asarray(lat_deg)) > ICE_LAT_DEG)[:, None]
+    keep = 1 - ndimage.uniform_filter(ice.astype(float), size=5, mode=('nearest', 'wrap'))
+    return np.round(np.asarray(clouds, float) * keep).astype(np.uint8)
+
+
 def lat_centres(rows):
     return 90 - (np.arange(rows) + 0.5) * 180 / rows
 
@@ -265,7 +279,14 @@ def build(inputs, out=OUT):
     _write(out / OUTPUTS['colour'],
            lambda p: resized.save(p, 'JPEG', quality=92, subsampling=0, optimize=True))
 
-    _write(out / OUTPUTS['clouds'], lambda p: shutil.copyfile(path('clouds'), p))
+    with Image.open(path('clouds')) as image:
+        cover = np.asarray(image.convert('RGB'))[..., 0]  # grey in RGB; the shell reads red
+    size = cover.shape[::-1]
+    clouds = clear_ice_clouds(cover, np.asarray(resized.convert('L').resize(size, Image.BOX)),
+                              np.asarray(Image.fromarray(water).resize(size, Image.BOX)),
+                              lat_centres(size[1]))
+    _write(out / OUTPUTS['clouds'],
+           lambda p: Image.fromarray(clouds).save(p, 'JPEG', quality=95, optimize=True))
     return {name: out / file for name, file in OUTPUTS.items()}
 
 

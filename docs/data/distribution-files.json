@@ -8440,8 +8440,8 @@
     },
     {
       "path": "public/textures/surfaces/earth_clouds_bmng_2048.jpg",
-      "bytes": 829367,
-      "sha256": "daddaad84d7a33bbbc86cdda3f591099f57cee8607b7bcf3b67eb7e4f7a1c793",
+      "bytes": 869428,
+      "sha256": "d9c4ccbfa9bd62e1c361c847b0e7eedbbda4eb24c859be12d890b46529bad453",
       "sourceProductIds": [
         "surface-map:earth:bluemarble-clouds"
       ],

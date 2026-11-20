@@ -196,3 +196,29 @@ def test_build_writes_nothing_when_an_input_is_missing(tmp_path):
     with pytest.raises(ValueError):
         maps.build(tmp_path / 'no-downloads', out)
     assert not out.exists()
+
+
+def test_clouds_are_cleared_over_ice_but_kept_over_sea_and_bare_land():
+    rows, cols = 36, 72  # 5 degree cells
+    lat = lat_centres(rows)
+    clouds = np.full((rows, cols), 200.0)
+    colour = np.full((rows, cols), 40.0)  # dark land or sea
+    water = np.full((rows, cols), 255.0)
+    water[30:, :] = 0  # land south of 60 S ...
+    colour[30:, :] = 240  # ... white with ice
+    water[2:6, 10:20] = 0  # bare tundra 60-80 N
+    water[15:20, 30:40] = 0  # bright desert near the equator
+    colour[15:20, 30:40] = 220
+    out = maps.clear_ice_clouds(clouds, colour, water, lat)
+    assert out.dtype == np.uint8
+    assert (out[33:, :] == 0).all()  # the ice sheet, away from its feathered edge
+    assert (out[:28, :] == 200).all()  # sea, tundra and desert keep NASA's cloud
+    assert (out[33:, 0] == out[33:, -1]).all()  # no seam at the antimeridian
+
+
+def test_shipped_clouds_are_clear_on_the_ice_sheets_only():
+    clouds = shipped('clouds').astype(float) / 255
+    clouds = clouds[..., 0] if clouds.ndim == 3 else clouds  # the shell reads red
+    for place, lat, lon in [('East Antarctica', -80, 100), ('South Pole', -89, 0), ('Greenland', 72, -40)]:
+        assert clouds[pixel(clouds, lat, lon)] < 0.05, place
+    assert box(clouds, -70, -60, -180, 179.9).mean() > 0.3  # the Southern Ocean stays cloudy
