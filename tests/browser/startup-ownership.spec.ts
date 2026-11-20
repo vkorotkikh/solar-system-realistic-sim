@@ -377,7 +377,8 @@ async function sharedCatalog(page: Page) {
     const url = '/src/sim/phase1AsteroidCatalog.ts';
     const module = await import(/* @vite-ignore */ url);
     const result = await module.loadPhase1AsteroidCatalog({ maxRecords: 100000,
-      loadLatencyBudgetMs: module.PHASE1_LOAD_LATENCY_BUDGET_MS, metaUrl: module.PHASE1_CATALOG_META_URL });
+      loadLatencyBudgetMs: module.PHASE1_LOAD_LATENCY_BUDGET_MS, metaUrl: module.PHASE1_CATALOG_META_URL,
+      timeoutMs: module.PHASE1_PAGE_LOAD_TIMEOUT_MS });
     return { accepted: result.accepted, sourceCount: result.sourceCount, loadedCount: result.loadedCount,
       checksum: result.checksumActual, loadMs: result.loadMs };
   });

@@ -570,6 +570,8 @@ export class OrbitalSatelliteSystem {
   estimatedJdRate: number;
   initialized: boolean;
   lastError: string | null;
+  /** Set when the drawn orbits are not the complete current download: the page shows it. */
+  dataNote: string | null = null;
   orbitLinesClamped: boolean;
   radialOffsetAu = 0;
 
@@ -640,6 +642,7 @@ export class OrbitalSatelliteSystem {
 
     this.initialized = false;
     this.lastError = null;
+    this.dataNote = null;
     this.orbitLinesClamped = false;
   }
 
@@ -654,6 +657,7 @@ export class OrbitalSatelliteSystem {
       primaryId: this.primaryId,
       satelliteCount: this.satellites.length,
       lastError: this.lastError,
+      dataNote: this.dataNote,
       useJ2: this.useJ2,
       showOrbits: this.showOrbits,
       useInstancing: this.useInstancing,
@@ -674,6 +678,11 @@ export class OrbitalSatelliteSystem {
         const entries = Object.entries(this.tleSources);
         const texts = await Promise.all(entries.map(([, url]) => fetchTleText(url)));
         const parsedByGroup = texts.map((text, i) => parseTleBlock(text, entries[i][0], this.primaryModel));
+        // CelesTrak answers rate limits and bad queries with HTTP 200 and a text body.
+        const emptyGroups = entries.filter((_, i) => parsedByGroup[i].length === 0).map(([group]) => group);
+        if (emptyGroups.length > 0) {
+          this.lastError = `No orbit records in the ${emptyGroups.join(' and ')} download`;
+        }
 
         if (this.primaryId === 'earth') {
           const stations = parsedByGroup.find((_, i) => entries[i][0] === 'stations') ?? [];
@@ -711,6 +720,9 @@ export class OrbitalSatelliteSystem {
       this.satellites = fallbackByPrimary(this.primaryId)
         .map((entry) => normalizeCatalogSatellite(entry, this.primaryModel))
         .filter((satellite): satellite is NormalizedSatellite => Boolean(satellite));
+      this.dataNote = `sample orbits, not current data (${this.lastError ?? 'no orbit source'})`;
+    } else if (this.lastError) {
+      this.dataNote = `incomplete (${this.lastError})`;
     }
 
     this.buildSceneObjects();
