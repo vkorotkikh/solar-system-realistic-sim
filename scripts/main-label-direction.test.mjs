@@ -85,7 +85,7 @@ function harness({ realistic = false, axialTiltDeg = 0, type = 'planet', id = 'o
     syncAsteroidBeltInputs: noop, kuiperBeltUpdater: { update: noop }, applyMetricDisplayOffsets: noop, applyMoonAltitudeDisplay: noop, faceMoonTowardEarth: noop, updateEarthSatellites: noop, refreshMoonOrbitLines: noop,
     model: { update: noop }, updateFollowTarget: noop, viewportCamera: { applyPendingActions: noop },
     backgroundStars: { position: new THREE.Vector3() }, controls: { target: new THREE.Vector3(), update: () => onControls() },
-    updateCameraClipPlanes: noop, renderer, refreshBodyInfoDistance: noop, dom: { statusZoom: null, toggleLabels: { checked: true }, toggleOrbits: { checked: false } }, AU_KM: 149597870.7,
+    updateCameraClipPlanes: noop, renderer, refreshBodyInfoDistance: noop, refreshMoonStatus: noop, dom: { statusZoom: null, toggleLabels: { checked: true }, toggleOrbits: { checked: false } }, AU_KM: 149597870.7,
     refillBodyList: noop, window: {}, modelWorkerController: { start: noop }, updateSceneBodies: noop, focusBody: noop,
     updateCameraMode: noop, updateBodyInfoPanel: noop, updatePlayButton: noop, resizeRenderer: noop,
     startup, recovery: { available: true, reportFailure: message => { throw new Error(message); } },

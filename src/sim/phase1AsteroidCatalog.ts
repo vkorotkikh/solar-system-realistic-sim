@@ -4,6 +4,7 @@ import {
   colorForTaxonomy
 } from './asteroidBelt';
 import { readAsteroidCatalogBinary, type PackedAsteroidRecord } from '../data/asteroidCatalogLoader';
+import { sha256Hex } from './sha256';
 
 export type Phase1TaxonomyCode = 'C' | 'S' | 'M' | 'unknown';
 
@@ -180,6 +181,8 @@ const PHASE1_DEFAULT_URL = `${PHASE1_ASSET_BASE_URL}data/asteroid-phase1/asteroi
 const PHASE1_DEFAULT_META_URL = `${PHASE1_ASSET_BASE_URL}data/asteroid-phase1/asteroid_phase1_main_100000.meta.json`;
 const PHASE1_DEFAULT_MAX_RECORDS = 15_000;
 export const PHASE1_LOAD_LATENCY_BUDGET_MS = 2_000;
+/** The page's transfer bound: startup waits only 10 s of it, then adopts a late catalog. */
+export const PHASE1_PAGE_LOAD_TIMEOUT_MS = 60_000;
 const ASPH_MAGIC = 'ASPH';
 const ACBF_MAGIC = 'ACBF';
 const HEADER_SIZE_BYTES = 12;
@@ -334,13 +337,7 @@ function makeColor(taxonomy: AsteroidTaxonomy, seed: number): number {
 }
 
 async function checksumSHA256(buffer: ArrayBuffer): Promise<string> {
-  const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
-  const hashArray = new Uint8Array(hashBuffer);
-  let hex = '';
-  for (let i = 0; i < hashArray.length; i += 1) {
-    hex += hashArray[i].toString(16).padStart(2, '0');
-  }
-  return hex;
+  return sha256Hex(buffer);
 }
 
 function parseTaxonomyCounts(asteroids: readonly AsteroidDef[]): Phase1TaxonomyCounts {

@@ -32,6 +32,7 @@ test('moons, belts and satellites switches show and hide their layers', async ({
   for (const id of ['toggle-moons', 'toggle-asteroids', 'toggle-kuiper']) await expect(page.locator(`#${id}`)).toBeChecked();
   await expect(page.locator('#toggle-earth-satellites')).not.toBeChecked();
   await expect(page.locator('#body-match-count')).toHaveText('433 bodies');
+  await expect(page.locator('#status-moons')).toBeHidden(); // today is inside the fitted years
 
   await flip(page, 'toggle-moons');
   await expect(page.locator('#body-match-count')).toHaveText('10 bodies');
@@ -53,9 +54,28 @@ test('moons, belts and satellites switches show and hide their layers', async ({
   await expect(page.locator('#status-focus')).toHaveText('Focused · Europa');
 
   // CelesTrak is blocked here, so this also exercises the built-in fallback orbits.
+  await expect(page.locator('#status-satellites')).toBeHidden();
   await flip(page, 'toggle-earth-satellites');
   await expect(page.locator('#toggle-earth-satellites')).toBeChecked();
+  await expect(page.locator('#status-satellites')).toHaveText(/^Earth satellites · sample orbits, not current data \(/);
   await page.waitForTimeout(1_000);
+  expect(errors).toEqual([]);
+  await flip(page, 'toggle-earth-satellites');
+  await expect(page.locator('#status-satellites')).toBeHidden();
+});
+
+test('moons outside the fitted years say so in the status bar', async ({ page }) => {
+  // The page starts at the wall clock: start it in 2060, past the fits' 2000 to 2050 span.
+  await page.addInitScript(() => {
+    const realNow = Date.now;
+    const shift = Date.UTC(2060, 0, 1) - realNow();
+    Date.now = () => realNow() + shift;
+  });
+  const errors = await openApp(page);
+  await expect(page.locator('#status-moons')).toHaveText('Moons · 419 approximate, 4 hidden · fits cover 2000–2050');
+  await page.locator('summary[aria-controls="display-controls"]').click();
+  await flip(page, 'toggle-moons');
+  await expect(page.locator('#status-moons')).toBeHidden();
   expect(errors).toEqual([]);
 });
 

@@ -89,7 +89,7 @@ function harness(realistic = false) {
     syncAsteroidBeltInputs:noop, kuiperBeltUpdater:{update:noop}, applyMetricDisplayOffsets:noop, applyMoonAltitudeDisplay:noop, applyMoonOrbitLineDisplay:noop, faceMoonTowardEarth:noop, updateEarthSatellites:noop, refreshMoonOrbitLines:noop,
     model:{update:noop}, updateFollowTarget:noop, viewportCamera:{applyPendingActions:noop},
     backgroundStars:{position:new THREE.Vector3()}, controls:{ target:new THREE.Vector3(), update:()=>onControls() },
-    updateCameraClipPlanes:noop, refreshBodyInfoDistance:noop, AU_KM:149597870.7,
+    updateCameraClipPlanes:noop, refreshBodyInfoDistance:noop, refreshMoonStatus:noop, AU_KM:149597870.7,
     dom:{toggleRealisticScale:toggle,toggleLabels:{checked:true},statusZoom:null},
     renderer:{domElement:{clientHeight:900},render() {
       scene.updateMatrixWorld(true); camera.updateMatrixWorld(true);

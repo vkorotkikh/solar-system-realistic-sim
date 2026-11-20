@@ -20,7 +20,7 @@ const MAIN_BINDINGS = [
   'kuiperBeltUpdater', 'sunCtrl', 'applyMetricDisplayOffsets', 'applyMoonAltitudeDisplay', 'faceMoonTowardEarth', 'updateEarthSatellites', 'refreshMoonOrbitLines', 'bodyNodes',
   'updateFollowTarget', 'viewportCamera', 'bodyMeshes', 'Vector3',
   'backgroundStars', 'camera', 'controls', 'updateCameraClipPlanes',
-  'renderer', 'scene', 'AU_KM', 'updateZoomStatus', 'updateLabels',
+  'renderer', 'scene', 'AU_KM', 'updateZoomStatus', 'updateLabels', 'refreshMoonStatus',
 ] as const;
 
 function productionBodyInfoRuntime(bindings: Record<string, unknown>): MainBodyInfoRuntime {
@@ -178,6 +178,7 @@ function makeHarness() {
     scene: {},
     AU_KM,
     updateZoomStatus: () => undefined,
+    refreshMoonStatus: () => undefined,
   });
 
   return {
