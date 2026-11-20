@@ -178,3 +178,21 @@ def test_an_input_that_changed_stops_the_build(tmp_path):
         maps.check_input(path, 3, '0' * 64)
     with pytest.raises(ValueError, match='source.bin'):
         maps.check_input(path, 4, hashlib.sha256(b'abc').hexdigest())
+
+
+def test_coast_uses_the_inland_neighbour_with_the_right_sign():
+    rows, cols = 32, 64
+    lat = lat_centres(rows)
+    water = np.zeros((rows, cols), bool)
+    water[:, 32:] = True
+    height = np.where(water, -4000.0, 10.0 * (32 - np.arange(cols)))  # land rises westward
+    ge, _ = maps.slopes(height, water, lat)
+    step = maps.R_EARTH * np.cos(np.radians(lat)) * 2 * np.pi / cols
+    assert ge[:, 31] == pytest.approx(-10.0 / step)  # (h[31] - h[30]) / step, never the sea floor
+
+
+def test_build_writes_nothing_when_an_input_is_missing(tmp_path):
+    out = tmp_path / 'out'
+    with pytest.raises(ValueError):
+        maps.build(tmp_path / 'no-downloads', out)
+    assert not out.exists()
