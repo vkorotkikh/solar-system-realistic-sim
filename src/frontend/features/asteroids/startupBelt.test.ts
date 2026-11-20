@@ -105,6 +105,72 @@ describe('startup asteroid belt ownership', () => {
 });
 
 
+describe('startup belt with a startup deadline (belts-01)', () => {
+  const catalogAsteroid = { ...NAMED_ASTEROIDS[0], sourceId: 'catalog-1', sourceName: 'Verified catalog object' };
+  const arriving = <T,>(value: T, afterMs: number) => new Promise<T>(resolve => setTimeout(() => resolve(value), afterMs));
+
+  it('starts with the procedural belt, then builds the catalog belt when the catalog arrives', async () => {
+    const harness = instrumentStartup();
+    try {
+      const result = await createStartupAsteroidBelt(
+        arriving<CatalogFixture>({ accepted: true, asteroids: [catalogAsteroid] }, 60),
+        { targetCount: 3, seed: 42, deadlineMs: 10 }, harness.dependencies,
+      );
+      expect(result.source).toBe('loading');
+      expect(result.population.count).toBe(3);
+      expect(harness.counts()).toEqual({ populationCalls: 1, rendererCalls: 1 });
+
+      const late = await result.late!;
+      expect(late.source).toBe('catalog');
+      expect(late.belt?.population.asteroids).toEqual([catalogAsteroid]);
+      expect(late.belt?.renderer.mesh.count).toBe(1);
+      expect(harness.counts()).toEqual({ populationCalls: 2, rendererCalls: 2 });
+    } finally { harness.dispose(); }
+  });
+
+  it.each([
+    ['rejected', () => Promise.resolve<CatalogFixture>({ accepted: false, asteroids: [] })],
+    ['failed', () => Promise.reject(new Error('dropped'))],
+  ] as const)('reports a late %s catalog without building a second belt', async (source, outcome) => {
+    const harness = instrumentStartup();
+    try {
+      const result = await createStartupAsteroidBelt(
+        new Promise<CatalogFixture>((resolve, reject) => setTimeout(() => outcome().then(resolve, reject), 40)),
+        { targetCount: 3, seed: 42, deadlineMs: 10 }, harness.dependencies,
+      );
+      const late = await result.late!;
+      expect(late).toMatchObject({ source, belt: null });
+      expect(harness.counts()).toEqual({ populationCalls: 1, rendererCalls: 1 });
+    } finally { harness.dispose(); }
+  });
+
+  it('keeps the old behaviour when the catalog arrives before the deadline', async () => {
+    const harness = instrumentStartup();
+    try {
+      const result = await createStartupAsteroidBelt(
+        Promise.resolve<CatalogFixture>({ accepted: true, asteroids: [catalogAsteroid] }),
+        { targetCount: 3, seed: 42, deadlineMs: 1_000 }, harness.dependencies,
+      );
+      expect(result.source).toBe('catalog');
+      expect(result.late).toBeUndefined();
+    } finally { harness.dispose(); }
+  });
+
+  it('builds nothing for a catalog that arrives after the owner was cancelled', async () => {
+    const harness = instrumentStartup();
+    const owner = new AbortController();
+    try {
+      const result = await createStartupAsteroidBelt(
+        arriving<CatalogFixture>({ accepted: true, asteroids: [catalogAsteroid] }, 40),
+        { targetCount: 3, seed: 42, deadlineMs: 10, signal: owner.signal }, harness.dependencies,
+      );
+      owner.abort();
+      await expect(result.late!).rejects.toMatchObject({ name: 'AbortError' });
+      expect(harness.counts()).toEqual({ populationCalls: 1, rendererCalls: 1 });
+    } finally { harness.dispose(); }
+  });
+});
+
 describe('startup belt cancellation and final scale', () => {
   it.each(['empty', 'rejected'] as const)('allocates only one fallback for %s catalog input', async mode => {
     const harness = instrumentStartup();

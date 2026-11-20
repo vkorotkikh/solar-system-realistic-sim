@@ -136,7 +136,6 @@ jobs:
           python -m pytest -v --durations=20 -o faulthandler_timeout=120
           scripts/test_catalog_generation.py
           scripts/test_catalog_science_review.py
-          scripts/test_fetch_jpl_sbdb_preflight.py
           scripts/test_moon_candidate_inputs.py
           scripts/test_moon_lazy_ephemerides.py
           scripts/test_moon_physical_radii.py

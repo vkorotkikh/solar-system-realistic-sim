@@ -9,12 +9,12 @@ define platform support, asteroid sampling, timing, decorative motion and
 backend configuration.
 
 - **Sun + 8 planets + Pluto** with axial tilt, spin, and search/focus controls for every rendered body
-- **423 moons** from the NASA/JPL satellite mean-elements table, behind a Moons switch that is on by default. All 423 use fitted JPL Horizons models, preloaded at startup. At enlarged scale each moon keeps its true altitude above its enlarged planet
+- **423 moons** from the NASA/JPL satellite mean-elements table, behind a Moons switch that is on by default. All 423 use fitted JPL Horizons models for 2000–2050, preloaded at startup; outside those years the status bar says the moons are approximate. At enlarged scale each moon keeps its true altitude above its enlarged planet
 - **Synthetic Sun visualization** with physically inspired surface, corona, flare, magnetic-field and solar-wind layers; these are models, not a calibrated observation reconstruction
 - **SMBH/AGN experiments** with transient timelines and exotic hypothesis-model displays
 - **Adjustable simulation clock** with pause, reverse, time-warp, and a Now control
 - **6,000 procedural background stars**, rather than catalog proper-motion or survey-sky rendering
-- **Asteroid belt** targeting 50,000 displayed objects from an accepted Phase 1 subset of up to 100,000 source rows, with deterministic procedural fallback
+- **Asteroid belt** targeting 50,000 displayed objects from an accepted Phase 1 subset of up to 100,000 source rows, with deterministic procedural fallback. If the catalog takes longer than 10 s, the page starts with the procedural belt and swaps in the catalog when it arrives; the status bar says which is drawn
 - **5,000-object Kuiper field** including binary companions
 
 Catalog-star proper motion, nearby-system navigation, Earth clouds and Oort-related UI/update hooks remain repository modules/assets, not enabled features of this entry. Backend APIs are described separately below.
@@ -159,6 +159,26 @@ curl http://127.0.0.1:8042/solar/physics
 curl http://127.0.0.1:8042/solar/realtime
 ```
 
+### Trip planner endpoints
+
+The reworked trip planner searches a date range for one-way trips and round
+trips (`"trip": "round_trip"` with `stay_days`, and `max_stay_days` for a
+range) between Sun-orbiting bodies, and prices each trip as burns from a
+default orbit at each end. A refusal is an answer with `"status": "refused"`,
+a `code` and a plain `message`, not an HTTP error. The vehicle check says
+whether a staged chemical vehicle can fly a list of burns, and how much fuel
+each burn uses.
+
+```bash
+curl 'http://127.0.0.1:8042/planner/places?query=europa'
+curl -X POST http://127.0.0.1:8042/planner/trips/search \
+  -H 'Content-Type: application/json' \
+  -d '{"from": "earth", "to": "mars", "earliest_departure": "2026-11-12", "latest_departure": "2028-11-12"}'
+curl -X POST http://127.0.0.1:8042/planner/vehicle-check \
+  -H 'Content-Type: application/json' \
+  -d '{"burns_km_s": [3.71, 2.04], "payload_mass_kg": 6500, "stages": [{"name": "main", "dry_mass_kg": 6500, "propellant_mass_kg": 18000, "isp_s": 360}]}'
+```
+
 ## Project Structure
 
 Inventory of active and retained modules; this is not a live wiring diagram.
@@ -253,6 +273,7 @@ records the runtime owners.
 │   │   ├── solar_realtime_data.py             # SDO/AIA, SWPC, SILSO ingestion
 │   │   ├── kuiper.py                          # Kuiper belt physics + binary KBOs
 │   │   └── radiation_pressure.py              # SRP, Poynting-Robertson, Yarkovsky
+│   ├── planner/                               # Trip planner: places, launch-window search
 │   ├── trajectory/                            # Lambert solver, MGA optimizer, planner
 │   ├── mission/                               # Multi-agent mission planner + services
 │   ├── benchmark/                             # Accuracy benchmarks + calibration protocol
@@ -313,7 +334,7 @@ Search and focus the bodies rendered by the page, including all 423 moons while 
 - **Earth's Moon**: quadtree terrain from NASA's CGI Moon Kit (LROC colour and LOLA elevation), preloaded at startup and uploaded to the GPU on arrival
 - **Mars**: a NASA/USGS colour map, preloaded the same way; its terrain stays procedural, because no elevation map ships
 - **Named moons**: eight USGS-hosted maps, with generated maps for the rest
-- **Earth satellites**: current CelesTrak orbits when switched on, with built-in fallback records
+- **Earth satellites**: current CelesTrak orbits when switched on. If the download fails or is incomplete, three built-in sample orbits (or the part that arrived) are drawn and the status bar says so
 - **Other planets and Pluto**: colored sphere materials
 - Axial tilt and spin use the rendered bodies' orientation metadata
 
@@ -362,7 +383,7 @@ The generated population and binary assumptions are visualization models, not a 
 
 ### Trajectory APIs and the mission planner panel
 
-The backend provides direct-transfer and multi-leg gravity-assist planning, including `POST /trajectory/lambert` and `POST /trajectory/porkchop`. The page's Mission planner panel calls these, falling back to the local patched-conic planner for route planning when the backend is unreachable. Plotted arcs are illustrative curves between the computed departure and arrival positions, not propagated conics. Mission plan uses the backend's default vehicle, which currently closes no round trip.
+The backend provides direct-transfer and multi-leg gravity-assist planning, including `POST /trajectory/lambert` and `POST /trajectory/porkchop`. The page's Mission planner panel calls these, falling back to the local patched-conic planner for route planning when the backend is unreachable. Porkchop best searches 220 days of departures and flight times from 70 days up to 1.6 Hohmann flight times (900 days at least, 3,720 at most, and no arrival after 2050); it prints the window it searched and says when the best point lies on the longest flight time. Plotted arcs are illustrative curves between the computed departure and arrival positions, not propagated conics. Mission plan uses the backend's default vehicle, which currently closes no round trip.
 
 ### Mission planner API
 
@@ -412,8 +433,8 @@ cannot represent them. Ordinary midnight remains a valid precise input.
   remains unchanged and is explicitly projected onto active identities. Explicit library
   requests fetch only the required shards from `public/moon-ephemerides/`.
   The page preloads all of them at startup: the 13 base models and all 410 shards
-  (60 MB), within a 15 s budget. If the shards fail or overrun it, the page falls back
-  to the 21 named moons' fits, then to the 13 base models, and the other moons use mean
+  (60 MB), named moons first, waiting at most 15 s. It keeps every shard that arrived
+  by then and retries a failed shard once; a moon whose shard did not arrive uses mean
   elements. Each shard is capped at 500 km and 10 m/s over 2000–2050. Captured numerical-source
   agreement does not establish observational uncertainty or redistribution rights.
   A pinned JPL physical-parameter table supplies 46 mean radii with references
@@ -498,15 +519,8 @@ To intentionally publish the star catalog and enriched nearby-system CSV, add
 python scripts/fetch_gaia_catalog.py --write
 ```
 
-Legacy SBDB source publication is retired. The optional preview below may
-populate query caches but cannot write catalog sources. Use the maintained
-Phase 1 builder below for validated offline preview or explicit publication:
-
-```bash
-python scripts/fetch_jpl_sbdb.py --dry-run
-```
-
-Append mode requires both `backend/data/bodies.py` and the removed `src/data/planets.js`, so it is unavailable in the current checkout and fails before cache setup or provider requests. It does not target `planets.ts`. Use the separate supported Phase 1 dataset workflow below for the rendered asteroid catalog.
+The legacy SBDB preview (`scripts/fetch_jpl_sbdb.py --dry-run`) is retired. Use
+the Phase 1 dataset workflow below for the rendered asteroid catalog.
 
 Verify the committed REBOUND initial states and off-epoch accuracy fixtures
 against live JPL Horizons and the pinned DE440 GM kernel:
@@ -542,8 +556,10 @@ non-publishing validation mode.
 - The retained NASA GIBS cloud pipeline is not connected to the page and is not numerical weather-prediction assimilation.
 - Retained gravity-vector UI/update hooks do not imply a shipped gravity-vector display.
 - The fitted moon ephemerides are validated only inside their declared 2000–2050 JDTDB
-  coverage. Mean elements, used only when the fits fail to load, can be far off for
-  irregular moons: Himalia was 7–16 million km from JPL Horizons at three dates in 2026–2031.
+  coverage. Outside those years, or when the fits fail to load, 419 moons use mean elements and
+  Titan, Iapetus, Phoebe and Cordelia are hidden; the status bar then says how many moons are
+  approximate or hidden. Mean elements can be far off for irregular moons: Himalia was
+  7–16 million km from JPL Horizons at three dates in 2026–2031.
 - The shipped asteroid display uses elliptic element propagation, not close-up N-body perturbations.
 - Backend gravity-assist planning uses Lambert legs with hard-constrained flyby turn feasibility; the page's offline fallback is patched-conic.
 - Transfer-arc rendering is illustrative, not a finite-burn trajectory integrator.
@@ -617,12 +633,6 @@ npm run typecheck
 npm run typecheck:scripts
 npm run test:types:ui
 ```
-
-Fixed browser diagnostics use the maintained Playwright configuration:
-`node scripts/run-browser-diagnostic.mjs <warp|scale|debug>`.
-Use `--help` or `--list` for inspection without launching a browser, and
-`--output EXISTING_PARENT` to keep artifacts in a new child directory.
-The former root `testWarp.js` and `testRealisticScale.mjs` scratch commands remain retired.
 
 ## Backend Tests
 
