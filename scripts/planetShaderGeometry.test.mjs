@@ -44,7 +44,7 @@ describe.skipIf(process.env.PLANET_SHADER_GPU_TEST !== '1')('planet vertex shade
     for (const child of tree.faces[0].children) capture(child, displacement);
     tree.faces[0].children[0].split();
     for (const child of tree.faces[0].children[0].children) capture(child, displacement);
-    const output = JSON.parse(execFileSync('uv', ['run', '--python', '3.12', '--with', 'moderngl', 'python', 'scripts/planet-shader-feedback.py'], {
+    const output = JSON.parse(execFileSync('uv', ['run', '--python', '3.12', '--with-requirements', 'ci/shader-gpu-requirements.txt', 'python', 'scripts/planet-shader-feedback.py'], {
       input: JSON.stringify({
         shader: `#define PLANET_TYPE ${tree.material.defines.PLANET_TYPE}\n${tree.material.vertexShader}`,
         cases,

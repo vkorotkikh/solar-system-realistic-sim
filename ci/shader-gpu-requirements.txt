@@ -1,0 +1,4 @@
+# Exact packages for the EGL shader tests (scripts/planetShader*.test.mjs, PLANET_SHADER_GPU_TEST=1),
+# which run the production planet shaders on Mesa's software renderer through moderngl.
+moderngl==5.13.0
+glcontext==3.1.0

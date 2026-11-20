@@ -15,7 +15,7 @@ const at = (p) => ({ sphere: unit(p), position: unit(p), normal: unit(p) });
 
 function run(material, cases, uniforms, textures) {
   const defines = Object.entries(material.defines ?? {}).map(([name, value]) => `#define ${name} ${value}\n`).join('');
-  return JSON.parse(execFileSync('uv', ['run', '--python', '3.12', '--with', 'moderngl', 'python', 'scripts/planet-shader-fragment.py'], {
+  return JSON.parse(execFileSync('uv', ['run', '--python', '3.12', '--with-requirements', 'ci/shader-gpu-requirements.txt', 'python', 'scripts/planet-shader-fragment.py'], {
     input: JSON.stringify({ defines, shader: material.fragmentShader, uniforms, textures, cases }),
     encoding: 'utf8',
     timeout: 90_000,
@@ -85,7 +85,7 @@ describe.skipIf(process.env.PLANET_SHADER_GPU_TEST !== '1')('Earth fragment shad
     // A 2x2 pixel quad whose pixels choose different longitude branches sees a coordinate jump
     // of 1 and samples the coarsest mip; drivers with per-pixel derivatives (llvmpipe) expose it.
     const views = [115, -40, 180, 0].map((lon) => ({ lon, lat: 20, spanDeg: 2 }));
-    const output = JSON.parse(execFileSync('uv', ['run', '--python', '3.12', '--with', 'moderngl', 'python', 'scripts/planet-shader-seam.py'], {
+    const output = JSON.parse(execFileSync('uv', ['run', '--python', '3.12', '--with-requirements', 'ci/shader-gpu-requirements.txt', 'python', 'scripts/planet-shader-seam.py'], {
       input: JSON.stringify({ mapUv: mapUvGLSL, views }),
       encoding: 'utf8',
       timeout: 90_000,
