@@ -1,0 +1,10 @@
+renderer: ANGLE (Microsoft Corporation, D3D12 (NVIDIA GeForce RTX 5090), OpenGL ES 3.1)
+10R-lon-45: fov 14.348 deg, near 22.3 km, Earth radius drawn 6371 km, realistic true
+10R-lon-40: fov 14.348 deg, near 22.3 km, Earth radius drawn 6371 km, realistic true
+20R-lon-45: fov 7.165 deg, near 44.6 km, Earth radius drawn 6371 km, realistic true
+20R-lon-40: fov 7.165 deg, near 44.6 km, Earth radius drawn 6371 km, realistic true
+40R-lon-45: fov 3.581 deg, near 89.2 km, Earth radius drawn 6371 km, realistic true
+40R-lon-40: fov 3.581 deg, near 89.2 km, Earth radius drawn 6371 km, realistic true
+60R-lon-45: fov 2.387 deg, near 133.8 km, Earth radius drawn 6371 km, realistic true
+60R-lon-40: fov 2.387 deg, near 133.8 km, Earth radius drawn 6371 km, realistic true
+problems: []

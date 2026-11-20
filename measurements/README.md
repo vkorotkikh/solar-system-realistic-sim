@@ -59,6 +59,8 @@ under test, with an environment built from its `backend/requirements.txt`.
 | `2026-11-12-planner-capabilities` | What can the existing route planner do, how fast, and why does Mission plan never pass? |
 | `2026-11-13-pr66-ci-diagnostics` | Why did PR #66 fail the tab-zoom walk and the Firefox project? |
 | `2026-11-14-preload-cost` | What does preloading every moon fit and the surface maps cost at startup? |
+| `2026-11-19-earth-imagery` | Does the NASA-imagery Earth look right on the real GPU, and what does it cost at startup? |
+| `2026-11-20-earth-cloud-depth` | Does Earth's cloud shell lose pixels to the depth buffer far out, and what offset fixes it? |
 
 Scripts behind the earlier figures of 2026-11-08 (`pixels.mjs`, `worker.mjs` and others)
 lived in a scratch directory that a reboot wiped; `2026-11-14-preload-cost/startup.mjs`

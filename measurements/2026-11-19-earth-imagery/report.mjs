@@ -175,7 +175,7 @@ footer { font: 400 12px/1.6 var(--mono); color: var(--muted); border-top: 1px so
   <section>
     <div class="section-head">
       <h2>Clouds at eight distances</h2>
-      <p class="muted">NASA's cloud map sits on its own see-through sphere 10 km above the ground and is lit exactly like the ground. Look for flicker between clouds and ground, and for orbit lines cutting through the clouds.</p>
+      <p class="muted">NASA's cloud map sits on its own see-through sphere 10 km above the ground and is lit exactly like the ground. Look for flicker between clouds and ground, and for orbit lines cutting through the clouds. Holes far out need a magnified view: see <code>measurements/2026-11-20-earth-cloud-depth</code>.</p>
     </div>
     <div class="grid3">
       ${cloud('05-clouds-realistic-3R', 'Realistic scale · 3 R')}

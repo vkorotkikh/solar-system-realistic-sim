@@ -61,9 +61,13 @@ Screenshots (`captures/`, raw console in `output-capture.txt`; no shader error o
   dome is brighter than the west and shows no contour bands, which is what the companded,
   dithered slope encoding is for.
 - `05` realistic scale at 3, 1.5 and 1.12 radii; `06` enlarged scale at the same distances;
-  `07` realistic at 20 and 60 radii: clouds follow both scale modes and show no flicker or
-  holes at any of the eight distances, so the cloud shell needed no polygon offset. Up close
-  the 2048 px cloud map (about 20 km per pixel) is soft, as expected.
+  `07` realistic at 20 and 60 radii: clouds follow both scale modes, and up close the 2048 px
+  cloud map (about 20 km per pixel) is soft, as expected. **Corrected 2026-11-20:** these
+  shots were read as "no flicker or holes, so no polygon offset needed", but Earth is only 80
+  and 25 px wide in `07`, too small to show it. A magnified check
+  ([2026-11-20-earth-cloud-depth](../2026-11-20-earth-cloud-depth/README.md)) found the
+  shell losing 3% of its cloud pixels at 10 radii and up to 30% at 60, in triangular holes;
+  the branch now offsets the shell's depth, and the same check finds none.
 
 Startup: medians of 5 cold-browser runs per arm on Vite dev servers, real GPU. Two runs:
 

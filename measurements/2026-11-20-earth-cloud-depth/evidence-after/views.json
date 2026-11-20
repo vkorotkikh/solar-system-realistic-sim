@@ -1,0 +1,186 @@
+[
+  {
+    "name": "10R-lon-45",
+    "distance": 10,
+    "lon": -45,
+    "radiusKm": 6371,
+    "realistic": true,
+    "near": 1.4905626594590307e-7,
+    "far": 1.788675191350837,
+    "fov": 14.347926193166964,
+    "shipped": {
+      "polygonOffset": true,
+      "polygonOffsetFactor": 0,
+      "polygonOffsetUnits": -4
+    },
+    "fill": 0.8,
+    "variants": [
+      "A",
+      "B",
+      "C",
+      "D"
+    ],
+    "controlScaleHeld": 0.000042594189133861404
+  },
+  {
+    "name": "10R-lon-40",
+    "distance": 10,
+    "lon": -40,
+    "radiusKm": 6371,
+    "realistic": true,
+    "near": 1.4905626594592165e-7,
+    "far": 1.78867519135106,
+    "fov": 14.347926193166964,
+    "shipped": {
+      "polygonOffset": true,
+      "polygonOffsetFactor": 0,
+      "polygonOffsetUnits": -4
+    },
+    "fill": 0.8,
+    "variants": [
+      "A",
+      "B",
+      "C",
+      "D"
+    ],
+    "controlScaleHeld": 0.000042594189133861404
+  },
+  {
+    "name": "20R-lon-45",
+    "distance": 20,
+    "lon": -45,
+    "radiusKm": 6371,
+    "realistic": true,
+    "near": 2.9811253189180614e-7,
+    "far": 3.577350382701674,
+    "fov": 7.164959956497154,
+    "shipped": {
+      "polygonOffset": true,
+      "polygonOffsetFactor": 0,
+      "polygonOffsetUnits": -4
+    },
+    "fill": 0.8,
+    "variants": [
+      "A",
+      "B",
+      "C",
+      "D"
+    ],
+    "controlScaleHeld": 0.000042594189133861404
+  },
+  {
+    "name": "20R-lon-40",
+    "distance": 20,
+    "lon": -40,
+    "radiusKm": 6371,
+    "realistic": true,
+    "near": 2.981125318918045e-7,
+    "far": 3.577350382701654,
+    "fov": 7.164959956497154,
+    "shipped": {
+      "polygonOffset": true,
+      "polygonOffsetFactor": 0,
+      "polygonOffsetUnits": -4
+    },
+    "fill": 0.8,
+    "variants": [
+      "A",
+      "B",
+      "C",
+      "D"
+    ],
+    "controlScaleHeld": 0.000042594189133861404
+  },
+  {
+    "name": "40R-lon-45",
+    "distance": 40,
+    "lon": -45,
+    "radiusKm": 6371,
+    "realistic": true,
+    "near": 5.962250637836123e-7,
+    "far": 7.154700765403348,
+    "fov": 3.5813593439162683,
+    "shipped": {
+      "polygonOffset": true,
+      "polygonOffsetFactor": 0,
+      "polygonOffsetUnits": -4
+    },
+    "fill": 0.8,
+    "variants": [
+      "A",
+      "B",
+      "C",
+      "D"
+    ],
+    "controlScaleHeld": 0.000042594189133861404
+  },
+  {
+    "name": "40R-lon-40",
+    "distance": 40,
+    "lon": -40,
+    "radiusKm": 6371,
+    "realistic": true,
+    "near": 5.96225063783609e-7,
+    "far": 7.154700765403308,
+    "fov": 3.5813593439162683,
+    "shipped": {
+      "polygonOffset": true,
+      "polygonOffsetFactor": 0,
+      "polygonOffsetUnits": -4
+    },
+    "fill": 0.8,
+    "variants": [
+      "A",
+      "B",
+      "C",
+      "D"
+    ],
+    "controlScaleHeld": 0.000042594189133861404
+  },
+  {
+    "name": "60R-lon-45",
+    "distance": 60,
+    "lon": -45,
+    "radiusKm": 6371,
+    "realistic": true,
+    "near": 8.943375956754184e-7,
+    "far": 10.732051148105022,
+    "fov": 2.387434684462284,
+    "shipped": {
+      "polygonOffset": true,
+      "polygonOffsetFactor": 0,
+      "polygonOffsetUnits": -4
+    },
+    "fill": 0.8,
+    "variants": [
+      "A",
+      "B",
+      "C",
+      "D"
+    ],
+    "controlScaleHeld": 0.000042594189133861404
+  },
+  {
+    "name": "60R-lon-40",
+    "distance": 60,
+    "lon": -40,
+    "radiusKm": 6371,
+    "realistic": true,
+    "near": 8.943375956754135e-7,
+    "far": 10.732051148104963,
+    "fov": 2.387434684462284,
+    "shipped": {
+      "polygonOffset": true,
+      "polygonOffsetFactor": 0,
+      "polygonOffsetUnits": -4
+    },
+    "fill": 0.8,
+    "variants": [
+      "A",
+      "B",
+      "C",
+      "D"
+    ],
+    "controlScaleHeld": 0.000042594189133861404
+  }
+]
