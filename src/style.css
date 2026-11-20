@@ -725,7 +725,9 @@ label,
 
 select,
 input[type='search'],
-input[type='text'] {
+input[type='text'],
+input[type='date'],
+input[type='number'] {
   width: 100%;
   min-height: 44px;
   padding: 9px 12px;
@@ -740,7 +742,9 @@ input[type='text'] {
 
 select:hover,
 input[type='search']:hover,
-input[type='text']:hover {
+input[type='text']:hover,
+input[type='date']:hover,
+input[type='number']:hover {
   background: #10181d;
   border-color: #50636b;
 }
@@ -748,6 +752,8 @@ input[type='text']:hover {
 select:focus-visible,
 input[type='search']:focus-visible,
 input[type='text']:focus-visible,
+input[type='date']:focus-visible,
+input[type='number']:focus-visible,
 .range-control:focus-visible {
   border-color: var(--color-cyan);
   outline: 3px solid rgba(120, 183, 191, 0.4);
@@ -1532,4 +1538,18 @@ select option {
   #camera-tools { padding-inline: 6px; }
   #camera-tools fieldset { padding-inline: 4px; }
   .camera-tool-grid button { padding-inline: 3px; }
+}
+
+#status-bar > #status-route[hidden] {
+  display: none;
+}
+
+.planner-output {
+  margin: 0;
+  max-height: 260px;
+  overflow: auto;
+  white-space: pre-wrap;
+  color: var(--color-text);
+  font-size: 0.72rem;
+  line-height: 1.45;
 }

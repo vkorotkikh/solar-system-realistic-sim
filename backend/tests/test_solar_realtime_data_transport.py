@@ -204,19 +204,26 @@ def test_aia_png_requires_exact_viewport_dimensions(
     assert raised.value.code == "invalid_aia_png_dimensions"
 
 
-@pytest.mark.parametrize("status", (201, 204, 206))
+@pytest.mark.parametrize(("status", "valid_media"), [
+    pytest.param(201, True, id="201"),
+    pytest.param(204, True, id="204"),
+    pytest.param(206, True, id="206"),
+    # The status gate must fire before media validation could read or echo the body.
+    pytest.param(206, False, id="206-before-media-validation"),
+])
 def test_aia_png_requires_exact_http_200_without_reading_body(
     monkeypatch: pytest.MonkeyPatch,
     status: int,
+    valid_media: bool,
     aia_png_header: Callable[..., bytes],
 ) -> None:
     provider = SolarRealtimeDataProvider()
     url = provider.HELIOVIEWER_TILE_URL
     response = _Response(
-        aia_png_header(),
+        aia_png_header() if valid_media else b"secret body",
         url=url,
         status=status,
-        headers=_Headers([("Content-Type", "image/png")]),
+        headers=_Headers([("Content-Type", "image/png")] if valid_media else []),
     )
     _install_routes(monkeypatch, {url: [response]})
 
@@ -245,26 +252,6 @@ def test_generic_binary_transport_preserves_unrelated_2xx_behavior(
         b"partial generic body",
         "application/octet-stream",
     )
-
-
-def test_aia_http_status_precedes_media_validation(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    provider = SolarRealtimeDataProvider()
-    url = provider.HELIOVIEWER_TILE_URL
-    response = _Response(
-        b"secret body",
-        url=url,
-        status=206,
-        headers=_Headers([]),
-    )
-    _install_routes(monkeypatch, {url: [response]})
-
-    with pytest.raises(SolarRealtimeFetchError) as raised:
-        provider._fetch_aia_png(url)
-
-    assert raised.value.code == "http_status"
-    assert response.read_sizes == []
 
 
 @pytest.mark.parametrize(

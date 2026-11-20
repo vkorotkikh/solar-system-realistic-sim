@@ -51,7 +51,7 @@ const workerAst = ts.createSourceFile('modelWorker.ts', workerSource, ts.ScriptT
 const packer = workerAst.statements.find(node => ts.isFunctionDeclaration(node) && node.name?.text === 'packModelState');
 if (!packer) throw new Error('actual worker packer extraction failed');
 const packJs = ts.transpileModule(workerSource.slice(packer.getStart(workerAst), packer.getEnd()) + '\nreturn packModelState();', {compilerOptions: {target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None}}).outputText;
-const catalog = createSolarSystemCatalog({moonsVisible: true});
+const catalog = createSolarSystemCatalog();
 const earthMoon = catalog.bodies.find(body => body.parentId === 'earth' && body.name === 'Moon');
 const ganymede = catalog.bodies.find(body => body.parentId === 'jupiter' && body.name === 'Ganymede');
 const byId = id => catalog.bodies.find(body => body.id === id);
@@ -139,11 +139,11 @@ function withScene({showMoons = true} = {}, inspect) {
   }
 }
 
-test('control: shipped Moon-off policy, current423 identities and compact worker exclusion remain', () => {
-  expect(shippedShowMoons).toBe(false);
+test('control: moons ship on, current423 identities and Moon-off worker exclusion remain', () => {
+  expect(shippedShowMoons).toBe(true);
   expect(catalog.bodies.filter(body => body.type === 'moon')).toHaveLength(423);
   expect(earthMoon.id).toBe('moon-earth-moon');
-  withScene({showMoons: shippedShowMoons}, f => {
+  withScene({showMoons: false}, f => {
     expect([...f.bodyNodes.keys()]).toEqual(['sun', 'earth', 'jupiter', 'mars']);
     expect(f.contract.idByIndex).toEqual(['sun', 'earth', 'jupiter', 'mars']);
   });

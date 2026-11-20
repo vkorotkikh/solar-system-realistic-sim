@@ -910,14 +910,16 @@ export function createSunController({
   }
 
   /**
-   * No longer refreshed: five failures in a row, or one run of failures lasting five minutes (first
-   * failure to latest). Time with no attempts (a hidden tab runs no frames, so no polls) does not
-   * count, before or during the run.
+   * No longer refreshed: five failures in a row, or a run of failures that has been retrying for five
+   * minutes. Only time spent retrying counts: the failed attempts themselves and the waits between
+   * them, each up to the retry the client scheduled. A longer gap with no attempts (a hidden tab runs
+   * no frames, so no polls) does not count. With the default 30 s backoff five failures come first,
+   * even with slow attempts; the five-minute limit matters when the server's Retry-After is long.
    */
   function solarStateUnrefreshed() {
     // Read the counters directly: status() builds a fresh object and this runs every frame.
-    const { consecutiveFailures, lastFailure, failingSinceMs } = solarPhysicsClient;
-    return consecutiveFailures >= 5 || (lastFailure !== null && lastFailure.atMs - failingSinceMs > 300_000);
+    const { consecutiveFailures, failingForMs } = solarPhysicsClient;
+    return consecutiveFailures >= 5 || failingForMs > 300_000;
   }
 
   /** Fade the backend state out and draw the procedural Sun until a usable snapshot arrives (H2.7). */

@@ -136,23 +136,6 @@ def test_selected_invalid_metadata_rejected(metadata, operation):
                 return_propellant_kg=0.0, return_capacity_kg=2000.0)
 
 
-@pytest.mark.parametrize("mining, capacity, handling", [
-    ({"storablePayloadKg": 500.0}, 600.0, 0.1),
-    ({"storablePayloadKg": 500.0}, 300.0, 0.1), ({}, 600.0, 0.04),
-    ({"storablePayloadKg": 500.0}, 600.0, 0.6),
-])
-def test_control_legacy_closure_exact_seven_keys(mining, capacity, handling):
-    before = mining.get("storablePayloadKg", 0.0) * (1 - handling)
-    actual = MiningService().payload_return_closure(mining,
-        outbound_propellant_kg=9000, return_propellant_kg=7000,
-        return_capacity_kg=capacity, handling_loss_fraction=handling)
-    assert actual == {"storablePayloadKg": mining.get("storablePayloadKg", 0.0),
-        "handlingLossFraction": handling, "deliveredBeforePropellantKg": before,
-        "outboundPropellantKg": 9000.0, "returnPropellantKg": 7000.0,
-        "returnCapacityKg": capacity, "returnedPayloadKg": min(before, capacity)}
-    assert MiningService.deliverable_cargo_kg(mining, handling) == before
-
-
 RISK = dict(base_total_delta_v_km_s=5.0, base_total_time_days=500.0,
             base_returned_payload_kg=500.0, base_arrival_jd=2461000.5,
             samples=30, seed=17)

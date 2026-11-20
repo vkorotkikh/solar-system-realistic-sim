@@ -4,6 +4,6 @@ test('production HTML exposes the named controls and native inputs', async ({ pa
   await loadShell(page);
   await expect(page.getByRole('heading', { name: 'Sun Model Lab' })).toBeVisible();
   await expect(page.locator('#panel-close')).toHaveAccessibleName(/(Collapse|Close).*controls/i);
-  await expect(page.getByLabel('Find a major body')).toBeVisible();
+  await expect(page.getByLabel('Find a body')).toBeVisible();
   await expect(page.getByLabel('Simulation speed')).toHaveAttribute('type', 'range');
 });

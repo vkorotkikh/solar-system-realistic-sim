@@ -266,8 +266,8 @@ test('compiled controls preserve camera, search and resolved event selection', a
     expect(prevented, 'ordinary Ctrl/Meta combinations must remain available to the browser').toEqual([false, false, false, false, false, false]);
     await expect(range).toHaveText(beforeShortcuts!);
 
-    const search = page.getByRole('searchbox', { name: 'Find a major body', exact: true });
-    const bodies = page.getByLabel('Major bodies', { exact: true });
+    const search = page.getByRole('searchbox', { name: 'Find a body', exact: true });
+    const bodies = page.getByLabel('Bodies', { exact: true });
     await bodies.selectOption('earth');
     await search.fill('not-a-body');
     await expect(bodies).toBeDisabled();

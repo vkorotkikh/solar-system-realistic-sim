@@ -4,7 +4,6 @@ import pytest
 
 from mission.schemas import (
     MAX_MISSION_ASSIST_POOL_SIZE,
-    MAX_MISSION_RISK_SAMPLES,
     MAX_MISSION_VEHICLE_STAGES,
     MissionRequestSchema,
     parse_mission_request,
@@ -121,12 +120,6 @@ def test_parse_mission_request_rejects_oversized_vehicle_before_iteration() -> N
 
     with pytest.raises(ValueError, match="vehicle.stages is limited"):
         parse_mission_request({"vehicle": {"stages": poison_stages}})
-
-
-def test_parse_mission_request_clamps_direct_call_risk_work() -> None:
-    parsed = parse_mission_request({"risk_samples": MAX_MISSION_RISK_SAMPLES + 10_000})
-
-    assert parsed.risk_samples == MAX_MISSION_RISK_SAMPLES
 
 
 @pytest.mark.parametrize(

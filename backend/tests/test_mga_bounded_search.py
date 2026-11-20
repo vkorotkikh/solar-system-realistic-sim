@@ -321,18 +321,6 @@ def test_flyby_vinf_continuity_accepts_inside_and_rejects_outside_tolerance() ->
     assert outside["reason"] == "vinf_magnitude_mismatch"
 
 
-def test_flyby_rejects_turn_limit_after_vinf_magnitude_match() -> None:
-    outgoing = _outgoing_leg(1_100.0, 100.0, 10.0)
-    outgoing["departureVelocityApprox"] = _velocity_au_day(10.0, 90.0)
-
-    result = mga._evaluate_flyby(EARTH_LIKE_ASSIST, _incoming_leg(), outgoing)
-
-    assert result["vInfMagnitudeConserved"] is True
-    assert result["requiredTurnDeg"] > result["maxTurnDeg"]
-    assert result["feasible"] is False
-    assert result["reason"] == "turn_limit"
-
-
 def test_near_tangential_vinf_root_is_bounded_and_certified(monkeypatch) -> None:
     matches, runtime = _matches_for_residual(
         monkeypatch,

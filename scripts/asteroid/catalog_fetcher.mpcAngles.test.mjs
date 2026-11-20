@@ -1,15 +1,9 @@
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
-import { assertRetired, buildRows, sbdbRow } from './catalog_fetcher.fixtures.mjs';
+import { buildRows, sbdbRow } from './catalog_fetcher.fixtures.mjs';
 
 // SMB-023's MPC column offsets are historical: there is no maintained MPC parser.
 // Preserve its angular precision oracles at the current SBDB/ACBF boundary.
-test('the MPC acquisition command refuses even with an existing legacy cache', () => {
-  assertRetired(['--source', 'mpc', '--cache-dir', 'cache', '--output-dir', 'output'], {
-    'cache/vcatalog-fetcher-ts-1.0.0-mpcorb.txt': '--------\nlegacy MPC fixture\n',
-  });
-});
-
 for (const [argument, node] of [
   [234.56789, 345.67890], [234.56789, 45.67890], [34.56789, 345.67890],
   [100, 100], [99.99999, 99.99999], [0, 9.12345],

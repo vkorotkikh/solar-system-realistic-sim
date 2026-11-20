@@ -286,7 +286,7 @@ for (const boundary of boundaries) {
 }
 for (const includeMoons of [false, true]) {
   test(`shipped catalog remains valid: includeMoons=${includeMoons}`, async () => {
-    const source = createSolarSystemCatalog({ moonsVisible: includeMoons });
+    const source = createSolarSystemCatalog();
     const catalog = buildModelWorkerCatalog(source.bodies, { includeMoons });
     const count = includeMoons ? 433 : 10;
     assert.equal(catalog.bodies.length, count);

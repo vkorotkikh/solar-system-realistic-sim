@@ -27,7 +27,7 @@ const labelSource = [fn('bodyBaseRadiusAu'), variable('labelWorldPosition'), fn(
 const compiled = ts.transpileModule(`${labelSource}\nreturn updateLabels;`, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None } }).outputText;
 
 const VIEWPORT_HEIGHT = 900, ASPECT = 16 / 9;
-const catalog = createSolarSystemCatalog({ moonsVisible: false });
+const catalog = createSolarSystemCatalog();
 const labelled = catalog.bodies.filter(b => b.type !== 'moon' && (b.isMajor || b.type === 'planet' || b.type === 'dwarf' || b.type === 'star'));
 assert.equal(labelled.length, 10, 'Sun, eight planets and Pluto carry labels');
 

@@ -9,6 +9,9 @@
     "fonts/oxanium-latin.woff2": "3aa555c528430aab19bb2693dc206bab557767d3082dba66400784c9cc90cfbb",
     "solar-systems/manifests/alpha-centauri.json": "111c7b2b150a4518583ebdddc124cda7a06487fa15344f71df4c3bfdd56571c7",
     "solar-systems/manifests/barnards-star.json": "7ff2c2b87662d3092da53714168ca8f56faaffac01ff5b7fc162c2b4e4591c57",
-    "solar-systems/manifests/sirius.json": "bc3c064cfd6c18fcea390585f00041fefdede7b708e56ea533dc15f911d86b03"
+    "solar-systems/manifests/sirius.json": "bc3c064cfd6c18fcea390585f00041fefdede7b708e56ea533dc15f911d86b03",
+    "textures/surfaces/mars_albedo_usgs_4096.jpg": "63b6afa8db88e00f4ee9c66650e15cd73ab225bacb7b45da14081b1282f49542",
+    "textures/surfaces/moon_albedo_lroc_8192.jpg": "9fbcf2dbb42137dc8c31fd13a050a2d3014ef048d35b5f16f579b83b66f7f3dc",
+    "textures/surfaces/moon_relief_ldem16_5760.png": "35e07425ce6ce6f92c07e81dbabe0d8abeba844de7d068a131605bef86e3e113"
   }
 }

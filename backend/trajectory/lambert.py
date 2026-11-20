@@ -60,10 +60,6 @@ class TrajectoryInputError(TrajectoryRequestRejected):
         super().__init__(code, message, context=context)
 
 
-class PorkchopScanCancelled(RuntimeError):
-    """Raised when a request owner cancels an in-progress grid scan."""
-
-
 def _supported_epoch(value: float, field: str) -> float:
     try:
         return validate_planning_epoch(value, field)

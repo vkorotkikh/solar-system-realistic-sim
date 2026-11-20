@@ -31,8 +31,8 @@ Illustrative `displayRadiusEstimateKm` and `displayRadiusAu` remain separate fro
 physical fields. Historical display sizing is retained; some old values differ
 from current source-reported mean radii. An unknown physical size retains a finite
 display marker even in the realistic scale mode, and focus uses the rendered
-marker size. That marker is not an inferred physical measurement. Moons remain
-hidden in the shipped product configuration.
+marker size. That marker is not an inferred physical measurement. The page shows moons
+behind a Moons switch that is on by default.
 
 Rebuild and check the physical artifact without acquisition:
 

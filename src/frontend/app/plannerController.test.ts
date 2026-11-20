@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createPlannerController, formatPlannerFailure } from './plannerController';
+import { createPlannerController, formatPlannerFailure, porkchopSearchGrid } from './plannerController';
 
 function deferred<T>() {
   let resolve!: (value: T) => void;
@@ -237,6 +237,86 @@ describe('planner UI trajectory outcomes', () => {
       'Porkchop search: partial (leg_evaluations_budget_exhausted)'
     );
     expect(harness.plotRoute).toHaveBeenCalledOnce();
+  });
+});
+
+describe('porkchop search grid', () => {
+  const DEPART_2026 = 2_461_361;
+  const PLANNING_END_JD = 2_469_807.5; // backend PLANNING_JD_MAX
+  const samples = (window: number, step: number) => Math.floor(window / step + 1e-12) + 1;
+  const points = (grid: ReturnType<typeof porkchopSearchGrid>) =>
+    samples(grid.departureWindowDays, grid.departureStepDays)
+    * samples(grid.tofMaxDays - grid.tofMinDays, grid.tofStepDays);
+
+  it('keeps the 70 to 900 day grid for Mars and for bodies without an orbit size', () => {
+    const inner = { departureWindowDays: 220, departureStepDays: 10, tofMinDays: 70, tofMaxDays: 900, tofStepDays: 20 };
+    expect(porkchopSearchGrid(1, 1.524, DEPART_2026)).toEqual(inner);
+    expect(porkchopSearchGrid(undefined, undefined, DEPART_2026)).toEqual(inner);
+  });
+
+  // Hohmann flight times from Earth: half the period of the transfer ellipse.
+  it.each([
+    ['Jupiter', 5.203, 997],
+    ['Saturn', 9.537, 2_208]
+  ])('searches well past the Hohmann flight time to %s', (_name, aAu, hohmannDays) => {
+    const grid = porkchopSearchGrid(1, aAu, DEPART_2026);
+    expect(grid.tofMaxDays).toBeGreaterThan(1.5 * hohmannDays);
+    expect(points(grid)).toBeLessThanOrEqual(2_000);
+  });
+
+  it('stops at the backend limits for Neptune', () => {
+    const grid = porkchopSearchGrid(1, 30.07, DEPART_2026);
+    expect(grid.tofMaxDays - grid.tofMinDays).toBe(3_650);
+    expect(points(grid)).toBeLessThanOrEqual(2_000);
+  });
+
+  it('never asks for an arrival after the planning range ends', () => {
+    const departIn2040 = 2_466_154.5;
+    const grid = porkchopSearchGrid(1, 9.537, departIn2040);
+    expect(grid.tofMaxDays).toBeGreaterThan(900);
+    expect(departIn2040 + grid.departureWindowDays + grid.tofMaxDays).toBeLessThanOrEqual(PLANNING_END_JD);
+  });
+});
+
+describe('porkchop result text', () => {
+  const lambert = {
+    solution: { fromId: 'earth', toId: 'mars', deltaVDepartureKmS: 2.2, deltaVArrivalKmS: 2.0, pathLengthAu: 1.2, tofDays: 200 },
+    ephemerisProvider: 'kepler'
+  };
+  const scanWithBestTof = (tofDays: number) => vi.fn().mockResolvedValue({
+    best: { departureJd: 2_460_000, arrivalJd: 2_460_000 + tofDays, totalDeltaVKmS: 4.2 },
+    count: 966, configuredGridCompleted: true, truncated: false, ephemerisProvider: 'kepler'
+  });
+
+  it('states the window that was searched', async () => {
+    const harness = makeHarness(vi.fn(), vi.fn(), scanWithBestTof(200), vi.fn().mockResolvedValue(lambert));
+    await harness.controller.runPorkchopPlanner();
+    expect(harness.output.textContent).toContain(
+      'Searched: departures over 220 days every 10 d; flight times 70 to 890 d every 20 d'
+    );
+    expect(harness.output.textContent).not.toContain('longest flight time');
+  });
+
+  it('flags a best point on the longest flight time searched', async () => {
+    const harness = makeHarness(vi.fn(), vi.fn(), scanWithBestTof(890), vi.fn().mockResolvedValue(lambert));
+    await harness.controller.runPorkchopPlanner();
+    expect(harness.output.textContent).toContain(
+      'Best is at the longest flight time searched: a longer flight may need less delta-v.'
+    );
+  });
+});
+
+describe('planner UI binding', () => {
+  it('ties every button listener to the given signal, so one abort removes them all', () => {
+    const harness = makeHarness(vi.fn());
+    const lifetime = new AbortController();
+    harness.controller.bindPlannerUi(lifetime.signal);
+    const buttons = [harness.dom.planDirect, harness.dom.planOptimal, harness.dom.planLambert,
+      harness.dom.planPorkchop, harness.dom.planMission, harness.dom.clearRoute];
+    for (const button of buttons) {
+      expect(button.addEventListener).toHaveBeenCalledOnce();
+      expect(button.addEventListener.mock.calls[0][2]).toEqual({ signal: lifetime.signal });
+    }
   });
 });
 

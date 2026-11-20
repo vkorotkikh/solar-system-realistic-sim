@@ -9,15 +9,21 @@ import pytest
 
 pytest.importorskip('spiceypy', reason='native SPK validation requires SpiceyPy; not a scientific pass')
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import capture_daphnis_spk_oracle as daphnis
 import repair_spk_moon_ephemeris as repair
 from generate_moon_repairs import encoded
 
 
-def test_native_75052_rebuild_matches_shipped_model_without_network():
+def test_native_75052_rebuild_matches_shipped_model_without_network(tmp_path, monkeypatch):
+    # Offline reconstruction must neither need nor create the candidate cache.
+    cache = tmp_path / 'missing-parent' / 'candidate-cache'
+    monkeypatch.setattr(repair, 'CACHE', cache)
+    monkeypatch.setattr(repair, 'OFFLINE', True)
     with patch('urllib.request.urlopen', side_effect=AssertionError('network forbidden')):
         body = repair.generate(75052)
     expected = json.loads(repair.OUTPUT.read_bytes())['bodies']['s2025_u_1']
     assert encoded(body) == encoded(expected)
+    assert not cache.parent.exists()
     assert body['validation']['accuracyLimits'] == {'positionKm': 57.844, 'velocityMPerS': 10.}
     query = json.loads(body['provenance']['query'])
     assert query['downloadedBytes'] == 1831968
@@ -28,3 +34,12 @@ def test_native_resampling_rejects_an_uncaptured_record():
     captured = json.loads(gzip.decompress((repair.PINNED/'75052.json.gz').read_bytes()))
     with pytest.raises(ValueError, match='uncaptured'):
         repair.evaluate_captured_epochs(captured, [2451546.234567])
+
+
+def test_daphnis_native_evaluation_does_not_require_repository_cache(tmp_path, monkeypatch):
+    captured = json.loads(daphnis.DESTINATION.read_bytes())
+    monkeypatch.setattr(daphnis, 'ROOT', tmp_path / 'clean-checkout')
+    with patch('urllib.request.urlopen', side_effect=AssertionError('network forbidden')):
+        actual = daphnis.evaluate(captured)
+    assert actual == captured['states']
+    assert not (tmp_path / 'clean-checkout').exists()

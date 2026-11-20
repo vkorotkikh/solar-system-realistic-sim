@@ -195,7 +195,7 @@ test.describe('active app frame lifecycle', () => {
       const page = await context.newPage(); const origin = new URL(baseURL!).origin;
       await observeApp(page, origin); await loaded(page, origin);
       await page.locator('#time-scale').evaluate((input: HTMLInputElement) => {
-        input.value = '120'; input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.value = input.max; input.dispatchEvent(new Event('input', { bubbles: true }));
       });
       const sibling = await context.newPage(); await sibling.goto('data:text/html,<title>Frame visibility control</title>');
       await page.bringToFront(); await expect.poll(() => page.evaluate(() => document.visibilityState)).toBe('visible');

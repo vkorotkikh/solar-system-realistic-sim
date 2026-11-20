@@ -2,20 +2,18 @@
 
 Charter: real parser and MiningService reject unsupported numeric plant costs,
 without changing missing defaults, supported coercions, zero available power or
-unrelated legacy clamps. The actual HTTP zero rejection is an existing control.
+unrelated legacy clamps. HTTP zero-cost rejection is a row of
+test_mission_http_ranges.py::test_existing_invalid_http_ranges_stay_422_without_work.
 Parser conversion failures retain their legacy0.24 fallback; direct service
 conversion failures retain their original exception types. Only normalized
 finite numeric costs below1e-9 and nonfinite converted costs are rejected.
 No remote services, planner search or unbounded numerical work.
 MIS-012: agent-notes/CONSOLIDATED_MARKDOWN_ISSUE_AUDIT_2026-10-24.md
 """
-from dataclasses import replace
 import math
 
-from fastapi.testclient import TestClient
 import pytest
 
-import server
 from mission.mining_service import MiningService
 from mission.schemas import parse_mission_request
 
@@ -134,31 +132,3 @@ def test_nonplant_direct_service_clamps_stay_compatible():
         'refiningYield': 0.0, 'storageLossRatePerDay': 0.0, 'transportDelayDays': 0.0}
     assert result['power']['availableKw'] == result['storablePayloadKg'] == 0.0
     assert result['power']['requiredKwPerKgDay'] == 0.24
-
-
-def test_http_zero_cost_is_already_rejected_before_admission(monkeypatch):
-    observed = []
-
-    def forbidden(*_args, **_kwargs):
-        observed.append('unexpected work')
-        raise AssertionError('zero plant cost must fail HTTP validation before mission work')
-
-    monkeypatch.setattr(server, 'SOLAR_SECURITY_CONFIG', replace(server.SOLAR_SECURITY_CONFIG, profile='local'))
-    monkeypatch.setattr(server.app, 'middleware_stack', None)
-    monkeypatch.setattr(server, '_acquire_nonblocking', forbidden)
-    monkeypatch.setattr(server, '_run_mission_plan', forbidden)
-    client = TestClient(server.app)
-    try:
-        response = client.post('/mission/plan', json={
-            'from_id': 'earth', 'target_id': 'mars', 'return_id': 'earth',
-            'departure_jd': 2460500.5, 'ephemeris_provider': 'kepler',
-            'assist_pool': [], 'max_assists': 0, 'power_required_kw_per_kg_day': 0.0})
-    finally:
-        client.close()
-    assert response.status_code == 422
-    detail = response.json()['detail']
-    assert detail['code'] == 'trajectory_request_validation_error'
-    assert detail['retryable'] is False
-    assert any(error['location'] == ['body', 'power_required_kw_per_kg_day']
-               for error in detail['context']['errors'])
-    assert observed == []

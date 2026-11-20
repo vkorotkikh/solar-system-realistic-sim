@@ -10,6 +10,7 @@ import {
     ShaderMaterial,
     Sphere,
     Float32BufferAttribute,
+    type Texture,
     type Object3D
 } from 'three';
 import { createPlanetShaderMaterial } from './planetShaders';
@@ -185,6 +186,11 @@ class QuadtreeNode {
     }
 }
 
+export interface PlanetSurfaceMaps {
+    albedo: Texture;
+    relief?: { map: Texture; zero: number; rangeOverRadius: number };
+}
+
 export class PlanetQuadtree {
     group: Group;
     faces: QuadtreeNode[] = [];
@@ -269,6 +275,19 @@ export class PlanetQuadtree {
         this.material.uniforms.uRadius.value = radius;
         this.material.uniforms.uDisplacementScale.value *= ratio;
         this.update();
+    }
+
+    /** Replace procedural shading with measured imagery and, when given, measured heights. */
+    setSurfaceMaps({ albedo, relief }: PlanetSurfaceMaps) {
+        const uniforms = this.material.uniforms;
+        uniforms.uAlbedoMap.value = albedo;
+        uniforms.uAlbedoReady.value = 1;
+        uniforms.uTerrainMode.value = relief ? 1 : 2;
+        if (relief) {
+            uniforms.uReliefMap.value = relief.map;
+            uniforms.uReliefZero.value = relief.zero;
+            uniforms.uDisplacementScale.value = this.baseRadius * relief.rangeOverRadius;
+        }
     }
 
     setLightDirection(dir: Vector3) {

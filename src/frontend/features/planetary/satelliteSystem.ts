@@ -570,7 +570,10 @@ export class OrbitalSatelliteSystem {
   estimatedJdRate: number;
   initialized: boolean;
   lastError: string | null;
+  /** Set when the drawn orbits are not the complete current download: the page shows it. */
+  dataNote: string | null = null;
   orbitLinesClamped: boolean;
+  radialOffsetAu = 0;
 
   constructor({
     primaryId = 'earth',
@@ -639,6 +642,7 @@ export class OrbitalSatelliteSystem {
 
     this.initialized = false;
     this.lastError = null;
+    this.dataNote = null;
     this.orbitLinesClamped = false;
   }
 
@@ -653,6 +657,7 @@ export class OrbitalSatelliteSystem {
       primaryId: this.primaryId,
       satelliteCount: this.satellites.length,
       lastError: this.lastError,
+      dataNote: this.dataNote,
       useJ2: this.useJ2,
       showOrbits: this.showOrbits,
       useInstancing: this.useInstancing,
@@ -673,6 +678,11 @@ export class OrbitalSatelliteSystem {
         const entries = Object.entries(this.tleSources);
         const texts = await Promise.all(entries.map(([, url]) => fetchTleText(url)));
         const parsedByGroup = texts.map((text, i) => parseTleBlock(text, entries[i][0], this.primaryModel));
+        // CelesTrak answers rate limits and bad queries with HTTP 200 and a text body.
+        const emptyGroups = entries.filter((_, i) => parsedByGroup[i].length === 0).map(([group]) => group);
+        if (emptyGroups.length > 0) {
+          this.lastError = `No orbit records in the ${emptyGroups.join(' and ')} download`;
+        }
 
         if (this.primaryId === 'earth') {
           const stations = parsedByGroup.find((_, i) => entries[i][0] === 'stations') ?? [];
@@ -710,6 +720,9 @@ export class OrbitalSatelliteSystem {
       this.satellites = fallbackByPrimary(this.primaryId)
         .map((entry) => normalizeCatalogSatellite(entry, this.primaryModel))
         .filter((satellite): satellite is NormalizedSatellite => Boolean(satellite));
+      this.dataNote = `sample orbits, not current data (${this.lastError ?? 'no orbit source'})`;
+    } else if (this.lastError) {
+      this.dataNote = `incomplete (${this.lastError})`;
     }
 
     this.buildSceneObjects();
@@ -920,6 +933,37 @@ export class OrbitalSatelliteSystem {
     }
   }
 
+  /** Move markers and orbit lines outward by a fixed distance so they clear an enlarged primary. */
+  setRadialOffsetAu(offsetAu: number): void {
+    this.radialOffsetAu = Math.max(0, offsetAu);
+    for (const line of this.orbitLineById.values()) {
+      const attribute = line.geometry.getAttribute('position');
+      const trueLoop: Float32Array = line.userData.trueLoop ??= Float32Array.from(attribute.array as ArrayLike<number>);
+      for (let i = 0; i < attribute.count; i += 1) {
+        const x = trueLoop[i * 3], y = trueLoop[i * 3 + 1], z = trueLoop[i * 3 + 2];
+        const scale = 1 + this.radialOffsetAu / (Math.hypot(x, y, z) || 1);
+        attribute.setXYZ(i, x * scale, y * scale, z * scale);
+      }
+      attribute.needsUpdate = true;
+      line.geometry.computeBoundingSphere();
+    }
+  }
+
+  dispose(): void {
+    this.disableWorker();
+    this.group.parent?.remove(this.group);
+    this.group.traverse((object) => {
+      const { geometry, material } = object as Mesh;
+      geometry?.dispose();
+      for (const entry of Array.isArray(material) ? material : material ? [material] : []) {
+        (entry as SpriteMaterial).map?.dispose();
+        entry.dispose();
+      }
+    });
+    this.markerGeometry.dispose();
+    this.group.clear();
+  }
+
   setJ2Enabled(enabled: boolean): void {
     this.useJ2 = Boolean(enabled);
   }
@@ -1055,6 +1099,12 @@ export class OrbitalSatelliteSystem {
   }
 
   applyMarkerPositionByIndex(index: number, x: number, y: number, z: number): void {
+    if (this.radialOffsetAu > 0) {
+      const scale = 1 + this.radialOffsetAu / (Math.hypot(x, y, z) || 1);
+      x *= scale;
+      y *= scale;
+      z *= scale;
+    }
     const base = index * 3;
     this.currentPositionsAu[base] = x;
     this.currentPositionsAu[base + 1] = y;

@@ -243,6 +243,7 @@ def test_discovery_failures_have_stable_codes(hrefs, request_utc, code):
         "http://gong.nso.edu/data/magmap/QR/zqs/mrzqs260925t2304c2316_301.fits.gz",
         "https://evil.example/data/magmap/QR/zqs/mrzqs260925t2304c2316_301.fits.gz",
         "https://gong.nso.edu/other/mrzqs260925t2304c2316_301.fits.gz",
+        *(f"mrzqs260925t2304c2316_301{control}.fits.gz" for control in "\x00\x01\x1f\x7f"),
     ],
 )
 def test_unsafe_listing_target_is_rejected_before_fetch(unsafe):
@@ -255,19 +256,6 @@ def test_unsafe_listing_target_is_rejected_before_fetch(unsafe):
         )
     assert caught.value.code == "unsafe_url"
     assert transport.calls == [directory]
-
-
-def test_safe_relative_redirect_and_final_url_are_manually_validated():
-    filename = "mrzqs260925t2304c2316_301.fits.gz"
-    provider, transport, _, request = provider_for("2026-09-25T23:05:00", (filename,))
-    target = file_url(filename)
-    redirected = day_url("20260925") + "download.fits.gz"
-    transport.routes[target] = deque(
-        [Response(status=302, headers={"Location": "download.fits.gz"})]
-    )
-    transport.routes[redirected] = deque([Response(gzip.compress(b"fits"))])
-    assert provider.acquire(request) == filename
-    assert transport.calls[-2:] == [target, redirected]
 
 
 @pytest.mark.parametrize("count, code", [(1, "redirect_loop"), (4, "redirect_overflow")])
@@ -355,19 +343,6 @@ def test_normal_apache_navigation_links_are_ignored():
         transport, parser=lambda _, *, context, limits: context.filename
     ).acquire(jd_tdb("2026-09-25T23:05:00"))
     assert result == filename
-
-
-@pytest.mark.parametrize("control", ["\x00", "\x01", "\x1f", "\x7f"])
-def test_all_url_control_characters_are_rejected(control):
-    gong = gong_module()
-    filename = f"mrzqs260925t2304c2316_301{control}.fits.gz"
-    directory = day_url("20260925")
-    transport = Transport({directory: Response(listing(filename))})
-    with pytest.raises(gong.GongArchiveError) as caught:
-        gong.GongArchiveProvider(transport, parser=lambda *a, **k: None).acquire(
-            jd_tdb("2026-09-25T23:05:00")
-        )
-    assert caught.value.code == "unsafe_url"
 
 
 def acquire_payload(

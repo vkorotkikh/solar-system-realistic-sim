@@ -27,7 +27,7 @@ Concretely:
 - **Multiple epochs.** A propagator validated at one date can be tuned to it.
   Both the secular-rate plan and its first fix passed at a single epoch and were
   wrong across the span. Accuracy tests sweep several epochs (see
-  `orbitMath.accuracy.test.ts`).
+  `planetPositions.horizons.test.ts`).
 
 - **Physical invariants for backend state.** e.g. after `kuiper.activate`, every
   massive perturber must be bound (`e < 0.1`) — unit-agnostic, and it fails loudly

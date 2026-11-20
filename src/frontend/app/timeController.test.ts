@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createTimeController } from './timeController';
+import { createTimeController, REAL_TIME_DAYS_PER_SEC, timeScaleStops } from './timeController';
 function tracked() {
   let text = ''; let date = ''; const writes = { text: 0, date: 0 };
   return { writes, element: {
@@ -7,6 +7,12 @@ function tracked() {
     get dateTime() { return date; }, set dateTime(value: string) { date = value; writes.date++; },
   } as unknown as HTMLTimeElement };
 }
+function slider(value = '') {
+  const attributes: Record<string, string> = {};
+  return Object.assign(new EventTarget(), { value, min: '', max: '', attributes,
+    setAttribute(name: string, next: string) { attributes[name] = next; } });
+}
+const stopIndex = (rate: number) => String(timeScaleStops(-120, 120).indexOf(rate));
 describe('time HUD output', () => {
   it('only writes changed formatted speed/date/dateTime values', () => {
     const speed = tracked(); const date = tracked();
@@ -31,7 +37,7 @@ describe('honest session header (H2.10)', () => {
     time.updateHud(); time.updateHud();
     expect(label.element.textContent).toBe('Simulation · +4.0 d/s'); expect(label.writes.text).toBe(1);
     state.timeScaleDaysPerSec = -0.5; time.updateHud();
-    expect(label.element.textContent).toBe('Simulation · -0.5 d/s');
+    expect(label.element.textContent).toBe('Simulation · -12 h/s');
     state.paused = true; time.updateHud();
     expect(label.element.textContent).toBe('Paused');
   });
@@ -87,16 +93,16 @@ describe('explicit Now time jump', () => {
   });
 
   it('does not notify on ordinary advance, speed input, or repeated HUD updates', () => {
-    const timeScale = Object.assign(new EventTarget(), { value: '2', min: '', max: '' });
+    const timeScale = slider();
     const speed = tracked(), date = tracked(), jumps: number[] = [];
     const state = { julianDate: 10, timeScaleDaysPerSec: 2, timeScaleDirty: false, paused: false };
     const time = createTimeController({
-      dom: { timeScale: timeScale as HTMLInputElement, timeScaleValue: speed.element, timeDate: date.element },
+      dom: { timeScale: timeScale as unknown as HTMLInputElement, timeScaleValue: speed.element, timeDate: date.element },
       simState: state, minTimeScale: -120, maxTimeScale: 120,
       currentJulianDate: () => 10, formatJulianAsDate: String, onTimeJump: () => jumps.push(state.julianDate)
     });
     time.bindUi(); time.advanceLocalTime(2);
-    timeScale.value = '-3'; timeScale.dispatchEvent(new Event('input'));
+    timeScale.value = stopIndex(-3); timeScale.dispatchEvent(new Event('input'));
     time.updateHud(); time.updateHud();
     expect(state).toEqual({ julianDate: 14, timeScaleDaysPerSec: -3, timeScaleDirty: true, paused: false });
     expect(jumps).toEqual([]);
@@ -110,17 +116,61 @@ describe('time UI listener lifetime', () => {
     const owner = new AbortController();
     if (preaborted) owner.abort();
     const nowTime = new EventTarget();
-    const timeScale = Object.assign(new EventTarget(), { value: '2', min: '', max: '' });
+    const timeScale = slider();
     const simState = { julianDate: 10, timeScaleDaysPerSec: 2, timeScaleDirty: false };
     const controller = createTimeController({
-      dom: { nowTime: nowTime as HTMLElement, timeScale: timeScale as HTMLInputElement },
+      dom: { nowTime: nowTime as HTMLElement, timeScale: timeScale as unknown as HTMLInputElement },
       simState, minTimeScale: -120, maxTimeScale: 120,
       currentJulianDate: () => 25, formatJulianAsDate: String, signal: owner.signal, onTimeJump: () => jumps.push(simState.julianDate),
     });
     controller.bindUi(); owner.abort();
     nowTime.dispatchEvent(new Event('click'));
-    timeScale.value = '-4'; timeScale.dispatchEvent(new Event('input'));
+    timeScale.value = stopIndex(-4); timeScale.dispatchEvent(new Event('input'));
     expect(simState).toEqual({ julianDate: 10, timeScaleDaysPerSec: 2, timeScaleDirty: false });
     expect(jumps).toEqual([]);
+  });
+});
+
+// PR #32: the 0.01-day epoch grid lets polls share a step only below 28.8x real
+// time, so the slider gets a real-time stop, plus ±12 h/s, between its whole days.
+describe('speed slider stops', () => {
+  function bound(rate: number) {
+    const input = slider(); const speed = tracked(); const label = tracked();
+    const state = { julianDate: 10, timeScaleDaysPerSec: rate, timeScaleDirty: false, paused: false };
+    const time = createTimeController({
+      dom: { timeScale: input as unknown as HTMLInputElement, timeScaleValue: speed.element, sessionLabel: label.element },
+      simState: state, minTimeScale: -120, maxTimeScale: 120, currentJulianDate: () => 10, formatJulianAsDate: String });
+    time.bindUi();
+    const moveTo = (index: number) => { input.value = String(index); input.dispatchEvent(new Event('input')); };
+    return { input, speed, label, state, time, moveTo };
+  }
+
+  it('offers every whole day per second plus ±12 h/s and one real-time stop, in order', () => {
+    const f = bound(4); const rates: number[] = [];
+    for (let i = Number(f.input.min); i <= Number(f.input.max); i++) { f.moveTo(i); rates.push(f.state.timeScaleDaysPerSec); }
+    const days = (from: number, to: number) => Array.from({ length: to - from + 1 }, (_, k) => from + k);
+    expect(rates).toEqual([...days(-120, -1), -0.5, 0, REAL_TIME_DAYS_PER_SEC, 0.5, ...days(1, 120)]);
+    expect(REAL_TIME_DAYS_PER_SEC * 86_400).toBe(1);
+  });
+
+  it('starts at the current rate and names its position for screen readers', () => {
+    const f = bound(4);
+    f.moveTo(Number(f.input.value));
+    expect(f.state).toMatchObject({ timeScaleDaysPerSec: 4, timeScaleDirty: false });
+    expect(f.input.attributes['aria-valuetext']).toBe('+4.0 d/s');
+    f.moveTo(Number(stopIndex(REAL_TIME_DAYS_PER_SEC)));
+    expect(f.state).toMatchObject({ timeScaleDaysPerSec: REAL_TIME_DAYS_PER_SEC, timeScaleDirty: true });
+    expect(f.input.attributes['aria-valuetext']).toBe('Real time');
+  });
+
+  it('labels the sub-day stops in hours and the real-time stop by name', () => {
+    const f = bound(4);
+    for (const [rate, text] of [[0.5, '+12 h/s'], [-0.5, '-12 h/s'], [REAL_TIME_DAYS_PER_SEC, 'Real time'], [1, '+1.0 d/s']] as const) {
+      f.state.timeScaleDaysPerSec = rate; f.time.updateHud();
+      expect(f.speed.element.textContent).toBe(text);
+    }
+    expect(f.label.element.textContent).toBe('Simulation · +1.0 d/s');
+    f.state.timeScaleDaysPerSec = REAL_TIME_DAYS_PER_SEC; f.time.updateHud();
+    expect(f.label.element.textContent).toBe('Simulation · Real time');
   });
 });

@@ -57,8 +57,9 @@ def acceptance_report():
 
 
 # OpenBLAS picks AVX-512, AVX2, AVX or SSE kernels from the host CPU, so the
-# report's floats agree across machines only to the last few bits (at most
-# 1.2e-14 relative here). Floats must match to 1e-12; everything else exactly.
+# report's floats agree across machines only to the last few bits: up to
+# 2.3e-13 relative over 14 kernel types, 1.55e-13 with the Nehalem kernels CI
+# pins. Floats must match to 1e-12; everything else exactly.
 def _assert_report_matches(actual: object, expected: object, path: str = "report") -> None:
     assert type(actual) is type(expected), path
     if isinstance(expected, dict):

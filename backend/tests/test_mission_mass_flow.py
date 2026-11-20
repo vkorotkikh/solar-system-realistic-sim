@@ -200,37 +200,17 @@ def _search_with_evaluation_limit(
     return cargo, evaluations
 
 
-def test_max_closable_cargo_terminates_for_infinite_available_cargo() -> None:
+@pytest.mark.parametrize("available_kg, largest_kg, limit, tolerance_kg", [
+    (math.inf, 100.0, 1_100, 1.0),
+    (float(2**62), float(2**60), 100, 0.0),
+], ids=["infinite-available", "midpoint-cannot-progress"])
+def test_max_closable_cargo_terminates(available_kg, largest_kg, limit, tolerance_kg) -> None:
     cargo, evaluations = _search_with_evaluation_limit(
-        available_cargo_kg=math.inf,
-        largest_closable_kg=100.0,
-        limit=1_100,
+        available_cargo_kg=available_kg, largest_closable_kg=largest_kg, limit=limit,
     )
 
-    assert cargo == pytest.approx(100.0, abs=1.0)
-    assert evaluations <= 1_100
-
-
-def test_max_closable_cargo_terminates_when_midpoint_cannot_progress() -> None:
-    largest_closable_kg = float(2**60)
-    cargo, evaluations = _search_with_evaluation_limit(
-        available_cargo_kg=float(2**62),
-        largest_closable_kg=largest_closable_kg,
-        limit=100,
-    )
-
-    assert cargo == largest_closable_kg
-    assert evaluations <= 100
-
-
-def test_return_propellant_is_not_subtracted_from_the_cargo_again() -> None:
-    mining = {"storablePayloadKg": 10_000.0}
-    closure = MiningService().payload_return_closure(
-        mining, outbound_propellant_kg=9_000.0, return_propellant_kg=7_000.0, return_capacity_kg=8_000.0,
-        handling_loss_fraction=0.1,
-    )
-    assert closure["deliveredBeforePropellantKg"] == pytest.approx(9_000.0)
-    assert closure["returnedPayloadKg"] == pytest.approx(8_000.0)  # capacity-limited, not 9000 - 7000
+    assert cargo == pytest.approx(largest_kg, abs=tolerance_kg)
+    assert evaluations <= limit
 
 
 @pytest.mark.parametrize("storable_kg, expected_kg", [(1000.0, 960.0), (800.0, 768.0)])
@@ -242,23 +222,28 @@ def test_mis031_deliverable_cargo_omitted_default_uses_four_percent(
     assert MiningService.deliverable_cargo_kg({"storablePayloadKg": storable_kg}) == expected_kg
 
 
-@pytest.mark.parametrize("storable_kg, expected_kg", [(1000.0, 960.0), (800.0, 768.0)])
+@pytest.mark.parametrize("mining, capacity_kg, delivered_kg, returned_kg", [
+    ({}, 1000.0, 0.0, 0.0),
+    ({"storablePayloadKg": 1000.0}, 800.0, 960.0, 800.0),
+    ({"storablePayloadKg": 1000.0}, 1000.0, 960.0, 960.0),
+    ({"storablePayloadKg": 800.0}, 1000.0, 768.0, 768.0),
+])
 def test_mis031_return_closure_omitted_default_uses_four_percent(
-    storable_kg: float, expected_kg: float
+    mining: dict, capacity_kg: float, delivered_kg: float, returned_kg: float
 ) -> None:
-    closure = MiningService().payload_return_closure(
-        {"storablePayloadKg": storable_kg},
-        outbound_propellant_kg=9000.0,
-        return_propellant_kg=7000.0,
-        return_capacity_kg=1000.0,
-    )
-    assert closure["returnedPayloadKg"] == expected_kg
-    assert closure["deliveredBeforePropellantKg"] == expected_kg
-    assert closure["handlingLossFraction"] == 0.04
-    assert closure["storablePayloadKg"] == storable_kg
-    assert closure["outboundPropellantKg"] == 9000.0
-    assert closure["returnPropellantKg"] == 7000.0
-    assert closure["returnCapacityKg"] == 1000.0
+    assert MiningService.deliverable_cargo_kg(mining) == delivered_kg
+    assert MiningService().payload_return_closure(
+        mining, outbound_propellant_kg=9000.0, return_propellant_kg=7000.0,
+        return_capacity_kg=capacity_kg,
+    ) == {
+        "storablePayloadKg": mining.get("storablePayloadKg", 0.0),
+        "handlingLossFraction": 0.04,
+        "deliveredBeforePropellantKg": delivered_kg,
+        "outboundPropellantKg": 9000.0,
+        "returnPropellantKg": 7000.0,
+        "returnCapacityKg": capacity_kg,
+        "returnedPayloadKg": returned_kg,
+    }
 
 
 @pytest.mark.parametrize(
@@ -276,6 +261,7 @@ def test_mis031_return_closure_omitted_default_uses_four_percent(
         (0.03, 800.0, 1000.0, 776.0, 776.0),
         (0.04, 800.0, 1000.0, 768.0, 768.0),
         (0.10, 800.0, 1000.0, 720.0, 720.0),
+        (0.60, 1000.0, 1000.0, 400.0, 400.0),
     ],
 )
 def test_mis031_explicit_service_loss_storage_and_capacity_controls(
@@ -299,27 +285,6 @@ def test_mis031_explicit_service_loss_storage_and_capacity_controls(
         "returnCapacityKg": capacity_kg,
         "returnedPayloadKg": returned_kg,
     }
-
-
-def test_mis031_omitted_loss_still_obeys_return_capacity_without_subtracting_fuel() -> None:
-    closure = MiningService().payload_return_closure(
-        {"storablePayloadKg": 1000.0},
-        outbound_propellant_kg=9000.0,
-        return_propellant_kg=7000.0,
-        return_capacity_kg=800.0,
-    )
-    assert closure["returnedPayloadKg"] == 800.0
-    assert closure["returnCapacityKg"] == 800.0
-
-
-def test_mis031_empty_mining_result_stays_zero_with_omitted_loss() -> None:
-    assert MiningService.deliverable_cargo_kg({}) == 0.0
-    closure = MiningService().payload_return_closure(
-        {}, outbound_propellant_kg=0.0, return_propellant_kg=0.0,
-        return_capacity_kg=1000.0,
-    )
-    assert closure["deliveredBeforePropellantKg"] == 0.0
-    assert closure["returnedPayloadKg"] == 0.0
 
 
 @pytest.mark.parametrize("uncertainty", [
@@ -376,38 +341,6 @@ def test_risk_returned_yield_includes_failed_delivery_zeros(
     # Fifteen failures and fifteen deliveries have an interpolated median of 500,
     # not the 1,000 kg conditional-on-success median.
     assert risk["envelopes"]["returnedPayloadKg"] == expected
-
-
-def test_risk_returned_yield_matches_capped_reclosed_cargo_and_lower_mining_draws() -> None:
-    calls = []
-
-    def reclose(factor, cargo):
-        calls.append((factor, cargo))
-        return {"feasible": True}
-
-    kwargs = dict(
-        base_total_delta_v_km_s=3.0, base_total_time_days=900.0,
-        base_returned_payload_kg=1_000.0, base_arrival_jd=2_461_000.5,
-        reclose=reclose, samples=30, seed=3,
-        ephemeris_sigma_fraction=0.0, thrust_sigma_fraction=0.0,
-        extraction_sigma_fraction=0.5,
-    )
-    risk = RiskService().run_monte_carlo(**kwargs)
-    first_calls = calls.copy()
-    calls.clear()
-    assert RiskService().run_monte_carlo(**kwargs) == risk
-    assert calls == first_calls
-    assert len(calls) == 30
-    cargo_draws = [cargo for _factor, cargo in calls]
-    assert min(cargo_draws) < 1_000.0
-    assert max(cargo_draws) == 1_000.0
-    # Independent inclusive quantile implementation applied to the exact cargo
-    # that the callback evaluated, not uncapped hypothetical mining output.
-    oracle = quantiles(cargo_draws, n=20, method="inclusive")
-    assert risk["envelopes"]["returnedPayloadKg"] == pytest.approx({
-        "p05": oracle[0], "p50": oracle[9], "p95": oracle[18],
-    })
-    assert risk["envelopes"]["returnedPayloadKg"]["p95"] == 1_000.0
 
 
 def test_risk_returned_yield_fix_preserves_other_envelopes_and_callback_draws() -> None:

@@ -83,8 +83,10 @@ async function fixture(initial = payload()) {
   vi.spyOn(performance, 'now').mockImplementation(() => nowMs);
   vi.stubGlobal('matchMedia', () => ({ matches: reduced }));
   vi.stubGlobal('document', { createElement: () => ({ width: 4, height: 4, getContext: () => null }) });
+  let retryAfterSeconds: number | null = null;
   vi.stubGlobal('fetch', vi.fn(async (url: unknown) => String(url).includes('/solar/physics') && response
-    ? new Response(JSON.stringify(response), { status: 200 }) : new Response('{}', { status: 503 })));
+    ? new Response(JSON.stringify(response), { status: 200 })
+    : new Response('{}', { status: 503, headers: retryAfterSeconds === null ? {} : { 'Retry-After': String(retryAfterSeconds) } })));
   const state = { julianDate: 2451552, paused: false, timeScaleDaysPerSec: 1 };
   const controller = createSunController({ camera: new PerspectiveCamera(), simState: state,
     backendBaseUrl: () => 'http://backend.test', configureLoadedTexture: () => undefined,
@@ -118,6 +120,7 @@ async function fixture(initial = payload()) {
   return { controller, root, spin, state, material, refresh, fail, statuses,
     lastStatus: () => statuses[statuses.length - 1],
     setReduced(value: boolean) { reduced = value; },
+    setRetryAfter(seconds: number | null) { retryAfterSeconds = seconds; },
     stepWallClock(ms: number) { wallOffsetMs += ms; },
     tick(days = 0.1, elapsedSec = 0.1) {
       state.julianDate += days; realtime += elapsedSec; nowMs += elapsedSec * 1000;
@@ -469,13 +472,16 @@ describe('a backend state is labelled with its lag, then cleared when too old (H
 
   it('clears the backend state once refreshes have been failing for five minutes', async () => {
     const f = await fixture();
+    f.tick(2); // the failure rules apply once the state lags the clock by more than a day
+    f.setRetryAfter(120); // the server asks for two minutes between attempts, so five failures take longer than five minutes
     await f.fail();
-    f.tick(2, 299);
-    expect(shownEpoch(f)).toBe(2451552);
-    f.tick(0.01, 2);
-    await f.fail(); // still failing 301 s after the last success
-    f.tick(0.01);
-    expect(shownEpoch(f)).toBeNull();
+    for (let attempt = 2; attempt <= 4; attempt += 1) {
+      for (let second = 0; second < 120; second += 1) f.tick(0.001, 1); // the tab stays open: frames run while the client waits
+      await f.fail();
+      f.tick(0.001);
+      // Four failures span six minutes of retrying: the state goes on the fourth, before five failures could clear it.
+      expect(shownEpoch(f)).toBe(attempt < 4 ? 2451552 : null);
+    }
   });
 
   it('does not count hidden time after a single failed refresh as five minutes of failing', async () => {
@@ -493,6 +499,95 @@ describe('a backend state is labelled with its lag, then cleared when too old (H
     await f.fail(); // the first poll on return fails once
     f.tick(0.01);
     expect(shownEpoch(f)).toBe(2451552);
+  });
+
+  it('does not count hidden time between two failures of one run as five minutes of failing', async () => {
+    const f = await fixture();
+    f.tick(2); // the failure rules apply once the state lags the clock by more than a day
+    await f.fail();
+    f.tick(0, 360); // the tab is hidden for six minutes: no frames, no polls
+    await f.fail(); // the first poll on return fails again: only two failures, minutes of retrying
+    f.tick(0.01);
+    expect(shownEpoch(f)).toBe(2451552);
+  });
+
+  it('counts a slow failed attempt\'s own time as time spent retrying', async () => {
+    const f = await fixture();
+    const open = (seconds: number) => { for (let i = 0; i < seconds; i += 1) f.tick(0.001, 1); }; // frames keep running
+    f.tick(2); // the failure rules apply once the state lags the clock by more than a day
+    f.setRetryAfter(90);
+    await f.fail(() => open(19)); // each attempt fails 19 s after it is sent, inside the 20 s timeout
+    for (let attempt = 2; attempt <= 4; attempt += 1) {
+      open(90); // the server's Retry-After
+      await f.fail(() => open(19));
+      f.tick(0.001);
+      // The first failure adds 19 s of attempt, each later one 90 s of waiting and 19 s: 237 s after three, 346 s after four.
+      expect(shownEpoch(f)).toBe(attempt < 4 ? 2451552 : null);
+    }
+  });
+
+  it('counts the first failed attempt\'s own time too', async () => {
+    const f = await fixture();
+    const open = (seconds: number) => { for (let i = 0; i < seconds; i += 1) f.tick(0.001, 1); };
+    f.tick(2);
+    f.setRetryAfter(95);
+    await f.fail(() => open(19)); // the run's first attempt fails 19 s after it is sent
+    for (let attempt = 2; attempt <= 4; attempt += 1) {
+      open(95);
+      await f.fail();
+      f.tick(0.001);
+      // 19 s of first attempt plus 95 s per later wait: 209 s after three, 304 s after four.
+      expect(shownEpoch(f)).toBe(attempt < 4 ? 2451552 : null);
+    }
+  });
+
+  it('counts only the time actually waited when a refresh is forced before the scheduled retry', async () => {
+    const f = await fixture();
+    const open = (seconds: number) => { for (let i = 0; i < seconds; i += 1) f.tick(0.001, 1); };
+    f.tick(2);
+    f.setRetryAfter(120); // the server asks for two minutes, but each refresh is forced after ten seconds
+    await f.fail();
+    for (let attempt = 2; attempt <= 4; attempt += 1) { open(10); await f.fail(); }
+    f.tick(0.001);
+    expect(shownEpoch(f)).toBe(2451552); // 30 s of retrying, not the six minutes the schedule allowed
+  });
+
+  it('starts counting afresh after a refresh succeeds', async () => {
+    const f = await fixture();
+    const open = (seconds: number) => { for (let i = 0; i < seconds; i += 1) f.tick(0.001, 1); };
+    f.tick(2);
+    f.setRetryAfter(120);
+    await f.fail();
+    for (let attempt = 2; attempt <= 4; attempt += 1) { open(120); await f.fail(); }
+    f.tick(0.001);
+    expect(shownEpoch(f)).toBeNull(); // six minutes of retrying cleared the state
+    f.setRetryAfter(null);
+    const next = atEpoch(payload(), f.state.julianDate);
+    await f.refresh(next);
+    f.tick(0.001);
+    expect(shownEpoch(f)).toBe(next.epoch_jd_tdb);
+    for (let i = 0; i < 3; i += 1) f.tick(1, 1); // the new state now lags by three days, and nothing has failed
+    expect(shownEpoch(f)).toBe(next.epoch_jd_tdb);
+  });
+
+  it('measures time spent retrying on the steady clock, not the wall clock', async () => {
+    const f = await fixture();
+    const open = (seconds: number) => { for (let i = 0; i < seconds; i += 1) f.tick(0.001, 1); };
+    f.tick(2);
+    f.setRetryAfter(120);
+    await f.fail();
+    open(120);
+    await f.fail(() => f.stepWallClock(3_600_000)); // an NTP or time-zone correction during the attempt
+    f.tick(0.001);
+    expect(shownEpoch(f)).toBe(2451552); // two minutes of retrying, not an hour
+    open(60); f.stepWallClock(-3_600_000); open(60); // and back again while the client waits
+    await f.fail();
+    f.tick(0.001);
+    expect(shownEpoch(f)).toBe(2451552); // four minutes
+    open(120);
+    await f.fail();
+    f.tick(0.001);
+    expect(shownEpoch(f)).toBeNull(); // six minutes
   });
 
   it('keeps a state that is right for the paused date while refreshes fail, and says they fail', async () => {

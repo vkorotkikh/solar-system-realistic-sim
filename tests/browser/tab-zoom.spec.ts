@@ -19,7 +19,11 @@ test.describe('native Chromium tab zoom', () => {
       page.on('pageerror', (error) => errors.push(error.message));
       let failed = false;
       try {
-        await page.goto(baseURL, { waitUntil: 'networkidle' });
+        // Wait for the app's own readiness, not network idle: under SwiftShader the heavier
+        // startup leaves Playwright tracking the model worker's script request as open even
+        // though the worker runs, so 'networkidle' never settles.
+        await page.goto(baseURL, { waitUntil: 'load' });
+        await expect(page.locator('#status-zoom')).not.toHaveText('Range · —', { timeout: 90_000 });
         const canvas = page.locator('#space-canvas');
         const panel = page.locator('#control-panel');
         const toggle = page.locator('#panel-toggle');
@@ -79,7 +83,9 @@ test.describe('native Chromium tab zoom', () => {
         expect(new Set(stops).size).toBe(stops.length);
         await panel.locator('#panel-close').focus();
         const visited = new Set<string>();
-        for (let index = 0; index < stops.length; index += 1) {
+        // A native date input takes four Tab presses (month, day, year, picker), so walk
+        // until focus wraps to the close button instead of assuming one press per stop.
+        for (let presses = 0; presses < stops.length * 4; presses += 1) {
           const focused = await panel.evaluate((element) => {
             const active = document.activeElement;
             if (!(active instanceof HTMLElement) || !element.contains(active)) throw new Error('Focus escaped the zoomed modal');
@@ -91,6 +97,7 @@ test.describe('native Chromium tab zoom', () => {
               overflow: element.scrollWidth - element.clientWidth,
               nativeListbox: active instanceof HTMLSelectElement && active.size > 1 };
           });
+          if (presses > 0 && focused.key === 'panel-close') break;
           visited.add(focused.key);
           expect(focused.overflow).toBeLessThanOrEqual(1);
           expect(focused.left).toBeGreaterThanOrEqual(Math.max(0, focused.panelLeft) - 1);

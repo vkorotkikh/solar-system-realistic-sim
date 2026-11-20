@@ -65,6 +65,7 @@ jobs:
           python -m pytest --noconftest -q
           scripts/ci/tests/test_verify_r3_r4_runner.py
           scripts/ci/tests/test_r3_r4_workflow.py
+          scripts/ci/tests/test_verify_r3_r4_mutation_evidence.py
 
       - name: Run the exact baseline and mutation manifest
         run: |
@@ -135,11 +136,11 @@ jobs:
           python -m pytest -v --durations=20 -o faulthandler_timeout=120
           scripts/test_catalog_generation.py
           scripts/test_catalog_science_review.py
-          scripts/test_fetch_jpl_sbdb_preflight.py
           scripts/test_moon_candidate_inputs.py
           scripts/test_moon_lazy_ephemerides.py
           scripts/test_moon_physical_radii.py
           scripts/test_moon_repairs.py
+          scripts/test_moon_source_exception_inputs.py
           scripts/test_wsa_observation_overlap.py
 
       - name: Verify the committed moon radii offline

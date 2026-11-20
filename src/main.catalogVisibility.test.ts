@@ -57,7 +57,7 @@ function productionMainCatalog(showMoonsOverride?: boolean): {
   return instantiate(createSolarSystemCatalog, showMoonsOverride);
 }
 
-describe('production hidden-moon catalog configuration (B024)', () => {
+describe('production moon catalog configuration (B024)', () => {
   it('keeps moon science records without applying their parent display clamps', () => {
     const { catalog, shippedShowMoons } = productionMainCatalog();
     const bodyById = new Map(catalog.bodies.map(body => [body.id, body]));
@@ -65,7 +65,7 @@ describe('production hidden-moon catalog configuration (B024)', () => {
       body.parentId === 'earth' && body.name === 'Moon'
     ))!;
 
-    expect(shippedShowMoons).toBe(false);
+    expect(shippedShowMoons).toBe(true);
     expect(bodyById.get('jupiter')?.displayRadiusAu).toBeCloseTo(
       0.1110508910364973,
       15,
@@ -78,18 +78,10 @@ describe('production hidden-moon catalog configuration (B024)', () => {
     expect(bodyById.get('earth')?.orbit?.barycentreCompanion?.orbit).toBe(moon.orbit);
   });
 
-  it('passes visible mode through the same production catalog call', () => {
-    const { catalog } = productionMainCatalog(true);
-    const bodyById = new Map(catalog.bodies.map(body => [body.id, body]));
+  it('gives planets the same size whether or not moons are shown', () => {
+    const radii = (shown: boolean) => productionMainCatalog(shown).catalog.bodies
+      .filter(body => body.type !== 'moon').map(body => body.displayRadiusAu);
 
-    expect(bodyById.get('jupiter')?.displayRadiusAu).toBeCloseTo(
-      0.0005561576485727347,
-      15,
-    );
-    expect(bodyById.get('mercury')?.displayRadiusAu).toBeCloseTo(
-      0.02074519414225859,
-      15,
-    );
-    expect(catalog.bodies.filter(body => body.type === 'moon')).toHaveLength(423);
+    expect(radii(true)).toEqual(radii(false));
   });
 });

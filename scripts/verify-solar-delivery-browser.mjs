@@ -148,7 +148,7 @@ const snapshot = async () => {
     const chip = document.querySelector('#status-solar');
     return { at: Date.now(), visibility: document.visibilityState,
       simulationDate: document.querySelector('#time-date')?.getAttribute('datetime'),
-      rate: document.querySelector('#time-scale')?.value,
+      rate: document.querySelector('#time-scale-value')?.textContent,
       playback: document.querySelector('#toggle-play')?.textContent?.trim(),
       chip: { text: chip?.textContent, title: chip?.getAttribute('title'), dataset: chip ? { ...chip.dataset } : {} },
       frameCount: window.__solarDeliveryCapture.frameTimes.length };

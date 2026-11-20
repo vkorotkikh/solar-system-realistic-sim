@@ -26,6 +26,8 @@ script and entrypoint references. Their exact sizes and SHA-256 values remain
 in [the retirement inventory](data/retired-texture-assets-2026-10-31.json).
 Git history retains their bytes for provenance; this is not a history rewrite.
 Restoring one requires a current consumer, exact source and reuse terms.
+Three have been restored under `public/textures/surfaces` for the Moon and
+Mars terrain shader; the Mars map's exact source remains to be confirmed.
 
 ## Build boundary
 

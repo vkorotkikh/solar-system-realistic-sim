@@ -9,7 +9,7 @@ export function createExplorerController({ dom, bodies, onInspect, onFocus, onFo
   let preferred = dom.bodyList.value || bodies[0]?.id || '';
   function refresh() {
     const query = dom.bodySearch.value.trim().toLocaleLowerCase();
-    const visible = bodies.filter(body => `${body.name} ${body.id} ${body.type}`.toLocaleLowerCase().includes(query));
+    const visible = bodies.filter(body => `${body.name} ${body.type}`.toLocaleLowerCase().includes(query));
     const options = dom.bodyList.ownerDocument.createDocumentFragment();
     for (const body of visible) {
       const option = dom.bodyList.ownerDocument.createElement('option');

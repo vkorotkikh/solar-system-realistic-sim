@@ -106,7 +106,7 @@ describe('orbit loop sampling', () => {
   it('closes every Sun-orbiting catalog loop without a jump at its seam', () => {
     const segments = 512;
     const out = new Float32Array(segments * 3);
-    for (const body of createSolarSystemCatalog({ moonsVisible: false }).bodies) {
+    for (const body of createSolarSystemCatalog().bodies) {
       if (!body.orbit || body.type === 'star' || body.type === 'moon') continue;
       expect(sampleOrbitLoop(body.orbit, segments, out), body.id).toBe(true);
       const chord = (k: number) => {
@@ -124,5 +124,41 @@ describe('orbit loop sampling', () => {
       }
       expect(worst, body.id).toBeLessThan(0.1);
     }
+  });
+});
+
+describe('sampleOrbitLoop around a later date', () => {
+  // A Moon-like orbit: its node regresses about 19 degrees a year.
+  const precessing: KeplerOrbit = {
+    epochJd: 2451545, aAu: 0.00257, periodDays: 27.32, e: 0.055, iDeg: 5.1, ascendingNodeDeg: 125, argPeriapsisDeg: 318, meanAnomalyDeg: 135,
+    secularRates: { ascendingNodeDegPerCentury: -1934, argPeriapsisDegPerCentury: 6004 },
+  };
+  const nearest = (loop: Float32Array, point: Vector3) => {
+    let best = Infinity;
+    for (let i = 0; i < loop.length; i += 3) best = Math.min(best, Math.hypot(loop[i] - point.x, loop[i + 1] - point.y, loop[i + 2] - point.z));
+    return best;
+  };
+
+  it('draws the revolution containing that date, so the body is on its line', () => {
+    const atEpoch = new Float32Array(512 * 3), current = new Float32Array(512 * 3), position = new Vector3();
+    expect(sampleOrbitLoop(precessing, 512, atEpoch)).toBe(true);
+    // Across a whole month, because the old and new orbit planes cross at two points.
+    let worstOnCurrentLine = 0, worstOnEpochLine = 0;
+    for (let day = 0; day < 28; day++) {
+      const elapsed = 9_800.4 + day;
+      expect(propagateKeplerOrbit(precessing, elapsed, position)).toBe(true);
+      expect(sampleOrbitLoop(precessing, 512, current, elapsed)).toBe(true);
+      worstOnCurrentLine = Math.max(worstOnCurrentLine, nearest(current, position) / position.length());
+      worstOnEpochLine = Math.max(worstOnEpochLine, nearest(atEpoch, position) / position.length());
+    }
+    expect(worstOnCurrentLine).toBeLessThan(0.02);
+    expect(worstOnEpochLine).toBeGreaterThan(0.1);
+  });
+
+  it('is unchanged by default', () => {
+    const implicit = new Float32Array(64 * 3), explicit = new Float32Array(64 * 3);
+    sampleOrbitLoop(precessing, 64, implicit);
+    sampleOrbitLoop(precessing, 64, explicit, 0);
+    expect(Array.from(implicit)).toEqual(Array.from(explicit));
   });
 });

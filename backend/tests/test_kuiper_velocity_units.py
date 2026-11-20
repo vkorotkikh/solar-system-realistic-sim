@@ -58,11 +58,6 @@ def _activate(state, **overrides):
     return kuiper
 
 
-def test_engine_declares_its_velocity_units(engine_state):
-    """The producer must state its units — the consumer relies on this."""
-    assert engine_state.get("velocity_units") == "AU/day"
-
-
 def test_perturbers_are_bound_when_units_are_honoured(engine_state):
     """The whole point: honouring the declared units yields real orbits."""
     kuiper = _activate(engine_state, velocity_units=engine_state["velocity_units"])

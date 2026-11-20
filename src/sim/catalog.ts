@@ -60,8 +60,6 @@ export interface CreateSolarSystemCatalogOptions {
    * so the normal planet-only application does not pay its download/parse cost.
    */
   moonEphemerides?: MoonEphemerisMap;
-  /** Whether moon orbits should constrain their visible parent body's display radius. */
-  moonsVisible?: boolean;
 }
 
 export interface CatalogBody {
@@ -675,38 +673,17 @@ function selectRuntimeMoons(
   });
 }
 
-function applyDisplayScaleConstraints(bodies: CatalogBody[], moonsVisible: boolean): void {
-  const minMoonOrbitByParent = new Map();
-
+// Moons stay smaller than their parent-relative orbit scale so they remain distinct objects.
+// Planets keep their enlarged radii; the page moves each moon out by its parent's
+// enlargement instead, so moons keep their true altitude above the drawn surface.
+function applyMoonDisplayConstraints(bodies: CatalogBody[]): void {
   for (const body of bodies) {
     if (body.type !== 'moon' || !body.orbit || !Number.isFinite(body.orbit.aAu)) {
       continue;
     }
-
-    // Keep moons smaller than their parent-relative orbit scale so they remain distinct objects.
     const moonMaxRadius = body.orbit.aAu * 0.18;
     const moonMinRadius = (body.realRadiusAu ?? 0) * 2.5;
     body.displayRadiusAu = Math.max(moonMinRadius, Math.min(body.displayRadiusAu, moonMaxRadius));
-
-    const parentId = body.parentId;
-    const currentMin = minMoonOrbitByParent.get(parentId);
-    if (currentMin === undefined || body.orbit.aAu < currentMin) {
-      minMoonOrbitByParent.set(parentId, body.orbit.aAu);
-    }
-  }
-
-  if (!moonsVisible) return;
-
-  for (const body of bodies) {
-    const closestMoonOrbit = minMoonOrbitByParent.get(body.id);
-    if (closestMoonOrbit === undefined) {
-      continue;
-    }
-
-    // Prevent inflated planet radii from swallowing inner moons in display mode.
-    const parentMaxRadius = closestMoonOrbit * 0.65;
-    const parentMinRadius = (body.realRadiusAu ?? 0) * 1.1;
-    body.displayRadiusAu = Math.max(parentMinRadius, Math.min(body.displayRadiusAu, parentMaxRadius));
   }
 }
 
@@ -763,7 +740,7 @@ export function applySunPerihelionDisplayConstraint(
 }
 
 export function createSolarSystemCatalog(
-  { moonEphemerides = {}, moonsVisible = true }: CreateSolarSystemCatalogOptions = {}
+  { moonEphemerides = {} }: CreateSolarSystemCatalogOptions = {}
 ): SolarCatalog {
   const usedIds = new Set<string>();
   const bodies: CatalogBody[] = [];
@@ -915,7 +892,7 @@ export function createSolarSystemCatalog(
     })) };
   }
 
-  applyDisplayScaleConstraints(bodies, moonsVisible);
+  applyMoonDisplayConstraints(bodies);
   applySunPerihelionDisplayConstraint(bodies);
 
   const jumpBodyIds = [

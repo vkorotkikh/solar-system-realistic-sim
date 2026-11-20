@@ -33,8 +33,8 @@ const projectedRows = [...raw, alternate];
 const createProjected = await loadCatalog(projectedRows);
 const createCanonicalOnly = await loadCatalog([canonical]);
 const canonicalBody = createCanonicalOnly().bodies.find(body => body.type === 'moon')!;
-const runtime = new Map([false, true].map(moonsVisible => [moonsVisible, createSolarSystemCatalog({ moonsVisible })]));
-const projected = new Map([false, true].map(moonsVisible => [moonsVisible, createProjected({ moonsVisible })]));
+const runtime = createSolarSystemCatalog();
+const projected = createProjected();
 const moonBodies = (catalog: SolarCatalog) => catalog.bodies.filter(body => body.type === 'moon');
 const puckBodies = (catalog: SolarCatalog) => catalog.bodies.filter(body => body.parentId === 'uranus' && body.name === 'Puck');
 const fixtureCatalog = async (rows: readonly unknown[]) => (await loadCatalog(rows))();
@@ -57,70 +57,60 @@ test('runtime construction never mutates or removes raw provenance rows', async 
   for (const row of owned) Object.freeze(row);
   Object.freeze(owned);
   const create = await loadCatalog(owned);
-  create({ moonsVisible: false });
-  create({ moonsVisible: true });
+  create();
   assert.deepEqual(owned, before);
   assert.deepEqual(readFileSync(rawPath), rawBytes);
 });
 
-for (const moonsVisible of [false, true]) {
-  test(`runtime has423 moons/433 total: visible=${moonsVisible}`, () => {
-    const catalog = runtime.get(moonsVisible)!;
-    assert.equal(moonBodies(catalog).length, 423);
-    assert.equal(catalog.bodies.length, 433);
-    assert.equal(new Set(catalog.bodies.map(body => body.id)).size, 433);
-  });
+test(`runtime has423 moons/433 total`, () => {
+  const catalog = runtime;
+  assert.equal(moonBodies(catalog).length, 423);
+  assert.equal(catalog.bodies.length, 433);
+  assert.equal(new Set(catalog.bodies.map(body => body.id)).size, 433);
+});
 
-  test(`one runtime Puck keeps canonical ID and removes only old duplicate ID: visible=${moonsVisible}`, () => {
-    const catalog = runtime.get(moonsVisible)!;
-    assert.equal(puckBodies(catalog).length, 1);
-    assert.equal(puckBodies(catalog)[0].id, 'moon-uranus-puck');
-    assert.equal(catalog.bodies.some(body => body.id === 'moon-uranus-puck-2'), false);
-  });
+test(`one runtime Puck keeps canonical ID and removes only old duplicate ID`, () => {
+  const catalog = runtime;
+  assert.equal(puckBodies(catalog).length, 1);
+  assert.equal(puckBodies(catalog)[0].id, 'moon-uranus-puck');
+  assert.equal(catalog.bodies.some(body => body.id === 'moon-uranus-puck-2'), false);
+});
 
-  test(`canonical Puck retains row388 source-model fields: visible=${moonsVisible}`, () => {
-    const body = puckBodies(runtime.get(moonsVisible)!)[0];
-    assert.equal(body.id, 'moon-uranus-puck');
-    assert.equal(body.reference, '10');
-    assert.equal(body.orbitFrameSource, 'laplace');
-    assert.equal(body.orbit!.aAu, 86007 / AU_KM);
-    assert.equal(body.orbit!.epochJd, 2460676.5);
-    assert.equal(body.orbit!.e, 0.009);
-    assert.equal(body.orbit!.meanAnomalyDeg, 264.1);
-    assert.equal(body.orbit!.ephemeris, undefined);
-    assert.deepEqual(body, canonicalBody);
-  });
+test(`canonical Puck retains row388 source-model fields`, () => {
+  const body = puckBodies(runtime)[0];
+  assert.equal(body.id, 'moon-uranus-puck');
+  assert.equal(body.reference, '10');
+  assert.equal(body.orbitFrameSource, 'laplace');
+  assert.equal(body.orbit!.aAu, 86007 / AU_KM);
+  assert.equal(body.orbit!.epochJd, 2460676.5);
+  assert.equal(body.orbit!.e, 0.009);
+  assert.equal(body.orbit!.meanAnomalyDeg, 264.1);
+  assert.equal(body.orbit!.ephemeris, undefined);
+  assert.deepEqual(body, canonicalBody);
+});
 
-  test(`later duplicate does not change surviving runtime body objects: visible=${moonsVisible}`, () => {
-    // The same strict structural comparison, with a bounded diagnostic rather
-    // than printing two complete 400-body catalogs on the expected RED run.
-    assert.equal(isDeepStrictEqual(runtime.get(moonsVisible)!.bodies, projected.get(moonsVisible)!.bodies), true);
-  });
+test(`later duplicate does not change surviving runtime body objects`, () => {
+  // The same strict structural comparison, with a bounded diagnostic rather
+  // than printing two complete 400-body catalogs on the expected RED run.
+  assert.equal(isDeepStrictEqual(runtime.bodies, projected.bodies), true);
+});
 
-  test(`jump and planner identities are unaffected by projection: visible=${moonsVisible}`, () => {
-    assert.deepEqual(runtime.get(moonsVisible)!.jumpBodyIds, projected.get(moonsVisible)!.jumpBodyIds);
-    assert.deepEqual(runtime.get(moonsVisible)!.plannerBodyIds, projected.get(moonsVisible)!.plannerBodyIds);
-  });
+test(`jump and planner identities are unaffected by projection`, () => {
+  assert.deepEqual(runtime.jumpBodyIds, projected.jumpBodyIds);
+  assert.deepEqual(runtime.plannerBodyIds, projected.plannerBodyIds);
+});
 
-  test(`Earth-Moon barycentric correction retains the actual runtime orbit reference: visible=${moonsVisible}`, () => {
-    const catalog = runtime.get(moonsVisible)!;
-    const earth = catalog.bodies.find(body => body.id === 'earth');
-    const moon = catalog.bodies.find(body => body.parentId === 'earth' && body.name === 'Moon');
-    assert.equal(earth!.orbit!.barycentreCompanion!.orbit, moon!.orbit);
-    assert.equal(earth!.orbit!.barycentreCompanion!.massFraction, 0.01215058);
-  });
-}
-
-test('visibility changes display constraints, not surviving identity or orbital fields', () => {
-  const withoutDisplay = (catalog: SolarCatalog) => catalog.bodies.map(({ displayRadiusAu, ...body }) => body);
-  assert.deepEqual(withoutDisplay(runtime.get(false)!), withoutDisplay(runtime.get(true)!));
-  assert.deepEqual(runtime.get(false)!.jumpBodyIds, runtime.get(true)!.jumpBodyIds);
-  assert.deepEqual(runtime.get(false)!.plannerBodyIds, runtime.get(true)!.plannerBodyIds);
+test(`Earth-Moon barycentric correction retains the actual runtime orbit reference`, () => {
+  const catalog = runtime;
+  const earth = catalog.bodies.find(body => body.id === 'earth');
+  const moon = catalog.bodies.find(body => body.parentId === 'earth' && body.name === 'Moon');
+  assert.equal(earth!.orbit!.barycentreCompanion!.orbit, moon!.orbit);
+  assert.equal(earth!.orbit!.barycentreCompanion!.massFraction, 0.01215058);
 });
 
 for (const includeMoons of [false, true]) {
   test(`worker projection recomputes compact source indices and retains parents: includeMoons=${includeMoons}`, () => {
-    const source = runtime.get(includeMoons)!;
+    const source = runtime;
     const worker = buildModelWorkerCatalog(source.bodies, { includeMoons });
     const contract = buildCatalogIndexContract(worker);
     assert.equal(worker.bodies.length, includeMoons ? 433 : 10);
@@ -188,7 +178,7 @@ test('optional fitted lookup retains lowercase puck key without inventing a fit'
 
 for (const jd of [2451545, 2457023.5, 2461041.5]) {
   test(`canonical fallback state stays exactly row388-compatible at JDTDB ${jd}`, () => {
-    const body = puckBodies(runtime.get(false)!)[0];
+    const body = puckBodies(runtime)[0];
     const actualP = new Vector3(), actualV = new Vector3(), expectedP = new Vector3(), expectedV = new Vector3();
     assert.equal(propagateKeplerOrbit(body.orbit!, jd - body.orbit!.epochJd, actualP, actualV), true);
     assert.equal(propagateKeplerOrbit(canonicalBody.orbit!, jd - canonicalBody.orbit!.epochJd, expectedP, expectedV), true);

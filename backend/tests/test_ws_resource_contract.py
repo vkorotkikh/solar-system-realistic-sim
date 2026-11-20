@@ -398,46 +398,21 @@ def _scope_websocket(headers: list[tuple[bytes, bytes]]) -> tuple[WebSocket, lis
     return WebSocket(scope, receive, send), sent
 
 
-def test_network_websocket_rejects_duplicate_origin_before_admission(
-    monkeypatch,
+_ALLOWED_ORIGIN = "http://localhost:5173"
+_OVERSIZED_ORIGIN = "https://" + "a" * (server.SOLAR_CORS_ORIGIN_MAX_BYTES - len("https://") + 1)
+
+
+# Both duplicate orders: a reader that keeps either the first or the last value
+# would admit the allowlisted one, so only the duplicate check can reject them.
+@pytest.mark.parametrize("origins", [
+    pytest.param([_ALLOWED_ORIGIN, "https://attacker.invalid"], id="duplicate-allowed-first"),
+    pytest.param(["https://attacker.invalid", _ALLOWED_ORIGIN], id="duplicate-allowed-last"),
+    pytest.param([_OVERSIZED_ORIGIN], id="oversized-but-allowlisted"),
+])
+def test_network_websocket_rejects_duplicate_or_oversized_origin_before_admission(
+    monkeypatch, origins,
 ) -> None:
-    raw_key = "duplicate-origin-secret"
-    monkeypatch.setattr(
-        server,
-        "SOLAR_SECURITY_CONFIG",
-        _network_security_config(raw_key),
-    )
-
-    def unexpected_admission(*_args):
-        raise AssertionError("duplicate Origin reached WebSocket admission")
-
-    monkeypatch.setattr(server, "_try_acquire_ws_sim_slot", unexpected_admission)
-    websocket, sent = _scope_websocket(
-        [
-            (b"x-api-key", raw_key.encode("ascii")),
-            (b"origin", b"http://localhost:5173"),
-            (b"origin", b"https://attacker.invalid"),
-        ]
-    )
-
-    asyncio.run(server.simulation_websocket(websocket))
-
-    assert sent == [
-        {
-            "type": "websocket.close",
-            "code": 1008,
-            "reason": "WebSocket origin is not allowed",
-        }
-    ]
-
-
-def test_network_websocket_rejects_oversized_origin_before_admission(
-    monkeypatch,
-) -> None:
-    raw_key = "oversized-origin-secret"
-    oversized_origin = "https://" + (
-        "a" * (server.SOLAR_CORS_ORIGIN_MAX_BYTES - len("https://") + 1)
-    )
+    raw_key = "origin-shape-secret"
     monkeypatch.setattr(
         server,
         "SOLAR_SECURITY_CONFIG",
@@ -446,18 +421,16 @@ def test_network_websocket_rejects_oversized_origin_before_admission(
     monkeypatch.setattr(
         server,
         "WS_SIM_ALLOWED_ORIGINS",
-        frozenset({oversized_origin}),
+        frozenset({_ALLOWED_ORIGIN, _OVERSIZED_ORIGIN}),
     )
 
     def unexpected_admission(*_args):
-        raise AssertionError("oversized Origin reached WebSocket admission")
+        raise AssertionError("an ambiguous or oversized Origin reached WebSocket admission")
 
     monkeypatch.setattr(server, "_try_acquire_ws_sim_slot", unexpected_admission)
     websocket, sent = _scope_websocket(
-        [
-            (b"x-api-key", raw_key.encode("ascii")),
-            (b"origin", oversized_origin.encode("ascii")),
-        ]
+        [(b"x-api-key", raw_key.encode("ascii"))]
+        + [(b"origin", origin.encode("ascii")) for origin in origins]
     )
 
     asyncio.run(server.simulation_websocket(websocket))

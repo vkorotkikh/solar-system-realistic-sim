@@ -170,13 +170,13 @@ Actual running code for SMBH/AGN/superluminal/exotic physics.
 
 | # | File | Description |
 |---|------|-------------|
-| 9 | `backend/sim/galactic_tide.py` | Heisler-Tremaine galactic tidal field. REBOUND callback. Sgr A* direct pull noted but not implemented as separate source. |
+| 9 | `backend/sim/galactic_tide.py` (retired 2026-11-09) | Heisler-Tremaine galactic tidal field and REBOUND callback, never wired into the simulation. Removed with its tests; restore it from git history if an Oort Cloud model needs it. |
 
 ### Test
 
 | # | File | Description |
 |---|------|-------------|
-| 10 | `tests/browser/legacy-diagnostics.spec.ts` | Playwright diagnostic, run with `node scripts/run-browser-diagnostic.mjs warp`: selects the H29 preset and hypothesis, triggers it, and watches for errors for 10 seconds; not visual or physics accuracy verification. The root `testWarp.js` is a retired stub: it prints a retirement message and exits with status 2. |
+| 10 | `tests/browser/legacy-diagnostics.spec.ts` (retired 2026-11-13) | Playwright warp/scale/debug diagnostic and its `scripts/run-browser-diagnostic.mjs` launcher; as a CI gate it only checked for console errors. Restore it from git history if a manual H29 diagnostic is needed. |
 
 ---
 

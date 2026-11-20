@@ -130,7 +130,7 @@ test('one source-selected full scene uses the latest scale and retires its quadt
     await unload(page); await unload(page);
     const closed = await capture(page);
     expect(closed.rendererDisposals).toBe(1); expect(closed.workerTerminations).toBe(1);
-    expect(closed.quadtreeDisposals).toBe(2); expect(closed.remainingQuadtreeFaces).toEqual([0, 0]);
+    expect(closed.quadtreeDisposals).toBe(3); expect(closed.remainingQuadtreeFaces).toEqual([0, 0, 0]);
     expect(closed.unhandled).toEqual([]); expect(observed.errors).toEqual([]);
     await testInfo.attach('startup-ownership', { body: JSON.stringify({ pending, active, closed, catalogLogs: observed.catalogLogs }), contentType: 'application/json' });
   } finally { release(); }
@@ -190,8 +190,8 @@ test('final compile failure retires workers and quadtrees while keeping restorat
   await expect(page.locator('#renderer-unavailable [role="alert"]')).toContainText('could not finish preparing');
   const stopped = await capture(page);
   expect(stopped.rendererDisposals).toBe(1); expect(stopped.renders).toBe(0);
-  expect(stopped.workerTerminations).toBe(1); expect(stopped.quadtreeDisposals).toBe(2);
-  expect(stopped.remainingQuadtreeFaces).toEqual([0, 0]);
+  expect(stopped.workerTerminations).toBe(1); expect(stopped.quadtreeDisposals).toBe(3);
+  expect(stopped.remainingQuadtreeFaces).toEqual([0, 0, 0]);
   expect(stopped.unhandled).toEqual([]); expect(observed.errors).toEqual([]);
   await page.evaluate(() => document.querySelector('#space-canvas')!.dispatchEvent(new Event('webglcontextrestored')));
   await expect(page.locator('#renderer-unavailable [role="alert"]')).toContainText('available again');
@@ -377,7 +377,8 @@ async function sharedCatalog(page: Page) {
     const url = '/src/sim/phase1AsteroidCatalog.ts';
     const module = await import(/* @vite-ignore */ url);
     const result = await module.loadPhase1AsteroidCatalog({ maxRecords: 100000,
-      loadLatencyBudgetMs: module.PHASE1_LOAD_LATENCY_BUDGET_MS, metaUrl: module.PHASE1_CATALOG_META_URL });
+      loadLatencyBudgetMs: module.PHASE1_LOAD_LATENCY_BUDGET_MS, metaUrl: module.PHASE1_CATALOG_META_URL,
+      timeoutMs: module.PHASE1_PAGE_LOAD_TIMEOUT_MS });
     return { accepted: result.accepted, sourceCount: result.sourceCount, loadedCount: result.loadedCount,
       checksum: result.checksumActual, loadMs: result.loadMs };
   });

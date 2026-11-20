@@ -258,10 +258,9 @@ After the proposed browser test exists, its focused command is
 Exercise supported Firefox/WebKit rendering paths where the required WebGL
 capabilities are available and report any unsupported lane explicitly.
 
-The existing [`verify_solar_main_frame.py`](../scripts/verify_solar_main_frame.py)
-provides an additional frame/geometry regression gate with `--origin`, `--out`,
-`--chromium` and `--expect-gpu`. Its passing geometric diagnostics do not replace
-the new sprite-coverage and composed-appearance checks.
+The earlier `scripts/verify_solar_main_frame.py` frame/geometry gate was retired
+on 2026-11-09: it injected a page hook that `src/main.ts` no longer provides, and
+no CI job ran it. The sprite-coverage and composed-appearance checks above replace it.
 
 ## 6. Current implementation status
 

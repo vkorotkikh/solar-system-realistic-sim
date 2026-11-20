@@ -218,6 +218,7 @@ def test_detached_worker_exception_is_observed_without_early_permit_release(deta
         release = threading.Event()
         started = threading.Event()
         guard = threading.BoundedSemaphore(1)
+        owner_cancelled = threading.Event()
         assert guard.acquire(False)
         def fail_later():
             started.set()
@@ -226,7 +227,8 @@ def test_detached_worker_exception_is_observed_without_early_permit_release(deta
         with ThreadPoolExecutor(max_workers=1) as executor:
             task = asyncio.create_task(server._run_owned_thread(
                 fail_later, guard=guard, executor=executor,
-                timeout_seconds=0.02 if detach == "timeout" else 1))
+                timeout_seconds=0.02 if detach == "timeout" else 1,
+                owner_cancel_event=owner_cancelled))
             while not started.is_set():
                 await asyncio.sleep(0.001)
             if detach == "cancel":
@@ -234,6 +236,7 @@ def test_detached_worker_exception_is_observed_without_early_permit_release(deta
             try:
                 with pytest.raises(asyncio.TimeoutError if detach == "timeout" else asyncio.CancelledError):
                     await task
+                assert owner_cancelled.is_set(), "the request owner was not told to stop"
                 assert not guard.acquire(False), "live worker lost its ownership permit"
             finally:
                 release.set()

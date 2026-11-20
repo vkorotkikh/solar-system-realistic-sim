@@ -515,15 +515,20 @@ def test_local_profile_bypasses_network_specific_shape_policy() -> None:
     assert _error(messages)[0] == 204
 
 
+_BODY_BYTES = {"body": b"x" * 70_000, "more_body": False}
+
+
 @pytest.mark.parametrize(
-    "headers",
+    ("headers", "event"),
     [
-        [],
-        [(b"content-length", b"0")],
+        pytest.param([], _BODY_BYTES, id="bytes"),
+        pytest.param([(b"content-length", b"0")], _BODY_BYTES, id="bytes-despite-zero-length"),
+        pytest.param([], {"body": b"", "more_body": True}, id="empty-fragmented-stream"),
     ],
 )
-def test_safe_method_body_guard_rejects_undeclared_body_bytes(
+def test_safe_method_body_guard_rejects_undeclared_body_or_continued_stream(
     headers: list[tuple[bytes, bytes]],
+    event: dict[str, Any],
 ) -> None:
     downstream_called = False
     sent: list[dict[str, Any]] = []
@@ -533,7 +538,7 @@ def test_safe_method_body_guard_rejects_undeclared_body_bytes(
         downstream_called = True
 
     async def receive() -> dict[str, Any]:
-        return {"type": "http.request", "body": b"x" * 70_000, "more_body": False}
+        return {"type": "http.request", **event}
 
     async def send(message: dict[str, Any]) -> None:
         sent.append(message)
@@ -583,31 +588,6 @@ def test_safe_method_body_guard_replays_the_empty_request_event() -> None:
         {"type": "http.request", "body": b"", "more_body": False}
     ]
     assert _error(sent)[0] == 204
-
-
-def test_safe_method_body_guard_rejects_fragmented_empty_body_stream() -> None:
-    downstream_called = False
-    sent: list[dict[str, Any]] = []
-
-    async def downstream(_scope, _receive, _send) -> None:
-        nonlocal downstream_called
-        downstream_called = True
-
-    async def receive() -> dict[str, Any]:
-        return {"type": "http.request", "body": b"", "more_body": True}
-
-    async def send(message: dict[str, Any]) -> None:
-        sent.append(message)
-
-    middleware = NetworkSafeMethodBodyMiddleware(
-        downstream,
-        enabled=lambda: True,
-        body_idle_timeout_s=0.1,
-    )
-    asyncio.run(middleware(_scope(method="GET"), receive, send))
-
-    assert downstream_called is False
-    assert _error(sent)[0] == 400
 
 
 def test_safe_method_body_guard_has_a_bounded_idle_wait() -> None:

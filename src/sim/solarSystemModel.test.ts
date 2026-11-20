@@ -17,7 +17,7 @@ function titanModel(withEphemeris: boolean): SolarSystemModel {
 
 function majorPlanetModel(): SolarSystemModel {
   const majorIds = new Set<string>(MAJOR_BODY_IDS);
-  const bodies = createSolarSystemCatalog({ moonsVisible: false }).bodies
+  const bodies = createSolarSystemCatalog().bodies
     .filter((body) => majorIds.has(body.id));
   return new SolarSystemModel({ bodies });
 }

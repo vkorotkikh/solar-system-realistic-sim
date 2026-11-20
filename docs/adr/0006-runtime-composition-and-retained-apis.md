@@ -19,20 +19,26 @@ page; this record describes ownership and retained integration surfaces.
 | Asteroid/Kuiper display | `src/frontend/features/asteroids/beltRenderer.ts`, `src/frontend/features/asteroids/kuiperBeltUpdater.ts` | Fixed-element propagation; hidden/unchanged Kuiper epochs do no upload work. Candidate populations do not certify resonances. |
 | Solar acquisition and presentation | `src/sunController.ts` and the modules in `src/frontend/features/solar/` | Qualified provider state, owned polling and cancellation, explicit procedural fallback. Decorative motion is not calibrated plasma evolution. |
 | Backend physical integration | `backend/sim` and owned process/runner layers | Scientific integration is independent of the default page's local orbital worker. |
-| Mission planning | `backend/mission` and trajectory APIs | Candidate generation does not imply a verified feasible recommendation. |
+| Mission planning | `backend/mission` and trajectory APIs; page panel via `plannerController.ts`, `routeRenderer.ts` and `src/frontend/features/trajectory/` | Candidate generation does not imply a verified feasible recommendation. Listeners and plotted routes retire with startup. |
+| Moons, surface maps and satellites | `src/main.ts` composition, `src/frontend/features/planetary/planetSurfaceMaps.ts`, `moonTexturePipeline.ts`, `satelliteSystem.ts` | Display offsets keep moons and satellites above enlarged primaries without touching canonical vectors. Maps and satellite orbits load on demand and retire with startup. |
 
 Bare file names in this table are in `src/frontend/app/`; every other entry
 states its path from the repository root.
 
 ## Retained surfaces
 
-The backend WebSocket `SimulationClient`, planner/route UI, TLE and satellite
-modules, nearby/local-system navigation, cloud imagery, catalog stars and
-curated moon maps are retained library or optional integration surfaces. Their
-maintainers must preserve their explicit input/protocol contracts and tests.
-They are not implicitly wired into `main.ts` by this repair. Moon ephemerides
-remain an opt-in loader; `showMoons=false` is the shipped composition policy.
-Earth/Mars use procedural quadtree terrain; other body maps are procedural.
+The backend WebSocket `SimulationClient`, nearby/local-system navigation,
+cloud imagery and catalog stars are retained library or optional integration
+surfaces. Their maintainers must preserve their explicit input/protocol
+contracts and tests. They are not implicitly wired into `main.ts`.
+
+On 2026-11-08 the moons, the planner panel and route display, Earth satellites
+and the curated moon maps were composed into `main.ts`, with acceptance in
+`tests/browser/restored-layers.spec.ts`. Moons default on. Planets keep their
+enlarged radii and each moon moves out by its parent's enlargement; the catalog
+no longer shrinks planets to fit their moons. Since 2026-11-14 the page preloads
+fitted ephemerides for all 423 moons and the Moon and Mars surface maps at
+startup, uploading the maps to the GPU on arrival; Earth stays procedural.
 
 Before activating a retained feature, its change must include the composition
 call, typed capability requirements, disposal ownership, real browser/API

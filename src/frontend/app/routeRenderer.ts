@@ -36,7 +36,7 @@ interface StatusElementLike {
 
 interface ClearRouteVisualizationArgs {
   routeGroup: Group;
-  simState: { route: RouteLike | null };
+  simState: { route: unknown };
   statusRouteElement: StatusElementLike;
 }
 

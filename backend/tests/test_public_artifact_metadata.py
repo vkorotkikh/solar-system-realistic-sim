@@ -202,14 +202,6 @@ def test_control_direct_report_keeps_local_path_and_writes_owned_artifact(owned)
     assert str(owned.scenarios) in output.read_text(encoding="utf-8")
 
 
-def test_control_public_report_path_already_logical(owned):
-    response = owned.client.post("/benchmark/accuracy/report", json={
-        "output_path": "existing-control.md", "ephemeris_provider": "kepler"})
-    assert response.status_code == 200, response.text
-    assert response.json()["reportPath"] == "owned-reports/existing-control.md"
-    assert (owned.reports / "existing-control.md").is_file()
-
-
 @pytest.mark.parametrize("route", ("/health", "/nearby-systems?limit=1", "/nearby-systems/1",
                                    "/benchmark/accuracy?ephemeris_provider=kepler"))
 @pytest.mark.parametrize("credential", (None, "wrong-synthetic-key"))

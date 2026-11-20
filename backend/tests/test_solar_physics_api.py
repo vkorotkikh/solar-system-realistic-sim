@@ -478,6 +478,10 @@ def test_solar_realtime_aia_tile_proxy_uses_provider_payload(monkeypatch) -> Non
             "invalid_aia_png_dimensions",
             "AIA tile PNG dimensions are invalid.",
         ),
+        (
+            "invalid_aia_provider_contract",
+            "AIA tile provider returned an invalid artifact contract.",
+        ),
     ),
 )
 def test_aia_tile_api_preserves_typed_validation_failure_without_detail_leak(
@@ -508,14 +512,24 @@ def test_aia_tile_api_preserves_typed_validation_failure_without_detail_leak(
     assert "secret" not in response.text
 
 
+_EQUALITY_SPOOF = object()  # replaced by the aia_png_equality_spoof fixture
+
+
 @pytest.mark.parametrize(
     "content_type",
-    (None, 123, "", "Image/PNG", "image/png; charset=binary"),
+    (
+        None, 123, "", "Image/PNG", "image/png; charset=binary",
+        # A non-str that compares equal to "image/png"; only the type check rejects it.
+        pytest.param(_EQUALITY_SPOOF, id="equality-spoof"),
+    ),
 )
 def test_aia_tile_api_rejects_noncanonical_provider_media_contract(
     monkeypatch,
     content_type: object,
+    aia_png_equality_spoof: object,
 ) -> None:
+    if content_type is _EQUALITY_SPOOF:
+        content_type = aia_png_equality_spoof
     monkeypatch.setattr(server, "_solar_aia_tile_rate_locks", {})
     monkeypatch.setattr(
         server.SOLAR_REALTIME_DATA,
@@ -539,62 +553,6 @@ def test_aia_tile_api_rejects_noncanonical_provider_media_contract(
         }
     }
     assert response.content != b"provider bytes"
-
-
-def test_aia_tile_api_rejects_non_string_equality_spoofed_media_contract(
-    monkeypatch,
-    aia_png_equality_spoof: object,
-) -> None:
-    invalid_body = b"arbitrary bytes from equality-spoofed provider contract"
-    monkeypatch.setattr(server, "_solar_aia_tile_rate_locks", {})
-    monkeypatch.setattr(
-        server.SOLAR_REALTIME_DATA,
-        "latest_aia_tile",
-        lambda *_args, **_kwargs: {
-            "channel": "aia_193",
-            "image_id": "1",
-            "content": invalid_body,
-            "content_type": aia_png_equality_spoof,
-        },
-    )
-
-    response = client.get("/solar/realtime/aia-tile", params={"channel": "aia_193"})
-
-    assert response.status_code == 503
-    assert response.json() == {
-        "detail": {
-            "code": "invalid_aia_provider_contract",
-            "message": "AIA tile provider returned an invalid artifact contract.",
-            "retryable": True,
-        }
-    }
-    assert response.content != invalid_body
-
-
-def test_aia_tile_api_preserves_typed_provider_contract_failure(monkeypatch) -> None:
-    monkeypatch.setattr(server, "_solar_aia_tile_rate_locks", {})
-    monkeypatch.setattr(
-        server.SOLAR_REALTIME_DATA,
-        "latest_aia_tile",
-        lambda *_args, **_kwargs: (_ for _ in ()).throw(
-            SolarRealtimeFetchError(
-                "invalid_aia_provider_contract",
-                "secret internal provider detail",
-            )
-        ),
-    )
-
-    response = client.get("/solar/realtime/aia-tile", params={"channel": "aia_193"})
-
-    assert response.status_code == 503
-    assert response.json() == {
-        "detail": {
-            "code": "invalid_aia_provider_contract",
-            "message": "AIA tile provider returned an invalid artifact contract.",
-            "retryable": True,
-        }
-    }
-    assert "secret" not in response.text
 
 
 @pytest.mark.parametrize("error_type", (RuntimeError, KeyError))

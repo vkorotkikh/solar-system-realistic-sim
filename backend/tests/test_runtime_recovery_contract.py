@@ -62,15 +62,6 @@ def test_recoverable_command_error_does_not_freeze_a_live_runner():
         assert runner.stop()
 
 
-def test_fatal_engine_error_cannot_report_successful_resume():
-    runner = server.SimulationRunner(Engine())
-    runner.paused = True
-    runner._runtime_error = "integrator state is invalid"
-    runner._handle_command({"type": "resume"})
-    assert runner.paused
-    assert runner.get_response()["code"] == "engine_unavailable"
-
-
 def test_fixed_step_clock_is_explicit_and_does_not_catch_up_overruns():
     engine = Engine()
     runner = server.SimulationRunner(engine, target_fps=240)

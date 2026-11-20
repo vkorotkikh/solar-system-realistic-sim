@@ -12,8 +12,7 @@ import physicalRadii from './data/moonPhysicalRadii.json';
 const ROOT = fileURLToPath(new URL('..', import.meta.url)).replace(/\/$/, '');
 const rawBytes = readFileSync(`${ROOT}/src/data/moons.json`, 'utf8');
 const raw = JSON.parse(rawBytes) as Array<{ id: number; planet: string; name: string; iauCode: string; ephemeris: string }>;
-const catalogs = new Map([false, true].map(moonsVisible => [moonsVisible, createSolarSystemCatalog({ moonsVisible })]));
-const catalog = catalogs.get(false)!;
+const catalog = createSolarSystemCatalog();
 const body = (id: string) => {
   const found = catalog.bodies.find(item => item.id === id);
   assert.ok(found, `Missing actual catalog body ${id}`);
@@ -69,8 +68,8 @@ function assertSelection(runtime: ReturnType<typeof panel>, item: CatalogBody): 
   assert.equal(runtime.distanceCalls.at(-1), item.id);
 }
 
-for (const visible of [false, true]) test(`physical provenance and display estimates stay separate: visible=${visible}`, () => {
-  const moons = catalogs.get(visible)!.bodies.filter(item => item.type === 'moon');
+test('physical provenance and display estimates stay separate', () => {
+  const moons = catalog.bodies.filter(item => item.type === 'moon');
   assert.equal(moons.length, 423);
   assert.equal(moons.filter(item => item.radiusKm !== null).length, 46);
   for (const item of moons) {
@@ -119,7 +118,7 @@ test('reusing the panel replaces Unknown, known moon and planet text without ret
   assert.deepEqual(runtime.distanceCalls, ['moon-jupiter-magaclite', 'moon-earth-moon', 'earth', 'moon-jupiter-magaclite']);
 });
 
-test('canonical source identities and disabled moon scene remain intact', () => {
+test('canonical source identities remain intact and moons ship enabled', () => {
   assert.equal(raw.length, 423);
   assert.deepEqual(raw.filter(row => row.iauCode === '715').map(row => [row.id, row.ephemeris]), [[388, 'URA184']]);
   assert.equal(raw.find(row => row.id === 21)!.name, 'Magaclite');
@@ -127,11 +126,11 @@ test('canonical source identities and disabled moon scene remain intact', () => 
   assert.equal(body('moon-jupiter-magaclite').radiusKm, null);
   assert.equal(body('moon-uranus-puck').sourceId, '715');
   assert.equal(catalog.bodies.some(item => item.id === 'moon-uranus-puck-2'), false);
-  assert.equal(visibilityNode!.kind, ts.SyntaxKind.FalseKeyword);
+  assert.equal(visibilityNode!.kind, ts.SyntaxKind.TrueKeyword);
 });
 
-for (const visible of [false, true]) test(`panel reads preserve catalog, worker and shared orbit bindings: visible=${visible}`, () => {
-  const actual = catalogs.get(visible)!;
+for (const visible of [false, true]) test(`panel reads preserve catalog, worker and shared orbit bindings: includeMoons=${visible}`, () => {
+  const actual = createSolarSystemCatalog();
   const before = JSON.stringify(actual);
   const workerBefore = buildModelWorkerCatalog(actual.bodies, { includeMoons: visible });
   const runtime = panel(actual.bodies);

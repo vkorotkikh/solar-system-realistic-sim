@@ -49,12 +49,12 @@ async function createFixture(rows: readonly unknown[]): Promise<typeof createSol
 // are identical. Compare separately from the deliberately changed sourceId.
 const controlRaw=raw.map(row=>row===sourceRow?{...row,iauCode:'owned-nonmatching-519'}:row);
 const createControl=await createFixture(controlRaw);
-const catalogs=new Map([false,true].map(visible=>[visible,createSolarSystemCatalog({moonsVisible:visible})]));
+const catalog=createSolarSystemCatalog();
 const omitTargetDisplay=(catalog: SolarCatalog)=>({...catalog,bodies:catalog.bodies.map(body=>{
  if(body.id!==stableId)return body;
  const {name,sourceId,...unchanged}=body;return unchanged;
 })});
-const actual=selected(catalogs.get(false)!);
+const actual=selected(catalog);
 const canonicalBody={...actual,name:'Megaclite'};
 const minimalCatalog=(bodies: readonly unknown[]): SolarCatalog=>({bodies:bodies as CatalogBody[],jumpBodyIds:[],plannerBodyIds:[]});
 
@@ -68,35 +68,32 @@ test('control canonical423 source and immutable oracle/five fit assets',()=>{
  assert.match(JSON.stringify(oracle.bodies['21']),/Target body name[^\n]*Megaclite \(519\)/);
 });
 
-for(const visible of [false,true]) {
- test(`control post-Puck runtime counts and legacy ID remain: visible=${visible}`,()=>{
-  const catalog=catalogs.get(visible)!;
+test(`control post-Puck runtime counts and legacy ID remain`,()=>{
   assert.equal(catalog.bodies.length,433);
-  assert.equal(catalog.bodies.filter(body=>body.type==='moon').length,423);
-  assert.equal(new Set(catalog.bodies.map(body=>body.id)).size,433);
-  assert.equal(selected(catalog).parentId,'jupiter');
-  assert.equal(catalog.bodies.some(body=>body.id==='moon-jupiter-megaclite'),false);
- });
- test(`regression actual Jupiter519 display is Megaclite: visible=${visible}`,()=>{
-  assert.equal(selected(catalogs.get(visible)!).name,'Megaclite');
- });
- test(`control every model and other display field is retained: visible=${visible}`,()=>{
-  const control=createControl({moonsVisible:visible});
-  assert.equal(selected(catalogs.get(visible)!).sourceId,'519');
-  assert.equal(selected(control).sourceId,'owned-nonmatching-519');
-  assert.deepEqual(omitTargetDisplay(catalogs.get(visible)!),omitTargetDisplay(control));
- });
- test(`regression actual runtime has canonical and legacy name keys: visible=${visible}`,()=>{
-  const catalog=catalogs.get(visible)!,body=selected(catalog),index=moonsByName(catalog);
-  assert.equal(index.get('Megaclite'),body);
-  assert.equal(index.get('Magaclite'),body);
- });
-}
+ assert.equal(catalog.bodies.filter(body=>body.type==='moon').length,423);
+ assert.equal(new Set(catalog.bodies.map(body=>body.id)).size,433);
+ assert.equal(selected(catalog).parentId,'jupiter');
+ assert.equal(catalog.bodies.some(body=>body.id==='moon-jupiter-megaclite'),false);
+});
+test(`regression actual Jupiter519 display is Megaclite`,()=>{
+ assert.equal(selected(catalog).name,'Megaclite');
+});
+test(`control every model and other display field is retained`,()=>{
+ const control=createControl();
+ assert.equal(selected(catalog).sourceId,'519');
+ assert.equal(selected(control).sourceId,'owned-nonmatching-519');
+ assert.deepEqual(omitTargetDisplay(catalog),omitTargetDisplay(control));
+});
+test(`regression actual runtime has canonical and legacy name keys`,()=>{
+ const body=selected(catalog),index=moonsByName(catalog);
+ assert.equal(index.get('Megaclite'),body);
+ assert.equal(index.get('Magaclite'),body);
+});
 
 test('control frozen raw source records are not modified by display construction',async()=>{
  const rows=structuredClone(raw),before=structuredClone(rows);
  rows.forEach(Object.freeze);Object.freeze(rows);
- const create=await createFixture(rows);create({moonsVisible:false});create({moonsVisible:true});
+ const create=await createFixture(rows);create();
  assert.deepEqual(rows,before);
 });
 

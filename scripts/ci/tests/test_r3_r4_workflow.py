@@ -14,15 +14,13 @@ ROOT = Path(__file__).parents[3]
 WORKFLOW = ROOT / ".github/workflows/r3-r4-science.yml"
 FRONTEND_WORKFLOW = ROOT / ".github/workflows/frontend-ui.yml"
 
-# Script tests the pinned backend environment cannot run. Each needs a package
-# that ci/backend-test-requirements.txt does not install: the SpiceyPy tests
-# would only skip ("skipped is not a scientific pass"), the other fails at import.
+# Script tests the pinned backend environment cannot run. Each needs SpiceyPy,
+# which ci/backend-test-requirements.txt does not install, so they would only
+# skip ("skipped is not a scientific pass"). Their bit-exact rebuilds also match
+# only on the BLAS kernels the committed artifacts were generated with.
 NOT_IN_CI = {
     "test_moon_source_exception_independent_review.py": "needs SpiceyPy",
-    "test_moon_source_exceptions.py": "needs SpiceyPy",
-    "test_moon_spk_clean_checkout.py": "needs SpiceyPy",
     "test_moon_spk_repairs.py": "needs SpiceyPy",
-    "test_solar_main_frame_verifier.py": "needs the Python playwright package",
 }
 
 
@@ -64,7 +62,8 @@ def test_workflow_installs_pinned_environment_and_runs_exact_all_lane():
     assert (
         "python -m pytest --noconftest -q "
         "scripts/ci/tests/test_verify_r3_r4_runner.py "
-        "scripts/ci/tests/test_r3_r4_workflow.py"
+        "scripts/ci/tests/test_r3_r4_workflow.py "
+        "scripts/ci/tests/test_verify_r3_r4_mutation_evidence.py"
     ) in commands
     assert "python scripts/ci/verify_r3_r4.py" in commands
     assert "--manifest ci/r3-r4-science-verification.json" in commands
