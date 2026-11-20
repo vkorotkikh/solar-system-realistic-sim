@@ -213,7 +213,17 @@ def test_clouds_are_cleared_over_ice_but_kept_over_sea_and_bare_land():
     assert out.dtype == np.uint8
     assert (out[33:, :] == 0).all()  # the ice sheet, away from its feathered edge
     assert (out[:28, :] == 200).all()  # sea, tundra and desert keep NASA's cloud
-    assert (out[33:, 0] == out[33:, -1]).all()  # no seam at the antimeridian
+
+
+def test_ice_clearing_feathers_across_the_antimeridian():
+    rows, cols = 36, 72  # 5 degree cells
+    clouds = np.full((rows, cols), 200.0)
+    colour = np.full((rows, cols), 40.0)
+    water = np.full((rows, cols), 255.0)
+    water[2:5, 0:3] = 0  # an ice cap at 65-80 N just east of 180 W ...
+    colour[2:5, 0:3] = 240
+    out = maps.clear_ice_clouds(clouds, colour, water, lat_centres(rows))
+    assert out[3, 69:72].tolist() == [200, 176, 152]  # ... thins the cloud just west of 180 E
 
 
 def test_shipped_clouds_are_clear_on_the_ice_sheets_only():
