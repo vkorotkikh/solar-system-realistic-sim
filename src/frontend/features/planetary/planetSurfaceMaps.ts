@@ -1,5 +1,5 @@
 import { LinearFilter, NoColorSpace, RepeatWrapping, type Texture } from 'three';
-import type { PlanetQuadtree } from './quadtreeLOD';
+import type { PlanetQuadtree, PlanetSurfaceMaps } from './quadtreeLOD';
 
 const TEXTURE_ROOT = `${import.meta.env.BASE_URL.replace(/\/?$/, '/')}textures/surfaces/`;
 
@@ -62,34 +62,42 @@ export function createPlanetSurfaceMaps({ targets, textureLoader, maxAnisotropy,
 
   async function load({ visualId, tree }: SurfaceTarget) {
     const source: SurfaceSource = PLANET_SURFACE_SOURCES[visualId];
-    // Only the colour map is required: any other map that fails drops just its own layer.
-    const optional = (file: string | undefined, configure: (texture: Texture) => void) => file
-      ? loadTexture(file, configure).catch((error: unknown) => {
-        console.warn(`[surface-maps] ${visualId}: ${file} failed, drawing without it:`, error);
-        return undefined;
-      })
-      : Promise.resolve(undefined);
-    const [albedo, reliefMap, normal, water, clouds] = await Promise.all([
-      loadTexture(source.albedo, filtered).catch((error: unknown) => {
-        console.warn(`[surface-maps] ${visualId}: ${source.albedo} failed, keeping procedural surface:`, error);
-        return undefined;
-      }),
-      optional(source.relief?.file, (texture) => {
+    const failed = (file: string, outcome: string) => (error: unknown) => {
+      console.warn(`[surface-maps] ${visualId}: ${file} failed, ${outcome}:`, error);
+      return undefined;
+    };
+    // `ready` must settle for every body, so a throw here cannot strand the others.
+    const apply = (maps: Partial<PlanetSurfaceMaps>) => {
+      if (disposed) return false;
+      try {
+        tree.setSurfaceMaps(maps);
+        return true;
+      } catch (error) {
+        console.warn(`[surface-maps] ${visualId}: keeping procedural surface:`, error);
+        return false;
+      }
+    };
+    // Every map loads at once. The colour map is drawn on arrival and is the only one
+    // required; each other layer is drawn when it lands, or freed if the colour map failed.
+    const colour = loadTexture(source.albedo, filtered)
+      .then((albedo) => apply({ albedo }), failed(source.albedo, 'keeping procedural surface'))
+      .then(Boolean);
+    const layer = (file: string | undefined, configure: (texture: Texture) => void,
+      maps: (texture: Texture) => Partial<PlanetSurfaceMaps>) => file && loadTexture(file, configure).then(
+      async (texture) => { if (await colour) apply(maps(texture)); else texture.dispose(); },
+      failed(file, 'drawing without it'),
+    );
+    const { relief } = source;
+    await Promise.all([
+      colour,
+      layer(relief?.file, (texture) => {
         texture.generateMipmaps = false;
         texture.minFilter = LinearFilter;
-      }),
-      optional(source.normal, filtered),
-      optional(source.water, filtered),
-      optional(source.clouds, filtered),
+      }, (map) => ({ relief: relief && { ...relief, map } })),
+      layer(source.normal, filtered, (normal) => ({ normal })),
+      layer(source.water, filtered, (water) => ({ water })),
+      layer(source.clouds, filtered, (clouds) => ({ clouds })),
     ]);
-    if (disposed || !albedo) return;
-    tree.setSurfaceMaps({
-      albedo,
-      relief: source.relief && reliefMap ? { ...source.relief, map: reliefMap } : undefined,
-      normal,
-      water,
-      clouds,
-    });
   }
 
   const ready = Promise.all(targets.map(load)).then(() => undefined);

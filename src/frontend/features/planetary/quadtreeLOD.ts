@@ -287,16 +287,22 @@ export class PlanetQuadtree {
         this.update();
     }
 
-    /** Replace procedural shading with measured imagery and, when given, measured heights. */
-    setSurfaceMaps({ albedo, relief, normal, water, clouds }: PlanetSurfaceMaps) {
+    /**
+     * Replace procedural shading with measured imagery and, when given, measured heights.
+     * Applies only the layers passed, so they can arrive one at a time; colour comes first.
+     */
+    setSurfaceMaps({ albedo, relief, normal, water, clouds }: Partial<PlanetSurfaceMaps>) {
         const uniforms = this.material.uniforms;
-        uniforms.uAlbedoMap.value = albedo;
-        uniforms.uAlbedoReady.value = 1;
-        uniforms.uTerrainMode.value = relief ? 1 : 2;
+        if (albedo) {
+            uniforms.uAlbedoMap.value = albedo;
+            uniforms.uAlbedoReady.value = 1;
+            if (uniforms.uTerrainMode.value === 0) uniforms.uTerrainMode.value = 2;
+        }
         if (relief) {
             uniforms.uReliefMap.value = relief.map;
             uniforms.uReliefZero.value = relief.zero;
             uniforms.uDisplacementScale.value = this.baseRadius * relief.rangeOverRadius;
+            uniforms.uTerrainMode.value = 1;
         }
         if (normal) {
             uniforms.uNormalMap.value = normal;

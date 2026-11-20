@@ -73,14 +73,58 @@ describe('createPlanetSurfaceMaps', () => {
   });
 
   it.each([
-    ['earth', 'earth_albedo_bmng_200408_8192.jpg'],
-    ['moon', 'moon_albedo_lroc_8192.jpg'],
-  ] as const)('keeps the procedural %s when its colour map fails', async (visualId, file) => {
+    ['earth', 'earth_albedo_bmng_200408_8192.jpg', 3],
+    ['moon', 'moon_albedo_lroc_8192.jpg', 1],
+  ] as const)('keeps the procedural %s, with no other layer, when its colour map fails', async (visualId, file, others) => {
     vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const released: Texture[] = [];
+    const textureLoader = { loadAsync: vi.fn(async (url: string) => {
+      if (url.endsWith(file)) throw new Error('offline');
+      const texture = new Texture();
+      texture.addEventListener('dispose', () => released.push(texture));
+      return texture;
+    }) };
     const body = target(visualId);
-    await createPlanetSurfaceMaps({ targets: [body], maxAnisotropy: 8, textureLoader: failing(file) }).ready;
-    expect(body.tree.material.uniforms.uAlbedoReady.value).toBe(0);
-    expect(body.tree.material.uniforms.uTerrainMode.value).toBe(0);
+    await createPlanetSurfaceMaps({ targets: [body], maxAnisotropy: 8, textureLoader }).ready;
+    const uniforms = body.tree.material.uniforms;
+    expect(uniforms.uAlbedoReady.value).toBe(0);
+    expect(uniforms.uTerrainMode.value).toBe(0);
+    expect(uniforms.uNormalReady?.value ?? 0).toBe(0);
+    expect(uniforms.uWaterReady?.value ?? 0).toBe(0);
+    expect(body.tree.clouds).toBeUndefined();
+    // The layers that did load are freed at once rather than held on the GPU unused.
+    expect(released).toHaveLength(others);
+  });
+
+  it('draws the colour map without waiting for a slow layer, then adds the layer when it lands', async () => {
+    let release!: (texture: Texture) => void;
+    const textureLoader = { loadAsync: vi.fn((url: string) => url.endsWith('earth_normal_etopo2022_8192.png')
+      ? new Promise<Texture>((resolve) => { release = resolve; })
+      : Promise.resolve(new Texture())) };
+    const earth = target('earth');
+    const maps = createPlanetSurfaceMaps({ targets: [earth], textureLoader, maxAnisotropy: 8 });
+    const uniforms = earth.tree.material.uniforms;
+    await vi.waitFor(() => expect(uniforms.uAlbedoReady.value).toBe(1));
+    expect(uniforms.uWaterReady.value).toBe(1);
+    expect(earth.tree.clouds).toBeDefined();
+    expect(uniforms.uNormalReady.value).toBe(0);
+    release(new Texture());
+    await maps.ready;
+    expect(uniforms.uNormalReady.value).toBe(1);
+  });
+
+  it('keeps the Moon on its relief whatever order its maps arrive in', async () => {
+    let releaseColour!: (texture: Texture) => void;
+    const textureLoader = { loadAsync: vi.fn((url: string) => url.endsWith('moon_albedo_lroc_8192.jpg')
+      ? new Promise<Texture>((resolve) => { releaseColour = resolve; })
+      : Promise.resolve(new Texture())) };
+    const moon = target('moon');
+    const maps = createPlanetSurfaceMaps({ targets: [moon], textureLoader, maxAnisotropy: 8 });
+    await vi.waitFor(() => expect(releaseColour).toBeTypeOf('function'));
+    expect(moon.tree.material.uniforms.uTerrainMode.value).toBe(0); // no relief before the colour map
+    releaseColour(new Texture());
+    await maps.ready;
+    expect(moon.tree.material.uniforms.uTerrainMode.value).toBe(1);
   });
 
   it.each([
@@ -98,6 +142,17 @@ describe('createPlanetSurfaceMaps', () => {
     if (flag) expect(uniforms[flag].value).toBe(0);
     expect(warn).toHaveBeenCalledTimes(1);
     expect(String(warn.mock.calls[0][0])).toContain(file);
+  });
+
+  it('settles ready and keeps the other bodies when applying one body throws', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const earth = target('earth');
+    const moon = target('moon');
+    vi.spyOn(earth.tree, 'setSurfaceMaps').mockImplementation(() => { throw new Error('context lost'); });
+    await expect(createPlanetSurfaceMaps({ targets: [earth, moon], textureLoader: loaderFor(), maxAnisotropy: 8 }).ready).resolves.toBeUndefined();
+    expect(moon.tree.material.uniforms.uAlbedoReady.value).toBe(1);
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(String(warn.mock.calls[0][0])).toContain('[surface-maps] earth');
   });
 
   it('releases every loaded texture on dispose', async () => {
