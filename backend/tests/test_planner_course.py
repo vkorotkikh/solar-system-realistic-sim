@@ -112,6 +112,17 @@ def test_the_closest_approach_to_the_sun_of_a_line_is_the_foot_of_the_perpendicu
     assert outward["au"] == pytest.approx(1.0, abs=1e-12) and outward["jd"] == pytest.approx(JD_2026, abs=1e-6)
 
 
+def test_the_closest_approach_to_the_sun_on_an_orbit_is_its_perihelion() -> None:
+    # An orbit with perihelion 0.7 AU and semi-major axis 1 AU, sampled from 60 days before perihelion to 100 after.
+    # The perihelion falls between two rows; straight segments between rows would cut 12,000 km inside it.
+    speed = math.sqrt(MU * (2 / 0.7 - 1 / 1.0))  # vis-viva at perihelion
+    days = np.linspace(-60.0, 100.0, 181)
+    after = course.two_body([0.7, 0.0, 0.0], [0.0, speed, 0.0], np.abs(days))
+    after[days < 0, 1] *= -1.0  # before perihelion the orbit is the mirror image of after it
+    found = course.sun_approach(np.column_stack([JD_2026 + 60.0 + days, after]))
+    assert found["au"] == pytest.approx(0.7, abs=1e-7) and found["jd"] == pytest.approx(JD_2026 + 60.0, abs=1e-3)
+
+
 def test_a_radial_course_to_jupiters_distance_crosses_the_asteroid_belt_once() -> None:
     # 1 to 5.2 AU in 300 days: at 2.06 AU after 300 x 1.06/4.2 days, at 3.28 AU after 300 x 2.28/4.2 days.
     crossings = course.belt_crossings(straight([1.0, 0.0, 0.0], [5.2, 0.0, 0.0], 300.0))
@@ -302,9 +313,23 @@ def test_the_report_of_a_torch_course_to_jupiter_puts_the_belt_where_the_path_is
     assert belt["days_inside"] == pytest.approx(belt["leaves"]["jd"] - belt["enters"]["jd"], abs=1e-9)
     assert len(report["nearest_bodies"]) == 3 and report["nearest_asteroid"]["status"] == "ok"
     assert {"earth", "jupiter"}.isdisjoint(body["id"] for body in report["nearest_bodies"])
-    hurried = course.report(trip.path, skip={"earth", "jupiter"}, deadline=time.monotonic())
+    hurried = course.report(trip.path, skip={"earth", "jupiter"}, deadline=time.monotonic() + 0.5)
     assert hurried["nearest_asteroid"] == {"status": "not_searched"} and hurried["belts"] == report["belts"]
+    assert hurried["nearest_bodies"] == report["nearest_bodies"]  # half a second is no time for a screen, but enough for these
     assert "asteroid belt" in report["context"] and "Kuiper" not in report["context"]
+
+
+def test_once_the_time_is_up_a_report_keeps_the_sun_and_the_belts_and_leaves_the_rest(monkeypatch) -> None:
+    trip = torch.solve("earth", "jupiter", JD_2026 + 315, 1.0, want_path=True)
+    in_time = course.report(trip.path, skip={"earth", "jupiter"})
+
+    def not_now(*args, **kwargs):
+        raise AssertionError("the nearest bodies cost 60 ms a leg: they must not be worked out after the deadline")
+    monkeypatch.setattr(course, "nearest_bodies", not_now)
+    late = course.report(trip.path, skip={"earth", "jupiter"}, deadline=time.monotonic())
+    assert late["nearest_bodies"] == [] and late["nearest_asteroid"] == {"status": "not_searched"}
+    assert (late["belts"], late["closest_sun_approach"], late["context"]) == (
+        in_time["belts"], in_time["closest_sun_approach"], in_time["context"])
 
 
 def test_the_report_of_a_course_to_pluto_gives_kuiper_belt_dates_and_one_to_venus_no_belt() -> None:
