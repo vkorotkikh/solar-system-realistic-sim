@@ -1,0 +1,136 @@
+"""Moons in the trip planner (epic issue C3).
+
+Expected burns are worked by hand with the vis-viva formula from the catalog's
+masses, radii and moon orbit sizes, never with the planner's own functions.
+"""
+
+from __future__ import annotations
+
+import importlib.util
+import math
+from pathlib import Path
+
+import pytest
+
+from planner.places import PLACES, find_places, get_place
+
+ROOT = Path(__file__).resolve().parents[2]
+G = 6.67430e-11
+NAMED_MOONS = ["Moon", "Phobos", "Deimos", "Io", "Europa", "Ganymede", "Callisto", "Titan", "Rhea", "Iapetus",
+               "Dione", "Tethys", "Enceladus", "Mimas", "Titania", "Oberon", "Umbriel", "Ariel", "Miranda",
+               "Triton", "Charon"]
+
+
+def test_moon_masses_regenerate_byte_for_byte_from_the_pinned_jpl_snapshot() -> None:
+    spec = importlib.util.spec_from_file_location("generate_moon_gm", ROOT / "scripts/generate_moon_gm.py")
+    generator = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(generator)
+    assert generator.build() == (ROOT / "backend/data/moon_gm.json").read_bytes()
+
+
+def test_all_423_moons_are_places_around_their_planet() -> None:
+    moons = [place for place in PLACES if place.kind == "moon"]
+    assert len(moons) == 423
+    assert (get_place("moon-earth-moon").around, get_place("moon-jupiter-europa").around) == ("earth", "jupiter")
+    assert get_place("moon-saturn-titan").orbit_radius_km == 1_221_900.0  # aKm in src/data/moons.json
+
+
+def test_the_21_named_moons_have_their_jpl_mass() -> None:
+    # GM as listed by JPL SSD (DE440, JUP365 and SAT441 for these three).
+    assert get_place("moon-earth-moon").mu_km3_s2 == 4_902.800
+    assert get_place("moon-jupiter-ganymede").mu_km3_s2 == 9_887.83275
+    assert get_place("moon-saturn-titan").mu_km3_s2 == 8_978.13710
+    by_name = {place.name: place for place in PLACES if place.kind == "moon"}
+    assert all(by_name[name].mu_km3_s2 > 0 for name in NAMED_MOONS)
+
+
+@pytest.mark.parametrize(
+    ("query", "first_ids"),
+    [
+        ("Europa", ["europa52", "moon-jupiter-europa"]),  # the asteroid and the moon
+        ("metis", ["metis", "moon-jupiter-metis"]),
+        ("Moon", ["moon-earth-moon"]),
+        ("io", ["moon-jupiter-io"]),  # an exact name comes before Iocaste and others
+    ],
+)
+def test_the_lookup_offers_moons_and_puts_exact_names_first(query: str, first_ids: list[str]) -> None:
+    assert [place.id for place in find_places(query)][: len(first_ids)] == first_ids
+
+
+MU_EARTH, R_LEO = 5.97237e24 * G / 1e9, 6_371.0 + 200.0
+MU_JUPITER = 1.8982e27 * G / 1e9
+MU_MOON, R_LLO, A_MOON = 4_902.800, 1_737.4 + 100.0, 384_400.0
+MU_IO, R_IO_ORBIT, A_IO = 5_959.91547, 1_821.49 + 100.0, 421_800.0
+MU_EUROPA, R_EUROPA_ORBIT, A_EUROPA = 3_202.71210, 1_560.8 + 100.0, 671_100.0
+
+
+def _hyperbola_to_orbit(v: float, mu: float, radius: float) -> float:
+    return math.sqrt(v * v + 2 * mu / radius) - math.sqrt(mu / radius)
+
+
+def _straight_in(v_infinity: float, mu_planet: float, moon_distance: float) -> float:
+    return math.sqrt(v_infinity**2 + 2 * mu_planet / moon_distance) - math.sqrt(mu_planet / moon_distance)
+
+
+def search(**fields):
+    from planner.trips import TripSearchRequest, search_trips
+    return search_trips(TripSearchRequest.model_validate(fields))
+
+
+def test_earth_to_the_moon_is_a_transfer_around_earth_close_to_apollo_11() -> None:
+    a = (R_LEO + A_MOON) / 2
+    leave = math.sqrt(MU_EARTH * (2 / R_LEO - 1 / a)) - math.sqrt(MU_EARTH / R_LEO)
+    arrive = _hyperbola_to_orbit(math.sqrt(MU_EARTH / A_MOON) - math.sqrt(MU_EARTH * (2 / A_MOON - 1 / a)),
+                                 MU_MOON, R_LLO)
+    (trip,) = search(**{"to": "moon-earth-moon", "earliest_departure": "2027-03-01"})["trips"]
+    (leg,) = trip["legs"]
+    assert (leg["around"], leg["any_day"], leg["depart"]["date"]) == ("earth", True, "2027-03-01")
+    assert [burn["delta_v_km_s"] for burn in leg["burns"]] == pytest.approx([leave, arrive], abs=0.001)
+    assert leg["flight_days"] == pytest.approx(math.pi * math.sqrt(a**3 / MU_EARTH) / 86_400, abs=0.01)
+    # Apollo 11, NASA SP-4029 "Apollo by the Numbers": translunar injection 10,008.1 ft/s from a
+    # 98.9 by 100.4 n mi parking orbit, lunar orbit insertion 2,917.5 + 158.8 ft/s: 3.988 km/s.
+    assert trip["total_delta_v_km_s"] == pytest.approx(3.988, rel=0.10)
+    assert sorted(trip["labels"]) == ["cheapest", "fastest", "soonest"]
+
+
+def test_earth_to_europa_flies_to_jupiter_and_brakes_straight_into_europa_orbit() -> None:
+    trip = search(**{"to": "moon-jupiter-europa", "earliest_departure": "2028-06-01",
+                     "latest_departure": "2029-06-01"})["trips"][0]
+    (leg,) = trip["legs"]
+    assert (leg["from"], leg["to"], leg["around"]) == ("earth", "jupiter", "sun")
+    depart, arrive = leg["burns"]
+    assert (depart["at"], arrive["at"], arrive["orbit"]) == (
+        "earth", "moon-jupiter-europa", "moon-jupiter-europa-low-orbit")
+    relative = _straight_in(leg["excess_speed_km_s"]["arrive"], MU_JUPITER, A_EUROPA)
+    assert arrive["delta_v_km_s"] == pytest.approx(_hyperbola_to_orbit(relative, MU_EUROPA, R_EUROPA_ORBIT), abs=0.002)
+    assert any("straight in" in note for note in trip["approximations"])
+
+
+def test_leaving_the_moon_for_mars_climbs_out_of_earths_gravity() -> None:
+    (leg,) = search(**{"from": "moon-earth-moon", "to": "mars", "earliest_departure": "2026-08-06",
+                       "latest_departure": "2027-06-30"})["trips"][0]["legs"]
+    assert (leg["from"], leg["to"], leg["burns"][0]["at"]) == ("earth", "mars", "moon-earth-moon")
+    relative = _straight_in(leg["excess_speed_km_s"]["depart"], MU_EARTH, A_MOON)
+    assert leg["burns"][0]["delta_v_km_s"] == pytest.approx(_hyperbola_to_orbit(relative, MU_MOON, R_LLO), abs=0.002)
+
+
+def test_io_to_europa_is_a_transfer_around_jupiter_between_their_orbits() -> None:
+    a = (A_IO + A_EUROPA) / 2
+    leave = _hyperbola_to_orbit(math.sqrt(MU_JUPITER * (2 / A_IO - 1 / a)) - math.sqrt(MU_JUPITER / A_IO),
+                                MU_IO, R_IO_ORBIT)
+    arrive = _hyperbola_to_orbit(math.sqrt(MU_JUPITER / A_EUROPA) - math.sqrt(MU_JUPITER * (2 / A_EUROPA - 1 / a)),
+                                 MU_EUROPA, R_EUROPA_ORBIT)
+    (leg,) = search(**{"from": "moon-jupiter-io", "to": "moon-jupiter-europa",
+                       "earliest_departure": "2030-01-01"})["trips"][0]["legs"]
+    assert (leg["from"], leg["to"], leg["around"]) == ("moon-jupiter-io", "moon-jupiter-europa", "jupiter")
+    assert [burn["delta_v_km_s"] for burn in leg["burns"]] == pytest.approx([leave, arrive], abs=0.001)
+
+
+def test_a_round_trip_to_the_moon_comes_back_after_the_stay() -> None:
+    (trip,) = search(**{"to": "moon-earth-moon", "trip": "round_trip", "stay_days": 3,
+                        "earliest_departure": "2027-03-01"})["trips"]
+    out, back = trip["legs"]
+    assert (back["from"], back["to"]) == ("moon-earth-moon", "earth")
+    assert back["depart"]["jd"] - out["arrive"]["jd"] == pytest.approx(3.0)
+    # The way back mirrors the way out: the same two burns in reverse order.
+    assert [burn["delta_v_km_s"] for burn in back["burns"]] == [burn["delta_v_km_s"] for burn in reversed(out["burns"])]

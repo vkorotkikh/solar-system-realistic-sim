@@ -1,0 +1,315 @@
+{
+  "bodies": {
+    "301": {
+      "ephemeris": "DE440",
+      "gmKm3S2": 4902.8,
+      "name": "Moon",
+      "parent": "Earth",
+      "sigmaKm3S2": 0.001
+    },
+    "401": {
+      "ephemeris": "MAR097",
+      "gmKm3S2": 0.0007087,
+      "name": "Phobos",
+      "parent": "Mars",
+      "sigmaKm3S2": 6e-07
+    },
+    "402": {
+      "ephemeris": "MAR097",
+      "gmKm3S2": 9.62e-05,
+      "name": "Deimos",
+      "parent": "Mars",
+      "sigmaKm3S2": 2.8e-06
+    },
+    "501": {
+      "ephemeris": "JUP365",
+      "gmKm3S2": 5959.91547,
+      "name": "Io",
+      "parent": "Jupiter",
+      "sigmaKm3S2": 0.00135
+    },
+    "502": {
+      "ephemeris": "JUP365",
+      "gmKm3S2": 3202.7121,
+      "name": "Europa",
+      "parent": "Jupiter",
+      "sigmaKm3S2": 0.00181
+    },
+    "503": {
+      "ephemeris": "JUP365",
+      "gmKm3S2": 9887.83275,
+      "name": "Ganymede",
+      "parent": "Jupiter",
+      "sigmaKm3S2": 0.00247
+    },
+    "504": {
+      "ephemeris": "JUP365",
+      "gmKm3S2": 7179.2834,
+      "name": "Callisto",
+      "parent": "Jupiter",
+      "sigmaKm3S2": 0.00324
+    },
+    "505": {
+      "ephemeris": "JUP365",
+      "gmKm3S2": 0.16456,
+      "name": "Amalthea",
+      "parent": "Jupiter",
+      "sigmaKm3S2": 0.00867
+    },
+    "506": {
+      "ephemeris": "JUP344",
+      "gmKm3S2": 0.15155,
+      "name": "Himalia",
+      "parent": "Jupiter",
+      "sigmaKm3S2": 0.05763
+    },
+    "514": {
+      "ephemeris": "JUP365",
+      "gmKm3S2": 0.03015,
+      "name": "Thebe",
+      "parent": "Jupiter",
+      "sigmaKm3S2": 0.0125
+    },
+    "515": {
+      "ephemeris": "JUP365",
+      "gmKm3S2": 0.00014,
+      "name": "Adrastea",
+      "parent": "Jupiter",
+      "sigmaKm3S2": 0.0002
+    },
+    "516": {
+      "ephemeris": "JUP365",
+      "gmKm3S2": 0.0025,
+      "name": "Metis",
+      "parent": "Jupiter",
+      "sigmaKm3S2": 0.0016
+    },
+    "601": {
+      "ephemeris": "SAT441",
+      "gmKm3S2": 2.50349,
+      "name": "Mimas",
+      "parent": "Saturn",
+      "sigmaKm3S2": 0.00014
+    },
+    "602": {
+      "ephemeris": "SAT441",
+      "gmKm3S2": 7.21037,
+      "name": "Enceladus",
+      "parent": "Saturn",
+      "sigmaKm3S2": 9e-05
+    },
+    "603": {
+      "ephemeris": "SAT441",
+      "gmKm3S2": 41.21353,
+      "name": "Tethys",
+      "parent": "Saturn",
+      "sigmaKm3S2": 0.00031
+    },
+    "604": {
+      "ephemeris": "SAT441",
+      "gmKm3S2": 73.11607,
+      "name": "Dione",
+      "parent": "Saturn",
+      "sigmaKm3S2": 5e-05
+    },
+    "605": {
+      "ephemeris": "SAT441",
+      "gmKm3S2": 153.94175,
+      "name": "Rhea",
+      "parent": "Saturn",
+      "sigmaKm3S2": 0.00041
+    },
+    "606": {
+      "ephemeris": "SAT441",
+      "gmKm3S2": 8978.1371,
+      "name": "Titan",
+      "parent": "Saturn",
+      "sigmaKm3S2": 0.00025
+    },
+    "607": {
+      "ephemeris": "SAT441",
+      "gmKm3S2": 0.37049,
+      "name": "Hyperion",
+      "parent": "Saturn",
+      "sigmaKm3S2": 5e-05
+    },
+    "608": {
+      "ephemeris": "SAT441",
+      "gmKm3S2": 120.51511,
+      "name": "Iapetus",
+      "parent": "Saturn",
+      "sigmaKm3S2": 0.00242
+    },
+    "609": {
+      "ephemeris": "SAT441",
+      "gmKm3S2": 0.55479,
+      "name": "Phoebe",
+      "parent": "Saturn",
+      "sigmaKm3S2": 0.00108
+    },
+    "610": {
+      "ephemeris": "SAT415",
+      "gmKm3S2": 0.12662,
+      "name": "Janus",
+      "parent": "Saturn",
+      "sigmaKm3S2": 7e-05
+    },
+    "611": {
+      "ephemeris": "SAT415",
+      "gmKm3S2": 0.03514,
+      "name": "Epimetheus",
+      "parent": "Saturn",
+      "sigmaKm3S2": 2e-05
+    },
+    "612": {
+      "ephemeris": "SAT441",
+      "gmKm3S2": 0.00048,
+      "name": "Helene",
+      "parent": "Saturn",
+      "sigmaKm3S2": 2e-05
+    },
+    "615": {
+      "ephemeris": "SAT415",
+      "gmKm3S2": 0.00037,
+      "name": "Atlas",
+      "parent": "Saturn",
+      "sigmaKm3S2": 1e-05
+    },
+    "616": {
+      "ephemeris": "SAT415",
+      "gmKm3S2": 0.01071,
+      "name": "Prometheus",
+      "parent": "Saturn",
+      "sigmaKm3S2": 1e-05
+    },
+    "617": {
+      "ephemeris": "SAT415",
+      "gmKm3S2": 0.00926,
+      "name": "Pandora",
+      "parent": "Saturn",
+      "sigmaKm3S2": 2e-05
+    },
+    "618": {
+      "ephemeris": "SAT415",
+      "gmKm3S2": 0.00028,
+      "name": "Pan",
+      "parent": "Saturn",
+      "sigmaKm3S2": 0.00014
+    },
+    "701": {
+      "ephemeris": "URA111",
+      "gmKm3S2": 83.5,
+      "name": "Ariel",
+      "parent": "Uranus",
+      "sigmaKm3S2": 1.4
+    },
+    "702": {
+      "ephemeris": "URA111",
+      "gmKm3S2": 85.1,
+      "name": "Umbriel",
+      "parent": "Uranus",
+      "sigmaKm3S2": 1.9
+    },
+    "703": {
+      "ephemeris": "URA111",
+      "gmKm3S2": 226.9,
+      "name": "Titania",
+      "parent": "Uranus",
+      "sigmaKm3S2": 4.1
+    },
+    "704": {
+      "ephemeris": "URA111",
+      "gmKm3S2": 205.3,
+      "name": "Oberon",
+      "parent": "Uranus",
+      "sigmaKm3S2": 5.8
+    },
+    "705": {
+      "ephemeris": "URA111",
+      "gmKm3S2": 4.3,
+      "name": "Miranda",
+      "parent": "Uranus",
+      "sigmaKm3S2": 0.2
+    },
+    "801": {
+      "ephemeris": "NEP097",
+      "gmKm3S2": 1428.49546,
+      "name": "Triton",
+      "parent": "Neptune",
+      "sigmaKm3S2": 0.61603
+    },
+    "803": {
+      "ephemeris": "NEP097",
+      "gmKm3S2": 0.00853,
+      "name": "Naiad",
+      "parent": "Neptune",
+      "sigmaKm3S2": 0.0048
+    },
+    "804": {
+      "ephemeris": "NEP097",
+      "gmKm3S2": 0.02359,
+      "name": "Thalassa",
+      "parent": "Neptune",
+      "sigmaKm3S2": 0.00522
+    },
+    "805": {
+      "ephemeris": "NEP097",
+      "gmKm3S2": 0.11673,
+      "name": "Despina",
+      "parent": "Neptune",
+      "sigmaKm3S2": 0.25263
+    },
+    "806": {
+      "ephemeris": "NEP097",
+      "gmKm3S2": 0.1899,
+      "name": "Galatea",
+      "parent": "Neptune",
+      "sigmaKm3S2": 0.76278
+    },
+    "807": {
+      "ephemeris": "NEP097",
+      "gmKm3S2": 0.25484,
+      "name": "Larissa",
+      "parent": "Neptune",
+      "sigmaKm3S2": 3.1223
+    },
+    "808": {
+      "ephemeris": "NEP097",
+      "gmKm3S2": 2.58342,
+      "name": "Proteus",
+      "parent": "Neptune",
+      "sigmaKm3S2": 2.4207
+    },
+    "901": {
+      "ephemeris": "PLU060",
+      "gmKm3S2": 106.1,
+      "name": "Charon",
+      "parent": "Pluto",
+      "sigmaKm3S2": 0.3
+    },
+    "902": {
+      "ephemeris": "PLU060",
+      "gmKm3S2": 0.0015,
+      "name": "Nix",
+      "parent": "Pluto",
+      "sigmaKm3S2": 0.0005
+    },
+    "903": {
+      "ephemeris": "PLU060",
+      "gmKm3S2": 0.002,
+      "name": "Hydra",
+      "parent": "Pluto",
+      "sigmaKm3S2": 0.0003
+    }
+  },
+  "definition": "GM in km^3/s^2 with its one-sigma uncertainty and the JPL ephemeris it comes from",
+  "schemaVersion": 1,
+  "source": {
+    "bytes": 96641,
+    "capturedUtc": "2026-10-31T09:01:32.481981+00:00",
+    "file": "jpl-satellite-physical.html.gz",
+    "schemaVersion": 1,
+    "sha256": "9a9c004d950923ea368a8c4815d813c9c232c332d1586402a23b15d9581370d1",
+    "sourceUrl": "https://ssd.jpl.nasa.gov/sats/phys_par/"
+  }
+}

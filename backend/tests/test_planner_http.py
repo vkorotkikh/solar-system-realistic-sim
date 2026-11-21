@@ -8,8 +8,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 import server
-from data.bodies import ALL_BODIES
-from trajectory.contracts import eligible_endpoint_body_ids
+from planner.places import PLACES
 
 client = TestClient(server.app, raise_server_exceptions=False)
 
@@ -28,9 +27,9 @@ def _search(body: dict):
 def test_places_without_a_query_lists_every_place() -> None:
     response = client.get("/planner/places")
     assert response.status_code == 200
-    assert [place["id"] for place in response.json()["places"]] == [
-        body["id"] for body in ALL_BODIES if body["id"] in set(eligible_endpoint_body_ids(ALL_BODIES))
-    ]
+    ids = [place["id"] for place in response.json()["places"]]
+    assert ids == [place.id for place in PLACES]
+    assert (len(ids), ids[0], ids[-1]) == (468, "mercury", "lmo")  # 40 Sun-orbiting bodies, 423 moons, 5 named orbits
 
 
 def test_places_with_a_query_returns_the_matches_as_json() -> None:
@@ -42,6 +41,13 @@ def test_places_with_a_query_returns_the_matches_as_json() -> None:
         "kind": "asteroid",
         "around": "sun",
         "default_orbit": {"id": "europa52-low-orbit", "name": "Low orbit around Europa (52), 100 km",
+                          "periapsis_altitude_km": 100.0, "apoapsis_altitude_km": 100.0},
+    }, {
+        "id": "moon-jupiter-europa",
+        "name": "Europa",
+        "kind": "moon",
+        "around": "jupiter",
+        "default_orbit": {"id": "moon-jupiter-europa-low-orbit", "name": "Low orbit around Europa, 100 km",
                           "periapsis_altitude_km": 100.0, "apoapsis_altitude_km": 100.0},
     }]}
 
@@ -83,7 +89,7 @@ def test_a_refusal_is_an_answer_not_an_error() -> None:
         "status": "refused",
         "code": "unknown_place",
         "message": "No place is called 'Europa'. Look the place up to get its id.",
-        "suggestions": ["europa52"],
+        "suggestions": ["europa52", "moon-jupiter-europa"],
     }
 
 

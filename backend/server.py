@@ -120,6 +120,14 @@ from mission.ephemeris_service import (
     HORIZONS_SUCCESS_CACHE_MAXSIZE,
     TRAJECTORY_STATE_CONTRACT,
 )
+from planner.agent.loop import (
+    AGENT_SECONDS as PLANNER_AGENT_SECONDS,
+    MAX_PROMPT_CHARS as PLANNER_AGENT_MAX_PROMPT_CHARS,
+    AgentRequest,
+    DailyLimit,
+    ProviderError,
+    run_agent,
+)
 from planner.places import PLACES, find_places, place_json
 from planner.plans import PlanRequest, solve_plan
 from planner.trips import SEARCH_SECONDS as PLANNER_SEARCH_SECONDS, TripSearchRequest, search_trips
@@ -796,8 +804,8 @@ class _NetworkAuthenticationMiddleware:
             scope_route_path(scope),
         )
         if active_config.profile != "network":
-            if route == ("POST", "/benchmark/accuracy/report"):
-                rejection = _local_benchmark_writer_rejection(scope, active_config)
+            if route in _LOCAL_ONLY_POSTS:
+                rejection = _local_only_rejection(scope, active_config, *_LOCAL_ONLY_POSTS[route])
                 if rejection is not None:
                     await rejection(scope, receive, send)
                     return
@@ -1401,6 +1409,7 @@ TRAJECTORY_INGRESS_PATHS = {
     "/planner/trips/search",
     "/planner/plans/solve",
     "/planner/vehicle-check",
+    "/planner/agent",
 }
 
 
@@ -1500,6 +1509,21 @@ _mission_plan_concurrent_guard = threading.BoundedSemaphore(MISSION_PLAN_CONCURR
 # endpoint waits a little longer so the search's own deadline ends first.
 _planner_search_guard = threading.BoundedSemaphore(2)
 PLANNER_SEARCH_TIMEOUT_SECONDS = PLANNER_SEARCH_SECONDS + 1.5
+# The route-planning agent is off unless a model id is set; there is deliberately no default model.
+PLANNER_AGENT_MODEL = os.environ.get("PLANNER_AGENT_MODEL", "").strip() or None
+PLANNER_AGENT_PROVIDER = None
+if PLANNER_AGENT_MODEL is not None:
+    try:
+        from planner.agent.provider_anthropic import call_model as PLANNER_AGENT_PROVIDER
+    except ImportError as exc:
+        raise RuntimeError("PLANNER_AGENT_MODEL is set, but the anthropic package is not installed.") from exc
+PLANNER_AGENT_DAILY_LIMIT = DailyLimit(_load_bounded_env_int(
+    "PLANNER_AGENT_MAX_PROMPTS_PER_DAY", 200, min_value=1, max_value=100_000,
+))
+PLANNER_AGENT_TIMEOUT_SECONDS = PLANNER_AGENT_SECONDS + 5.0
+_planner_agent_guard = threading.BoundedSemaphore(2)
+# Its own threads: a prompt mostly waits on the model, and must not hold the two heavy-compute threads.
+_planner_agent_executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="planner-agent")
 _benchmark_concurrent_guard = threading.BoundedSemaphore(BENCHMARK_CONCURRENT_REQUEST_LIMIT)
 _ws_sim_connection_guard = threading.BoundedSemaphore(WS_SIM_CONNECTION_LIMIT)
 _ws_sim_connection_lock = threading.Lock()
@@ -1716,10 +1740,25 @@ def _bounded_unique_scope_header(
         return False, None
 
 
-def _local_benchmark_writer_rejection(
-    scope: Mapping[str, Any], config: SolarSecurityConfig,
+# Local POSTs with an effect beyond their answer: a report written to disk, or model credit spent.
+_LOCAL_ONLY_POSTS = {
+    ("POST", "/benchmark/accuracy/report"): (
+        "benchmark_writer_local_only",
+        "Local report writes require a direct loopback peer, Host, and trusted browser Origin; "
+        "proxies require the authenticated network profile.",
+    ),
+    ("POST", "/planner/agent"): (
+        "planner_agent_local_only",
+        "The planner agent spends model credit, so locally it answers only a direct loopback peer, Host, and "
+        "trusted browser Origin; proxies require the authenticated network profile.",
+    ),
+}
+
+
+def _local_only_rejection(
+    scope: Mapping[str, Any], config: SolarSecurityConfig, code: str, message: str,
 ) -> JSONResponse | None:
-    """Local writes require a direct loopback peer AND a loopback Host.
+    """A local-only POST requires a direct loopback peer AND a loopback Host.
 
     Forwarding headers cannot grant trust. Proxied deployments must select the
     authenticated network profile, even when their proxy connects via loopback.
@@ -1755,15 +1794,14 @@ def _local_benchmark_writer_rejection(
     # simple POST causes a write. Check Origin before entering the writer.
     if not (peer_ip and peer_ip.is_loopback and local_host and trusted_origin) or forwarded:
         return JSONResponse(status_code=403, headers={"Cache-Control": "private, no-store"}, content={
-            "detail": {"code": "benchmark_writer_local_only", "retryable": False,
-                       "message": "Local report writes require a direct loopback peer, Host, and trusted browser Origin; proxies require the authenticated network profile."},
+            "detail": {"code": code, "retryable": False, "message": message},
         })
     if config.authentication_required and _authenticated_api_subject_from_scope(scope, config=config) is None:
         return JSONResponse(status_code=401, headers={
             "WWW-Authenticate": 'Bearer realm="solar-system-backend"',
             "Cache-Control": "private, no-store",
         }, content={"detail": {"code": "authentication_required", "retryable": False,
-                               "message": "Authentication is required for report writes."}})
+                               "message": "Authentication is required for this endpoint."}})
     return None
 
 
@@ -4653,6 +4691,76 @@ async def _run_planner_search(request: Request, function, payload):
 async def planner_vehicle_check(payload: VehicleCheckRequest):
     """Whether staged propulsion closes a list of burns. At most 32 burns and 12 stages: no pool needed."""
     return check_vehicle(payload)
+
+
+@app.get("/planner/capabilities")
+async def planner_capabilities():
+    """What the planner offers. The frontend hides the prompt box when the agent is off."""
+    return {"agent": {
+        "enabled": PLANNER_AGENT_MODEL is not None,
+        "model": PLANNER_AGENT_MODEL,
+        "max_prompt_chars": PLANNER_AGENT_MAX_PROMPT_CHARS,
+        "max_prompts_per_day": PLANNER_AGENT_DAILY_LIMIT.limit,
+    }}
+
+
+class _PromptOwner:
+    """Cancels an agent prompt when its request ends. A prompt outlasts one 12 s PlanningContext;
+    each planner call inside it still runs under its own."""
+
+    def __init__(self) -> None:
+        self.cancel_event = threading.Event()
+
+    def cancel(self, reason: str = "cancelled") -> None:
+        self.cancel_event.set()
+
+
+@app.post("/planner/agent")
+async def planner_agent(request: Request, payload: AgentRequest):
+    """One prompt to the route-planning agent. The browser keeps the conversation; nothing is stored."""
+    if PLANNER_AGENT_MODEL is None or PLANNER_AGENT_PROVIDER is None:
+        raise _trajectory_http_exception(
+            503, "planner_agent_disabled", "The planner agent is off. Set PLANNER_AGENT_MODEL to turn it on."
+        )
+    if not _acquire_nonblocking(_planner_agent_guard):
+        raise _trajectory_http_exception(
+            503, "planner_agent_busy", "The planner agent is busy. Retry shortly.",
+            retryable=True, headers={"Retry-After": "2"},
+        )
+    if not PLANNER_AGENT_DAILY_LIMIT.take():
+        _planner_agent_guard.release()
+        raise _trajectory_http_exception(
+            429, "planner_agent_daily_limit",
+            f"The planner agent has answered its {PLANNER_AGENT_DAILY_LIMIT.limit} prompts for today. "
+            "The count restarts at midnight UTC.",
+        )
+    owner = _PromptOwner()
+    try:
+        return await _run_request_owned_thread(
+            request,
+            run_agent,
+            payload,
+            guard=_planner_agent_guard,
+            executor=_planner_agent_executor,
+            timeout_seconds=PLANNER_AGENT_TIMEOUT_SECONDS,
+            owner_context=owner,
+            cancel_event=owner.cancel_event,
+            model=PLANNER_AGENT_MODEL,
+            provider=PLANNER_AGENT_PROVIDER,
+        )
+    except asyncio.TimeoutError as exc:
+        owner.cancel("endpoint_timeout")
+        raise _trajectory_http_exception(
+            504, "planner_agent_timeout", "The planner agent took too long and was stopped."
+        ) from exc
+    except PlanningCancelled as exc:
+        raise _trajectory_http_exception(503, exc.code, str(exc), retryable=True) from exc
+    except ProviderError as exc:
+        raise _trajectory_http_exception(
+            503 if exc.retryable else 502, exc.code, str(exc), retryable=exc.retryable
+        ) from exc
+    except EphemerisError as exc:
+        raise _ephemeris_http_exception(exc) from exc
 
 
 @app.get("/benchmark/accuracy")
