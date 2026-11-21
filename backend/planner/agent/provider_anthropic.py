@@ -14,12 +14,14 @@ fallback, such as Claude Haiku 5.5, returns the refusal unchanged).
 from __future__ import annotations
 
 import functools
+import logging
 
 import anthropic
 
 from .loop import AssistantText, ModelReply, ProviderError, ToolCall, ToolResults, UserText
 
 MAX_TOKENS = 8_000
+_log = logging.getLogger(__name__)
 BETAS = ["server-side-fallback-2026-07-01"]
 
 
@@ -69,8 +71,14 @@ def call_model(*, model: str, system: str, tools, answer_schema: dict, turns, ti
     except anthropic.APIStatusError as exc:
         raise ProviderError("model_error", f"The model provider returned HTTP {exc.status_code}.",
                             retryable=exc.status_code >= 500) from exc
-    except anthropic.AnthropicError as exc:  # for example no credentials found at all
-        raise ProviderError("model_error", f"The model provider call failed: {exc}", retryable=False) from exc
+    except TypeError as exc:  # anthropic 2.8.0 raises a plain TypeError when it finds no key or profile at all
+        if "authentication method" not in str(exc):
+            raise
+        raise ProviderError("model_credentials", "The model provider has no credentials. Set ANTHROPIC_API_KEY "
+                            "or sign in with `ant auth login`.", retryable=False) from exc
+    except anthropic.AnthropicError as exc:
+        _log.warning("Model provider call failed: %s", exc)  # the detail stays in the server log
+        raise ProviderError("model_error", "The model provider call failed.", retryable=False) from exc
 
     usage = response.usage
     return ModelReply(

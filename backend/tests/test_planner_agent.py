@@ -10,6 +10,7 @@ objects.
 from __future__ import annotations
 
 import json
+import os
 import threading
 import time
 from datetime import date
@@ -36,7 +37,9 @@ TODAY = date(2026, 11, 12)
 MARS = {"from": "earth", "to": "mars", "trip": "one_way", "objective": "min_delta_v", "flybys": 0,
         "earliest_departure": "2026-11-12", "latest_departure": "2027-01-31"}
 STAGES = [{"name": "main", "dry_mass_kg": 6_500.0, "propellant_mass_kg": 18_000.0, "isp_s": 360.0}]
-client = TestClient(server.app, raise_server_exceptions=False)
+# The app's own backend: a direct loopback client, as the local profile requires for the agent.
+client = TestClient(server.app, base_url="http://localhost", headers={"host": "localhost:8042"},
+                    client=("127.0.0.1", 32123), raise_server_exceptions=False)
 
 
 @pytest.fixture(autouse=True)
@@ -362,6 +365,23 @@ def test_with_no_model_set_the_agent_is_off(monkeypatch) -> None:
     assert response.status_code == 503 and response.json()["detail"]["code"] == "planner_agent_disabled"
 
 
+@pytest.mark.parametrize(("peer", "headers"), [
+    ("198.51.100.8", {}),  # not this machine
+    ("127.0.0.1", {"host": "rebound.example:8042"}),  # a page whose name was rebound to this machine
+    ("127.0.0.1", {"origin": "https://untrusted.example"}),
+    ("127.0.0.1", {"x-forwarded-for": "198.51.100.8"}),
+])
+def test_the_agent_answers_only_this_machine_and_the_apps_own_pages(agent_on, peer, headers) -> None:
+    script = Script(answer("Hello."))
+    agent_on(script)
+    outsider = TestClient(server.app, base_url="http://localhost", headers={"host": "localhost:8042"},
+                          client=(peer, 32123), raise_server_exceptions=False)
+    response = outsider.post("/planner/agent", json=BODY, headers=headers)
+    assert response.status_code == 403 and response.json()["detail"]["code"] == "planner_agent_local_only"
+    assert script.calls == []
+    assert client.post("/planner/agent", json=BODY, headers={"origin": "http://localhost:5173"}).status_code == 200
+
+
 def test_the_endpoint_answers_a_prompt(agent_on) -> None:
     agent_on(Script(tool("search_trips", **MARS), cheapest_answer))
     assert client.get("/planner/capabilities").json()["agent"] == {
@@ -391,6 +411,32 @@ def test_provider_failures_become_gateway_errors(agent_on, retryable, status) ->
     assert response.status_code == status
     assert response.json()["detail"] == {"code": "model_error", "message": "The model provider returned HTTP 500.",
                                          "retryable": retryable, "context": {}}
+
+
+def test_a_busy_agent_answers_503_without_using_a_prompt(agent_on, monkeypatch) -> None:
+    agent_on(Script(answer("Hello.")), limit=1)
+    guard = threading.BoundedSemaphore(1)
+    monkeypatch.setattr(server, "_planner_agent_guard", guard)
+    assert guard.acquire(blocking=False)
+    response = client.post("/planner/agent", json=BODY)
+    assert (response.status_code, response.json()["detail"]["code"], response.headers["Retry-After"]) == (
+        503, "planner_agent_busy", "2")
+    guard.release()
+    assert client.post("/planner/agent", json=BODY).status_code == 200  # the day's one prompt is still there
+
+
+def test_a_timed_out_prompt_answers_504_and_frees_its_slot(agent_on, monkeypatch) -> None:
+    def slow(**_call) -> ModelReply:
+        time.sleep(0.3)  # gstack-timing-ok: six times the endpoint timeout; the assertions are on the outcome
+        return answer("Too late.")
+    agent_on(slow)
+    guard = threading.BoundedSemaphore(1)
+    monkeypatch.setattr(server, "_planner_agent_guard", guard)
+    monkeypatch.setattr(server, "PLANNER_AGENT_TIMEOUT_SECONDS", 0.05)
+    response = client.post("/planner/agent", json=BODY)
+    assert (response.status_code, response.json()["detail"]["code"]) == (504, "planner_agent_timeout")
+    assert guard.acquire(timeout=2.0)
+    guard.release()
 
 
 def test_an_overlong_prompt_is_rejected_before_any_model_call(agent_on) -> None:
@@ -496,3 +542,17 @@ def test_provider_errors_become_provider_neutral_errors(error, code, retryable) 
         provider_anthropic.call_model(model="m", system="s", tools=TOOLS, answer_schema={}, turns=(UserText("hi"),),
                                       timeout_s=5.0, client=FakeClient(error))
     assert (raised.value.code, raised.value.retryable) == (code, retryable)
+
+
+def test_missing_credentials_are_a_credentials_error_before_any_request(monkeypatch, tmp_path) -> None:
+    for name in [name for name in os.environ if name.startswith("ANTHROPIC_")]:
+        monkeypatch.delenv(name)
+    monkeypatch.setenv("HOME", str(tmp_path))  # no `ant auth login` profile either
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
+    sent: list = []
+    sdk = anthropic.Anthropic(max_retries=0, http_client=httpx2.Client(
+        transport=httpx2.MockTransport(lambda request: sent.append(request) or httpx2.Response(500))))
+    with pytest.raises(ProviderError) as raised:
+        provider_anthropic.call_model(model="m", system="s", tools=TOOLS, answer_schema={}, turns=(UserText("hi"),),
+                                      timeout_s=5.0, client=sdk)
+    assert (raised.value.code, raised.value.retryable, sent) == ("model_credentials", False, [])
