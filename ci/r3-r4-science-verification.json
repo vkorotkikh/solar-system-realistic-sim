@@ -50,7 +50,7 @@
     },
     {
       "path": "backend/sim/gong_magnetogram.py",
-      "sha256": "925a96fbfb7c41c78ec2703a000512fd6a2588ab7e1d297c3d6197c79dcc731d"
+      "sha256": "7dbd9854afc63eed635ab805c5db9dcbb0e15dd571b3f77cb119e939dc7c7fbb"
     },
     {
       "path": "backend/sim/pfss_magnetogram.py",
@@ -117,6 +117,10 @@
       "sha256": "fe02eef8b420a05a2e2cb23ad973f3c2fd24fd05393059e3739ae338b9031b9c"
     },
     {
+      "path": "backend/tests/test_gong_flux_policy.py",
+      "sha256": "2016e0528747dcf1efd65c15763b023a8bd0bcc78143faa841963ad2e31cedf1"
+    },
+    {
       "path": "backend/tests/fixtures/solar/observational_20261012/nso_gong_zqs_202610121744.fits.gz",
       "sha256": "e405550e1f8844bf5556419e7137aa6eb9bce79e0292a628df2c1ece28872ee8"
     },
@@ -156,7 +160,8 @@
       "backend/tests/test_solar_observational_acceptance.py::test_forged_scaled_flux_snapshot_is_rejected[negative_scale_factor-0.001]",
       "backend/tests/test_solar_observational_acceptance.py::test_forged_scaled_flux_snapshot_is_rejected[signed_imbalance_fraction-0.001]",
       "backend/tests/test_solar_observational_acceptance.py::test_forged_scaled_flux_snapshot_is_rejected[scaled_correction_limit_fraction-0.001]",
-      "backend/tests/test_solar_observational_acceptance.py::test_scaled_monopole_policy_accepts_exact_limit"
+      "backend/tests/test_solar_observational_acceptance.py::test_scaled_monopole_policy_accepts_exact_limit",
+      "backend/tests/test_gong_flux_policy.py::test_method_2_admits_the_exact_limit"
     ],
     "timeout_seconds": 120
   },
@@ -279,6 +284,18 @@
       "node": "backend/tests/test_solar_observational_acceptance.py::test_scaled_monopole_policy_accepts_exact_limit",
       "expected_assertion_regex": "SCN041-SCALED-FLUX-EXACT-LIMIT",
       "fixed_commit": "d37a37a8f616e3a1abffa2ded3d9e4cee2446b93",
+      "oracle_class": "exact-policy-boundary-negative-control"
+    },
+    {
+      "id": "reject-exact-wsa-method-2-flux-limit",
+      "patch": "scripts/ci/mutations/reject-exact-wsa-method-2-flux-limit.patch",
+      "patch_sha256": "84195056efac0ab2b53657aa3f07ff978a7773a346c60237dfbb0ce4e45f623d",
+      "production_files": [
+        "backend/sim/gong_magnetogram.py"
+      ],
+      "node": "backend/tests/test_gong_flux_policy.py::test_method_2_admits_the_exact_limit",
+      "expected_assertion_regex": "SCN041-WSA2-FLUX-EXACT-LIMIT",
+      "fixed_commit": "3dc241d79cc4af10bb39088d02d937eef1a8e457",
       "oracle_class": "exact-policy-boundary-negative-control"
     }
   ]

@@ -1,0 +1,12 @@
+diff --git a/backend/sim/gong_magnetogram.py b/backend/sim/gong_magnetogram.py
+--- a/backend/sim/gong_magnetogram.py
++++ b/backend/sim/gong_magnetogram.py
+@@ -903,7 +903,7 @@ def _balance_flux_wsa_method_2(
+             "map has one polarity only, so polarity scaling cannot balance it",
+         )
+     imbalance_fraction = signed / unsigned
+-    if abs(imbalance_fraction) > WSA_METHOD_2_FLUX_IMBALANCE_LIMIT:
++    if abs(imbalance_fraction) >= WSA_METHOD_2_FLUX_IMBALANCE_LIMIT:
+         raise _reject(
+             "flux_unbalanced",
+             f"signed flux is {imbalance_fraction:+.4f} of unsigned flux, above the "
