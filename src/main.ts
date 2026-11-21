@@ -131,6 +131,8 @@ const dom = {
   nowTime: elementById<HTMLButtonElement>('now-time'),
   timeScale: elementById<HTMLInputElement>('time-scale'),
   timeScaleValue: elementById<HTMLOutputElement>('time-scale-value'),
+  timeScaleUnit: elementById<HTMLInputElement>('time-scale-hours'),
+  timeScaleContext: elementById<HTMLElement>('time-scale-context'),
   timeDate: elementById<HTMLTimeElement>('time-date'),
   sessionLabel: elementById<HTMLElement>('session-label'),
   toggleOrbits: elementById<HTMLInputElement>('toggle-orbits'),
