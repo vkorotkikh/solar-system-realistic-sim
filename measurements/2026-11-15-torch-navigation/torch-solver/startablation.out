@@ -1,0 +1,17 @@
+cases where default misses the min root (a<=0.3 g, >0.01%): 81
+start | finds the min-T root (of 81 cases where the default does not)
+  free-space(E1)   0/81
+  naive            24/81
+  E1 times x0.8    6/81
+  E1 times x0.9    0/81
+  E1 times x1.1    0/81
+  E1 times x1.25   0/81
+  deflect0         4/81
+  deflect1         1/81
+  deflect2         3/81
+  deflect3         4/81
+  deflect4         0/81
+  deflect5         0/81
+  deflect6         36/81
+  deflect7         48/81
+greedy cover: [('deflect7', 48), ('deflect6', 14), ('naive', 9), ('deflect3', 4), ('deflect0', 3), ('E1 times x0.8', 2), ('deflect2', 1)] uncovered 0

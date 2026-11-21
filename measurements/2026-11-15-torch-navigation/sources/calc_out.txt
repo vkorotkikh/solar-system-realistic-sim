@@ -1,0 +1,48 @@
+Brachistochrone T=2 sqrt(D/a), dv=2 sqrt(D a), straight line, static distance
+1 AU                       D= 1.0000 AU a=  0.1 g  T=   9.041 d (  216.99 h)  dv=    766.0 km/s  vmax=    383.0 km/s
+1 AU                       D= 1.0000 AU a=  0.3 g  T=   5.220 d (  125.28 h)  dv=   1326.8 km/s  vmax=    663.4 km/s
+1 AU                       D= 1.0000 AU a=  1.0 g  T=   2.859 d (   68.62 h)  dv=   2422.4 km/s  vmax=   1211.2 km/s
+1 AU                       D= 1.0000 AU a=  3.0 g  T=   1.651 d (   39.62 h)  dv=   4195.8 km/s  vmax=   2097.9 km/s
+1 AU                       D= 1.0000 AU a= 10.0 g  T=   0.904 d (   21.70 h)  dv=   7660.4 km/s  vmax=   3830.2 km/s
+0.4 AU                     D= 0.4000 AU a=  0.1 g  T=   5.718 d (  137.23 h)  dv=    484.5 km/s  vmax=    242.2 km/s
+0.4 AU                     D= 0.4000 AU a=  0.3 g  T=   3.301 d (   79.23 h)  dv=    839.2 km/s  vmax=    419.6 km/s
+0.4 AU                     D= 0.4000 AU a=  1.0 g  T=   1.808 d (   43.40 h)  dv=   1532.1 km/s  vmax=    766.0 km/s
+0.4 AU                     D= 0.4000 AU a=  3.0 g  T=   1.044 d (   25.06 h)  dv=   2653.7 km/s  vmax=   1326.8 km/s
+0.4 AU                     D= 0.4000 AU a= 10.0 g  T=   0.572 d (   13.72 h)  dv=   4844.9 km/s  vmax=   2422.4 km/s
+Earth-Mars @2026-11-12     D= 1.3413 AU a=  0.1 g  T=  10.471 d (  251.30 h)  dv=    887.2 km/s  vmax=    443.6 km/s
+Earth-Mars @2026-11-12     D= 1.3413 AU a=  0.3 g  T=   6.045 d (  145.09 h)  dv=   1536.7 km/s  vmax=    768.3 km/s
+Earth-Mars @2026-11-12     D= 1.3413 AU a=  1.0 g  T=   3.311 d (   79.47 h)  dv=   2805.5 km/s  vmax=   1402.8 km/s
+Earth-Mars @2026-11-12     D= 1.3413 AU a=  3.0 g  T=   1.912 d (   45.88 h)  dv=   4859.3 km/s  vmax=   2429.7 km/s
+Earth-Mars @2026-11-12     D= 1.3413 AU a= 10.0 g  T=   1.047 d (   25.13 h)  dv=   8871.9 km/s  vmax=   4435.9 km/s
+Earth-Mars min 0.37AU      D= 0.3727 AU a=  0.1 g  T=   5.519 d (  132.47 h)  dv=    467.7 km/s  vmax=    233.8 km/s
+Earth-Mars min 0.37AU      D= 0.3727 AU a=  0.3 g  T=   3.187 d (   76.48 h)  dv=    810.0 km/s  vmax=    405.0 km/s
+Earth-Mars min 0.37AU      D= 0.3727 AU a=  1.0 g  T=   1.745 d (   41.89 h)  dv=   1478.9 km/s  vmax=    739.4 km/s
+Earth-Mars min 0.37AU      D= 0.3727 AU a=  3.0 g  T=   1.008 d (   24.19 h)  dv=   2561.5 km/s  vmax=   1280.7 km/s
+Earth-Mars min 0.37AU      D= 0.3727 AU a= 10.0 g  T=   0.552 d (   13.25 h)  dv=   4676.6 km/s  vmax=   2338.3 km/s
+Earth-Mars max 2.67AU      D= 2.6700 AU a=  0.1 g  T=  14.773 d (  354.56 h)  dv=   1251.7 km/s  vmax=    625.9 km/s
+Earth-Mars max 2.67AU      D= 2.6700 AU a=  0.3 g  T=   8.529 d (  204.70 h)  dv=   2168.1 km/s  vmax=   1084.0 km/s
+Earth-Mars max 2.67AU      D= 2.6700 AU a=  1.0 g  T=   4.672 d (  112.12 h)  dv=   3958.3 km/s  vmax=   1979.1 km/s
+Earth-Mars max 2.67AU      D= 2.6700 AU a=  3.0 g  T=   2.697 d (   64.73 h)  dv=   6856.0 km/s  vmax=   3428.0 km/s
+Earth-Mars max 2.67AU      D= 2.6700 AU a= 10.0 g  T=   1.477 d (   35.46 h)  dv=  12517.2 km/s  vmax=   6258.6 km/s
+Earth-Jupiter 4.2AU        D= 4.2000 AU a=  0.1 g  T=  18.529 d (  444.69 h)  dv=   1569.9 km/s  vmax=    785.0 km/s
+Earth-Jupiter 4.2AU        D= 4.2000 AU a=  0.3 g  T=  10.698 d (  256.74 h)  dv=   2719.2 km/s  vmax=   1359.6 km/s
+Earth-Jupiter 4.2AU        D= 4.2000 AU a=  1.0 g  T=   5.859 d (  140.62 h)  dv=   4964.5 km/s  vmax=   2482.3 km/s
+Earth-Jupiter 4.2AU        D= 4.2000 AU a=  3.0 g  T=   3.383 d (   81.19 h)  dv=   8598.8 km/s  vmax=   4299.4 km/s
+Earth-Jupiter 4.2AU        D= 4.2000 AU a= 10.0 g  T=   1.853 d (   44.47 h)  dv=  15699.2 km/s  vmax=   7849.6 km/s
+30 AU                      D=30.0000 AU a=  0.1 g  T=  49.520 d ( 1188.48 h)  dv=   4195.8 km/s  vmax=   2097.9 km/s
+30 AU                      D=30.0000 AU a=  0.3 g  T=  28.590 d (  686.17 h)  dv=   7267.3 km/s  vmax=   3633.7 km/s
+30 AU                      D=30.0000 AU a=  1.0 g  T=  15.660 d (  375.83 h)  dv=  13268.3 km/s  vmax=   6634.1 km/s
+30 AU                      D=30.0000 AU a=  3.0 g  T=   9.041 d (  216.99 h)  dv=  22981.3 km/s  vmax=  11490.6 km/s
+30 AU                      D=30.0000 AU a= 10.0 g  T=   4.952 d (  118.85 h)  dv=  41957.9 km/s  vmax=  20978.9 km/s
+Parker 9.86 Rsun = 6859602.0 km = 0.04585360719308687 AU; flux ratio 475.6122013701212
+Dec-2024 6,167,590 km altitude + R_sun =  6863290.0 km = 0.045878259950393796 AU = 9.86530113554693 Rsun; flux ratio 475.1011967278131 S= 646.6127287465537 kW/m2
+flux at 0.05 AU:    544400 W/m2  (  400.0x)
+flux at 0.1 AU:    136100 W/m2  (  100.0x)
+flux at 0.2 AU:     34025 W/m2  (   25.0x)
+flux at 0.3 AU:     15122 W/m2  (   11.1x)
+flux at 0.387 AU:      9087 W/m2  (    6.7x)
+Drive 0.05c/37h avg a = 112.53470645645646 m/s2 = 11.47534646963606 g
+0.3 g x 21 d dv = 5337.955728 km/s = 6.3 g-days; 28 d: 8.4 g-days; 4000 km/s = 4.720908393416335 g-days
+Atomic Rockets example: dv 1.8e6 m/s a 3 m/s2 D= 270.0 million km = 1.8048385230124804 AU; T= 6.944444444444445 d
+Epstein check 2 sqrt(D/a) Earth-Jupiter 4.2AU 1 g: 140.6224008324974 h; 0.3g: 256.7402034216402 h; 7g 53.1502716239472 ; 12g 40.594190487366916
+Pluto 38.53 AU 1g: 17.746721171849718 d; 0.3g 32.40093169192202

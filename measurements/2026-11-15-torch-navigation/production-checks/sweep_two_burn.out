@@ -1,0 +1,9 @@
+trips 1296  solved 1296  no trip 0  fallback starts used 0
+ms per solve: median 4.12  p95 7.55  max 21.81
+arrival against DOP853 rtol 1e-12: worst 17.95 km, 0.0293 m/s
+    0.1 g: n=216  worst    4.42 km 0.0011 m/s  closest Sun approach min 0.0587 AU  peak speed max 3759 km/s
+    0.3 g: n=216  worst    0.31 km 0.0007 m/s  closest Sun approach min 0.0435 AU  peak speed max 6512 km/s
+    1.0 g: n=216  worst    2.21 km 0.0026 m/s  closest Sun approach min 0.0237 AU  peak speed max 11890 km/s
+    3.0 g: n=216  worst   16.60 km 0.0142 m/s  closest Sun approach min 0.0185 AU  peak speed max 20594 km/s
+   10.0 g: n=216  worst   17.95 km 0.0293 m/s  closest Sun approach min 0.0194 AU  peak speed max 37600 km/s
+   12.0 g: n=216  worst   15.44 km 0.0276 m/s  closest Sun approach min 0.0197 AU  peak speed max 41189 km/s

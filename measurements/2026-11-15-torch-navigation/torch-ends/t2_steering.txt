@@ -1,0 +1,17 @@
+steering comparison, circular orbit; time in sqrt(r^3/mu); differences are t_alt / t_velocity - 1
+a/g0=0.01   dv_vel/vc=0.74534  transverse +2.126%  inertial(beta=0) +inf%  inertial(best, beta=-) none  optimised -0.459%  (escapes in scan: None/36)
+   optimised delta nodes (deg, +ve = velocity rotated ccw = inward): [-0.259, 2.331, -0.873, 12.822, 2.564, -0.605, -73.087, -89.148]
+a/g0=0.03   dv_vel/vc=0.65881  transverse +3.533%  inertial(beta=0) +inf%  inertial(best, beta=-) none  optimised -0.676%  (escapes in scan: None/36)
+   optimised delta nodes (deg, +ve = velocity rotated ccw = inward): [2.293, -0.991, 14.761, 5.108, 1.243, -0.354, 7.874, -47.553]
+a/g0=0.1    dv_vel/vc=0.51345  transverse +8.003%  inertial(beta=0) +inf%  inertial(best, beta=85.5) +165.600%  optimised -0.554%  (escapes in scan: 11/36)
+   optimised delta nodes (deg, +ve = velocity rotated ccw = inward): [12.444, 7.386, 3.971, 1.753, 0.354, -0.083, -538.916, -3.844]
+a/g0=0.3    dv_vel/vc=0.43060  transverse +1.864%  inertial(beta=0) +33.766%  inertial(best, beta=40.1) +4.556%  optimised -0.254%  (escapes in scan: 31/36)
+   optimised delta nodes (deg, +ve = velocity rotated ccw = inward): [9.773, 5.424, 2.698, 1.066, 0.213, -0.046, 28.804, -60.681]
+a/g0=1      dv_vel/vc=0.41581  transverse +0.177%  inertial(beta=0) +1.915%  inertial(best, beta=11.9) +0.332%  optimised -0.031%  (escapes in scan: 36/36)
+   optimised delta nodes (deg, +ve = velocity rotated ccw = inward): [3.38, 1.974, 1.017, 0.409, 0.082, -0.017, -23.163, 20.112]
+a/g0=3      dv_vel/vc=0.41439  transverse +0.020%  inertial(beta=0) +0.205%  inertial(best, beta=4.0) +0.036%  optimised -0.004%  (escapes in scan: 36/36)
+   optimised delta nodes (deg, +ve = velocity rotated ccw = inward): [1.142, 0.671, 0.347, 0.14, 0.028, -0.006, -0.128, -1.049]
+a/g0=10     dv_vel/vc=0.41423  transverse +0.002%  inertial(beta=0) +0.018%  inertial(best, beta=1.2) +0.003%  optimised -0.000%  (escapes in scan: 36/36)
+   optimised delta nodes (deg, +ve = velocity rotated ccw = inward): [0.343, 0.202, 0.104, 0.042, 0.008, -0.002, -1.079, 5.99]
+a/g0=100    dv_vel/vc=0.41421  transverse +0.000%  inertial(beta=0) +0.000%  inertial(best, beta=0.1) +0.000%  optimised -0.000%  (escapes in scan: 36/36)
+   optimised delta nodes (deg, +ve = velocity rotated ccw = inward): [0.034, 0.02, 0.01, 0.004, 0.001, -0.0, -45.467, 2.237]

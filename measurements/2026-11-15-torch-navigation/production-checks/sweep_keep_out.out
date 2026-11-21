@@ -1,0 +1,26 @@
+== daily, one synodic period or more ==
+earth-mars 0.1 g         blocked  33/780  no trip  0  ms median 37.4 max 55.1  extra time mean 0.164% max 0.351%  DOP853 worst 0.00 km 0.0000 m/s  closest 0.1000100 AU  tilt +0.005..+0.108 rad
+earth-mars 0.3 g         blocked  35/780  no trip  0  ms median 30.2 max 42.7  extra time mean 0.256% max 0.523%  DOP853 worst 0.30 km 0.0003 m/s  closest 0.1000100 AU  tilt +0.002..+0.148 rad
+earth-mars 1.0 g         blocked  35/780  no trip  0  ms median 30.4 max 38.3  extra time mean 0.283% max 0.579%  DOP853 worst 0.37 km 0.0007 m/s  closest 0.1000100 AU  tilt +0.001..+0.162 rad
+earth-mars 3.0 g         blocked  34/780  no trip  0  ms median 23.8 max 34.5  extra time mean 0.295% max 0.591%  DOP853 worst 0.36 km 0.0002 m/s  closest 0.1000100 AU  tilt +0.004..+0.167 rad
+earth-mars 12.0 g        blocked  34/780  no trip  0  ms median 23.4 max 34.5  extra time mean 0.294% max 0.595%  DOP853 worst 0.33 km 0.0001 m/s  closest 0.1000100 AU  tilt +0.000..+0.169 rad
+earth-mercury 0.1 g      blocked  71/730  no trip  0  ms median 31.4 max 1000.5  extra time mean 0.683% max 3.348%  DOP853 worst 0.30 km 0.0008 m/s  closest 0.1000100 AU  tilt +0.006..+0.444 rad
+earth-mercury 0.3 g      blocked  90/730  no trip  0  ms median 26.3 max 48.3  extra time mean 0.935% max 4.945%  DOP853 worst 0.20 km 0.0016 m/s  closest 0.1000100 AU  tilt +0.001..+0.552 rad
+earth-mercury 1.0 g      blocked  92/730  no trip  0  ms median 24.7 max 53.5  extra time mean 1.044% max 4.729%  DOP853 worst 0.26 km 0.0029 m/s  closest 0.1000100 AU  tilt +0.018..+0.544 rad
+earth-mercury 3.0 g      blocked  95/730  no trip  0  ms median 19.9 max 44.8  extra time mean 1.042% max 5.367%  DOP853 worst 0.23 km 0.0051 m/s  closest 0.1000100 AU  tilt +0.013..+0.584 rad
+earth-mercury 12.0 g     blocked  96/730  no trip  0  ms median 19.0 max 37.1  extra time mean 1.037% max 5.104%  DOP853 worst 0.24 km 0.0058 m/s  closest 0.1000100 AU  tilt +0.001..+0.573 rad
+earth-venus 0.1 g        blocked  32/584  no trip  0  ms median 30.7 max 40.3  extra time mean 0.276% max 0.653%  DOP853 worst 0.18 km 0.0003 m/s  closest 0.1000100 AU  tilt +0.001..+0.149 rad
+earth-venus 0.3 g        blocked  40/584  no trip  0  ms median 26.6 max 39.3  extra time mean 0.421% max 0.905%  DOP853 worst 0.24 km 0.0003 m/s  closest 0.1000100 AU  tilt +0.007..+0.194 rad
+earth-venus 1.0 g        blocked  44/584  no trip  0  ms median 23.9 max 31.7  extra time mean 0.471% max 1.260%  DOP853 worst 0.21 km 0.0003 m/s  closest 0.1000100 AU  tilt +0.004..+0.234 rad
+earth-venus 3.0 g        blocked  45/584  no trip  0  ms median 20.7 max 35.7  extra time mean 0.486% max 1.256%  DOP853 worst 0.21 km 0.0004 m/s  closest 0.1000100 AU  tilt +0.005..+0.239 rad
+earth-venus 12.0 g       blocked  45/584  no trip  0  ms median 18.8 max 30.4  extra time mean 0.494% max 1.243%  DOP853 worst 0.20 km 0.0020 m/s  closest 0.1000100 AU  tilt +0.006..+0.239 rad
+earth-jupiter 0.1 g      blocked  11/399  no trip  0  ms median 35.0 max 70.6  extra time mean 0.091% max 0.213%  DOP853 worst 0.95 km 0.0007 m/s  closest 0.1000100 AU  tilt +0.005..+0.123 rad
+earth-jupiter 0.3 g      blocked  14/399  no trip  0  ms median 28.0 max 52.7  extra time mean 0.136% max 0.348%  DOP853 worst 0.71 km 0.0008 m/s  closest 0.1000100 AU  tilt +0.007..+0.159 rad
+earth-jupiter 1.0 g      blocked  14/399  no trip  0  ms median 21.9 max 31.4  extra time mean 0.162% max 0.382%  DOP853 worst 0.66 km 0.0015 m/s  closest 0.1000100 AU  tilt +0.024..+0.170 rad
+earth-jupiter 3.0 g      blocked  15/399  no trip  0  ms median 19.9 max 29.3  extra time mean 0.157% max 0.411%  DOP853 worst 0.20 km 0.0004 m/s  closest 0.1000100 AU  tilt +0.014..+0.178 rad
+earth-jupiter 12.0 g     blocked  15/399  no trip  0  ms median 24.9 max 33.5  extra time mean 0.159% max 0.410%  DOP853 worst 0.24 km 0.0002 m/s  closest 0.1000100 AU  tilt +0.011..+0.178 rad
+== every ordered pair of Sun-orbiting catalog places ==
+40 bodies
+solved 9360  detours 62  no trip 0  fallback starts used 2  slower than 60 ms: 0  total 38.0 s
+detoured trips against DOP853: worst 1.54 km 0.0042 m/s, closest approach 0.1000100 AU; slowest solve 46.7 ms
+exit=0

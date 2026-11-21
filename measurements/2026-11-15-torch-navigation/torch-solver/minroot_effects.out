@@ -1,0 +1,33 @@
+== item 3 with the minimum-time root: T_on(min root)/T_off - 1, %
+ 0.01 median -0.1840  p5 -7.808  p95 +2.699  min -15.835  max +6.556
+ 0.03 median -0.0721  p5 -3.410  p95 +0.323  min -9.106  max +2.542
+  0.1 median -0.0390  p5 -1.189  p95 +0.091  min -2.838  max +0.814
+  0.3 median -0.0139  p5 -0.442  p95 +0.028  min -0.759  max +0.310
+  1.0 median -0.0043  p5 -0.125  p95 +0.008  min -0.242  max +0.095
+  3.0 median -0.0014  p5 -0.041  p95 +0.003  min -0.096  max +0.031
+ 10.0 median -0.0004  p5 -0.013  p95 +0.001  min -0.036  max +0.009
+
+== item 9 with the minimum-time root: (E1 - Tmin)/Tmin, %  p5 / median / p95 / max|.|
+ 0.01  -2.628  +0.184  +8.470  18.815   within 1%:  60.2%  within 0.1%:  11.1%
+ 0.03  -0.322  +0.072  +3.531  10.019   within 1%:  81.9%  within 0.1%:  30.1%
+  0.1  -0.091  +0.039  +1.203   2.921   within 1%:  93.1%  within 0.1%:  56.9%
+  0.3  -0.028  +0.014  +0.444   0.765   within 1%: 100.0%  within 0.1%:  76.9%
+  1.0  -0.008  +0.004  +0.125   0.243   within 1%: 100.0%  within 0.1%:  91.7%
+  3.0  -0.003  +0.001  +0.041   0.097   within 1%: 100.0%  within 0.1%: 100.0%
+ 10.0  -0.001  +0.000  +0.013   0.036   within 1%: 100.0%  within 0.1%: 100.0%
+ranking by E1 vs T: Spearman median 1.0000 min 0.910; best date first 63/63, top3 63/63; regret(top1) median 0.0000% max 0.000%
+ranking by E1 vs Tmin: Spearman median 1.0000 min 0.910; best date first 63/63, top3 63/63; regret(top1) median 0.0000% max 0.000%
+keep-within-0.5% of best E1: true best (Tmin) kept in 63/63 groups, mean dates kept 1.9/24
+keep-within-1% of best E1: true best (Tmin) kept in 63/63 groups, mean dates kept 3.1/24
+keep-within-2% of best E1: true best (Tmin) kept in 63/63 groups, mean dates kept 4.8/24
+keep-within-5% of best E1: true best (Tmin) kept in 63/63 groups, mean dates kept 7.3/24
+
+== item 4 with the minimum-time two-burn root (gravity on): T2min/Tlin - 1, %
+ 0.01 n=28 median +0.0145  p90 +0.1452  max +0.3607  min -5.9406
+ 0.03 n=28 median +0.0108  p90 +0.1433  max +0.4756  min -0.0812
+  0.1 n=28 median +0.0042  p90 +0.0481  max +0.4070  min -0.9911
+  0.3 n=28 median +0.0020  p90 +0.0326  max +0.0965  min +0.0002
+  1.0 n=28 median +0.0006  p90 +0.0097  max +0.0304  min +0.0000
+  3.0 n=28 median +0.0002  p90 +0.0030  max +0.0088  min +0.0000
+ 10.0 n=28 median +0.0001  p90 +0.0009  max +0.0024  min -0.0000
+note: negative = constant-direction two-burn beats the linear law (the linear law is only exact without gravity)

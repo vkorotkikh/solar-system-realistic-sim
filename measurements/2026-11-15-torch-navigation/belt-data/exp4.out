@@ -1,0 +1,53 @@
+a percentiles 0,1,5,25,50,75,95,99,100: [2.046 2.219 2.324 2.629 2.931 3.119 3.208 3.259 3.5  ]
+q percentiles: [1.456 1.76  2.502 3.108 3.461]  Q percentiles: [2.132 2.468 3.26  4.063 5.363]
+frac a inside app belt [2.06,3.28]: 0.99072  below: 1e-05  above: 0.00927
+frac a outside Kirkwood-free? count a<2.06: 1 a>3.28: 927
+  Kirkwood gap 2.065+-0.02: 2 catalog objects inside (frac 0.0000)
+  Kirkwood gap 2.502+-0.03: 1005 catalog objects inside (frac 0.0100)
+  Kirkwood gap 2.825+-0.02: 1125 catalog objects inside (frac 0.0112)
+  Kirkwood gap 2.958+-0.015: 1586 catalog objects inside (frac 0.0159)
+  Kirkwood gap 3.279+-0.04: 860 catalog objects inside (frac 0.0086)
+  neighbour band densities (np.int64(3835), np.int64(1005), np.int64(7205))
+  neighbour band densities (np.int64(5185), np.int64(1125), np.int64(1492))
+e pct 50/95/99: [0.13331259 0.26198386 0.31654437] i pct 50/95/99: [ 9.87860712 24.63707659 28.53904923]
+epoch counts: {2455231.5: 1, 2455248.5: 1, 2455272.5: 1, 2455285.5: 1, 2455287.5: 1, 2455300.5: 1, 2455301.5: 1, 2455306.5: 1, 2455317.5: 1, 2455319.5: 1, 2455321.5: 2, 2455324.5: 1, 2455328.5: 2, 2455334.5: 1, 2455337.5: 1, 2455339.5: 1, 2455340.5: 1, 2455344.5: 1, 2455352.5: 1, 2455353.5: 1, 2455359.5: 1, 2455360.5: 1, 2455361.5: 1, 2455364.5: 1, 2455365.5: 1, 2455366.5: 1, 2455385.5: 1, 2455400.5: 1, 2455404.5: 1, 2455415.5: 1, 2458979.5: 1} n at 2461200.5: 99967
+z (AU) at JD 2461000.5 percentiles |z|:
+ |z| 50/95/99/max [0.259 0.926 1.38  2.996] r 1/50/99: [1.676 1.933 2.889 3.822 5.157]
+
+BACKEND beyond 2 AU:
+  jupiter        planet    a=5.203 e=0.048 i=1.3
+  saturn         planet    a=9.537 e=0.054 i=2.5
+  uranus         planet    a=19.189 e=0.047 i=0.8
+  neptune        planet    a=30.070 e=0.009 i=1.8
+  pluto          dwarf     a=39.482 e=0.249 i=17.1
+  ceres          dwarf     a=2.766 e=0.080 i=10.6
+  vesta          asteroid  a=2.362 e=0.090 i=7.1
+  pallas         asteroid  a=2.770 e=0.231 i=34.9
+  hygiea         asteroid  a=3.148 e=0.108 i=3.8
+  juno           asteroid  a=2.671 e=0.256 i=13.0
+  psyche         asteroid  a=2.923 e=0.134 i=3.1
+  eunomia        asteroid  a=2.642 e=0.188 i=11.8
+  europa52       asteroid  a=3.092 e=0.112 i=7.5
+  interamnia704  asteroid  a=3.056 e=0.155 i=17.3
+  davida511      asteroid  a=3.164 e=0.190 i=16.0
+  iris7          asteroid  a=2.387 e=0.230 i=5.5
+  hebe           asteroid  a=2.425 e=0.202 i=14.7
+  flora          asteroid  a=2.201 e=0.156 i=5.9
+  metis          asteroid  a=2.387 e=0.123 i=5.6
+  amphitrite     asteroid  a=2.554 e=0.073 i=6.1
+  euphrosyne     asteroid  a=3.162 e=0.216 i=26.3
+  cybele         asteroid  a=3.408 e=0.128 i=3.6
+  sylvia         asteroid  a=3.485 e=0.094 i=10.9
+  camilla        asteroid  a=3.493 e=0.066 i=10.0
+  eris           dwarf     a=67.996 e=0.437 i=43.9
+  makemake       dwarf     a=45.511 e=0.160 i=29.0
+  haumea         dwarf     a=43.006 e=0.196 i=28.2
+  sedna          dwarf     a=549.556 e=0.861 i=11.9
+  quaoar         dwarf     a=43.148 e=0.036 i=8.0
+  orcus          dwarf     a=39.336 e=0.222 i=20.6
+  gonggong       dwarf     a=66.893 e=0.503 i=30.9
+  varuna         dwarf     a=43.178 e=0.053 i=17.1
+  ixion          dwarf     a=39.351 e=0.244 i=19.7
+  salacia        dwarf     a=42.115 e=0.103 i=23.9
+  varda          dwarf     a=45.538 e=0.143 i=21.5
+  ms4            dwarf     a=41.595 e=0.149 i=17.7

@@ -1,0 +1,5 @@
+done 6.0 s
+solved 1512 of 1512 | first-try FAST better: 1508  naive: 3  strict retry: 1
+DOP853 re-integration error: position km median 1.11e-03 p99 4.97e+00 max 1.50e+01 | velocity m/s median 8.86e-07 p99 5.82e-03 max 2.44e-02
+cases over 100 km: 0  over 1 m/s: 0
+|T_fast / T_strict - 1| max 4.0403180801007466e-10  (different roots show up here) 0

@@ -1,0 +1,82 @@
+cases 1512
+
+== Item 1: convergence per acceleration (all 9 pairs x 24 dates)
+a_g | naive guess ok | better guess ok | after rescue | unsolved | med/max iters (better) | med nfev
+ 0.01 | 206/216 | 213/216 | 216/216 | 0 | 5/14 | 5
+ 0.03 | 214/216 | 216/216 | 216/216 | 0 | 4/10 | 4
+  0.1 | 216/216 | 216/216 | 216/216 | 0 | 4/8 | 4
+  0.3 | 216/216 | 216/216 | 216/216 | 0 | 3/6 | 3
+  1.0 | 216/216 | 216/216 | 216/216 | 0 | 3/6 | 3
+  3.0 | 215/216 | 216/216 | 216/216 | 0 | 3/6 | 3
+ 10.0 | 215/216 | 216/216 | 216/216 | 0 | 3/11 | 3
+overall naive 1498/1512 better 1509/1512 rescued-ok 1512/1512
+
+per pair (better / rescue-ok of 168):
+earth-eris 168 168 168 of 168
+earth-jupiter 168 168 168 of 168
+earth-mars 167 168 168 of 168
+earth-mercury 159 165 168 of 168
+earth-neptune 168 168 168 of 168
+earth-saturn 167 168 168 of 168
+earth-venus 165 168 168 of 168
+jupiter-saturn 168 168 168 of 168
+mars-ceres 168 168 168 of 168
+
+failures of 'better' (msg counts): Counter({'line search failed': 3})
+failures of naive (msg counts): Counter({'line search failed': 10, 'max iterations': 4})
+
+unsolved even after rescue: 0
+rescued: 1 Counter({'earth-mercury': 1}) Counter({0.01: 1})
+
+by date kind (even vs conj): better ok
+even 1132 1130 1134 of 1134
+conj 377 368 378 of 378
+
+== Item 7: closest Sun approach; cases < 0.1 AU, < R_sun
+n<0.1AU: 211  n<R_sun(0.00465): 0
+count <0.1 AU by a_g: {0.01: 0, 0.03: 0, 0.1: 26, 0.3: 43, 1.0: 47, 3.0: 47, 10.0: 48}
+count <0.1 AU by pair: Counter({'earth-mars': 35, 'earth-venus': 34, 'earth-saturn': 34, 'earth-mercury': 33, 'earth-neptune': 32, 'earth-jupiter': 30, 'mars-ceres': 9, 'jupiter-saturn': 4})
+cases < 0.02 AU: [('earth-mars', 2461049.5, 10.0, 0.0186), ('earth-mars', 2461851.5, 10.0, 0.0164), ('earth-mars', 2462646.5, 3.0, 0.0154), ('earth-mars', 2462646.5, 10.0, 0.01), ('earth-mars', 2463424.5, 10.0, 0.0194), ('earth-mars', 2464960.5, 10.0, 0.0169), ('earth-venus', 2461041.5, 3.0, 0.0185), ('earth-venus', 2461041.5, 10.0, 0.0194), ('earth-venus', 2461046.5, 10.0, 0.0155), ('earth-venus', 2463385.5, 3.0, 0.0193), ('earth-venus', 2463385.5, 10.0, 0.0101), ('earth-venus', 2463966.5, 10.0, 0.016), ('earth-mercury', 2462095.5, 10.0, 0.0155), ('earth-mercury', 2462440.5, 10.0, 0.0158), ('earth-mercury', 2463375.5, 10.0, 0.0187), ('earth-mercury', 2464643.5, 10.0, 0.0135), ('earth-jupiter', 2461251.5, 10.0, 0.0154), ('earth-jupiter', 2461648.5, 10.0, 0.018), ('earth-jupiter', 2462836.5, 10.0, 0.0159), ('earth-jupiter', 2463232.5, 3.0, 0.0124), ('earth-jupiter', 2463232.5, 10.0, 0.0058), ('earth-jupiter', 2463631.5, 3.0, 0.0196), ('earth-jupiter', 2463631.5, 10.0, 0.0143), ('earth-jupiter', 2464837.5, 3.0, 0.0196), ('earth-jupiter', 2464837.5, 10.0, 0.0148), ('earth-saturn', 2463400.5, 10.0, 0.0198), ('earth-saturn', 2463780.5, 3.0, 0.0164), ('earth-saturn', 2463780.5, 10.0, 0.0115), ('earth-saturn', 2464160.5, 3.0, 0.0125), ('earth-saturn', 2464160.5, 10.0, 0.0057), ('earth-saturn', 2464540.5, 3.0, 0.0175), ('earth-saturn', 2464540.5, 10.0, 0.0126)]
+inside the Sun: []
+rmin quantiles (AU) all solved: [0.0057 0.0158 0.0287 0.2056 0.5958]
+conj-date rmin by pair/a (min over 6 conj dates):
+earth-eris       0.330 0.231 0.177 0.157 0.150 0.147 0.147
+earth-jupiter    0.226 0.138 0.077 0.044 0.023 0.012 0.006
+earth-mars       0.189 0.113 0.066 0.041 0.024 0.015 0.010
+earth-mercury    0.365 0.231 0.132 0.078 0.043 0.025 0.014
+earth-neptune    0.285 0.173 0.097 0.057 0.035 0.026 0.024
+earth-saturn     0.252 0.151 0.084 0.047 0.024 0.013 0.006
+earth-venus      0.323 0.190 0.106 0.062 0.034 0.019 0.010
+jupiter-saturn   0.220 0.146 0.100 0.080 0.071 0.068 0.067
+mars-ceres       0.198 0.135 0.098 0.082 0.072 0.068 0.066
+
+== Item 2 (gravity on): DOP853 re-integration errors
+ 0.01 n=216 pos err km median 3.55e-04 max 1.12e-02 | vel err m/s median 4.24e-08 max 2.06e-06 | solver resid km max 1.10e-02
+ 0.03 n=216 pos err km median 3.29e-04 max 1.79e-01 | vel err m/s median 5.82e-08 max 1.47e-05 | solver resid km max 1.79e-01
+  0.1 n=216 pos err km median 3.59e-04 max 1.41e-01 | vel err m/s median 1.10e-07 max 2.31e-05 | solver resid km max 1.41e-01
+  0.3 n=216 pos err km median 2.96e-04 max 1.09e-01 | vel err m/s median 1.57e-07 max 3.09e-05 | solver resid km max 1.09e-01
+  1.0 n=216 pos err km median 2.36e-04 max 1.82e-02 | vel err m/s median 1.73e-07 max 3.01e-05 | solver resid km max 1.82e-02
+  3.0 n=216 pos err km median 2.08e-04 max 1.09e-02 | vel err m/s median 2.10e-07 max 4.30e-05 | solver resid km max 1.09e-02
+ 10.0 n=216 pos err km median 1.88e-04 max 1.90e-02 | vel err m/s median 2.62e-07 max 7.02e-05 | solver resid km max 1.90e-02
+
+== Item 3: gravity on vs off (T_on/T_off-1)
+ 0.01 n=216 median -0.1727%  p5 -3.308%  p95 +2.699%  min -9.735%  max +6.556%   med dT -0.1756 d, med dv_on 583.8 km/s
+ 0.03 n=216 median -0.0721%  p5 -1.748%  p95 +0.323%  min -4.374%  max +2.542%   med dT -0.0443 d, med dv_on 1005.8 km/s
+  0.1 n=216 median -0.0390%  p5 -0.708%  p95 +0.091%  min -2.838%  max +0.814%   med dT -0.0094 d, med dv_on 1823.6 km/s
+  0.3 n=216 median -0.0139%  p5 -0.326%  p95 +0.028%  min -0.688%  max +0.310%   med dT -0.0019 d, med dv_on 3143.5 km/s
+  1.0 n=216 median -0.0043%  p5 -0.113%  p95 +0.008%  min -0.242%  max +0.095%   med dT -0.0003 d, med dv_on 5741.7 km/s
+  3.0 n=216 median -0.0014%  p5 -0.041%  p95 +0.003%  min -0.096%  max +0.031%   med dT -0.0001 d, med dv_on 9947.2 km/s
+ 10.0 n=216 median -0.0004%  p5 -0.013%  p95 +0.001%  min -0.036%  max +0.009%   med dT -0.0000 d, med dv_on 18163.7 km/s
+
+per-pair median |dT| % at each a
+earth-eris         0.2586   0.0857   0.0257   0.0086   0.0026   0.0009   0.0003
+earth-jupiter      0.9326   0.3078   0.0920   0.0306   0.0092   0.0031   0.0009
+earth-mars         1.8455   0.7311   0.2316   0.0779   0.0230   0.0076   0.0023
+earth-mercury      3.0817   1.4396   0.6861   0.2835   0.0932   0.0332   0.0100
+earth-neptune      0.4224   0.1415   0.0435   0.0147   0.0044   0.0015   0.0004
+earth-saturn       0.6517   0.2159   0.0648   0.0218   0.0065   0.0022   0.0007
+earth-venus        3.2389   1.6083   0.5185   0.1693   0.0477   0.0154   0.0045
+jupiter-saturn     0.1006   0.0338   0.0102   0.0034   0.0010   0.0003   0.0001
+mars-ceres         0.6045   0.1932   0.0589   0.0198   0.0060   0.0020   0.0006
+
+T_off(numerical, mu=0) vs E1 closed form: n 1512 max rel diff 1.6431300764452317e-14

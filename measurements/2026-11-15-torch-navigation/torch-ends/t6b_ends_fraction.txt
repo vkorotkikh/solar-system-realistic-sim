@@ -1,0 +1,17 @@
+pair | L=|a1-a2| AU | a(g): sun-leg dv km/s ; ends (esc+cap) km/s = % of sun leg ; vA+vB km/s ; model errors vs truth: patched <= (ends + 0.58 (vA+vB))/dv, sun-only <= 0.58 (vA+vB)/dv
+earth   -venus    | 0.277 | 0.1 g: sun 402.9 ; ends 7.38 = 1.83% ; vA+vB 14.9 ; patched<=3.97% sun-only<=2.14%
+earth   -venus    | 0.277 | 1.0 g: sun 1274.2 ; ends 6.18 = 0.49% ; vA+vB 14.9 ; patched<=1.16% sun-only<=0.68%
+earth   -mars     | 0.524 | 0.1 g: sun 554.4 ; ends 5.38 = 0.97% ; vA+vB 11.2 ; patched<=2.14% sun-only<=1.17%
+earth   -mars     | 0.524 | 1.0 g: sun 1753.1 ; ends 4.63 = 0.26% ; vA+vB 11.2 ; patched<=0.63% sun-only<=0.37%
+mars    -ceres    | 1.242 | 0.1 g: sun 853.7 ; ends 1.58 = 0.18% ; vA+vB 3.7 ; patched<=0.44% sun-only<=0.25%
+mars    -ceres    | 1.242 | 1.0 g: sun 2699.6 ; ends 1.53 = 0.06% ; vA+vB 3.7 ; patched<=0.14% sun-only<=0.08%
+earth   -ceres    | 1.766 | 0.1 g: sun 1017.9 ; ends 4.07 = 0.40% ; vA+vB 8.1 ; patched<=0.86% sun-only<=0.46%
+earth   -ceres    | 1.766 | 1.0 g: sun 3218.9 ; ends 3.37 = 0.10% ; vA+vB 8.1 ; patched<=0.25% sun-only<=0.15%
+earth   -jupiter  | 4.203 | 0.1 g: sun 1570.5 ; ends 4.09 = 0.26% ; vA+vB 65.0 ; patched<=2.66% sun-only<=2.40%
+earth   -jupiter  | 4.203 | 1.0 g: sun 4966.2 ; ends 3.39 = 0.07% ; vA+vB 65.0 ; patched<=0.83% sun-only<=0.76%
+jupiter -saturn   | 4.334 | 0.1 g: sun 1594.7 ; ends 0.25 = 0.02% ; vA+vB 91.6 ; patched<=3.35% sun-only<=3.33%
+jupiter -saturn   | 4.334 | 1.0 g: sun 5043.0 ; ends 0.25 = 0.00% ; vA+vB 91.6 ; patched<=1.06% sun-only<=1.05%
+saturn  -neptune  | 20.533 | 0.1 g: sun 3471.2 ; ends 0.16 = 0.00% ; vA+vB 56.7 ; patched<=0.95% sun-only<=0.95%
+saturn  -neptune  | 20.533 | 1.0 g: sun 10977.0 ; ends 0.16 = 0.00% ; vA+vB 56.7 ; patched<=0.30% sun-only<=0.30%
+mercury -venus    | 0.336 | 0.1 g: sun 444.2 ; ends 4.63 = 1.04% ; vA+vB 9.9 ; patched<=2.33% sun-only<=1.29%
+mercury -venus    | 0.336 | 1.0 g: sun 1404.7 ; ends 4.10 = 0.29% ; vA+vB 9.9 ; patched<=0.70% sun-only<=0.41%

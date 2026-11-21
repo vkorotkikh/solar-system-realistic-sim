@@ -1,0 +1,2 @@
+max |error| of dv/vc over 42 test points: 1.09e-02 at a/g0=0.0287 (dv/vc = 0.6619)
+relative worst: 1.64e-02

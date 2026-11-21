@@ -1,0 +1,8 @@
+blocked 182  no trip 0  34 s
+  closest approach at 0.0-0.1 of the flight:   3 blocked,   0 no trip, median 27 ms, max 31 ms
+  closest approach at 0.1-0.2 of the flight:  14 blocked,   0 no trip, median 31 ms, max 51 ms
+  closest approach at 0.2-0.3 of the flight:  36 blocked,   0 no trip, median 30 ms, max 59 ms
+  closest approach at 0.3-0.7 of the flight:  79 blocked,   0 no trip, median 26 ms, max 55 ms
+  closest approach at 0.7-0.8 of the flight:  28 blocked,   0 no trip, median 27 ms, max 42 ms
+  closest approach at 0.8-0.9 of the flight:   9 blocked,   0 no trip, median 28 ms, max 36 ms
+  closest approach at 0.9-1.0 of the flight:  13 blocked,   0 no trip, median 36 ms, max 65 ms

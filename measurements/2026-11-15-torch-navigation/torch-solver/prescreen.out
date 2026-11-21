@@ -1,0 +1,34 @@
+n 1512
+
+relative error (E - T)/T in %, per acceleration: p5 / median / p95 / max|.|   [E0 | E1 | E2]
+ 0.01 |  -7.582  +0.944 +10.562  40.994 |  -2.628  +0.173  +3.422  10.785 |  -1.879  +0.184 +11.802 271.557
+ 0.03 |  -4.910  +0.298  +3.112  11.652 |  -0.322  +0.072  +1.779   4.574 |  -0.322  +0.091  +4.317  20.266
+  0.1 |  -2.046  +0.140  +1.471   6.090 |  -0.091  +0.039  +0.713   2.921 |  -0.087  +0.039  +1.375   3.183
+  0.3 |  -1.149  +0.048  +0.799   3.472 |  -0.028  +0.014  +0.327   0.693 |  -0.028  +0.014  +0.540   0.868
+  1.0 |  -0.683  +0.018  +0.458   2.006 |  -0.008  +0.004  +0.113   0.243 |  -0.008  +0.004  +0.166   0.244
+  3.0 |  -0.403  +0.008  +0.255   1.178 |  -0.003  +0.001  +0.041   0.097 |  -0.003  +0.001  +0.047   0.097
+ 10.0 |  -0.223  +0.001  +0.140   0.649 |  -0.001  +0.000  +0.013   0.036 |  -0.001  +0.000  +0.014   0.036
+
+fraction of cases with |err| < 1% / < 0.1%  [E0 | E1 | E2]
+ 0.01 |  25.5%   0.9% |  61.6%  11.6% |  60.2%  12.0%
+ 0.03 |  45.8%   6.0% |  82.9%  30.1% |  81.9%  31.5%
+  0.1 |  70.8%  13.0% |  97.2%  56.9% |  91.2%  56.9%
+  0.3 |  89.8%  22.7% | 100.0%  76.9% | 100.0%  75.5%
+  1.0 |  97.2%  42.6% | 100.0%  91.7% | 100.0%  91.2%
+  3.0 |  99.5%  56.9% | 100.0% 100.0% | 100.0% 100.0%
+ 10.0 | 100.0%  73.6% | 100.0% 100.0% | 100.0% 100.0%
+
+E1/E2 solver ok flags: E1 fallbacks 0  E2 fallbacks 5
+worst E2 cases: [('earth-mars', 0.01, 2465058.5, 271.6, 0.509), ('earth-venus', 0.01, 2461514.1, 95.4, 0.35), ('earth-mars', 0.01, 2461986.7, 73.5, 0.525), ('earth-venus', 0.01, 2462695.6, 72.6, 0.287), ('earth-venus', 0.01, 2463877.0, 57.1, 0.231), ('earth-venus', 0.01, 2465058.5, 49.7, 0.201), ('earth-mars', 0.01, 2462695.6, 34.3, 0.261), ('earth-venus', 0.03, 2465058.5, -20.3, 0.226)]
+
+ranking dates by estimate: per (pair, a) group of 24 dates
+E0: groups 63  Spearman median 0.9939 min 0.6209 | true-best date ranked #1: 54/63, in top 3: 62/63 | regret solving best-1: median 0.0000% max 15.118%  best-3: median 0.00000% max 0.0405%
+E1: groups 63  Spearman median 1.0000 min 0.9096 | true-best date ranked #1: 63/63, in top 3: 63/63 | regret solving best-1: median 0.0000% max 0.000%  best-3: median 0.00000% max 0.0000%
+E2: groups 63  Spearman median 1.0000 min 0.6974 | true-best date ranked #1: 63/63, in top 3: 63/63 | regret solving best-1: median 0.0000% max 0.000%  best-3: median 0.00000% max 0.0000%
+
+keep-all-within-x rule using E2 (relative to min E2 in the group): fraction of groups that keep the true best, mean kept of 24
+x=0.002: true best kept in 63/63 groups; mean dates kept 1.4 of 24
+x=0.005: true best kept in 63/63 groups; mean dates kept 1.9 of 24
+x= 0.01: true best kept in 63/63 groups; mean dates kept 3.1 of 24
+x= 0.02: true best kept in 63/63 groups; mean dates kept 4.9 of 24
+E1 estimate cost (scalar python, loaded machine), best of 3: 576 us

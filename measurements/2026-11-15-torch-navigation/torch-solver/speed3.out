@@ -1,0 +1,25 @@
+
+per-case wall time, candidate A (best of 5 each), ms: percentiles 50/90/99/max
+path=off: 4.66 / 12.95 / 24.31 / 164.99
+    a= 0.01: median 6.82 ms  max 164.99
+    a= 0.03: median 5.64 ms  max 23.80
+    a=  0.1: median 5.49 ms  max 24.21
+    a=  0.3: median 4.29 ms  max 16.38
+    a=  1.0: median 4.12 ms  max 16.47
+    a=  3.0: median 3.59 ms  max 12.89
+    a= 10.0: median 3.13 ms  max 11.44
+path=on : 5.39 / 13.48 / 26.53 / 169.51
+         851851 function calls in 0.296 seconds
+
+   Ordered by: internal time
+   List reduced from 134 to 8 due to restriction <8>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+      400    0.036    0.000    0.045    0.000 <session-dir>/nav-lab/torch-solver/torch_reference.py:61(_picard)
+     6800    0.020    0.000    0.052    0.000 <session-dir>/wt-c1/backend/mission/orbital.py:57(_evaluate_direct_kepler)
+     1700    0.019    0.000    0.087    0.000 <session-dir>/wt-c1/backend/mission/orbital.py:110(solve_kepler)
+   144500    0.015    0.000    0.022    0.000 <session-dir>/wt-c1/backend/mission/orbital.py:43(_kepler_up)
+     1700    0.014    0.000    0.111    0.000 <session-dir>/wt-c1/backend/mission/orbital.py:273(_propagate_secular_orbit)
+     1600    0.014    0.000    0.043    0.000 <venv>/lib/python3.12/site-packages/numpy/_core/numeric.py:1563(cross)
+      400    0.012    0.000    0.030    0.000 <session-dir>/nav-lab/torch-solver/torch_reference.py:91(_fractions)
+    11150    0.010    0.000    0.010    0.000 {method 'reduce' of 'nump

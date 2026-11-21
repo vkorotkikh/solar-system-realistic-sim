@@ -1,0 +1,166 @@
+[
+ {
+  "x": 0.01,
+  "t_velocity": 74.53436726825473,
+  "dv_velocity": 0.7453436726825473,
+  "t_transverse": 76.11890557003474,
+  "t_inertial_beta0": Infinity,
+  "t_inertial_best": null,
+  "t_optimised": 74.19212379508714,
+  "delta_nodes_deg": [
+   -0.259,
+   2.331,
+   -0.873,
+   12.822,
+   2.564,
+   -0.605,
+   -73.087,
+   -89.148
+  ]
+ },
+ {
+  "x": 0.03,
+  "t_velocity": 21.96022777977236,
+  "dv_velocity": 0.6588068333931708,
+  "t_transverse": 22.73612614218729,
+  "t_inertial_beta0": Infinity,
+  "t_inertial_best": null,
+  "t_optimised": 21.811684417650433,
+  "delta_nodes_deg": [
+   2.293,
+   -0.991,
+   14.761,
+   5.108,
+   1.243,
+   -0.354,
+   7.874,
+   -47.553
+  ]
+ },
+ {
+  "x": 0.1,
+  "t_velocity": 5.134516183008276,
+  "dv_velocity": 0.5134516183008276,
+  "t_transverse": 5.545450800596537,
+  "t_inertial_beta0": Infinity,
+  "t_inertial_best": 13.63728198559298,
+  "beta_best_deg": 85.50808565719427,
+  "inertial_scan_escaped": 11,
+  "t_optimised": 5.106057374845287,
+  "delta_nodes_deg": [
+   12.444,
+   7.386,
+   3.971,
+   1.753,
+   0.354,
+   -0.083,
+   -538.916,
+   -3.844
+  ]
+ },
+ {
+  "x": 0.3,
+  "t_velocity": 1.4353312807343475,
+  "dv_velocity": 0.43059938422030425,
+  "t_transverse": 1.4620831972305557,
+  "t_inertial_beta0": 1.9199867632032646,
+  "t_inertial_best": 1.50071918854758,
+  "beta_best_deg": 40.090320294130294,
+  "inertial_scan_escaped": 31,
+  "t_optimised": 1.4316900940896236,
+  "delta_nodes_deg": [
+   9.773,
+   5.424,
+   2.698,
+   1.066,
+   0.213,
+   -0.046,
+   28.804,
+   -60.681
+  ]
+ },
+ {
+  "x": 1.0,
+  "t_velocity": 0.4158138061157122,
+  "dv_velocity": 0.4158138061157122,
+  "t_transverse": 0.4165483399554981,
+  "t_inertial_beta0": 0.4237780277318787,
+  "t_inertial_best": 0.41719594543682637,
+  "beta_best_deg": 11.88271426834969,
+  "inertial_scan_escaped": 36,
+  "t_optimised": 0.41568361037601875,
+  "delta_nodes_deg": [
+   3.38,
+   1.974,
+   1.017,
+   0.409,
+   0.082,
+   -0.017,
+   -23.163,
+   20.112
+  ]
+ },
+ {
+  "x": 3.0,
+  "t_velocity": 0.13813094241153015,
+  "dv_velocity": 0.4143928272345905,
+  "t_transverse": 0.1381581315423383,
+  "t_inertial_beta0": 0.13841479457153963,
+  "t_inertial_best": 0.1381809461492684,
+  "beta_best_deg": 3.9558561021115395,
+  "inertial_scan_escaped": 36,
+  "t_optimised": 0.13812598025399658,
+  "delta_nodes_deg": [
+   1.142,
+   0.671,
+   0.347,
+   0.14,
+   0.028,
+   -0.006,
+   -0.128,
+   -1.049
+  ]
+ },
+ {
+  "x": 10.0,
+  "t_velocity": 0.04142297114297947,
+  "dv_velocity": 0.4142297114297947,
+  "t_transverse": 0.041423705179904104,
+  "t_inertial_beta0": 0.041430602071861285,
+  "t_inertial_best": 0.04142431760569942,
+  "beta_best_deg": 1.1862915508053509,
+  "inertial_scan_escaped": 36,
+  "t_optimised": 0.041422836720769504,
+  "delta_nodes_deg": [
+   0.343,
+   0.202,
+   0.104,
+   0.042,
+   0.008,
+   -0.002,
+   -1.079,
+   5.99
+  ]
+ },
+ {
+  "x": 100.0,
+  "t_velocity": 0.0041421372387859395,
+  "dv_velocity": 0.41421372387859395,
+  "t_transverse": 0.0041421379728158085,
+  "t_inertial_beta0": 0.004142144866487318,
+  "t_inertial_best": 0.004142138584894012,
+  "beta_best_deg": 0.11859355814243835,
+  "inertial_scan_escaped": 36,
+  "t_optimised": 0.004142137104319955,
+  "delta_nodes_deg": [
+   0.034,
+   0.02,
+   0.01,
+   0.004,
+   0.001,
+   -0.0,
+   -45.467,
+   2.237
+  ]
+ }
+]

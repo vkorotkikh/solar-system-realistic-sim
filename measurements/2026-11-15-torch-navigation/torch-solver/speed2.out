@@ -1,0 +1,24 @@
+config | ok | ms/solve (best of 3) | mean iters | pos err km median/max | vel err m/s median/max
+M=16, phi=0.5, ptol=1e-13, ntol=1e-11                      | 252/252 |  13.52 | 3.89 | 2.56e-04/1.41e-01 | 2.21e-08/4.85e-05
+M=12, phi=1.0, ptol=1e-11, ntol=1e-09                      | 251/252 |   6.98 | 3.55 | 9.54e-04/1.17e+01 | 7.61e-07/9.66e-03
+M=10, phi=1.0, ptol=1e-10, ntol=1e-09                      | 250/252 |   5.69 | 3.53 | 8.75e-03/1.17e+01 | 8.80e-06/9.66e-03
+M=12, phi=1.5, ptol=1e-10, ntol=1e-09                      | 250/252 |   4.77 | 3.53 | 8.95e-03/1.17e+01 | 8.45e-06/9.66e-03
+M=10, phi=1.5, ptol=1e-10, ntol=1e-09                      | 250/252 |   7.74 | 3.53 | 8.61e-02/1.20e+01 | 9.92e-05/9.66e-03
+M=8, phi=1.0, ptol=1e-10, ntol=1e-09                       | 251/252 |   6.95 | 3.57 | 1.25e-01/1.45e+01 | 1.63e-04/9.65e-03
+M=12, phi=1.0, ptol=1e-11, ntol=3e-09                      | 251/252 |   5.75 | 3.43 | 3.09e-03/2.84e+01 | 2.52e-06/2.34e-02
+M=12, phi=1.0, ptol=1e-11, ntol=1e-09, jac=fd              | 251/252 |   5.11 | 3.55 | 1.11e-03/1.17e+01 | 8.68e-07/9.66e-03
+
+per-case wall time, candidate A (best of 5 each), ms: percentiles 50/90/99/max
+Traceback (most recent call last):
+  File "<session-dir>/nav-lab/torch-solver/speed2.py", line 25, in <module>
+    t = time.perf_counter(); solve_trip(A, B, r["jd"], r["a_g"], want_path=path, **kw); best = min(best, time.perf_counter() - t)
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<session-dir>/nav-lab/torch-solver/torch_reference.py", line 374, in solve_trip
+    F, J, _, _ = evaluate(e1, e2, t1, t2, tc)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<session-dir>/nav-lab/torch-solver/torch_reference.py", line 347, in evaluate
+    r, v = propagate_arc(r, v, acc * E2, T2, mu, M, phi_max, ptol, rec=rec, t_off=tt)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<session-dir>/nav-lab/torch-solver/torch_reference.py", line 142, in propagate_arc
+    raise FloatingPointError("Picard collocation did not converge (path too close to the Sun?)")
+FloatingPointError: Picard collocation did not converge (path too close to the Sun?)

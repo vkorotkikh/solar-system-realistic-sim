@@ -1,0 +1,44 @@
+sample size 252
+
+--- one-at-a-time sweeps around the reference configuration
+config | ok | ms/solve (best of 3) | mean iters | pos err km median/max | vel err m/s median/max
+M=6, phi=0.5, ptol=1e-13, ntol=1e-11                       | 251/252 |  17.45 | 3.84 | 4.33e-02/6.69e+00 | 7.18e-05/1.76e-03
+M=8, phi=0.5, ptol=1e-13, ntol=1e-11                       | 251/252 |  10.95 | 3.84 | 8.77e-04/1.43e-01 | 9.26e-07/4.85e-05
+M=10, phi=0.5, ptol=1e-13, ntol=1e-11                      | 250/252 |  18.99 | 3.82 | 2.85e-04/1.41e-01 | 5.11e-08/4.85e-05
+M=12, phi=0.5, ptol=1e-13, ntol=1e-11                      | 251/252 |  18.92 | 3.86 | 2.57e-04/1.41e-01 | 2.20e-08/4.85e-05
+M=16, phi=0.5, ptol=1e-13, ntol=1e-11                      | 252/252 |  14.67 | 3.89 | 2.56e-04/1.41e-01 | 2.21e-08/4.85e-05
+M=24, phi=0.5, ptol=1e-13, ntol=1e-11                      | 251/252 |  24.80 | 3.86 | 2.57e-04/1.41e-01 | 2.21e-08/4.85e-05
+M=12, phi=0.25, ptol=1e-13, ntol=1e-11                     | 251/252 |  34.85 | 3.86 | 2.57e-04/1.41e-01 | 2.15e-08/4.85e-05
+M=12, phi=0.5, ptol=1e-13, ntol=1e-11                      | 251/252 |  19.32 | 3.86 | 2.57e-04/1.41e-01 | 2.20e-08/4.85e-05
+M=12, phi=1.0, ptol=1e-13, ntol=1e-11                      | 251/252 |   8.83 | 3.87 | 5.39e-04/1.41e-01 | 2.41e-07/4.85e-05
+M=12, phi=2.0, ptol=1e-13, ntol=1e-11                      | 250/252 |   8.03 | 3.84 | 2.87e-02/3.36e+01 | 4.28e-05/1.29e-02
+M=12, phi=4.0, ptol=1e-13, ntol=1e-11                      | 252/252 |   4.46 | 3.92 | 3.35e+00/8.97e+03 | 4.75e-03/2.37e+01
+M=12, phi=1.0, ptol=1e-13, ntol=1e-11                      | 251/252 |   9.09 | 3.87 | 5.39e-04/1.41e-01 | 2.41e-07/4.85e-05
+M=12, phi=1.0, ptol=1e-11, ntol=1e-11                      | 251/252 |   8.16 | 3.87 | 5.39e-04/1.41e-01 | 2.42e-07/4.85e-05
+M=12, phi=1.0, ptol=1e-09, ntol=1e-11                      | 251/252 |   7.53 | 3.87 | 5.39e-04/1.41e-01 | 2.75e-07/4.85e-05
+M=12, phi=1.0, ptol=1e-07, ntol=1e-11                      | 251/252 |   7.12 | 3.90 | 1.55e-03/3.92e-01 | 3.38e-06/8.52e-05
+M=12, phi=1.0, ptol=1e-11, ntol=1e-11                      | 251/252 |   7.97 | 3.87 | 5.39e-04/1.41e-01 | 2.42e-07/4.85e-05
+M=12, phi=1.0, ptol=1e-11, ntol=1e-09                      | 251/252 |   7.32 | 3.55 | 9.54e-04/1.17e+01 | 7.61e-07/9.66e-03
+M=12, phi=1.0, ptol=1e-11, ntol=1e-07                      | 251/252 |   7.30 | 3.19 | 1.56e-01/1.33e+03 | 1.26e-04/6.21e-01
+M=12, phi=1.0, ptol=1e-11, ntol=1e-05                      | 251/252 |   6.50 | 2.76 | 4.20e+01/8.82e+04 | 6.83e-02/6.24e+01
+M=12, phi=1.0, ptol=1e-11, ntol=0.0001                     | 251/252 |   5.91 | 2.42 | 1.35e+03/1.47e+06 | 1.55e+00/2.06e+03
+
+--- candidate bundles
+config | ok | ms/solve (best of 3) | mean iters | pos err km median/max | vel err m/s median/max
+M=16, phi=0.5, ptol=1e-13, ntol=1e-11                      | 252/252 |  15.16 | 3.89 | 2.56e-04/1.41e-01 | 2.21e-08/4.85e-05
+M=12, phi=1.0, ptol=1e-11, ntol=1e-09                      | 251/252 |   7.15 | 3.55 | 9.54e-04/1.17e+01 | 7.61e-07/9.66e-03
+M=10, phi=1.0, ptol=1e-10, ntol=1e-08                      | 250/252 |   6.15 | 3.34 | 2.63e-02/1.09e+02 | 2.74e-05/9.77e-02
+M=8, phi=1.5, ptol=1e-09, ntol=1e-07                       | 250/252 |   4.42 | 3.16 | 2.39e+00/1.33e+03 | 3.00e-03/6.22e-01
+M=8, phi=2.0, ptol=1e-08, ntol=1e-06                       | 250/252 |   3.81 | 2.94 | 3.16e+01/1.27e+04 | 3.17e-02/3.31e+00
+M=6, phi=2.0, ptol=1e-07, ntol=1e-05                       | 250/252 |   3.25 | 2.72 | 3.21e+02/8.54e+04 | 3.20e-01/6.24e+01
+M=10, phi=1.0, ptol=1e-10, ntol=1e-08, jac=fd              | 250/252 |   5.81 | 3.34 | 2.93e-02/1.10e+02 | 2.74e-05/9.77e-02
+M=12, phi=1.0, ptol=1e-11, ntol=1e-09, jac=fd              | 251/252 |   7.36 | 3.55 | 1.11e-03/1.17e+01 | 8.68e-07/9.66e-03
+
+--- fixed-step RK4: arrival error of the solved parameters vs steps per arc (integration error only)
+RK4 n=  10/arc: pos err km median 1.49e+03 p95 2.18e+07 max 1.10e+08 | vel err m/s median 1.20e+00 max 8.48e+04 | one integration 0.29 ms
+RK4 n=  20/arc: pos err km median 6.46e+01 p95 5.73e+06 max 2.02e+07 | vel err m/s median 2.60e-02 max 1.64e+04 | one integration 0.55 ms
+RK4 n=  40/arc: pos err km median 2.58e+00 p95 2.23e+06 max 9.26e+06 | vel err m/s median 1.58e-03 max 8.31e+03 | one integration 1.08 ms
+RK4 n=  80/arc: pos err km median 1.56e-01 p95 3.57e+05 max 1.90e+06 | vel err m/s median 9.87e-05 max 4.71e+03 | one integration 2.22 ms
+RK4 n= 160/arc: pos err km median 9.10e-03 p95 4.68e+03 max 4.32e+05 | vel err m/s median 5.70e-06 max 1.14e+03 | one integration 4.60 ms
+RK4 n= 320/arc: pos err km median 1.32e-03 p95 5.61e+01 max 2.59e+04 | vel err m/s median 7.99e-07 max 6.84e+01 | one integration 9.98 ms
+RK4 n= 640/arc: pos err km median 5.99e-04 p95 1.86e+00 max 9.48e+01 | vel err m/s median 2.47e-07 max 2.50e-01 | one integration 21.75 ms

@@ -1,0 +1,34 @@
+Hohmann tof days 258.29990644994757
+
+== radial 1->5.2 AU, 300 d, M=151
+ screen all 100k: best3 2152 ms ; with radial prefilter: 2112 ms (top50 same: True); kept rows by prefilter n/a
+ 50 nearest vs brute force: max 3,740 km median 721 km; segment-wise <= truth on average (mean signed -142 km)
+         923,472 km (0.00617 AU) #18161 18161 Koshiishi (2000 PZ12) diam 11.9 km at t+122.0 d
+       1,402,003 km (0.00937 AU) #78434 78434 Dyer (2002 QL58) diam 4.6 km at t+129.3 d
+       2,292,157 km (0.01532 AU) #235895 235895 (2005 CR63) diam 2.9 km at t+151.3 d
+       2,349,478 km (0.01571 AU) #502710 502710 (2015 DH22) diam 3.1 km at t+110.3 d
+       2,359,404 km (0.01577 AU) #86266 86266 (1999 TX255) diam 5.7 km at t+133.3 d
+ within 0.01 AU: 2  within 0.001 AU: 0  within 0.1 AU: 258
+ 36 azimuths: closest km min/median/max = 173,676 / 776,641 / 2,014,224; n<0.01AU min/median/max = 0/3/7; n<0.001AU = 0/0/0
+
+== Hohmann 1->1.52 AU, 258.3 d, M=150
+ screen all 100k: best3 1993 ms ; with radial prefilter: 276 ms (top50 same: False); kept rows by prefilter n/a
+ 50 nearest vs brute force: max 2,772 km median 57 km; segment-wise >= truth on average (mean signed 558 km)
+      62,047,692 km (0.41476 AU) #7016 7016 Conandoyle (1991 YG) diam 4.1 km at t+223.6 d
+      63,570,028 km (0.42494 AU) #5892 5892 Milesdavis (1981 YS1) diam 3.7 km at t+135.2 d
+      64,320,729 km (0.42996 AU) #16735 16735 (1996 JJ) diam 3.0 km at t+258.3 d
+      66,328,559 km (0.44338 AU) #248269 248269 (2005 HK3) diam 2.8 km at t+258.3 d
+      66,812,138 km (0.44661 AU) #319423 319423 (2006 HN86) diam 3.6 km at t+214.6 d
+ within 0.01 AU: 0  within 0.001 AU: 0  within 0.1 AU: 0
+ 36 azimuths: closest km min/median/max = 28,691,915 / 39,648,624 / 62,047,692; n<0.01AU min/median/max = 0/0/0; n<0.001AU = 0/0/0
+
+== torch-like radial 2.5->5.5 AU, 5 d, M=60
+ screen all 100k: best3 694 ms ; with radial prefilter: 672 ms (top50 same: True); kept rows by prefilter n/a
+ 50 nearest vs brute force: max 207 km median 10 km; segment-wise <= truth on average (mean signed -36 km)
+         516,304 km (0.00345 AU) #17828 17828 (1998 HK8) diam 4.4 km at t+0.4 d
+       2,309,971 km (0.01544 AU) #321559 321559 (2009 SB338) diam 3.6 km at t+0.6 d
+       2,828,199 km (0.01891 AU) #151760 151760 (2003 EH10) diam 3.5 km at t+0.5 d
+       3,191,030 km (0.02133 AU) #29484 29484 Honzavesely (1997 VJ6) diam 3.2 km at t+0.1 d
+       3,671,335 km (0.02454 AU) #104724 104724 (2000 GK176) diam 4.9 km at t+0.3 d
+ within 0.01 AU: 1  within 0.001 AU: 0  within 0.1 AU: 146
+ 36 azimuths: closest km min/median/max = 60,267 / 866,887 / 2,434,720; n<0.01AU min/median/max = 0/2/8; n<0.001AU = 0/0/1
