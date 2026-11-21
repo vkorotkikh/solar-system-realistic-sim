@@ -1036,7 +1036,7 @@ class PFSSSolutionConfig:
         object.__setattr__(
             self,
             "lmax",
-            _canonical_integer(self.lmax, "lmax", minimum=1, maximum=15),
+            _canonical_integer(self.lmax, "lmax", minimum=1, maximum=40),  # ADR 0008
         )
         try:
             r_ss = float(self.source_surface_radii)

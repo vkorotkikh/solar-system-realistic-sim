@@ -31,7 +31,7 @@ occur. Coefficients do not depend on the requested degree. The fit takes 0.6 ms 
 solutions from the old fit cannot be reused.
 
 This ADR does not raise any degree. The grid `lmax` cap of 15 and the fidelity table are
-unchanged. The runtime fits a synthetic map, and observed input stays `disabled_unvalidated`.
+unchanged. (ADR 0008 later raised the cap, and `high`/`ultra`, to 40.) The runtime fits a synthetic map, and observed input stays `disabled_unvalidated`.
 
 ## What this does and does not claim
 

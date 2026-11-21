@@ -1009,10 +1009,10 @@ class SolarCoronaPhysicsModel:
             pfss_lmax = 12
         elif fidelity_key == "high":
             pfss_lines = 120
-            pfss_lmax = 15
+            pfss_lmax = 40
         else:
             pfss_lines = 180
-            pfss_lmax = 15
+            pfss_lmax = 40
 
         # Compute the deterministic synthetic PFSS product. Runtime observed
         # magnetograms remain disabled until their validation gates are promoted.
