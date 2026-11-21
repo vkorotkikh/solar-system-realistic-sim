@@ -19,6 +19,7 @@ from types import SimpleNamespace
 import anthropic
 import httpx2
 import pytest
+from anthropic.lib.credentials import WorkloadIdentityError
 from anthropic.types.beta import BetaMessage
 from fastapi.testclient import TestClient
 from pydantic import ValidationError
@@ -534,6 +535,8 @@ def _status(error_class, status: int):
     (anthropic.APITimeoutError(request=_REQUEST), "model_unreachable", True),
     (_status(anthropic.RateLimitError, 429), "model_rate_limited", True),
     (_status(anthropic.AuthenticationError, 401), "model_credentials", False),
+    (anthropic.CredentialsError("profile 'default' has expired"), "model_credentials", False),  # `ant auth login`
+    (WorkloadIdentityError("token refresh failed"), "model_credentials", False),
     (_status(anthropic.InternalServerError, 529), "model_error", True),
     (_status(anthropic.BadRequestError, 400), "model_error", False),
 ])
