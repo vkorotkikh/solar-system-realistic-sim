@@ -83,6 +83,7 @@ describe('describeSolarDataStatus', () => {
     ['server-timeout', 503, 'solar server ran out of compute time, HTTP 503', 'slow'],
     ['rate-limited', 429, 'solar server rate limit reached, HTTP 429', 'slow'],
     ['http', 500, 'solar server error, HTTP 500', 'server-error'],
+    ['auth', 401, 'solar server requires an API key, HTTP 401', 'auth'],
     ['server-error', null, 'solar server error, reply unreadable (likely HTTP 500)', 'server-error'],
     ['blocked', null, 'CORS: solar server does not allow origin http://localhost:4173', 'blocked'],
     ['unreachable', null, 'solar server not reachable at http://localhost:8042', 'unreachable'],
@@ -103,6 +104,17 @@ describe('describeSolarDataStatus', () => {
     expect(blocked.remedy).toContain('Add http://localhost:4173 to SOLAR_CORS_ALLOWED_ORIGINS');
     const unreachable = describeSolarDataStatus(input({ lastFailure: failure('unreachable') }));
     expect(unreachable.remedy).toContain('answers at http://localhost:8042');
+  });
+
+  it('says the page sends no API key when the backend asks for one', () => {
+    const status = describeSolarDataStatus(input({ lastFailure: failure('auth', 401) }));
+    expect(status.announcement).toBe('Sun data unavailable: solar server requires an API key. Showing the procedural Sun.');
+    // The local profile also asks for a key on the solar routes while SOLAR_PHYSICS_API_KEYS
+    // is set (backend/server.py authentication_required), so the profile alone is not the fix.
+    expect(status.remedy).toBe(
+      'This page sends no API key. Serve it behind a same-origin proxy that adds X-API-Key, '
+        + 'or run the backend on loopback with SOLAR_SECURITY_PROFILE=local and SOLAR_PHYSICS_API_KEYS unset.'
+    );
   });
 
   it('announces an AIA image that never loaded as its own situation', () => {

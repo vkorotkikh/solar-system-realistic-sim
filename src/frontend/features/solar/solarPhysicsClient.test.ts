@@ -1216,6 +1216,7 @@ describe('SolarPhysicsClient failure classification', () => {
     [503, 'solar_compute_saturated', 'busy'],
     [503, 'solar_compute_timeout', 'server-timeout'],
     [429, 'solar_rate_limit_exceeded', 'rate-limited'],
+    [401, 'authentication_required', 'auth'],
     [503, 'solar_compute_worker_crashed', 'http'],
     [400, 'jd_out_of_range', 'http'],
   ] as const)('classifies HTTP %i %s as %s and keeps the code', async (status, code, kind) => {
