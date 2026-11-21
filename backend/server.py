@@ -805,7 +805,7 @@ class _NetworkAuthenticationMiddleware:
         )
         if active_config.profile != "network":
             if route in _LOCAL_ONLY_POSTS:
-                rejection = _local_benchmark_writer_rejection(scope, active_config, *_LOCAL_ONLY_POSTS[route])
+                rejection = _local_only_rejection(scope, active_config, *_LOCAL_ONLY_POSTS[route])
                 if rejection is not None:
                     await rejection(scope, receive, send)
                     return
@@ -1755,10 +1755,10 @@ _LOCAL_ONLY_POSTS = {
 }
 
 
-def _local_benchmark_writer_rejection(
+def _local_only_rejection(
     scope: Mapping[str, Any], config: SolarSecurityConfig, code: str, message: str,
 ) -> JSONResponse | None:
-    """Local writes require a direct loopback peer AND a loopback Host.
+    """A local-only POST requires a direct loopback peer AND a loopback Host.
 
     Forwarding headers cannot grant trust. Proxied deployments must select the
     authenticated network profile, even when their proxy connects via loopback.

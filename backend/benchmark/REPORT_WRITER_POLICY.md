@@ -21,6 +21,8 @@ not a general file-upload service or an unauthenticated network write endpoint.
   `SOLAR_CORS_ALLOWED_ORIGINS` entry. Null, duplicate or untrusted Origin is
   rejected. CORS response filtering alone is not authorization or CSRF protection.
   Non-browser direct-loopback clients may omit Origin.
+- `POST /planner/agent` gets the same local checks, failing with 403
+  `planner_agent_local_only`, because each prompt spends model credit.
 - An API key configured in local profile is also mandatory before parsing a
   report body. Local keys do not waive the direct-loopback/Host/Origin checks.
 
