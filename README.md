@@ -123,8 +123,8 @@ backend is reachable; without it, route planning falls back to a local solver.
 
 The default `SOLAR_SECURITY_PROFILE=local` keeps solar endpoints available
 without a key and should stay bound to loopback. If `SOLAR_PHYSICS_API_KEYS` is
-set, `/solar/physics`, `/solar/realtime` and `/solar/realtime/aia-tile` need a
-key in this profile too, and the page, which sends none, shows the procedural
+set, `/solar/physics`, `/solar/realtime`, `/solar/realtime/aia-tile` and
+`/solar/observed/pfss` need a key in this profile too, and the page, which sends none, shows the procedural
 Sun. To expose the backend on a
 network, explicitly set `SOLAR_SECURITY_PROFILE=network`, provide one or more
 comma-separated `SOLAR_PHYSICS_API_KEYS`, configure exact
@@ -417,6 +417,38 @@ Snapshot transitions use a fixed 1.5-second decorative blend; [rotation and disp
 
 The solar-wind outflow uses illustrative Parker-curve tracers from the source surface, not physical bulk-wind trajectories; near Earth, bulk wind flows [approximately radially](https://www.nasa.gov/solar-system/nasas-parker-solar-probe-sheds-new-light-on-the-sun/). The nearest of the backend's six spiral arms (WSA-inspired where available, otherwise the empirical coronal-hole split) sets each particle's current outward rate and tint: amber for slow wind, cyan-blue for fast. Each particle retains its Parker curvature until it wraps, avoiding jumps on backend polls. It appears only when backend spiral geometry is admitted. Motion follows the decorative clock rather than simulated time, and latitude structure beyond the arms' sector speeds is not modeled. Rendered evidence: [agent-notes/SOLAR_WIND_VISUAL_2026-10-31_EVIDENCE](agent-notes/SOLAR_WIND_VISUAL_2026-10-31_EVIDENCE/README.md).
 
+#### Real GONG field lines (opt-in backend half, stage A1)
+
+`scripts/observed_pfss_probe.py` fetches the newest NSO/GONG synoptic map, corrects its flux imbalance the way NASA's WSA does, solves the potential field at degree 90 and writes one file, the observed-PFSS sidecar. The backend serves that file at `GET /solar/observed/pfss`. `/solar/physics` stays synthetic, and the page draws the file only once the frontend switch of the next stage exists. The decisions and their evidence are in [ADR 0009](docs/adr/0009-observed-gong-admission-and-frame-check.md).
+
+```bash
+export SOLAR_OBSERVED_PFSS_SIDECAR="$HOME/observed-pfss.json"   # an absolute path
+python scripts/observed_pfss_probe.py                            # a few seconds; prints one JSON line
+curl --compressed http://127.0.0.1:8042/solar/observed/pfss      # after starting the backend with the variable set
+```
+
+The backend reads `SOLAR_OBSERVED_PFSS_SIDECAR` once at startup, refuses a relative path, and logs the path and whether the file exists. It reads the file on every request, so a later probe run needs no restart. `python scripts/observed_pfss_probe.py --help` lists every flag and gives an hourly cron line. A map is refused when its signed flux is more than 10% of its unsigned flux, and a file is marked as failing its frame check when the map's central meridian and the ephemeris disagree by more than 2°.
+
+| Probe exit status | Meaning |
+|---|---|
+| 0 | Sidecar written and frame check passed |
+| 1 | Unexpected error; Python's traceback is on stderr |
+| 2 | Usage error |
+| 3 | Sidecar written, but the frame check failed, so the app will not draw it |
+| 4 | Nothing written: the archive was not reached in time; safe to run again |
+| 5 | Nothing written: the map was refused (imbalance above the cap, malformed, or none within the provider's 36 h lookback) |
+| 6 | Nothing written: a local problem (file over the size limits, solver, write failure) |
+
+| Route answer | Code | What to do |
+|---|---|---|
+| 404 | `solar_observed_sidecar_disabled` | Set `SOLAR_OBSERVED_PFSS_SIDECAR` on the backend and restart it |
+| 503 | `solar_observed_sidecar_unavailable` | Run the probe |
+| 500 | `solar_observed_sidecar_invalid` | Run the probe again from this checkout |
+| 413 | `solar_observed_sidecar_too_large` | Run the probe with a lower `--line-count` |
+| 413 | `solar_observed_sidecar_gzip_required` | Retry with `Accept-Encoding: gzip` |
+
+The route has its own rate limit, `SOLAR_OBSERVED_PFSS_RATE_LIMIT_PER_WINDOW` (default 36 per 60 s window, the realtime route's values), and takes no query parameter.
+
 ### SMBH shockwave modeling
 
 Experimental visualization of supermassive black hole transient hypotheses, not a validated prediction of their effects:
@@ -466,6 +498,7 @@ The backend provides direct-transfer and multi-leg gravity-assist planning, incl
 - `GET /solar/physics` — synthetic solar state; `hybrid` reports `disabled_unvalidated`, and `data_driven` returns HTTP 503
 - `GET /solar/realtime` — live ingested solar context and source health
 - `GET /solar/realtime/aia-tile` — raw viewport AIA tile, not eligible for Sun-surface texture blending
+- `GET /solar/observed/pfss` — the observed-PFSS sidecar written by `scripts/observed_pfss_probe.py`; HTTP 404 until `SOLAR_OBSERVED_PFSS_SIDECAR` is set
 
 The AIA tile endpoint accepts a scalar `jd_tdb`, or precise `jd_tdb1` and
 `jd_tdb2` components together, such as Astropy's `instant.tdb.jd1` and
