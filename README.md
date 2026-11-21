@@ -170,6 +170,7 @@ when both ends are there. Moon masses come from `backend/data/moon_gm.json`,
 which `scripts/generate_moon_gm.py` derives offline from the pinned JPL table.
 Five named orbits can be a trip's end too: `leo`, `geo`, `llo` (low lunar
 orbit), `nrho` (approximate) and `lmo` (low Mars orbit).
+A change of orbit around one moon, such as `llo` to `nrho`, is refused for now.
 A refusal is an answer with `"status": "refused"`, a `code` and a plain
 `message`, not an HTTP error. A plan puts several trips
 on one date axis; a trip can be tied to leave no sooner than `gap_days` after
@@ -207,6 +208,11 @@ words, after rounding, or be a count of ten or less. A failing answer gets one
 corrective retry, then is replaced by a sentence built from the trip. One
 prompt makes at most 6 model calls and 8 tool calls in 30 seconds, and a
 prompt is at most 2,000 characters.
+
+In the default local profile the agent answers only a direct loopback request
+from this machine, with a loopback `Host` and, from a browser, an `Origin` listed in
+`SOLAR_CORS_ALLOWED_ORIGINS`, because each prompt spends model credit. The network
+profile requires an API key for it.
 
 The agent is off until a model is chosen; there is no default model:
 
