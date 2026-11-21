@@ -16,7 +16,9 @@ from pydantic import ValidationError
 
 from data.bodies import ALL_BODIES
 from mission.orbital import sample_body_state_from_elements
-from planner import torch
+import time
+
+from planner import course, torch, trips
 from planner.trips import TripSearchRequest, search_trips
 
 BODIES = {body["id"]: body for body in ALL_BODIES}
@@ -123,10 +125,13 @@ def test_both_legs_of_a_round_trip_are_reported_and_a_hop_is_not() -> None:
     out, back = answer["trips"][0]["legs"]
     assert out["course"]["belts"][0]["belt"] == back["course"]["belts"][0]["belt"] == "asteroid"
     assert back["course"]["belts"][0]["enters"]["jd"] > out["course"]["belts"][0]["leaves"]["jd"]
-    hop = search({"from": "leo", "to": "moon-earth-moon", **ONE_DAY, "drive": TORCH_1G, "include": ["course", "path"]})
-    assert not {"course", "path"} & set(hop["trips"][0]["legs"][0])
-    planet = search({"from": "leo", "to": "moon-earth-moon", **ONE_DAY, "include": ["course", "path"]})
-    assert not {"course", "path"} & set(planet["trips"][0]["legs"][0])
+    # A trip around one planet has no leg around the Sun, so nothing to report, and it says so.
+    for drive in ({"drive": TORCH_1G}, {}):
+        moon = {"from": "leo", "to": "moon-earth-moon", **ONE_DAY, **drive}
+        asked = search({**moon, "include": ["course", "path"]})
+        assert not {"course", "path"} & set(asked["trips"][0]["legs"][0])
+        assert sum("legs around the Sun" in note for note in asked["searched"]["notes"]) == 1
+        assert not any("legs around the Sun" in note for note in search(moon)["searched"]["notes"])
 
 
 def test_out_of_time_the_asteroid_screen_is_left_out_and_the_answer_says_so() -> None:
@@ -137,6 +142,28 @@ def test_out_of_time_the_asteroid_screen_is_left_out_and_the_answer_says_so() ->
     assert report["belts"][0]["belt"] == "asteroid" and len(report["nearest_bodies"]) == 3
     assert answer["searched"]["complete"] is False
     assert any("asteroid" in note and "time" in note for note in answer["searched"]["notes"])
+
+
+def test_reports_made_after_the_time_is_up_leave_the_nearest_bodies_out_and_say_so(monkeypatch) -> None:
+    # Earth to Venus never reaches the asteroids, so only the nearest bodies are at stake. Every report is made
+    # as if the search had just run out of time.
+    report = course.report
+    monkeypatch.setattr(trips.course, "report", lambda path, **given: report(path, **{**given, "deadline": time.monotonic()}))
+    for body in ({"to": "venus", **ONE_DAY, "drive": TORCH_1G}, {"to": "venus", "earliest_departure": "2026-10-25",
+                                                                "latest_departure": "2026-11-25"}):
+        answer = search({**body, "include": ["course"]})
+        made = [leg["course"] for trip in answer["trips"] for leg in trip["legs"]]
+        assert made and all(one["nearest_bodies"] == [] and one["nearest_asteroid"] == {"status": "none_in_range"} for one in made)
+        assert all(one["closest_sun_approach"]["au"] < 1.0 and one["belts"] == [] for one in made)
+        assert answer["searched"]["complete"] is False
+        assert sum("ran out of time" in note for note in answer["searched"]["notes"]) == 1
+
+
+def test_a_rocket_leg_whose_orbit_cannot_be_sampled_says_so(monkeypatch) -> None:
+    monkeypatch.setattr(trips.course, "rocket_path", lambda *leg: None)
+    answer = search({**MARS_2026, "include": ["course", "path"]})
+    assert answer["status"] == "ok" and not any({"course", "path"} & set(leg) for trip in answer["trips"] for leg in trip["legs"])
+    assert any("from earth to mars could not be sampled" in note for note in answer["searched"]["notes"])
 
 
 def test_a_rocket_search_out_of_time_leaves_the_asteroid_screen_out_too() -> None:

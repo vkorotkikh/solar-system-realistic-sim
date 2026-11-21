@@ -53,6 +53,7 @@ G_KM_S2 = 9.80665e-3
 TORCH_GRID = 366  # most departure days ranked on the first pass of a torch search
 TORCH_WINDOWS = 8  # dips in that ranking that are then ranked day by day
 HOP_MIN_SHARE = 0.1  # a hop around one planet needs thrust of at least this share of the planet's pull at the lower orbit
+SUN_LEGS_ONLY = "The path and course report are for legs around the Sun, so this trip has none."
 _UNIX_EPOCH = date(1970, 1, 1)
 _UNIX_EPOCH_JD = 2_440_587.5
 # Searches are local calculations: any attempt to reach a remote provider fails the budget.
@@ -489,6 +490,8 @@ def _planet_trip(request: TripSearchRequest, objective: str, origin: Place, targ
     notes.append("Any departure day works for a trip around one planet, so it leaves on the earliest day asked for.")
     if request.flybys:
         notes.append("The flyby search runs for transfers around the Sun only.")
+    if request.include:
+        notes.append(SUN_LEGS_ONLY)
     build = _round_trip if request.trip == "round_trip" else _direct_trip
     trips = [{"labels": labels, **build(choice, origin, target, planet)}
              for choice, labels in _labelled([option], objective)]
@@ -524,11 +527,12 @@ def _extras(ends: tuple[str, str], path: np.ndarray, sun: tuple[float, float] | 
 
 
 def _finish(origin: Place, target: Place, trips: list[dict], searched: dict, started: float) -> dict:
-    """The answer. A course report whose asteroid screen was left out for lack of time makes the search incomplete."""
-    if any(leg.get("course", {}).get("nearest_asteroid", {}).get("status") == "not_searched"
-           for trip in trips for leg in trip["legs"]):
+    """The answer. A course report cut short for lack of time makes the search incomplete."""
+    reports = [leg["course"] for trip in trips for leg in trip["legs"] if "course" in leg]
+    if any(report["nearest_asteroid"]["status"] == "not_searched" or not report["nearest_bodies"] for report in reports):
         searched["complete"] = False
-        searched["notes"].append("The search ran out of time before every leg's asteroid screen: those legs say not_searched.")
+        searched["notes"].append("The search ran out of time before every leg's course report was finished: the asteroid "
+                                 "screen of such a leg says not_searched, and its nearest bodies may be left out.")
     searched["seconds"] = round(time.monotonic() - started, 2)
     return _answer(origin, target, trips, searched)
 
@@ -719,6 +723,8 @@ def _torch_search(request: TripSearchRequest, objective: str, origin: Place, tar
         if option.arrive_jd > PLANNING_JD_MAX:
             return after_2050
         notes.append("Any departure day works for a trip around one planet, so it leaves on the earliest day asked for.")
+        if request.include:
+            notes.append(SUN_LEGS_ONLY)
         options, found_a_way_out = [option], True
     else:
         ends = sun_body(origin), sun_body(target)
@@ -908,6 +914,9 @@ def search_trips(request: TripSearchRequest, *, today: date | None = None,
                 key = (leg["from"], leg["to"], leg["depart"]["jd"], leg["arrive"]["jd"])
                 if key not in extras:
                     path = course.rocket_path(*key)
+                    if path is None:
+                        notes.append(f"The orbit of the leg from {key[0]} to {key[1]} could not be sampled, "
+                                     "so it has no path or course report.")
                     extras[key] = {} if path is None else _extras(key[:2], path, None, request.include, deadline)
                 leg.update(extras[key])
     return _finish(origin, target, trips, searched, started)

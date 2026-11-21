@@ -260,8 +260,10 @@ within 1.5 million km. The belts are bands of distance, not obstacles: a 1 g
 course to Jupiter spends under a day in the asteroid belt and passes about a
 million km from the nearest catalogued asteroid. The asteroid screen takes
 about half a second a leg; when the search is nearly out of time it is left out
-(`"status": "not_searched"`) and `searched.complete` is false. Dust and rocks
-too small to be catalogued are not estimated.
+(`"status": "not_searched"`) and `searched.complete` is false, and once the
+time is up the nearest bodies are left out too. A trip around one planet has no
+leg around the Sun, so no path or report. Dust and rocks too small to be
+catalogued are not estimated.
 
 ### Route-planning agent
 

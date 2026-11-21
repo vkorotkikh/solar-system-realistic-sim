@@ -262,10 +262,15 @@ def nearest_asteroid(path: np.ndarray, deadline: float | None = None) -> dict:
 
 
 def report(path: np.ndarray, skip=(), sun: tuple[float, float] | None = None, deadline: float | None = None) -> dict:
-    """The course report of one leg. `sun` is (AU, jd) of the closest approach when the caller knows it exactly."""
+    """The course report of one leg. `sun` is (AU, jd) of the closest approach when the caller knows it exactly.
+
+    Once `deadline` (a time.monotonic() value) has passed, only the Sun approach and the belts are worked out,
+    which cost nothing: the nearest bodies come back empty and the asteroid screen says not_searched.
+    """
     belts = belt_crossings(path)
+    late = deadline is not None and time.monotonic() >= deadline
     out = {"closest_sun_approach": {"au": sun[0], "jd": sun[1]} if sun else sun_approach(path), "belts": belts,
-           "nearest_bodies": nearest_bodies(path, skip), "nearest_asteroid": nearest_asteroid(path, deadline)}
+           "nearest_bodies": [] if late else nearest_bodies(path, skip), "nearest_asteroid": nearest_asteroid(path, deadline)}
     if belts:
         out["context"] = " ".join(CONTEXT[belt] for belt in dict.fromkeys(crossing["belt"] for crossing in belts))
     return out
