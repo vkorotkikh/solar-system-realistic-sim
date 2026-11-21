@@ -122,6 +122,20 @@ test('actual app composes camera, drawer, search and experiment with a nondefaul
   await page.setViewportSize({width:390,height:844});await page.locator('#panel-toggle').click();await expect(page.locator('#panel-close')).toBeFocused();await expect(page.locator('#viewport-shell')).toHaveAttribute('inert','');await page.keyboard.press('Escape');await expect(page.locator('#panel-toggle')).toBeFocused();
   expect(requests.some(url=>url.startsWith('http://127.0.0.1:9142/'))).toBe(true);expect(requests.some(url=>url.includes(':8042/'))).toBe(false);expect(errors).toEqual([]);
 });
+test('actual app: the hours switch rescales the speed slider, by keyboard and by pointer',async({page})=>{
+  await controlExternalRequests(page);
+  await page.goto('/?uiWidth=500&uiHeight=700&renderScale=0.5&maxPixelRatio=1');
+  await expect(page.locator('#status-zoom')).not.toHaveText('Range · —',{timeout:60_000});
+  const slider=page.locator('#time-scale'),unit=page.locator('#time-scale-hours'),value=page.locator('#time-scale-value'),ends=page.locator('#time-scale-context');
+  await expect(slider).toHaveAttribute('max','243');await expect(value).toHaveText('+4.0 d/s');await expect(ends).toHaveText(/−120 reverse\s*0\s*\+120 forward/);
+  await unit.focus();await page.keyboard.press('Space');
+  await expect(unit).toBeChecked();await expect(slider).toHaveAttribute('max','49');
+  await expect(value).toHaveText('+24 h/s');await expect(slider).toHaveAttribute('aria-valuetext','+24 h/s');
+  await expect(page.locator('#session-label')).toHaveText('Simulation · +24 h/s');await expect(ends).toHaveText(/−24 h reverse\s*0\s*\+24 h forward/);
+  await slider.focus();await page.keyboard.press('ArrowLeft');await expect(value).toHaveText('+23 h/s');
+  await page.locator('label:has(#time-scale-hours)').click();
+  await expect(unit).not.toBeChecked();await expect(slider).toHaveAttribute('max','243');await expect(value).toHaveText('+1.0 d/s');
+});
 test('no-WebGL constructor failure exposes an accessible reload path and working drawer',async({page})=>{
   await controlExternalRequests(page);await page.addInitScript(()=>{const get=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(this:HTMLCanvasElement,type:string,...args:unknown[]){if(type==='webgl'||type==='webgl2'||type==='experimental-webgl')return null;return Reflect.apply(get,this,[type,...args]);} as typeof get;});
   await page.goto('/');await expect(page.getByRole('heading',{name:'Visualization unavailable'})).toBeVisible();await expect(page.locator('#renderer-retry')).toBeFocused();await expect(page.locator('#renderer-unavailable [role="alert"]')).toContainText('WebGL');await expect(page.locator('#toggle-play')).toBeDisabled();
