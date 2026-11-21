@@ -60,6 +60,12 @@ def test_trips_are_solved_in_tie_order_whatever_order_they_are_listed_in(cargo_t
     assert _depart(listed_backwards["trips"]["crew"]) == _depart(cargo_then_crew["trips"]["crew"])
 
 
+def test_a_tied_trip_keeps_its_own_later_earliest_departure() -> None:
+    crew = {**CARGO_THEN_CREW[1], "search": {"to": "mars", "earliest_departure": "2030-06-01",
+                                             "latest_departure": "2031-06-01"}}
+    assert solve([CARGO_THEN_CREW[0], crew])["trips"]["crew"]["searched"]["earliest_departure"] == "2030-06-01"
+
+
 def test_an_itinerary_continues_from_where_the_first_trip_ended() -> None:
     plan = solve([
         {"key": "mars", "search": MARS_2026},
