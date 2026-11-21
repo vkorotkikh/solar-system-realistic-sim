@@ -24,7 +24,7 @@ exact executable cannot be attributed to that checkpoint.
 
 Related records: [current remediation status](../agent-notes/REMEDIATION_STATUS_2026-10-30.md),
 [remaining solar rendering acceptance](../agent-notes/REMEDIATION_SOLAR_SCN042_PRODUCTION_2026-10-14.md),
-[earlier H1/H2 delivery decisions](../agent-notes/H1_SOLAR_DELIVERY_PLAN_2026-09-25.md),
+[earlier H1/H2 delivery decisions](https://github.com/vkorotkikh/solar-system-realistic-sim/blob/7b94861c/agent-notes/H1_SOLAR_DELIVERY_PLAN_2026-09-25.md),
 and [accepted timing/display policies](supported-product-policies.md).
 
 ## 1. Reported problem and intended meaning
