@@ -80,3 +80,16 @@ def test_low_earth_orbit_to_the_nrho_is_marked_approximate_and_near_nasas_figure
     # 450 m/s into the NRHO in 5 days. Without the lunar flyby, this arrival burn is low.
     assert trip["total_delta_v_km_s"] == pytest.approx(3.650, rel=0.10)
     assert any("NRHO" in note and "approximate" in note for note in trip["approximations"])
+
+
+def test_a_sun_transfer_to_a_lunar_orbit_names_the_moon_in_its_notes() -> None:
+    trip = search(**{"from": "mars", "to": "llo", "earliest_departure": "2028-06-01",
+                     "latest_departure": "2029-06-01"})["trips"][0]
+    assert any(note.startswith("Moon is reached or left straight in: the path passes Earth at Moon's distance")
+               for note in trip["approximations"])
+
+
+@pytest.mark.parametrize(("origin", "target"), [("llo", "nrho"), ("nrho", "moon-earth-moon")])
+def test_an_orbit_change_around_the_moon_is_refused_not_priced_around_earth(origin: str, target: str) -> None:
+    result = search(**{"from": origin, "to": target})
+    assert (result["status"], result["code"]) == ("refused", "orbit_change_around_moon")
