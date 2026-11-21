@@ -213,7 +213,7 @@ describe('double-click picking ignores bodies whose scene node is hidden (the Mo
     const picked = { preferred: [] as string[], followed: [] as string[] };
     const simState: { followBodyId?: string } = {};
     instantiate<void>(
-      listenerSource('dom.canvas', 'dblclick'), '',
+      `${functionSource(['selectBody'])}\n${listenerSource('dom.canvas', 'dblclick')}`, '',
       {
         dom: {
           canvas: {

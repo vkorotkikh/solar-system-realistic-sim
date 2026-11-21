@@ -4,6 +4,10 @@ import { createExplorerController } from './frontend/app/explorerController';
 import { createPlannerController } from './frontend/app/plannerController';
 import { clearRouteVisualization, plotRoute } from './frontend/app/routeRenderer';
 import { buildTransferCurvePoints, createTrajectoryClient, describeRoute } from './frontend/features/trajectory';
+import type { AgentLayer } from './frontend/features/planner/agentActions';
+import { createAgentClient, createAgentConversation } from './frontend/features/planner/agentClient';
+import { createPromptBox } from './frontend/features/planner/promptBox';
+import { routeFor } from './frontend/features/planner/tripPresentation';
 import { createBodyPickerPresentation } from './frontend/app/bodyPickerPresentation';
 import { createViewportCameraController } from './frontend/app/viewportCameraController';
 import * as agnEngine from './frontend/features/superluminal-modeling/agnShockwaveEngine';
@@ -175,6 +179,14 @@ const dom = {
   clearRoute: elementById<HTMLButtonElement>('clear-route'),
   plannerOutput: elementById<HTMLElement>('planner-output'),
   statusMoons: elementById<HTMLElement>('status-moons'),
+  assistant: elementById<HTMLDetailsElement>('trip-assistant'),
+  assistantStatus: elementById<HTMLElement>('assistant-status'),
+  assistantLog: elementById<HTMLElement>('assistant-log'),
+  assistantCard: elementById<HTMLElement>('assistant-card'),
+  assistantForm: elementById<HTMLFormElement>('assistant-form'),
+  assistantPrompt: elementById<HTMLInputElement>('assistant-prompt'),
+  assistantSend: elementById<HTMLButtonElement>('assistant-send'),
+  assistantClear: elementById<HTMLButtonElement>('assistant-clear'),
   statusCatalog: elementById<HTMLElement>('status-catalog'),
   statusSolar: elementById<HTMLElement>('status-solar'),
   statusSolarAnnouncer: elementById<HTMLElement>('status-solar-announcer'),
@@ -1399,6 +1411,18 @@ dom.zoomSensitivity.addEventListener('input', () => {
   }
 }, { signal: startup.signal });
 
+/** Points the camera, the body card and the body list at one body. */
+function selectBody(bodyId: string, follow: boolean) {
+  explorer.setPreferredBody(bodyId);
+  simState.followBodyId = follow ? bodyId : null;
+  focusBody(bodyId, true);
+  updateBodyInfoPanel(bodyId);
+  if ([...dom.bodyList.options].some((option) => option.value === bodyId)) {
+    dom.bodyList.value = bodyId;
+  }
+  updateCameraMode(follow ? 'follow' : 'focus', bodyId);
+}
+
 dom.canvas.addEventListener('dblclick', (e) => {
   const rect = dom.canvas.getBoundingClientRect();
   const ndcX = ((e.clientX - rect.left) / rect.width) * 2 - 1;
@@ -1411,16 +1435,7 @@ dom.canvas.addEventListener('dblclick', (e) => {
   const hits = raycaster.intersectObjects(targets, false);
   if (hits.length > 0) {
     const bodyId = hits[0].object?.userData?.bodyId;
-    if (bodyId) {
-      explorer.setPreferredBody(bodyId);
-      simState.followBodyId = bodyId;
-      focusBody(bodyId, true);
-      updateBodyInfoPanel(bodyId);
-      if ([...dom.bodyList.options].some((option) => option.value === bodyId)) {
-        dom.bodyList.value = bodyId;
-      }
-      updateCameraMode('follow', bodyId);
-    }
+    if (bodyId) selectBody(bodyId, true);
   }
 }, { signal: startup.signal });
 
@@ -1429,6 +1444,7 @@ dom.canvas.addEventListener('dblclick', (e) => {
 const routeGroup = new Group();
 solarSystemGroup.add(routeGroup);
 const routeTarget = { routeGroup, simState, statusRouteElement: dom.statusRoute };
+const curvePoints = (leg: unknown, segments: number) => buildTransferCurvePoints(leg as Parameters<typeof buildTransferCurvePoints>[0], segments);
 function clearPlottedRoute() {
   clearRouteVisualization(routeTarget);
   dom.statusRoute.hidden = true;
@@ -1446,8 +1462,7 @@ const planner = createPlannerController({
       if (startup.signal.aborted) return; // A reply that lands after shutdown has nothing to draw into.
       plotRoute({
         ...routeTarget, route, bodyById,
-        // The trajectory client hydrates both endpoints of every leg.
-        buildTransferCurvePoints: (leg, segments) => buildTransferCurvePoints(leg as Parameters<typeof buildTransferCurvePoints>[0], segments),
+        buildTransferCurvePoints: curvePoints, // the trajectory client hydrates both endpoints of every leg
       });
       dom.statusRoute.hidden = false;
     },
@@ -1458,6 +1473,71 @@ const planner = createPlannerController({
 planner.fillPlannerSelects();
 planner.bindPlannerUi(startup.signal);
 dom.plannerOutput.textContent = 'No plotted route.';
+
+// ── Trip Assistant ───────────────────────────────────────────────────────────
+
+const agentLayerToggles: Record<AgentLayer, HTMLInputElement> = {
+  orbits: dom.toggleOrbits, labels: dom.toggleLabels, magnetic_field: dom.toggleMagneticField,
+  realistic_scale: dom.toggleRealisticScale, moons: dom.toggleMoons, asteroid_belt: dom.toggleAsteroids,
+  kuiper_belt: dom.toggleKuiper, earth_satellites: dom.toggleEarthSatellites,
+};
+function setLayer(layer: AgentLayer, on: boolean) {
+  const toggle = agentLayerToggles[layer];
+  if (toggle.checked === on) return;
+  toggle.checked = on;
+  toggle.dispatchEvent(new Event('change', { bubbles: true })); // the switch's own listeners do the work
+}
+const agentClient = createAgentClient({ backendBaseUrl });
+// The box's controls stay disabled until the backend reports a configured model.
+createPromptBox({
+  dom: {
+    section: dom.assistant, status: dom.assistantStatus, log: dom.assistantLog, card: dom.assistantCard, form: dom.assistantForm,
+    input: dom.assistantPrompt, send: dom.assistantSend, clear: dom.assistantClear,
+  },
+  enabled: agentClient.enabled,
+  conversation: createAgentConversation(agentClient),
+  app: {
+    focus: (bodyId, follow) => {
+      const body = bodyById.get(bodyId);
+      if (body?.type === 'moon') setLayer('moons', true);
+      if (!body || bodyNodes.get(bodyId)?.visible !== true || model.getState(bodyId)?.available === false) return null;
+      selectBody(bodyId, follow);
+      return body.name;
+    },
+    // A running clock would leave the date at once, so the jump pauses it.
+    setDate: (isoDate) => {
+      const julianDate = parseDateInputToJulian(isoDate);
+      if (julianDate === null) return;
+      timeController.jumpTo(julianDate);
+      simState.paused = true;
+      updatePlayButton();
+    },
+    setLayer,
+  },
+  appState: () => {
+    const date = formatJulianAsDate(simState.julianDate);
+    return {
+      // A clock run far past the calendar gives no date the backend accepts.
+      date: /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : null,
+      focused: simState.focusedBodyId ?? null,
+      layers: Object.fromEntries(
+        Object.entries(agentLayerToggles).map(([layer, toggle]) => [layer, toggle.checked]),
+      ) as Record<AgentLayer, boolean>,
+    };
+  },
+  drawRoute: (shown) => {
+    const { route, label, undrawn } = routeFor(shown, (bodyId, julianDate) => model.sampleBodyStateAt(bodyId, julianDate)?.position ?? null);
+    clearPlottedRoute();
+    if (route.legs.length) {
+      plotRoute({ ...routeTarget, route, bodyById, buildTransferCurvePoints: curvePoints });
+      if (label) dom.statusRoute.textContent = label;
+      dom.statusRoute.hidden = false;
+    }
+    return undrawn;
+  },
+  clearRoute: clearPlottedRoute,
+  signal: startup.signal,
+});
 
 const experiment = ownDisposable(createExperimentController({ dom, sun: sunCtrl, resolveSelection: engineSelectionResolver(agnEngine) }));
 

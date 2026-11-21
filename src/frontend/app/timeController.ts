@@ -17,6 +17,8 @@ interface TimeControllerState {
 
 export interface TimeController {
   bindUi: () => void;
+  /** Sets the simulation to a date, as the Now button does for the present. */
+  jumpTo: (julianDate: number) => void;
   advanceLocalTime: (deltaSeconds: number) => void;
   updateHud: () => void;
 }
@@ -68,17 +70,19 @@ export function createTimeController({
 }: CreateTimeControllerArgs): TimeController {
   const stops = timeScaleStops(minTimeScale, maxTimeScale);
 
+  function jumpTo(julianDate: number) {
+    simState.julianDate = julianDate;
+    if (dom.plannerDate) {
+      dom.plannerDate.value = formatJulianAsDate(simState.julianDate);
+    }
+    if (dom.plannerArrivalDate) {
+      dom.plannerArrivalDate.value = formatJulianAsDate(simState.julianDate + plannerArrivalOffsetDays);
+    }
+    onTimeJump?.();
+  }
+
   function bindUi() {
-    dom.nowTime?.addEventListener('click', () => {
-      simState.julianDate = currentJulianDate();
-      if (dom.plannerDate) {
-        dom.plannerDate.value = formatJulianAsDate(simState.julianDate);
-      }
-      if (dom.plannerArrivalDate) {
-        dom.plannerArrivalDate.value = formatJulianAsDate(simState.julianDate + plannerArrivalOffsetDays);
-      }
-      onTimeJump?.();
-    }, { signal });
+    dom.nowTime?.addEventListener('click', () => jumpTo(currentJulianDate()), { signal });
 
     const slider = dom.timeScale;
     if (slider) {
@@ -123,6 +127,7 @@ export function createTimeController({
 
   return {
     bindUi,
+    jumpTo,
     advanceLocalTime,
     updateHud
   };

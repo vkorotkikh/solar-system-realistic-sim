@@ -20,6 +20,7 @@ page; this record describes ownership and retained integration surfaces.
 | Solar acquisition and presentation | `src/sunController.ts` and the modules in `src/frontend/features/solar/` | Qualified provider state, owned polling and cancellation, explicit procedural fallback. Decorative motion is not calibrated plasma evolution. |
 | Backend physical integration | `backend/sim` and owned process/runner layers | Scientific integration is independent of the default page's local orbital worker. |
 | Mission planning | `backend/mission` and trajectory APIs; page panel via `plannerController.ts`, `routeRenderer.ts` and `src/frontend/features/trajectory/` | Candidate generation does not imply a verified feasible recommendation. Listeners and plotted routes retire with startup. |
+| Trip assistant | `backend/planner/agent`; page prompt box via `src/frontend/features/planner/` and `routeRenderer.ts` | Controls stay disabled until the backend reports a configured model; the page asks only when the section is opened, so startup sends no request. Card numbers come from the planner's trip object, never from the model's text. The page re-checks each queued action and applies only a camera move, a date or a display switch. Listeners, timers and requests retire with startup. |
 | Moons, surface maps and satellites | `src/main.ts` composition, `src/frontend/features/planetary/planetSurfaceMaps.ts`, `moonTexturePipeline.ts`, `satelliteSystem.ts` | Display offsets keep moons and satellites above enlarged primaries without touching canonical vectors. Maps and satellite orbits load on demand and retire with startup. |
 
 Bare file names in this table are in `src/frontend/app/`; every other entry
@@ -39,6 +40,10 @@ enlarged radii and each moon moves out by its parent's enlargement; the catalog
 no longer shrinks planets to fit their moons. Since 2026-11-14 the page preloads
 fitted ephemerides for all 423 moons and the Moon and Mars surface maps at
 startup, uploading the maps to the GPU on arrival; Earth stays procedural.
+
+On 2026-11-18 the trip assistant's prompt box was composed into `main.ts`, with
+acceptance in `tests/browser/trip-assistant.spec.ts` against replies recorded
+from the real agent endpoint. It shares the planner panel's route display.
 
 Before activating a retained feature, its change must include the composition
 call, typed capability requirements, disposal ownership, real browser/API
