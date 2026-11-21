@@ -14,9 +14,9 @@ import threading
 import time
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, StrictInt, StrictStr
+from pydantic import BaseModel, ConfigDict, Field, StrictInt, StrictStr, model_validator
 
 from data.bodies import ALL_BODIES
 from trajectory import plan_interplanetary_route, run_porkchop_scan
@@ -30,8 +30,8 @@ from trajectory.budget import (
 )
 from trajectory.contracts import PLANNING_JD_MAX, PLANNING_JD_MIN, TrajectoryRequestRejected
 
-from .places import (Place, body_id, end_burn_km_s, find_places, get_place, orbit_json, planet_leg,
-                     shared_planet, sun_body)
+from .places import (AU_KM, MU_SUN_KM3_S2, SUN_ORBITS, Place, body_id, end_burn_km_s, find_places, get_place,
+                     orbit_json, planet_leg, shared_planet, sphere_of_influence_km, sun_body, with_orbit)
 
 SEARCH_SECONDS = 10.0  # the whole search, inside the 12 s planner-call limit (spec done check 5)
 MAX_RANGE_DAYS = 3_653  # ten years of departures
@@ -42,14 +42,35 @@ RETURN_SOLVES = 15_000  # transfer solves spent on return legs, spread over the 
 MAX_OUTBOUND_OPTIONS = 60
 ROUND_TRIP_NOTE = ("Round trips pair each of several outbound trips with the returns searched after it; "
                    "the two legs are not optimised together.")
-MU_SUN_KM3_S2 = 1.32712440018e11
-AU_KM = 1.495978707e8
 _UNIX_EPOCH = date(1970, 1, 1)
 _UNIX_EPOCH_JD = 2_440_587.5
-_ORBITS = {body["id"]: body["orbit"] for body in ALL_BODIES}
 # Searches are local calculations: any attempt to reach a remote provider fails the budget.
 _SCAN_LIMITS = PlanningLimits(remote_ephemeris_states=0, external_requests=0, route_prefixes=0)
 _FLYBY_LIMITS = PlanningLimits(remote_ephemeris_states=0, external_requests=0)
+
+
+class OrbitChoice(BaseModel):
+    """A body with an orbit of the caller's choosing, in place of the body's default orbit."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    body: StrictStr = Field(min_length=1, max_length=64)
+    altitude_km: float | None = Field(None, gt=0.0, le=1e8)  # a circular orbit
+    periapsis_altitude_km: float | None = Field(None, gt=0.0, le=1e8)
+    apoapsis_altitude_km: float | None = Field(None, gt=0.0, le=1e8)
+
+    @model_validator(mode="after")
+    def _one_shape(self) -> "OrbitChoice":
+        given = (self.altitude_km is not None, self.periapsis_altitude_km is not None,
+                 self.apoapsis_altitude_km is not None)
+        if given not in ((True, False, False), (False, True, True)):
+            raise ValueError("give altitude_km, or both periapsis_altitude_km and apoapsis_altitude_km")
+        if self.altitude_km is None and self.apoapsis_altitude_km < self.periapsis_altitude_km:
+            raise ValueError("apoapsis_altitude_km must not be below periapsis_altitude_km")
+        return self
+
+
+PlaceId = Annotated[StrictStr, Field(min_length=1, max_length=64)]
 
 
 class TripSearchRequest(BaseModel):
@@ -57,8 +78,8 @@ class TripSearchRequest(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    from_: StrictStr = Field("earth", alias="from", min_length=1, max_length=64)
-    to: StrictStr = Field(min_length=1, max_length=64)
+    from_: PlaceId | OrbitChoice = Field("earth", alias="from")  # a place id, or a body with a chosen orbit
+    to: PlaceId | OrbitChoice
     trip: Literal["one_way", "round_trip"] = "one_way"
     earliest_departure: date | None = None
     latest_departure: date | None = None
@@ -140,12 +161,12 @@ def _refused(code: str, message: str, **extra) -> dict:
 
 def _grid(origin: Place, target: Place) -> tuple[float, float, float, float, float]:
     """Flight times bracketing the Hohmann time, and a departure step from the synodic period."""
-    a_origin, a_target = (float(_ORBITS[sun_body(place)]["a_au"]) for place in (origin, target))
+    a_origin, a_target = (float(SUN_ORBITS[sun_body(place)]["a_au"]) for place in (origin, target))
     hohmann = math.pi * math.sqrt(((a_origin + a_target) / 2 * AU_KM) ** 3 / MU_SUN_KM3_S2) / 86_400
     tof_hi = float(min(3_650, round(1.6 * hohmann)))
     tof_lo = float(max(5, round(min(0.4 * hohmann, 0.5 * tof_hi))))
     tof_step = float(max(5, round((tof_hi - tof_lo) / 20)))
-    period_origin, period_target = (float(_ORBITS[sun_body(place)]["period_days"]) for place in (origin, target))
+    period_origin, period_target = (float(SUN_ORBITS[sun_body(place)]["period_days"]) for place in (origin, target))
     gap = abs(1 / period_origin - 1 / period_target)
     synodic = 1 / gap if gap > 0 else math.inf
     dep_step = float(min(10, max(3, round(min(synodic, 300.0) / 30))))
@@ -411,6 +432,30 @@ def _planet_trip(request: TripSearchRequest, origin: Place, target: Place, plane
         "seconds": round(time.monotonic() - started, 2), "complete": True, "notes": notes})
 
 
+def _resolve(end: str | OrbitChoice) -> Place | dict:
+    """The place at one end of a trip, or the refusal that explains why there is none."""
+    name = end if isinstance(end, str) else end.body
+    place = get_place(name)
+    if place is None:
+        return _refused("unknown_place", f"No place is called '{name}'. Look the place up to get its id.",
+                        suggestions=[match.id for match in find_places(name)])
+    if isinstance(end, str):
+        return place
+    if place.kind == "orbit":
+        return _refused("orbit_needs_a_body", "Give the body the orbit is around, not another named orbit.")
+    if place.mu_km3_s2 == 0.0:
+        return _refused("body_has_no_gravity",
+                        f"{place.name} has no mass in the catalog, so nothing can orbit it here.")
+    periapsis, apoapsis = ((end.altitude_km, end.altitude_km) if end.altitude_km is not None
+                           else (end.periapsis_altitude_km, end.apoapsis_altitude_km))
+    reach = sphere_of_influence_km(place)
+    if place.radius_km + apoapsis > reach:
+        return _refused("orbit_outside_sphere_of_influence",
+                        f"That orbit reaches beyond {place.name}'s sphere of influence, "
+                        f"{reach:,.0f} km from its centre.")
+    return with_orbit(place, periapsis, apoapsis)
+
+
 def search_trips(request: TripSearchRequest, *, today: date | None = None,
                  cancel_event: threading.Event | None = None,
                  time_budget_s: float = SEARCH_SECONDS) -> dict:
@@ -420,12 +465,12 @@ def search_trips(request: TripSearchRequest, *, today: date | None = None,
     if cancel.is_set():
         raise PlanningCancelled("Trip search was cancelled")
 
-    origin, target = get_place(request.from_), get_place(request.to)
-    for text, place in ((request.from_, origin), (request.to, target)):
-        if place is None:
-            return _refused("unknown_place", f"No place is called '{text}'. Look the place up to get its id.",
-                            suggestions=[match.id for match in find_places(text)])
-    if (body_id(origin), origin.default_orbit.id) == (body_id(target), target.default_orbit.id):
+    origin, target = _resolve(request.from_), _resolve(request.to)
+    for end in (origin, target):
+        if isinstance(end, dict):
+            return end
+    shape = [(place.default_orbit.periapsis_km, place.default_orbit.apoapsis_km) for place in (origin, target)]
+    if body_id(origin) == body_id(target) and shape[0] == shape[1]:  # the same orbit, however it was named
         return _refused("same_place", "A trip must go between two different places.")
     if body_id(origin) == body_id(target) and origin.around != "sun":
         return _refused("orbit_change_around_moon", "Changing orbit around the same moon is not modelled yet. "

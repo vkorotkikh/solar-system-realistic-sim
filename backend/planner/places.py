@@ -24,6 +24,9 @@ MOONS_FILE = ROOT / "src/data/moons.json"
 MOON_RADII_FILE = ROOT / "src/data/moonPhysicalRadii.json"
 MOON_GM_FILE = ROOT / "backend/data/moon_gm.json"
 KINDS = {"planet": "planet", "dwarf": "dwarf planet", "asteroid": "asteroid"}
+MU_SUN_KM3_S2 = 1.32712440018e11
+AU_KM = 1.495978707e8
+SUN_ORBITS = {body["id"]: body["orbit"] for body in ALL_BODIES}
 GIANT_PLANETS = frozenset({"jupiter", "saturn", "uranus", "neptune"})
 
 
@@ -161,6 +164,28 @@ def find_places(query: str, limit: int = 5) -> list[Place]:
         return text in (place.id, " ".join(_words(place.name)), " ".join(_words(re.sub(r"\(.*?\)", " ", place.name))))
 
     return sorted(matches, key=lambda place: not exact(place))[:limit]
+
+
+def sphere_of_influence_km(place: Place) -> float:
+    """The Hill radius: how far from the body an orbit can reach before the Sun, or the moon's planet, takes over."""
+    if place.around == "sun":
+        orbit = SUN_ORBITS[body_id(place)]
+        distance, mu_primary = float(orbit["a_au"]) * AU_KM * (1.0 - float(orbit["e"])), MU_SUN_KM3_S2
+    else:
+        distance, mu_primary = place.orbit_radius_km, _BY_ID[place.around].mu_km3_s2
+    return distance * (place.mu_km3_s2 / (3.0 * mu_primary)) ** (1.0 / 3.0)
+
+
+def with_orbit(place: Place, periapsis_altitude_km: float, apoapsis_altitude_km: float) -> Place:
+    """The same body with an orbit of the caller's choosing in place of its default."""
+    if periapsis_altitude_km == apoapsis_altitude_km:
+        label, name = f"{periapsis_altitude_km:g}km", f"{periapsis_altitude_km:,.0f} km"
+    else:
+        label = f"{periapsis_altitude_km:g}x{apoapsis_altitude_km:g}km"
+        name = f"{periapsis_altitude_km:,.0f} by {apoapsis_altitude_km:,.0f} km"
+    orbit = Orbit(f"{body_id(place)}-{label}", f"Orbit around {place.name}, {name}",
+                  place.radius_km + periapsis_altitude_km, place.radius_km + apoapsis_altitude_km)
+    return replace(place, default_orbit=orbit)
 
 
 def body_id(place: Place) -> str:

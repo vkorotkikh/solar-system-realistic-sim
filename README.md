@@ -179,7 +179,10 @@ in at the end of a transfer to its planet, or by a transfer around the planet
 when both ends are there. Moon masses come from `backend/data/moon_gm.json`,
 which `scripts/generate_moon_gm.py` derives offline from the pinned JPL table.
 Five named orbits can be a trip's end too: `leo`, `geo`, `llo` (low lunar
-orbit), `nrho` (approximate) and `lmo` (low Mars orbit).
+orbit), `nrho` (approximate) and `lmo` (low Mars orbit). Either end can also be
+a body with an orbit of your choosing, `{"body": "mars", "altitude_km": 300}`,
+or `periapsis_altitude_km` and `apoapsis_altitude_km` for an ellipse; the orbit
+must stay inside the body's sphere of influence.
 A change of orbit around one moon, such as `llo` to `nrho`, is refused for now.
 A refusal is an answer with `"status": "refused"`, a `code` and a plain
 `message`, not an HTTP error. A plan puts several trips
