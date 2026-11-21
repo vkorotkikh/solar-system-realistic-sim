@@ -17,6 +17,7 @@ import functools
 import logging
 
 import anthropic
+from anthropic.lib.credentials import WorkloadIdentityError
 
 from .loop import AssistantText, ModelReply, ProviderError, ToolCall, ToolResults, UserText
 
@@ -76,6 +77,10 @@ def call_model(*, model: str, system: str, tools, answer_schema: dict, turns, ti
             raise
         raise ProviderError("model_credentials", "The model provider has no credentials. Set ANTHROPIC_API_KEY "
                             "or sign in with `ant auth login`.", retryable=False) from exc
+    except (anthropic.CredentialsError, WorkloadIdentityError) as exc:  # a profile that is broken or expired
+        _log.warning("Model provider credentials failed to load: %s", exc)
+        raise ProviderError("model_credentials", "The model provider could not load its credentials. Set "
+                            "ANTHROPIC_API_KEY or sign in again with `ant auth login`.", retryable=False) from exc
     except anthropic.AnthropicError as exc:
         _log.warning("Model provider call failed: %s", exc)  # the detail stays in the server log
         raise ProviderError("model_error", "The model provider call failed.", retryable=False) from exc
