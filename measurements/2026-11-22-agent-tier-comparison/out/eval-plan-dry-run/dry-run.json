@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "input": "measurements/2026-11-22-agent-tier-comparison/prompts.jsonl",
+  "rows": 13,
+  "bad_rows": [],
+  "est_input_tokens": 103,
+  "est_output_tokens": 208000,
+  "arms": [
+    "claude-haiku-5-5",
+    "claude-sonnet-5-5",
+    "claude-opus-5-5"
+  ],
+  "checks": {
+    "price_table": {
+      "ok": true,
+      "missing": []
+    },
+    "output_budget": {
+      "ok": true,
+      "budget": 16000,
+      "floor": 8192
+    },
+    "retry_prompt": {
+      "ok": true,
+      "text": "Your answer was not accepted. {problem} Send the whole answer again."
+    },
+    "reservation_fits_cap": {
+      "ok": true,
+      "cap": 20,
+      "max_input_tokens": 16,
+      "per_arm": {
+        "claude-haiku-5-5": 0.008002,
+        "claude-sonnet-5-5": 0.160032,
+        "claude-opus-5-5": 0.320064
+      }
+    },
+    "model_rules": {
+      "ok": true,
+      "source": "none at origin/main@836c6d620cc1",
+      "refused": []
+    },
+    "frontier": {
+      "ok": true,
+      "small_tier": [
+        "claude-haiku-5-5",
+        "claude-sonnet-5-5"
+      ],
+      "tier_question": "Is a tier cheaper than Opus 5.5 good enough for the route-planning agent? Spec decision D6: the owner picks the cheapest tier that passes the acceptance prompts.",
+      "recost_usd": {
+        "claude-opus-5-5": 12.481247999999999,
+        "gpt-6.1-sol": 6.2406239999999995
+      }
+    }
+  },
+  "per_item_usd": {
+    "claude-haiku-5-5": 0.008001,
+    "claude-sonnet-5-5": 0.160016,
+    "claude-opus-5-5": 0.320032
+  },
+  "excluded_billing": [
+    "prompt-cache writes",
+    "tool and connector fees (web search, code execution, file search, MCP)",
+    "service-tier multipliers (priority, flex, batch) and long-context surcharges",
+    "image, audio and video tokens",
+    "subscription seats and CLI-metered runs (recorded as unknown spend)"
+  ],
+  "pass": true,
+  "stub": "stub-model (no network, $0)"
+}

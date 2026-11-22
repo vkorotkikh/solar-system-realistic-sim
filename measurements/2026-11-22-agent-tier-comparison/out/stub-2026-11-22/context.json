@@ -1,0 +1,9 @@
+{
+ "commit": "7df4c991157a",
+ "today": "2026-11-23",
+ "python": "3.12.13",
+ "stub": true,
+ "arms": "claude-haiku-5-5,claude-sonnet-5-5,claude-opus-5-5,claude-fable-5-2",
+ "runs": 1,
+ "started": "2026-11-22T09:40:51.345298+00:00"
+}

@@ -1,0 +1,6 @@
+| arm | runs | passed | run_pass_rate | prompt_coverage | p95_seconds | cost_per_prompt | replaced | provider_errors | questions | stopped | meets every bar |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|
+| claude-haiku-5-5 | 13 | 13 | 1.00 | 13 of 13 | 5.64 | $0.0000 | 0 | 0 | 0 | 0 | yes |
+| claude-sonnet-5-5 | 13 | 13 | 1.00 | 13 of 13 | 5.56 | $0.0000 | 0 | 0 | 0 | 0 | yes |
+| claude-opus-5-5 | 13 | 13 | 1.00 | 13 of 13 | 5.64 | $0.0000 | 0 | 0 | 0 | 0 | yes |
+| claude-fable-5-2 | 13 | 13 | 1.00 | 13 of 13 | 5.55 | $0.0000 | 0 | 0 | 0 | 0 | yes |

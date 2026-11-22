@@ -1,0 +1,13 @@
+{"id": "trip-earth-mars", "kind": "trip", "prompt": "Earth to Mars", "canonical": {"from": "earth", "to": "mars", "trip": "one_way"}, "tolerance": 0.05}
+{"id": "trip-moon", "kind": "trip", "prompt": "to the Moon", "canonical": {"from": "earth", "to": "moon-earth-moon", "trip": "one_way"}, "tolerance": 0.10}
+{"id": "trip-europa", "kind": "trip", "prompt": "Earth to Europa, cheapest launch in the next 10 years", "canonical": {"from": "earth", "to": "moon-jupiter-europa", "trip": "one_way"}, "tolerance": 0.10}
+{"id": "trip-leo-llo", "kind": "trip", "prompt": "low Earth orbit to low lunar orbit", "canonical": {"from": "leo", "to": "llo", "trip": "one_way"}, "tolerance": 0.10}
+{"id": "trip-leo-nrho", "kind": "trip", "prompt": "low Earth orbit to the NRHO", "canonical": {"from": "leo", "to": "nrho", "trip": "one_way"}, "tolerance": 0.10}
+{"id": "trip-mars-earth", "kind": "trip", "prompt": "Mars to Earth", "canonical": {"from": "mars", "to": "earth", "trip": "one_way"}, "tolerance": 0.05}
+{"id": "trip-mars-round", "kind": "trip", "prompt": "Earth to Mars and back with a 30 day stay", "canonical": {"from": "earth", "to": "mars", "trip": "round_trip", "stay_days": 30}, "tolerance": 0.05}
+{"id": "trip-psyche", "kind": "trip", "prompt": "Earth to Psyche", "canonical": {"from": "earth", "to": "psyche", "trip": "one_way"}, "tolerance": 0.05}
+{"id": "plan-cargo-crew", "kind": "plan", "prompt": "Send cargo to Mars, then crew 60 days after the cargo arrives", "gap_days": 60, "legs": [["earth", "mars"], ["earth", "mars"]]}
+{"id": "plan-mars-ceres", "kind": "plan", "prompt": "Earth to Mars, then on to Ceres 30 days after arriving", "gap_days": 30, "legs": [["earth", "mars"], ["mars", "ceres"]]}
+{"id": "app-show-europa", "kind": "focus", "prompt": "show me Europa", "place": "moon-jupiter-europa"}
+{"id": "app-jump-arrival", "kind": "date", "setup": "Earth to Mars", "prompt": "jump to the day we arrive", "canonical": {"from": "earth", "to": "mars", "trip": "one_way"}}
+{"id": "app-hide-belt", "kind": "layer", "prompt": "hide the asteroid belt", "layer": "asteroid_belt", "on": false}

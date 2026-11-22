@@ -1,0 +1,1 @@
+{"reply": {"status": "ok", "reply": {"kind": "answer", "text": "Europa is in view.", "options": []}, "show": null, "actions": [{"type": "focus_on", "place_id": "moon-jupiter-europa", "follow": true}], "check": {"result": "passed", "problems": []}, "usage": {"model_calls": 3, "tool_calls": 2, "models": ["stub"], "seconds": 0.0}}}

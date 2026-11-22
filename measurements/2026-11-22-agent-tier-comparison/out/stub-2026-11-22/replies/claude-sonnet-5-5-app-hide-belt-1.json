@@ -1,0 +1,1 @@
+{"reply": {"status": "ok", "reply": {"kind": "answer", "text": "The asteroid belt is hidden.", "options": []}, "show": null, "actions": [{"type": "set_layer", "layer": "asteroid_belt", "on": false}], "check": {"result": "passed", "problems": []}, "usage": {"model_calls": 2, "tool_calls": 1, "models": ["stub"], "seconds": 0.0}}}
