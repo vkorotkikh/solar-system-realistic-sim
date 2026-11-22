@@ -2,10 +2,12 @@
 
 One prompt runs at most six model calls and eight tool calls within 30 seconds.
 The model's final answer is JSON in a fixed shape. Every number in its text
-must match, after rounding, a value in this prompt's tool results or the
-user's own words, or be a count of ten or less. A mismatch gets one corrective
-retry; if that fails too, the text is replaced by a sentence built from the
-trip. The backend keeps nothing between prompts: the browser sends the
+must be a rounding, at the decimals written, of a number in this prompt's tool
+results, the app state or the user's own words. A whole number of ten or less
+passes as a count unless a unit such as km/s or days follows it. A date written
+YYYY-MM-DD must appear as written; a source date's year counts as a number,
+its month and day do not. A mismatch gets one corrective retry; if that fails
+too, the text is replaced by a sentence built from the trip. The backend keeps nothing between prompts: the browser sends the
 conversation, the current plan and the app state each time.
 """
 
@@ -190,12 +192,13 @@ class _Answer(BaseModel):
 
 _ISO_DATE = re.compile(r"\b\d{4}-\d{2}-\d{2}\b")
 _NUMBER = re.compile(r"(?<![\w.,])(\d{1,3}(?:,\d{3})+|\d+)(\.\d+)?")
+_UNIT = re.compile(r"\s*(?:km/s|m/s|km|kg|t|tonnes?|days?|d|hours?|h|years?|yr|%)(?![a-z/])", re.IGNORECASE)
 
 
-def _numbers(text: str) -> list[tuple[str, float, int]]:
-    """Each number written in the text: as written, its value, and its decimal places."""
-    return [(match.group(), float(match.group(1).replace(",", "") + (match.group(2) or "")),
-             len(match.group(2) or ".") - 1) for match in _NUMBER.finditer(text)]
+def _parse(match: re.Match) -> tuple[str, float, int]:
+    """A number as written, its value, and its decimal places."""
+    return (match.group(), float(match.group(1).replace(",", "") + (match.group(2) or "")),
+            len(match.group(2) or ".") - 1)
 
 
 def _collect(value, numbers: set[float], dates: set[str]) -> None:
@@ -204,24 +207,29 @@ def _collect(value, numbers: set[float], dates: set[str]) -> None:
     if isinstance(value, (int, float)):
         numbers.add(abs(float(value)))
     elif isinstance(value, str):
-        dates.update(_ISO_DATE.findall(value))
-        numbers.update(number for _, number, _ in _numbers(value))
+        days = _ISO_DATE.findall(value)
+        dates.update(days)
+        numbers.update(float(day[:4]) for day in days)  # a date's year can be quoted alone; its month and day not
+        numbers.update(_parse(match)[1] for match in _NUMBER.finditer(_ISO_DATE.sub(" ", value)))
     else:
         for item in value.values() if isinstance(value, dict) else value:
             _collect(item, numbers, dates)
 
 
 def unmatched_numbers(text: str, sources: list) -> list[str]:
-    """Numbers in the text that are no rounding of a value in the sources and are not small counts.
+    """Numbers in the text that no source number rounds to, at the decimals written.
 
-    Dates written YYYY-MM-DD must appear in the sources as written.
+    Dates written YYYY-MM-DD must appear in the sources as written. A whole
+    number of ten or less is a count, and passes, unless a unit follows it.
     """
     numbers: set[float] = set()
     dates: set[str] = set()
     _collect(sources, numbers, dates)
     unmatched = [day for day in _ISO_DATE.findall(text) if day not in dates]
-    for written, value, places in _numbers(_ISO_DATE.sub(" ", text)):
-        if places == 0 and value <= MAX_COUNT:
+    stripped = _ISO_DATE.sub(" ", text)
+    for match in _NUMBER.finditer(stripped):
+        written, value, places = _parse(match)
+        if places == 0 and value <= MAX_COUNT and not _UNIT.match(stripped, match.end()):
             continue
         half_step = 0.5 * 10.0**-places + 1e-9
         if not any(abs(known - value) <= half_step for known in numbers):

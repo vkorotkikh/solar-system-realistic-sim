@@ -213,8 +213,11 @@ and a short app state with every prompt; the backend stores nothing. The reply
 carries the answer text, the planner's own trip or plan to show, the queued
 actions, a `check` of the answer, and the token usage.
 
-Every number in an answer must match the planner's results or the user's own
-words, after rounding, or be a count of ten or less. A failing answer gets one
+Every number in an answer must be a rounding, at the decimals written, of a
+number in the planner's results, the app state or the user's own words. A whole
+number of ten or less passes as a count unless a unit such as km/s or days
+follows it, and a date must appear in the results as written (its year may be
+quoted alone, its month and day are not numbers). A failing answer gets one
 corrective retry, then is replaced by a sentence built from the trip. One
 prompt makes at most 6 model calls and 8 tool calls in 30 seconds, and a
 prompt is at most 2,000 characters. The whole request, with the conversation,

@@ -341,6 +341,13 @@ def test_a_search_with_no_time_left_is_refused() -> None:
     ("13 options", ["13"]),
     ("An orbit 42,164 km from the centre.", []),  # numbers inside the planner's text count
     ("Trips t1 and s2-t3.", []),  # ids are not numbers
+    ("It takes 12 days.", ["12"]),  # the day of a source date is not a number to quote
+    ("11 options", ["11"]),  # nor is its month
+    ("The 2026 launch window.", []),  # its year is
+    ("8 km/s", ["8"]),  # a small number with a unit is a quantity, not a count
+    ("9 days", ["9"]),
+    ("8 trips", []),  # without a unit it is a count
+    ("About 2 days late.", []),  # a quantity that a source rounds to (2.04)
 ])
 def test_the_number_check(text, unmatched) -> None:
     sources = [{"total_delta_v_km_s": 5.76, "burns": [3.71, 2.04], "date": "2026-11-12", "total_days": 300.0,
