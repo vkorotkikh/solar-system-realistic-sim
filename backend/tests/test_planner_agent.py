@@ -620,6 +620,7 @@ def test_the_provider_sends_strict_tools_and_the_answer_schema_and_parses_tool_c
     assert request["betas"] == ["server-side-fallback-2026-07-01"]
     assert request["output_config"] == {"effort": "low", "format": {"type": "json_schema", "schema": {"x": 1}}}
     assert request["cache_control"] == {"type": "ephemeral"} and "tool_choice" not in request
+    assert request["max_tokens"] == 16_000  # thinking is always on; a smaller cap truncates the answer
     assert [(sent["name"], sent["strict"], sent["input_schema"]) for sent in request["tools"]] \
         == [(spec.name, True, spec.input_schema) for spec in TOOLS]
     assert request["messages"] == [

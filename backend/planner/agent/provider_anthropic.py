@@ -21,7 +21,9 @@ from anthropic.lib.credentials import WorkloadIdentityError
 
 from .loop import AssistantText, ModelReply, ProviderError, ToolCall, ToolResults, UserText
 
-MAX_TOKENS = 8_000
+# Thinking is always on and its tokens count here: the API guide's non-streaming default, so an
+# answer is not cut off. Only the tokens generated are billed.
+MAX_TOKENS = 16_000
 _log = logging.getLogger(__name__)
 BETAS = ["server-side-fallback-2026-07-01"]
 
