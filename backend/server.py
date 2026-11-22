@@ -804,8 +804,8 @@ class _NetworkAuthenticationMiddleware:
             scope_route_path(scope),
         )
         if active_config.profile != "network":
-            if route == ("POST", "/benchmark/accuracy/report"):
-                rejection = _local_benchmark_writer_rejection(scope, active_config)
+            if route in _LOCAL_ONLY_POSTS:
+                rejection = _local_only_rejection(scope, active_config, *_LOCAL_ONLY_POSTS[route])
                 if rejection is not None:
                     await rejection(scope, receive, send)
                     return
@@ -1740,10 +1740,25 @@ def _bounded_unique_scope_header(
         return False, None
 
 
-def _local_benchmark_writer_rejection(
-    scope: Mapping[str, Any], config: SolarSecurityConfig,
+# Local POSTs with an effect beyond their answer: a report written to disk, or model credit spent.
+_LOCAL_ONLY_POSTS = {
+    ("POST", "/benchmark/accuracy/report"): (
+        "benchmark_writer_local_only",
+        "Local report writes require a direct loopback peer, Host, and trusted browser Origin; "
+        "proxies require the authenticated network profile.",
+    ),
+    ("POST", "/planner/agent"): (
+        "planner_agent_local_only",
+        "The planner agent spends model credit, so locally it answers only a direct loopback peer, Host, and "
+        "trusted browser Origin; proxies require the authenticated network profile.",
+    ),
+}
+
+
+def _local_only_rejection(
+    scope: Mapping[str, Any], config: SolarSecurityConfig, code: str, message: str,
 ) -> JSONResponse | None:
-    """Local writes require a direct loopback peer AND a loopback Host.
+    """A local-only POST requires a direct loopback peer AND a loopback Host.
 
     Forwarding headers cannot grant trust. Proxied deployments must select the
     authenticated network profile, even when their proxy connects via loopback.
@@ -1779,15 +1794,14 @@ def _local_benchmark_writer_rejection(
     # simple POST causes a write. Check Origin before entering the writer.
     if not (peer_ip and peer_ip.is_loopback and local_host and trusted_origin) or forwarded:
         return JSONResponse(status_code=403, headers={"Cache-Control": "private, no-store"}, content={
-            "detail": {"code": "benchmark_writer_local_only", "retryable": False,
-                       "message": "Local report writes require a direct loopback peer, Host, and trusted browser Origin; proxies require the authenticated network profile."},
+            "detail": {"code": code, "retryable": False, "message": message},
         })
     if config.authentication_required and _authenticated_api_subject_from_scope(scope, config=config) is None:
         return JSONResponse(status_code=401, headers={
             "WWW-Authenticate": 'Bearer realm="solar-system-backend"',
             "Cache-Control": "private, no-store",
         }, content={"detail": {"code": "authentication_required", "retryable": False,
-                               "message": "Authentication is required for report writes."}})
+                               "message": "Authentication is required for this endpoint."}})
     return None
 
 

@@ -278,9 +278,10 @@ def _approximations(origin: Place, target: Place, planet: Place | None = None) -
             "Burns are instant, and each orbit is assumed to lie in the plane of the path leaving or reaching it.",
             "Departure dates come from a search grid and are good to a few days.",
         ]
-        notes += [f"{place.name} is reached or left straight in: the path passes {get_place(place.around).name} "
-                  f"at {place.name}'s distance, moving with it. Real missions use moon flybys to brake for less."
-                  for place in (origin, target) if place.around != "sun"]
+        moons = (get_place(body_id(place)) for place in (origin, target) if place.around != "sun")
+        notes += [f"{moon.name} is reached or left straight in: the path passes {get_place(moon.around).name} "
+                  f"at {moon.name}'s distance, moving with it. Real missions use moon flybys to brake for less."
+                  for moon in moons]
     else:
         notes = [f"Around {planet.name} the orbits are taken as circular and in one plane, and any departure day "
                  "works: where a moon is along its orbit is not modelled."]
@@ -426,6 +427,9 @@ def search_trips(request: TripSearchRequest, *, today: date | None = None,
                             suggestions=[match.id for match in find_places(text)])
     if (body_id(origin), origin.default_orbit.id) == (body_id(target), target.default_orbit.id):
         return _refused("same_place", "A trip must go between two different places.")
+    if body_id(origin) == body_id(target) and origin.around != "sun":
+        return _refused("orbit_change_around_moon", "Changing orbit around the same moon is not modelled yet. "
+                        "Trips can start or end at either orbit from anywhere else.")
     min_stay = max_stay = 0.0
     if request.trip == "round_trip":
         if request.stay_days is None:
@@ -439,6 +443,8 @@ def search_trips(request: TripSearchRequest, *, today: date | None = None,
 
     today = today or datetime.now(timezone.utc).date()
     earliest = request.earliest_departure or today
+    if date_to_jd(earliest) >= PLANNING_JD_MAX:
+        return _refused("departs_after_2050", "Trips must leave before 2050-01-01, where the position data ends.")
     latest = request.latest_departure or _years_later(earliest, 10)
     if latest < earliest:
         return _refused("invalid_date_range", "The latest departure is before the earliest departure.")

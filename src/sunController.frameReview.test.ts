@@ -6,8 +6,11 @@ import reference from '../backend/tests/fixtures/solar_frames/cspice_solar_frame
 import { createSunController, fallbackSolarActivityFromJulianDate } from './sunController';
 import { SOLAR_RADIUS_AU } from './frontend/features/solar/solarDisplayScale';
 import { validatedSolarLayerFrames } from './frontend/features/solar/solarGeometryContract';
-import { solarPhysicsRequestJd, type SolarPhysicsStatePayload } from './frontend/features/solar/solarPhysicsClient';
-import type { SolarDataSourceStatus } from './frontend/features/solar/solarDataStatus';
+import {
+  HEALTH_PROBE_TIMEOUT_MS, SOLAR_PHYSICS_ERROR_BACKOFF_MS, SOLAR_PHYSICS_POLL_INTERVAL_MS, SOLAR_PHYSICS_REQUEST_TIMEOUT_MS,
+  solarPhysicsRequestJd, type SolarPhysicsStatePayload
+} from './frontend/features/solar/solarPhysicsClient';
+import { solarStateLagLabelDays, type SolarDataSourceStatus } from './frontend/features/solar/solarDataStatus';
 import { readCoronalHoles, readSunspotSeeds, updateSunCoronalLoopsFromBlendView } from './frontend/features/solar/sunVisuals';
 import { SolarFlareManager } from './frontend/features/solar/solarFlares';
 
@@ -365,6 +368,49 @@ describe('a backend state is labelled with its lag, then cleared when too old (H
     expect(f.blend().entries.every(entry => entry.toWeight === 0)).toBe(true);
     frames(f, 15);
     expect(f.blend().entries).toHaveLength(0);
+  });
+
+  // Audit finding solar-client-02: nothing ran the rule in reverse time. docs/solar-render-delivery.md:
+  // a state is cleared when |simulation epoch - snapshot epoch| exceeds max(30, |rate| x replacementGapSec),
+  // where the gap is a poll + a failed request (timeout + two /health probes) + the error backoff +
+  // the replacement's own latency (a timeout). Re-derived here from the shipped constants.
+  describe('in reverse time', () => {
+    const gapSec = (SOLAR_PHYSICS_POLL_INTERVAL_MS + SOLAR_PHYSICS_REQUEST_TIMEOUT_MS + 2 * HEALTH_PROBE_TIMEOUT_MS
+      + Math.max(SOLAR_PHYSICS_POLL_INTERVAL_MS, SOLAR_PHYSICS_ERROR_BACKOFF_MS) + SOLAR_PHYSICS_REQUEST_TIMEOUT_MS) / 1000;
+    const SNAPSHOT_JD = 2451552;
+
+    /** Reverse play at `rate` d/s for 15 frames of 0.1 s, then a jump to `lagDays` before the snapshot's epoch. */
+    async function reverseTo(rate: number, lagDays: number) {
+      const f = await fixture();
+      f.state.timeScaleDaysPerSec = rate;
+      for (let i = 0; i < 15; i += 1) f.tick(rate * 0.1, 0.1);
+      f.tick(-lagDays - (f.state.julianDate - SNAPSHOT_JD)); // lands exactly lagDays before the epoch
+      expect(f.state.julianDate).toBeCloseTo(SNAPSHOT_JD - lagDays, 6);
+      return f;
+    }
+
+    it.each([[-1, 1.05], [-1, 3]])('clears a state when reverse play at %s d/s ends %sx the lag limit behind it, as it does forwards', async (rate, factor) => {
+      const f = await reverseTo(rate, Math.abs(rate) * gapSec * factor);
+      expect(shownEpoch(f)).toBeNull();
+      expect(f.lastStatus().text).toContain('procedural fallback');
+    });
+
+    it('keeps a state that lags the clock by less than the limit when the clock is behind it', async () => {
+      const f = await reverseTo(-1, gapSec * 0.95);
+      expect(shownEpoch(f)).toBe(SNAPSHOT_JD);
+      f.tick(0, 0.6); // the label republishes at most twice a second
+      // An absolute lag, in the chip's own rounding: a signed lag would be negative and print no label.
+      expect(f.lastStatus().text).toContain(` · time-lapse: state lags ${solarStateLagLabelDays(gapSec * 0.95)} d · `);
+    });
+
+    it('sets the limit from the absolute reverse rate: -4 d/s tolerates four times the lag that 1 d/s does', async () => {
+      // The clock ran forwards at 1 d/s first (the fixture's opening frame), so a limit that
+      // ignored the reverse rate would still be 1 x gap and clear this state.
+      const f = await reverseTo(-4, 2 * gapSec);
+      expect(shownEpoch(f)).toBe(SNAPSHOT_JD);
+      f.tick(-2 * gapSec - 20); // now past 4 x gap
+      expect(shownEpoch(f)).toBeNull();
+    });
   });
 
   it('cross-fades the procedural polar holes with the backend holes on a clear and a new arrival', async () => {

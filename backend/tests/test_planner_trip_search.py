@@ -150,6 +150,7 @@ def test_arrivals_are_kept_before_2050() -> None:
         ({"to": "mars", "earliest_departure": "2026-01-01", "latest_departure": "2037-01-02"}, "date_range_too_long"),
         ({"to": "mars", "earliest_departure": "1980-01-01", "latest_departure": "1985-01-01"}, "departs_before_1990"),
         ({"to": "mars", "earliest_departure": "2049-12-01", "latest_departure": "2049-12-31"}, "arrives_after_2050"),
+        ({"to": "mars", "earliest_departure": "9999-12-31"}, "departs_after_2050"),
     ],
 )
 def test_refusals_carry_a_code_and_a_plain_message(fields: dict, code: str) -> None:

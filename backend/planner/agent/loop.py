@@ -311,12 +311,10 @@ class DailyLimit:
             return True
 
 
-def run_agent(request: AgentRequest, *, model: str, provider: Provider | None = None,
+def run_agent(request: AgentRequest, *, model: str, provider: Provider,
               today: dt.date | None = None, cancel_event: threading.Event | None = None,
               seconds: float = AGENT_SECONDS) -> dict:
     """Answer one prompt: call the model, run the tools it asks for, and check its final answer."""
-    if provider is None:
-        from .provider_anthropic import call_model as provider
     started = time.monotonic()
     deadline = started + seconds
     cancel = cancel_event or threading.Event()

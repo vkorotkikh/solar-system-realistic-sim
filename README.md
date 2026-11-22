@@ -122,7 +122,10 @@ The page's mission planner uses the trajectory and mission services when the
 backend is reachable; without it, route planning falls back to a local solver.
 
 The default `SOLAR_SECURITY_PROFILE=local` keeps solar endpoints available
-without a key and should stay bound to loopback. To expose the backend on a
+without a key and should stay bound to loopback. If `SOLAR_PHYSICS_API_KEYS` is
+set, `/solar/physics`, `/solar/realtime` and `/solar/realtime/aia-tile` need a
+key in this profile too, and the page, which sends none, shows the procedural
+Sun. To expose the backend on a
 network, explicitly set `SOLAR_SECURITY_PROFILE=network`, provide one or more
 comma-separated `SOLAR_PHYSICS_API_KEYS`, configure exact
 `SOLAR_CORS_ALLOWED_ORIGINS`, and pass a non-loopback host to Uvicorn without
@@ -132,12 +135,19 @@ accepted only from `SOLAR_TRUSTED_PROXY_CIDRS`; otherwise the immediate socket
 peer is used for rate limiting. Keep Uvicorn proxy-header rewriting disabled so
 the application can verify that immediate peer itself.
 
+In the network profile every HTTP route except `GET /health/live` needs one of
+the keys, sent as `X-API-Key: <key>` or `Authorization: Bearer <key>`; a key in
+the query string is refused, and a request without a key gets HTTP 401. The page
+itself sends no key, so against a network-profile backend it shows the
+procedural Sun and the status bar says the server requires an API key. To use
+the page there, serve it from the same origin as a reverse proxy that adds the
+key to backend requests. The profile does not replace production TLS or proxy
+policy.
+
 Solar rate-limit identity stores have fixed memory ceilings and TTL expiry.
 Under more simultaneous valid peer identities than the configured ceiling,
 the least-recently-used identity is evicted; this is memory containment, not a
 replacement for an edge rate limiter in a network deployment.
-`SOLAR_SECURITY_PROFILE` covers the solar HTTP endpoints in this tranche; it
-does not add route-wide authentication or replace production TLS/proxy policy.
 
 ### WebSocket tuning
 
@@ -170,6 +180,7 @@ when both ends are there. Moon masses come from `backend/data/moon_gm.json`,
 which `scripts/generate_moon_gm.py` derives offline from the pinned JPL table.
 Five named orbits can be a trip's end too: `leo`, `geo`, `llo` (low lunar
 orbit), `nrho` (approximate) and `lmo` (low Mars orbit).
+A change of orbit around one moon, such as `llo` to `nrho`, is refused for now.
 A refusal is an answer with `"status": "refused"`, a `code` and a plain
 `message`, not an HTTP error. A plan puts several trips
 on one date axis; a trip can be tied to leave no sooner than `gap_days` after
@@ -207,6 +218,11 @@ words, after rounding, or be a count of ten or less. A failing answer gets one
 corrective retry, then is replaced by a sentence built from the trip. One
 prompt makes at most 6 model calls and 8 tool calls in 30 seconds, and a
 prompt is at most 2,000 characters.
+
+In the default local profile the agent answers only a direct loopback request
+from this machine, with a loopback `Host` and, from a browser, an `Origin` listed in
+`SOLAR_CORS_ALLOWED_ORIGINS`, because each prompt spends model credit. The network
+profile requires an API key for it.
 
 The agent is off until a model is chosen; there is no default model:
 

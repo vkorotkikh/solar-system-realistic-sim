@@ -269,10 +269,10 @@ def test_hale_corrected_snapshot_reuses_identity_without_reusing_inverted_conten
 def test_effective_scalar_inputs_are_canonicalized(monkeypatch: pytest.MonkeyPatch) -> None:
     cache, calls = _recording_cache(monkeypatch)
     cache.get_or_compute(jd=2_460_010, activity=-3, n_lines=1, lmax=99)
-    cache.get_or_compute(jd=2_460_010, activity=0, n_lines=8, lmax=15)
+    cache.get_or_compute(jd=2_460_010, activity=0, n_lines=8, lmax=40)
     assert len(calls) == 1
     assert calls[0][1].config.line_count == 8
-    assert calls[0][1].config.lmax == 15
+    assert calls[0][1].config.lmax == 40
 
 
 @pytest.mark.parametrize(

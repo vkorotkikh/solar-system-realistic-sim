@@ -35,7 +35,7 @@ def test_spectral_entry_point_preserves_degree_radius_and_common_products(monkey
     assert result["boundary_representation"] == "native-real-schmidt-gauss-no-cs-v1"
     assert result["wsa"]["calibration_status"] == "unvalidated"
     assert "geometry_validated" not in result
-    assert PFSSSolutionConfig(lmax=90).lmax == 15
+    assert PFSSSolutionConfig(lmax=90).lmax == 40
 
 
 @pytest.mark.parametrize("coefficients", [

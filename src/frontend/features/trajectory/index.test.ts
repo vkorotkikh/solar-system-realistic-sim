@@ -177,6 +177,56 @@ describe('trajectory API fallback policy', () => {
     });
   });
 
+  // `npm run dev` alone: Vite answers the planner's POST with a bare 404; a static host with 405.
+  it.each([404, 405])('treats a bare HTTP %s as no trajectory service and plans locally', async (status) => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('', { status })));
+
+    const result = await client.planInterplanetaryRoute(
+      localModel(),
+      new Map([
+        ['earth', { name: 'Earth' }],
+        ['mars', { name: 'Mars' }]
+      ]),
+      BASE_OPTIONS
+    );
+
+    expect(result).toMatchObject({ source: 'local', degraded: true, fallbackReason: 'backend_unreachable' });
+  });
+
+  it('says the backend could not be reached when a bare 404 answers a Lambert request', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('', { status: 404 })));
+
+    await expect(
+      client.solveLambertTransfer({ fromId: 'earth', toId: 'mars', departureJd: 2_460_500.5, arrivalJd: 2_460_760.5 })
+    ).rejects.toMatchObject({
+      name: 'TrajectoryConnectionError',
+      message: 'Trajectory backend could not be reached'
+    });
+  });
+
+  it('keeps a 404 that the backend explains as a rejected request', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () =>
+      new Response(
+        JSON.stringify({ detail: { code: 'trajectory_unknown_body', message: 'Unknown body `vulcan`' } }),
+        { status: 404, headers: { 'Content-Type': 'application/json' } }
+      )
+    ));
+
+    await expect(
+      client.planInterplanetaryRoute(localModel(), new Map(), BASE_OPTIONS)
+    ).rejects.toMatchObject({ name: 'TrajectoryApiError', status: 404, code: 'trajectory_unknown_body' });
+  });
+
+  it('never plans locally after a proxy error page', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () =>
+      new Response('<html>Bad Gateway</html>', { status: 502, headers: { 'Content-Type': 'text/html' } })
+    ));
+
+    await expect(
+      client.planInterplanetaryRoute(localModel(), new Map(), BASE_OPTIONS)
+    ).rejects.toMatchObject({ name: 'TrajectoryApiError', status: 502 });
+  });
+
   it('never substitutes local data for an explicit Horizons failure', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => {
       throw new TypeError('Failed to fetch');
