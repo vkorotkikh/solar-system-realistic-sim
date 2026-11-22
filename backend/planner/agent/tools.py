@@ -144,6 +144,7 @@ class Toolbox:
     deadline: float  # time.monotonic() by which the whole prompt must finish
     cancel: threading.Event
     today: date | None = None
+    search_slots: threading.Semaphore | None = None  # shared with the HTTP search routes: two searches at a time
     outputs: list = field(default_factory=list)  # every result sent to the model, for the number check
     trips: dict[str, dict] = field(default_factory=dict)
     plan: dict | None = None  # the last solved plan
@@ -179,6 +180,18 @@ class Toolbox:
             raise ToolError("No time is left in this prompt for another search. Answer with what you have.")
         return budget
 
+    def _in_search_slot(self, search):
+        """Run a planner search in one of the shared search slots, waiting for one while time allows."""
+        if self.search_slots is None:
+            return search(self._search_budget())
+        if not self.search_slots.acquire(timeout=max(0.0, self._search_budget() - MIN_SEARCH_S)):
+            raise ToolError("The planner is busy with other searches. Answer with the results you have, or tell "
+                            "the user to try again shortly.")
+        try:
+            return search(self._search_budget())
+        finally:
+            self.search_slots.release()
+
     def _find_place(self, arguments: dict) -> dict:
         query = str(arguments.get("query", ""))[:100]
         result = {"query": query, "matches": [place_json(place) for place in find_places(query)]}
@@ -189,7 +202,8 @@ class Toolbox:
 
     def _search_trips(self, arguments: dict) -> dict:
         request = TripSearchRequest.model_validate(arguments)
-        result = search_trips(request, today=self.today, cancel_event=self.cancel, time_budget_s=self._search_budget())
+        result = self._in_search_slot(lambda budget: search_trips(request, today=self.today, cancel_event=self.cancel,
+                                                                  time_budget_s=budget))
         self._searches += 1
         if result["status"] == "ok":
             search = request.model_dump(mode="json", by_alias=True)
@@ -202,7 +216,8 @@ class Toolbox:
 
     def _solve_plan(self, arguments: dict) -> dict:
         request = PlanRequest.model_validate(arguments)
-        result = solve_plan(request, today=self.today, cancel_event=self.cancel, time_budget_s=self._search_budget())
+        result = self._in_search_slot(lambda budget: solve_plan(request, today=self.today, cancel_event=self.cancel,
+                                                                time_budget_s=budget))
         self._plans += 1
         searches = {trip.key: trip.search.model_dump(mode="json", by_alias=True) for trip in request.trips}
         for key, entry in result["trips"].items():

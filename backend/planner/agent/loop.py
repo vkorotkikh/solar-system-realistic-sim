@@ -138,6 +138,7 @@ class ProviderError(Exception):
         super().__init__(message)
         self.code = code
         self.retryable = retryable
+        self.model_replies = 0  # replies this prompt had already received; run_agent fills it in
 
 
 # The request.
@@ -310,10 +311,17 @@ class DailyLimit:
             self._count += 1
             return True
 
+    def give_back(self, today: dt.date | None = None) -> None:
+        """Return a prompt that cost nothing, such as one that never got a reply from the model."""
+        today = today or dt.datetime.now(dt.timezone.utc).date()
+        with self._lock:
+            if today == self._day and self._count > 0:
+                self._count -= 1
+
 
 def run_agent(request: AgentRequest, *, model: str, provider: Provider,
               today: dt.date | None = None, cancel_event: threading.Event | None = None,
-              seconds: float = AGENT_SECONDS) -> dict:
+              seconds: float = AGENT_SECONDS, search_slots: threading.Semaphore | None = None) -> dict:
     """Answer one prompt: call the model, run the tools it asks for, and check its final answer."""
     started = time.monotonic()
     deadline = started + seconds
@@ -324,7 +332,7 @@ def run_agent(request: AgentRequest, *, model: str, provider: Provider,
                          for message in request.messages[:-1]]
     turns.append(UserText(f"{context}\n\nThe user's prompt:\n{request.messages[-1].text}"))
     sources: list = [context, *(message.text for message in request.messages if message.role == "user")]
-    toolbox = Toolbox(deadline=deadline, cancel=cancel, today=today)
+    toolbox = Toolbox(deadline=deadline, cancel=cancel, today=today, search_slots=search_slots)
     usage: Counter = Counter()
     models: set[str] = set()
     model_calls = tool_calls = 0
@@ -343,8 +351,12 @@ def run_agent(request: AgentRequest, *, model: str, provider: Provider,
             raise PlanningCancelled("The agent prompt was cancelled")
         if model_calls == MAX_MODEL_CALLS or deadline - time.monotonic() < MIN_MODEL_CALL_S:
             return stopped("limit")
-        reply = provider(model=model, system=SYSTEM_PROMPT, tools=TOOLS, answer_schema=ANSWER_SCHEMA,
-                         turns=tuple(turns), timeout_s=deadline - time.monotonic())
+        try:
+            reply = provider(model=model, system=SYSTEM_PROMPT, tools=TOOLS, answer_schema=ANSWER_SCHEMA,
+                             turns=tuple(turns), timeout_s=deadline - time.monotonic())
+        except ProviderError as exc:
+            exc.model_replies = model_calls
+            raise
         model_calls += 1
         usage.update(reply.usage)
         models.update([reply.model] if reply.model else [])

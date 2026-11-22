@@ -217,7 +217,10 @@ Every number in an answer must match the planner's results or the user's own
 words, after rounding, or be a count of ten or less. A failing answer gets one
 corrective retry, then is replaced by a sentence built from the trip. One
 prompt makes at most 6 model calls and 8 tool calls in 30 seconds, and a
-prompt is at most 2,000 characters.
+prompt is at most 2,000 characters. The whole request, with the conversation,
+is at most 32 KiB (`max_request_bytes` in `GET /planner/capabilities`), so a
+long conversation drops its oldest turns. The agent's searches share the
+planner's two search slots with the HTTP search routes.
 
 In the default local profile the agent answers only a direct loopback request
 from this machine, with a loopback `Host` and, from a browser, an `Origin` listed in
@@ -230,7 +233,7 @@ The agent is off until a model is chosen; there is no default model:
 |---|---|
 | `PLANNER_AGENT_MODEL` | Model id, for example `claude-opus-5-5`. Unset turns the agent off, and `GET /planner/capabilities` reports it off. |
 | `ANTHROPIC_API_KEY` | The API key, or sign in once with `ant auth login`; the Anthropic SDK finds either. |
-| `PLANNER_AGENT_MAX_PROMPTS_PER_DAY` | Prompts answered per UTC day by this backend process, default 200. |
+| `PLANNER_AGENT_MAX_PROMPTS_PER_DAY` | Prompts answered per UTC day by this backend process (each Uvicorn worker counts its own), default 200. A prompt the model never answered does not count. |
 
 ```bash
 PLANNER_AGENT_MODEL=claude-opus-5-5 npm run dev:full

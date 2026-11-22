@@ -26,10 +26,11 @@ from pydantic import ValidationError
 
 import server
 from planner.agent import provider_anthropic
+from planner.agent import tools as agent_tools
 from planner.agent.loop import (ANSWER_SCHEMA, MAX_MODEL_CALLS, MAX_TOOL_CALLS, STOP_TEXT, TOOL_LIMIT_NOTE,
                                 AgentRequest, AssistantText, DailyLimit, ModelReply, ProviderError, ToolCall,
                                 ToolResults, UserText, run_agent, unmatched_numbers)
-from planner.agent.tools import TOOLS, Toolbox
+from planner.agent.tools import ANSWER_RESERVE_S, TOOLS, Toolbox
 from planner.trips import TripSearchRequest, search_trips
 from planner.vehicle import VehicleCheckRequest, check_vehicle
 from trajectory.budget import PlanningCancelled
@@ -300,6 +301,27 @@ def test_the_vehicle_check_uses_the_burns_of_a_found_trip() -> None:
     assert json.loads(content) == {"trip_id": "s1-t1", "burns_km_s": burns, **json.loads(json.dumps(expected))}
 
 
+def test_an_agent_search_holds_a_shared_search_slot_while_it_runs(monkeypatch) -> None:
+    slots, seen = threading.BoundedSemaphore(1), []
+
+    def search(_request, **_options) -> dict:
+        seen.append(slots.acquire(blocking=False))  # False: this search holds the only slot
+        return {"status": "refused", "code": "no_route", "message": "No route."}
+    monkeypatch.setattr(agent_tools, "search_trips", search)
+    box = Toolbox(deadline=time.monotonic() + 30.0, cancel=threading.Event(), today=TODAY, search_slots=slots)
+    box.run("search_trips", MARS)
+    assert seen == [False] and slots.acquire(blocking=False)  # held during the search, free after it
+
+
+def test_an_agent_search_gives_up_when_the_search_slots_stay_busy() -> None:
+    slots = threading.BoundedSemaphore(1)
+    assert slots.acquire(blocking=False)  # an HTTP search holds the only slot
+    box = Toolbox(deadline=time.monotonic() + ANSWER_RESERVE_S + 1.5, cancel=threading.Event(), today=TODAY,
+                  search_slots=slots)
+    text, is_error = box.run("search_trips", MARS)
+    assert is_error and "busy" in json.loads(text)["error"]
+
+
 def test_a_search_with_no_time_left_is_refused() -> None:
     box = Toolbox(deadline=time.monotonic() + 5.0, cancel=threading.Event(), today=TODAY)  # inside the answer reserve
     content, is_error = box.run("search_trips", MARS)
@@ -386,7 +408,8 @@ def test_the_agent_answers_only_this_machine_and_the_apps_own_pages(agent_on, pe
 def test_the_endpoint_answers_a_prompt(agent_on) -> None:
     agent_on(Script(tool("search_trips", **MARS), cheapest_answer))
     assert client.get("/planner/capabilities").json()["agent"] == {
-        "enabled": True, "model": "test-model", "max_prompt_chars": 2_000, "max_prompts_per_day": 200}
+        "enabled": True, "model": "test-model", "max_prompt_chars": 2_000, "max_prompts_per_day": 200,
+        "max_request_bytes": 32_768}
     response = client.post("/planner/agent", json=BODY)
     assert response.status_code == 200
     body = response.json()
@@ -412,6 +435,35 @@ def test_provider_failures_become_gateway_errors(agent_on, retryable, status) ->
     assert response.status_code == status
     assert response.json()["detail"] == {"code": "model_error", "message": "The model provider returned HTTP 500.",
                                          "retryable": retryable, "context": {}}
+
+
+def test_a_prompt_that_got_no_model_reply_gives_its_daily_slot_back(agent_on, monkeypatch) -> None:
+    def down(**_call) -> ModelReply:
+        raise ProviderError("model_unreachable", "The model provider could not be reached in time.", retryable=True)
+    agent_on(down, limit=1)
+    assert client.post("/planner/agent", json=BODY).status_code == 503
+    monkeypatch.setattr(server, "PLANNER_AGENT_PROVIDER", Script(answer("Hello.")))
+    assert client.post("/planner/agent", json=BODY).status_code == 200  # the failed prompt cost nothing
+
+
+def test_a_prompt_that_failed_after_a_model_reply_keeps_its_slot(agent_on) -> None:
+    def down(_turns) -> ModelReply:
+        raise ProviderError("model_unreachable", "The model provider could not be reached in time.", retryable=True)
+    agent_on(Script(tool("find_place", query="mars"), down), limit=1)
+    assert client.post("/planner/agent", json=BODY).status_code == 503
+    assert client.post("/planner/agent", json=BODY).status_code == 429  # the first reply was paid for
+
+
+def test_the_endpoint_gives_the_agent_the_http_search_slots(agent_on, monkeypatch) -> None:
+    seen: dict = {}
+
+    def fake_run_agent(_request, **options) -> dict:
+        seen.update(options)
+        return {"status": "ok"}
+    agent_on(Script())
+    monkeypatch.setattr(server, "run_agent", fake_run_agent)
+    assert client.post("/planner/agent", json=BODY).status_code == 200
+    assert seen["search_slots"] is server._planner_search_guard
 
 
 def test_a_busy_agent_answers_503_without_using_a_prompt(agent_on, monkeypatch) -> None:
