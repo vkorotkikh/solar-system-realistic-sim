@@ -650,6 +650,7 @@ const asteroidJupiterPositionAu = new Vector3();
 const asteroidSaturnPositionAu = new Vector3();
 
 const kuiperBeltRenderer = ownDisposable(createKuiperBeltRenderer(kuiperPop.kbos));
+kuiperBeltRenderer.setScaleMode(simState.useRealisticScale); // the browser may restore the switch
 const kuiperBeltUpdater = createKuiperBeltUpdater(kuiperPop, kuiperBeltRenderer);
 asteroidBeltRenderer.setPerturberMasses(jupiterPerturbationMu, saturnPerturbationMu);
 

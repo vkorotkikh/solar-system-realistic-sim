@@ -654,6 +654,34 @@ export function createKuiperBeltRenderer(
     companionMesh.userData.kuiperBufferWork = companionWork;
   }
 
+  // Realistic scale multiplies each enlarged scale by true radius / drawn radius, keeping the shape.
+  const enlargedScales = baseScales.slice();
+  const realFactors = Float32Array.from(kbos, kbo => realRadiusAu(kbo.diameterKm) / displayRadiusAu(kbo.diameterKm, true));
+  const enlargedCompanionScales = companionScales?.slice();
+  const realCompanionFactors = Float32Array.from(binaryKBOs,
+    ({ bin }) => realRadiusAu(bin.diameterKm) / displayRadiusAu(bin.diameterKm, true));
+
+  /** Rewrite every matrix at its last position, since a paused clock sends no new positions. */
+  function rescale(
+    target: InstancedMesh, n: number, scales: Float32Array, enlarged: Float32Array, factors: Float32Array,
+    quats: Float32Array, last: Float32Array, work: typeof primaryWork, useRealistic: boolean,
+  ) {
+    for (let i = 0; i < n; i++) {
+      const f = useRealistic ? factors[i] : 1;
+      for (let k = 0; k < 3; k++) scales[i * 3 + k] = enlarged[i * 3 + k] * f;
+      const x = last[i * 3], y = last[i * 3 + 1], z = last[i * 3 + 2];
+      _pos.set(Number.isNaN(x) ? 0 : x, Number.isNaN(y) ? 0 : y, Number.isNaN(z) ? 0 : z);
+      _quat.set(quats[i * 4], quats[i * 4 + 1], quats[i * 4 + 2], quats[i * 4 + 3]);
+      _scale.set(scales[i * 3], scales[i * 3 + 1], scales[i * 3 + 2]);
+      _mat4.compose(_pos, _quat, _scale);
+      target.setMatrixAt(i, _mat4);
+    }
+    target.instanceMatrix.needsUpdate = true;
+    work.matrixWrites += n;
+    work.uploadRequests++;
+    work.requestedUploadBytes += target.instanceMatrix.array.byteLength;
+  }
+
   return {
     mesh,
     companionMesh,
@@ -727,9 +755,12 @@ export function createKuiperBeltRenderer(
     setJulianDate() { return; },
     setPerturberPositions() { return; },
     setPerturberMasses() { return; },
-    setScaleMode(_useRealisticScale: boolean) {
-      // KBOs are far from the Sun; no visual conflict in realism mode.
-      return;
+    setScaleMode(useRealisticScale: boolean) {
+      rescale(mesh, count, baseScales, enlargedScales, realFactors, baseQuats, lastPositions, primaryWork, useRealisticScale);
+      if (companionMesh && companionScales && enlargedCompanionScales && companionQuats) {
+        rescale(companionMesh, binCount, companionScales, enlargedCompanionScales, realCompanionFactors,
+          companionQuats, lastCompanionPositions, companionWork, useRealisticScale);
+      }
     },
     setVisible(v: boolean) {
       mesh.visible = v;
