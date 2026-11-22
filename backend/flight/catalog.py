@@ -9,6 +9,8 @@ Every catalog number is {value, low, high, source}; a source is
 Rules: below the fiction tier every number needs a source; estimate and derived
 numbers need low < high; every value lies inside [low, high]; a derived number
 states its formula. A number's value may be a scalar or a list (a vector).
+The physical checks (feeds, thrust, specific impulse) are not here: the parsed
+parts go to `vehicle.build_vehicle`, which runs them and makes the vehicle.
 """
 
 from __future__ import annotations
@@ -19,20 +21,10 @@ from pathlib import Path
 
 import numpy as np
 
-from .vehicle import TIERS, Engine, Structure, Tank, Vehicle
+from .vehicle import TIERS, CatalogError, Engine, Structure, Tank, Vehicle, build_vehicle
 
 DEFAULT_CATALOG = Path(__file__).with_name("catalog.json")
 SOURCE_KINDS = ("primary", "secondary", "estimate", "derived")
-_FEED_SHARE_TOLERANCE = 1e-9
-
-
-class CatalogError(ValueError):
-    """A catalog entry broke a provenance or consistency rule."""
-
-    def __init__(self, code: str, path: str, message: str) -> None:
-        super().__init__(f"{path}: {message}")
-        self.code = code
-        self.path = path
 
 
 class UnknownVehicle(LookupError):
@@ -70,6 +62,7 @@ def _number(record, path: str, tier: str, sources: dict):
 
 
 def _vehicle(vehicle_id: str, raw: dict) -> Vehicle:
+    """Parse one entry under the provenance rules, then hand its parts to the shared builder."""
     tier = raw.get("tier")
     if tier not in TIERS:
         raise CatalogError("unknown_tier", f"{vehicle_id}.tier", f"tier must be one of {TIERS}")
@@ -100,30 +93,22 @@ def _vehicle(vehicle_id: str, raw: dict) -> Vehicle:
         )
         for i, part in enumerate(raw.get("tanks", []))
     )
-    tank_names = {tank.name for tank in tanks}
-    engines = []
-    for i, part in enumerate(raw.get("engines", [])):
-        path = f"{vehicle_id}.engines[{i}].feeds"
-        feeds = tuple((feed["tank"], float(feed["share"])) for feed in part["feeds"])
-        if any(name not in tank_names for name, _ in feeds):
-            raise CatalogError("unknown_tank", path, "an engine draws from a tank the vehicle does not have")
-        if abs(sum(share for _, share in feeds) - 1.0) > _FEED_SHARE_TOLERANCE:
-            raise CatalogError("feed_shares_not_one", path, "an engine's tank shares must sum to 1")
-        axis = np.asarray(part["axis"], dtype=float)
-        engines.append(Engine(
+    engines = tuple(
+        Engine(
             name=part["name"],
             position_m=n(part["position_m"], f"engines[{i}].position_m"),
-            axis=axis / np.linalg.norm(axis),
+            axis=np.asarray(part["axis"], dtype=float) / np.linalg.norm(part["axis"]),
             thrust_n=n(part["thrust_n"], f"engines[{i}].thrust_n"),
             isp_vac_s=n(part["isp_vac_s"], f"engines[{i}].isp_vac_s"),
             # Limits a maker has not published are unknown (None), never invented.
             throttle_min=optional(part, "throttle_min", f"engines[{i}].throttle_min"),
             throttle_max=optional(part, "throttle_max", f"engines[{i}].throttle_max"),
             swivel_limit_deg=optional(part, "swivel_limit_deg", f"engines[{i}].swivel_limit_deg"),
-            feeds=feeds,
-        ))
-    return Vehicle(vehicle_id=vehicle_id, name=raw["name"], tier=tier, structures=structures,
-                   tanks=tanks, engines=tuple(engines), sources=sources)
+            feeds=tuple((feed["tank"], float(feed["share"])) for feed in part["feeds"]),
+        )
+        for i, part in enumerate(raw.get("engines", []))
+    )
+    return build_vehicle(vehicle_id, raw["name"], tier, structures, tanks, engines, sources)
 
 
 def _inertia_matrix(six) -> np.ndarray:

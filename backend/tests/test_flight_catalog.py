@@ -128,6 +128,32 @@ def test_an_engine_whose_tank_shares_do_not_sum_to_one_is_refused(tmp_path) -> N
     assert _refusal(tmp_path, raw).code == "feed_shares_not_one"
 
 
+@pytest.mark.parametrize(
+    "key, value, code",
+    [
+        ("thrust_n", 0.0, "thrust_not_positive"),
+        ("thrust_n", -20_000.0, "thrust_not_positive"),
+        ("isp_vac_s", 0.0, "isp_not_positive"),
+    ],
+)
+def test_an_engine_with_no_thrust_or_no_exhaust_speed_is_refused(tmp_path, key: str, value: float, code: str) -> None:
+    """A sourced zero is still a zero: the loader builds through the shared builder.
+    Mutation caught: the loader making the vehicle itself, past the builder's checks."""
+    raw = entry()
+    raw["engines"][0][key] = num(value)
+    error = _refusal(tmp_path, raw)
+    assert (error.code, error.path) == (code, f"lander.engines[0].{key}")
+
+
+def test_a_missing_source_is_reported_before_a_physical_fault(tmp_path) -> None:
+    """Provenance is its own step and runs first; the physical checks then run on the
+    parsed parts. Mutation caught: the feed checks back in front of the engine's numbers."""
+    raw = entry()
+    raw["engines"][0]["feeds"] = [{"tank": "header", "share": 1.0}]
+    raw["engines"][0]["thrust_n"] = num(20_000.0, source=None)
+    assert _refusal(tmp_path, raw).code == "unsourced_number"
+
+
 def test_an_unknown_tier_is_refused(tmp_path) -> None:
     assert _refusal(tmp_path, entry("concept-art")).code == "unknown_tier"
 

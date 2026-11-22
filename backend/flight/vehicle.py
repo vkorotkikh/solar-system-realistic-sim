@@ -6,6 +6,7 @@ All values are SI: metres, kilograms, seconds, newtons.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -58,6 +59,46 @@ class Vehicle:
     tanks: tuple[Tank, ...]
     engines: tuple[Engine, ...]
     sources: dict = field(default_factory=dict, compare=False)  # catalog path -> number record
+
+
+class CatalogError(ValueError):
+    """A vehicle broke a provenance or consistency rule; `path` names the number at fault.
+
+    It lives here, not in `catalog`, so the builder below and the catalog loader raise one kind of error.
+    """
+
+    def __init__(self, code: str, path: str, message: str) -> None:
+        super().__init__(f"{path}: {message}")
+        self.code = code
+        self.path = path
+
+
+_FEED_SHARE_TOLERANCE = 1e-9
+
+
+def build_vehicle(vehicle_id: str, name: str, tier: str, structures: Iterable[Structure], tanks: Iterable[Tank],
+                  engines: Iterable[Engine], sources: dict | None = None) -> Vehicle:
+    """Make a vehicle from parts, after the checks its physics needs.
+
+    It takes plain part objects and knows nothing about sources: the catalog loader calls it
+    after its provenance rules, and a ship that is not from a catalog file calls it without them.
+    """
+    tanks, engines = tuple(tanks), tuple(engines)
+    tank_names = {tank.name for tank in tanks}
+    for i, engine in enumerate(engines):
+        path = f"{vehicle_id}.engines[{i}]"
+        if any(tank not in tank_names for tank, _ in engine.feeds):
+            raise CatalogError("unknown_tank", f"{path}.feeds", "an engine draws from a tank the vehicle does not have")
+        if abs(sum(share for _, share in engine.feeds) - 1.0) > _FEED_SHARE_TOLERANCE:
+            raise CatalogError("feed_shares_not_one", f"{path}.feeds", "an engine's tank shares must sum to 1")
+        # Mass flow is thrust / (g0 * isp), so both must be above zero. `not x > 0` also refuses NaN.
+        if not engine.thrust_n > 0.0:
+            raise CatalogError("thrust_not_positive", f"{path}.thrust_n", "an engine's thrust must be above zero")
+        if not engine.isp_vac_s > 0.0:
+            raise CatalogError("isp_not_positive", f"{path}.isp_vac_s",
+                               "an engine's specific impulse must be above zero")
+    return Vehicle(vehicle_id=vehicle_id, name=name, tier=tier, structures=tuple(structures), tanks=tanks,
+                   engines=engines, sources={} if sources is None else sources)
 
 
 G0 = 9.80665  # standard gravity, m/s^2, by definition

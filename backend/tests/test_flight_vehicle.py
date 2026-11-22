@@ -19,7 +19,9 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from flight.vehicle import Engine, MassModel, Structure, Tank, Vehicle, tank_flow_kg_s, to_stage
+from flight.vehicle import (
+    CatalogError, Engine, MassModel, Structure, Tank, Vehicle, build_vehicle, tank_flow_kg_s, to_stage,
+)
 
 G0 = 9.80665
 
@@ -96,3 +98,45 @@ def test_the_stage_export_uses_total_thrust_over_total_flow() -> None:
     assert stage.dry_mass_kg == 1_000.0
     assert stage.propellant_mass_kg == 4_500.0
     assert stage.isp_s == pytest.approx(337.7777778, rel=1e-9)
+
+
+def test_the_builder_makes_a_vehicle_from_plain_parts_with_no_catalog() -> None:
+    """TWIN's parts, handed over with no catalog file and no sources: the built vehicle
+    drains its tanks at the hand-worked rates above and weighs 1,000 kg dry.
+    Rejects: a builder that needs sourced records, or that drops a part."""
+    built = build_vehicle("twin", "Twin", "fiction", TWIN.structures, TWIN.tanks, TWIN.engines)
+    assert (built.vehicle_id, built.name, built.tier, built.sources) == ("twin", "Twin", "fiction", {})
+    assert tank_flow_kg_s(built) == pytest.approx([7.714958190, 1.341731859], rel=1e-9)
+    assert MassModel(built).dry_mass == 1_000.0
+
+
+@pytest.mark.parametrize(
+    "thrust, isp, code, field",
+    [
+        (0.0, 320.0, "thrust_not_positive", "thrust_n"),
+        (-20_000.0, 320.0, "thrust_not_positive", "thrust_n"),
+        (float("nan"), 320.0, "thrust_not_positive", "thrust_n"),
+        (20_000.0, 0.0, "isp_not_positive", "isp_vac_s"),
+        (20_000.0, -320.0, "isp_not_positive", "isp_vac_s"),
+    ],
+)
+def test_the_builder_refuses_an_engine_with_no_thrust_or_no_exhaust_speed(thrust, isp, code, field) -> None:
+    """Mass flow is thrust / (g0 * isp): a zero isp divides by zero and a zero thrust
+    drains nothing. The faulty engine is the second, so the path must name it.
+    Mutations caught: the check removed; `>= 0` in place of `> 0` (the two zero rows)."""
+    engines = (TWIN.engines[0], _engine("bad", thrust, isp, (("a", 1.0),)))
+    with pytest.raises(CatalogError) as caught:
+        build_vehicle("test", "Test", "flown", TWIN.structures, TWIN.tanks, engines)
+    assert (caught.value.code, caught.value.path) == (code, f"test.engines[1].{field}")
+
+
+@pytest.mark.parametrize(
+    "feeds, code",
+    [((("header", 1.0),), "unknown_tank"), ((("a", 0.7), ("b", 0.2)), "feed_shares_not_one")],
+)
+def test_the_builder_runs_the_feed_checks_itself(feeds, code) -> None:
+    """A ship that does not come from a catalog file gets the same two feed checks.
+    Mutation caught: the checks left in the catalog loader only."""
+    with pytest.raises(CatalogError) as caught:
+        build_vehicle("test", "Test", "flown", TWIN.structures, TWIN.tanks, (_engine("bad", 20_000.0, 320.0, feeds),))
+    assert (caught.value.code, caught.value.path) == (code, "test.engines[0].feeds")
