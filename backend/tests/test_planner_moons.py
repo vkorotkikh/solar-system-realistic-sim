@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 
-from planner.places import PLACES, find_places, get_place
+from planner.places import PLACES, find_places, get_place, place_json
 
 ROOT = Path(__file__).resolve().parents[2]
 G = 6.67430e-11
@@ -134,3 +134,54 @@ def test_a_round_trip_to_the_moon_comes_back_after_the_stay() -> None:
     assert back["depart"]["jd"] - out["arrive"]["jd"] == pytest.approx(3.0)
     # The way back mirrors the way out: the same two burns in reverse order.
     assert [burn["delta_v_km_s"] for burn in back["burns"]] == [burn["delta_v_km_s"] for burn in reversed(out["burns"])]
+
+
+@pytest.mark.parametrize(
+    ("query", "ids"),
+    [
+        ("the Moon", ["moon-earth-moon"]),  # little words are ignored
+        ("Earth's moon", ["moon-earth-moon"]),  # a moon also answers to its planet's name
+        ("earth moon", ["moon-earth-moon"]),
+        ("Jupiter Io", ["moon-jupiter-io"]),
+        ("moon", ["moon-earth-moon"]),  # an exact name wins over every moon whose id starts with moon-
+        ("io", ["moon-jupiter-io"]),  # and over Iocaste
+        ("jupiter", ["jupiter"]),  # a planet's name alone does not list its moons
+        ("the", []),
+    ],
+)
+def test_the_lookup_reads_how_people_name_a_moon(query: str, ids: list[str]) -> None:
+    assert [place.id for place in find_places(query)] == ids
+
+
+MU_MARS, A_PHOBOS, R_PHOBOS, MU_PHOBOS = 6.4171e23 * G / 1e9, 9_375.0, 11.08, 0.0007087
+
+
+def test_a_moon_too_small_to_hold_an_orbit_is_reached_alongside() -> None:
+    # Phobos's Hill radius: 9,375 km x (0.0007087 / (3 x 42,828))^(1/3) = 16.6 km, inside its 111 km "low orbit".
+    assert A_PHOBOS * (MU_PHOBOS / (3 * MU_MARS)) ** (1 / 3) < R_PHOBOS + 100.0
+    orbit = place_json(get_place("moon-mars-phobos"))["default_orbit"]
+    assert (orbit["id"], orbit["name"], orbit["periapsis_altitude_km"]) == (
+        "moon-mars-phobos-alongside",
+        "Alongside Phobos, 100 km off, matching its path: it is too small to hold an orbit", 100.0)
+    trip = search(**{"to": "moon-mars-phobos", "earliest_departure": "2026-08-06",
+                     "latest_departure": "2027-06-30"})["trips"][0]
+    (leg,) = trip["legs"]
+    arrive = leg["burns"][1]
+    assert arrive["orbit"] == "moon-mars-phobos-alongside"
+    # Matching Phobos's path is the straight-in speed change itself: no capture burn into an orbit.
+    assert arrive["delta_v_km_s"] == pytest.approx(_straight_in(leg["excess_speed_km_s"]["arrive"], MU_MARS, A_PHOBOS),
+                                                   abs=0.002)
+
+
+def test_only_moons_that_can_hold_a_100_km_orbit_get_one() -> None:
+    moons = [place for place in PLACES if place.kind == "moon"]
+    alongside = [place.name for place in moons if place.default_orbit.id.endswith("-alongside")]
+    assert (len(moons), len(alongside)) == (423, 398)  # 380 with no mass in the catalog, 18 too small to orbit
+    assert {"Phobos", "Deimos", "Amalthea", "Pan", "Larissa"} <= set(alongside)
+    assert not {"Moon", "Io", "Europa", "Mimas", "Charon"} & set(alongside)
+
+
+def test_a_body_with_no_mass_in_the_catalog_is_reached_alongside() -> None:
+    orbit = place_json(get_place("hebe"))["default_orbit"]
+    assert (orbit["id"], orbit["name"], orbit["periapsis_altitude_km"]) == (
+        "hebe-alongside", "Alongside Hebe (6), 100 km off, matching its path", 100.0)

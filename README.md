@@ -181,6 +181,10 @@ which `scripts/generate_moon_gm.py` derives offline from the pinned JPL table.
 Five named orbits can be a trip's end too: `leo`, `geo`, `llo` (low lunar
 orbit), `nrho` (approximate) and `lmo` (low Mars orbit).
 A change of orbit around one moon, such as `llo` to `nrho`, is refused for now.
+A body that cannot hold its default orbit is reached alongside, 100 km off and
+matching its path, with no capture burn: the 380 moons and 14 asteroids and
+distant bodies with no mass in the catalog, and 18 moons whose 100 km orbit lies
+beyond their Hill radius, such as Phobos.
 A refusal is an answer with `"status": "refused"`, a `code` and a plain
 `message`, not an HTTP error. A plan puts several trips
 on one date axis; a trip can be tied to leave no sooner than `gap_days` after
