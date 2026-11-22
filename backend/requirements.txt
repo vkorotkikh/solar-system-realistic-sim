@@ -8,6 +8,6 @@ astropy==8.0.1
 pillow>=10.0.0
 pytest>=8.0.0
 # The planner agent's model calls (backend/planner/agent/provider_anthropic.py).
-anthropic>=2.8.0
+anthropic>=2.8.0,<3
 # TudatPy (uncomment when ready to integrate):
 # tudatpy>=0.7.0

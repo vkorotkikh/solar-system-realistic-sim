@@ -559,3 +559,25 @@ def test_missing_credentials_are_a_credentials_error_before_any_request(monkeypa
         provider_anthropic.call_model(model="m", system="s", tools=TOOLS, answer_schema={}, turns=(UserText("hi"),),
                                       timeout_s=5.0, client=sdk)
     assert (raised.value.code, raised.value.retryable, sent) == ("model_credentials", False, [])
+
+
+@pytest.mark.parametrize("error", [
+    anthropic.CredentialsError("profile 'default' has expired"),
+    _status(anthropic.AuthenticationError, 401),
+])
+def test_a_credentials_failure_drops_the_cached_client_so_a_new_sign_in_is_used(monkeypatch, error) -> None:
+    built: list = []
+
+    def build(**options):
+        built.append(options)
+        return FakeClient(error)
+
+    monkeypatch.setattr(provider_anthropic.anthropic, "Anthropic", build)
+    provider_anthropic._client.cache_clear()
+    for _ in range(2):
+        with pytest.raises(ProviderError) as raised:
+            provider_anthropic.call_model(model="m", system="s", tools=TOOLS, answer_schema={},
+                                          turns=(UserText("hi"),), timeout_s=5.0)
+        assert raised.value.code == "model_credentials"
+    provider_anthropic._client.cache_clear()
+    assert len(built) == 2  # the second prompt built a fresh client, which reads a new `ant auth login`
