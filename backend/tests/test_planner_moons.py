@@ -7,6 +7,7 @@ masses, radii and moon orbit sizes, never with the planner's own functions.
 from __future__ import annotations
 
 import importlib.util
+import json
 import math
 from pathlib import Path
 
@@ -185,3 +186,27 @@ def test_a_body_with_no_mass_in_the_catalog_is_reached_alongside() -> None:
     orbit = place_json(get_place("hebe"))["default_orbit"]
     assert (orbit["id"], orbit["name"], orbit["periapsis_altitude_km"]) == (
         "hebe-alongside", "Alongside Hebe (6), 100 km off, matching its path", 100.0)
+
+
+def test_a_trip_around_a_planet_that_would_arrive_after_2050_is_refused() -> None:
+    result = search(**{"to": "moon-earth-moon", "earliest_departure": "2049-12-30"})  # about 5 days of flight
+    assert (result["status"], result["code"]) == ("refused", "arrives_after_2050")
+
+
+def test_moons_of_two_planets_are_joined_by_a_transfer_around_the_sun() -> None:
+    (leg,) = search(**{"from": "moon-jupiter-io", "to": "moon-saturn-titan", "earliest_departure": "2027-01-01",
+                       "latest_departure": "2029-12-31"})["trips"][0]["legs"]
+    assert (leg["from"], leg["to"], leg["around"]) == ("jupiter", "saturn", "sun")
+    assert [burn["at"] for burn in leg["burns"]] == ["moon-jupiter-io", "moon-saturn-titan"]
+
+
+def test_the_moon_list_fails_closed_on_a_duplicate_id_or_a_catalog_mismatch(monkeypatch, tmp_path) -> None:
+    from planner import places
+    io = next(moon for moon in json.loads(places.MOONS_FILE.read_text()) if moon["name"] == "Io")
+    planets = {place.id: place for place in PLACES if place.around == "sun" and place.kind != "orbit"}
+    for broken, message in [([io, io], "Duplicate moon id"), ([{**io, "iauCode": "502"}], "differs between catalogs")]:
+        path = tmp_path / "moons.json"
+        path.write_text(json.dumps(broken))
+        monkeypatch.setattr(places, "MOONS_FILE", path)
+        with pytest.raises(ValueError, match=message):
+            places._moons(planets)

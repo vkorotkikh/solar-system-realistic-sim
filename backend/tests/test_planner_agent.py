@@ -257,6 +257,60 @@ def test_actions_come_back_in_the_order_queued() -> None:
                                 {"type": "set_date", "date": "2027-09-08"}]
 
 
+
+def test_showing_a_trip_and_the_plan_together_is_corrected() -> None:
+    reply = run(Script(tool("search_trips", **MARS), answer("Here it is.", trip="s1-t1", plan=True), cheapest_answer))
+    assert reply["check"] == {"result": "corrected", "problems": ["Show either one trip or the plan, not both."]}
+
+
+def test_showing_a_plan_that_was_never_solved_is_corrected() -> None:
+    reply = run(Script(answer("Here is the plan.", plan=True), answer("No plan has been solved yet.")))
+    assert reply["check"]["problems"] == ["No plan was solved in this prompt, so there is no plan to show."]
+    assert reply["show"] is None
+
+
+def test_a_plan_answer_that_fails_twice_is_replaced_by_the_plans_own_dates() -> None:
+    invented = answer("It all costs 77.77 km/s.", plan=True)
+    reply = run(Script(tool("solve_plan", trips=[{"key": "cargo", "search": MARS}]), invented, invented))
+    plan = reply["show"]["plan"]
+    assert reply["check"]["result"] == "replaced"
+    assert reply["reply"]["text"] == (f"The plan's first trip leaves {plan['first_departure']['date']} and its "
+                                      f"last trip arrives {plan['last_arrival']['date']}.")
+
+
+def test_an_answer_rejected_on_the_last_model_call_is_replaced_at_once() -> None:
+    script = Script(*[tool("find_place", query="Mars")] * (MAX_MODEL_CALLS - 1), answer("It costs 77.77 km/s."))
+    reply = run(script)
+    assert (reply["check"]["result"], len(reply["check"]["problems"]), reply["usage"]["model_calls"]) == (
+        "replaced", 1, MAX_MODEL_CALLS)
+
+
+def test_a_tool_use_stop_with_no_tool_calls_is_an_unexpected_stop() -> None:
+    reply = run(Script(ModelReply("tool_use")))
+    assert (reply["status"], reply["code"]) == ("stopped", "unexpected_stop")
+
+
+def test_the_current_plan_reaches_the_model_and_its_numbers_count_as_sources() -> None:
+    request = prompt("When does the crew leave?", plan={"trips": [
+        {"key": "cargo", "search": {"to": "mars"}},
+        {"key": "crew", "search": {"to": "mars"}, "after": {"trip": "cargo", "event": "arrives", "gap_days": 45}}]})
+    script = Script(answer("The crew leaves 45 days after the cargo arrives."))
+    reply = run(script, request)
+    assert reply["check"]["result"] == "passed"  # 45 is in the plan the browser sent
+    assert '"gap_days":45.0' in script.calls[0]["turns"][-1].text
+
+
+@pytest.mark.parametrize("extra", [
+    {"app": {"layers": {"comets": True}}},  # not one of the eight switches
+    {"app": {"focused": "x" * 65}},
+    {"messages": [{"role": "user", "text": "Hi"}, {"role": "assistant", "text": "Hello."}] * 20
+     + [{"role": "user", "text": "Earth to Mars"}]},  # 41 messages
+])
+def test_requests_outside_the_contract_are_rejected(extra) -> None:
+    with pytest.raises(ValidationError):
+        AgentRequest.model_validate({"messages": [{"role": "user", "text": "Earth to Mars"}], **extra})
+
+
 # The tools.
 
 @pytest.mark.parametrize(("name", "arguments", "action"), [
