@@ -402,10 +402,19 @@ def test_a_search_with_no_time_left_is_refused() -> None:
     ("9 days", ["9"]),
     ("8 trips", []),  # without a unit it is a count
     ("About 2 days late.", []),  # a quantity that a source rounds to (2.04)
+    ("A 9 month trip.", ["9"]),  # months, weeks, minutes, AU and g are units too
+    ("5 minutes of burn, 3 g at most.", ["5", "3"]),
+    ("Eight km/s in burns.", ["Eight"]),  # a number written as a word is checked like digits
+    ("Six km/s in burns.", []),  # and passes as a rounding (5.76) like digits do
+    ("Nine months in flight.", ["Nine"]),
+    ("Two burns and two trips.", []),  # a word count with no unit stays a count
+    ("Four km/s of burns.", []),  # a word that a source rounds to (3.71)
+    ("It takes 7 days.", ["7"]),  # the search's own run time is not a number to quote
 ])
 def test_the_number_check(text, unmatched) -> None:
     sources = [{"total_delta_v_km_s": 5.76, "burns": [3.71, 2.04], "date": "2026-11-12", "total_days": 300.0,
-                "name": "Geostationary orbit, 42,164 km from Earth's centre"}]
+                "name": "Geostationary orbit, 42,164 km from Earth's centre",
+                "searched": {"seconds": 6.9, "transfer_solves": 9_646}}]
     assert unmatched_numbers(text, sources) == unmatched
 
 

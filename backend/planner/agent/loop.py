@@ -4,9 +4,10 @@ One prompt runs at most six model calls and eight tool calls within 30 seconds.
 The model's final answer is JSON in a fixed shape. Every number in its text
 must be a rounding, at the decimals written, of a number in this prompt's tool
 results, the app state or the user's own words. A whole number of ten or less
-passes as a count unless a unit such as km/s or days follows it. A date written
-YYYY-MM-DD must appear as written; a source date's year counts as a number,
-its month and day do not. A mismatch gets one corrective retry; if that fails
+passes as a count unless a unit such as km/s or days follows it. A number
+written as a word is checked the same way. A date written YYYY-MM-DD must
+appear as written; a source date's year counts as a number, its month and day
+do not. How a search ran (its seconds and solver count) is not a source. A mismatch gets one corrective retry; if that fails
 too, the text is replaced by a sentence built from the trip. The backend keeps nothing between prompts: the browser sends the
 conversation, the current plan and the app state each time.
 """
@@ -192,13 +193,26 @@ class _Answer(BaseModel):
 
 _ISO_DATE = re.compile(r"\b\d{4}-\d{2}-\d{2}\b")
 _NUMBER = re.compile(r"(?<![\w.,])(\d{1,3}(?:,\d{3})+|\d+)(\.\d+)?")
-_UNIT = re.compile(r"\s*(?:km/s|m/s|km|kg|t|tonnes?|days?|d|hours?|h|years?|yr|%)(?![a-z/])", re.IGNORECASE)
+_UNIT = re.compile(r"\s*(?:km/s|m/s|km/h|km|kg|tonnes?|t|days?|d|hours?|h|minutes?|min|seconds?|s|weeks?|months?"
+                   r"|years?|yr|au|g|degrees?|\u00b0|%)(?![a-z/])", re.IGNORECASE)
+_ONES = ("zero one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen "
+         "seventeen eighteen nineteen").split()
+_TENS = {"twenty": 20, "thirty": 30, "forty": 40, "fifty": 50, "sixty": 60, "seventy": 70, "eighty": 80, "ninety": 90}
+_WORD_NUMBER = re.compile(rf"\b(?:({'|'.join(_TENS)})(?:-({'|'.join(_ONES[1:10])}))?|({'|'.join(_ONES)}))(\s+hundred)?\b",
+                          re.IGNORECASE)
+_BOOKKEEPING = frozenset({"seconds", "transfer_solves"})  # how a search ran, not a fact about any trip
 
 
 def _parse(match: re.Match) -> tuple[str, float, int]:
     """A number as written, its value, and its decimal places."""
     return (match.group(), float(match.group(1).replace(",", "") + (match.group(2) or "")),
             len(match.group(2) or ".") - 1)
+
+
+def _word_value(match: re.Match) -> int:
+    tens, ones, single, hundred = match.groups()
+    value = _TENS[tens.lower()] + (_ONES.index(ones.lower()) if ones else 0) if tens else _ONES.index(single.lower())
+    return value * (100 if hundred else 1)
 
 
 def _collect(value, numbers: set[float], dates: set[str]) -> None:
@@ -212,7 +226,8 @@ def _collect(value, numbers: set[float], dates: set[str]) -> None:
         numbers.update(float(day[:4]) for day in days)  # a date's year can be quoted alone; its month and day not
         numbers.update(_parse(match)[1] for match in _NUMBER.finditer(_ISO_DATE.sub(" ", value)))
     else:
-        for item in value.values() if isinstance(value, dict) else value:
+        items = [item for key, item in value.items() if key not in _BOOKKEEPING] if isinstance(value, dict) else value
+        for item in items:
             _collect(item, numbers, dates)
 
 
@@ -227,9 +242,10 @@ def unmatched_numbers(text: str, sources: list) -> list[str]:
     _collect(sources, numbers, dates)
     unmatched = [day for day in _ISO_DATE.findall(text) if day not in dates]
     stripped = _ISO_DATE.sub(" ", text)
-    for match in _NUMBER.finditer(stripped):
-        written, value, places = _parse(match)
-        if places == 0 and value <= MAX_COUNT and not _UNIT.match(stripped, match.end()):
+    written_numbers = [_parse(match) + (match.end(),) for match in _NUMBER.finditer(stripped)]
+    written_numbers += [(match.group(), _word_value(match), 0, match.end()) for match in _WORD_NUMBER.finditer(stripped)]
+    for written, value, places, end in sorted(written_numbers, key=lambda number: number[3]):
+        if places == 0 and value <= MAX_COUNT and not _UNIT.match(stripped, end):
             continue
         half_step = 0.5 * 10.0**-places + 1e-9
         if not any(abs(known - value) <= half_step for known in numbers):
