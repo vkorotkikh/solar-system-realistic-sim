@@ -158,6 +158,7 @@ _BY_ID = {place.id: place for place in PLACES}
 
 
 _LITTLE_WORDS = frozenset({"the", "a", "an", "of", "s"})  # "s" is what "Earth's" leaves
+_PROVISIONAL = re.compile(r"\bS/(\d{4})\s*([A-Z])\s*(\d+)\b", re.IGNORECASE)  # IAU "S/2010 J 1"; the catalog: S2010_J_1
 
 
 def _words(text: str) -> list[str]:
@@ -171,11 +172,12 @@ def get_place(place_id: str) -> Place | None:
 def find_places(query: str, limit: int = 5) -> list[Place]:
     """Places where every word of the query starts a word of the name or the id; exact names win.
 
-    Little words such as "the" are skipped, and a moon also answers to its
-    planet's name, so "the Moon", "Earth's moon" and "Jupiter Io" find what
-    they mean. When some places match exactly, only those are returned.
+    Little words such as "the" are skipped, a moon also answers to its
+    planet's name, and a provisional name may be written the IAU way, so "the
+    Moon", "Earth's moon", "Jupiter Io" and "S/2010 J 1" find what they mean.
+    When some places match exactly, only those are returned.
     """
-    wanted = [word for word in _words(query) if word not in _LITTLE_WORDS]
+    wanted = [word for word in _words(_PROVISIONAL.sub(r"S\1_\2_\3", query)) if word not in _LITTLE_WORDS]
 
     def own(place: Place) -> list[str]:  # the words that must name the place itself
         return [word for word in wanted if not (place.kind == "moon" and word == place.around)]

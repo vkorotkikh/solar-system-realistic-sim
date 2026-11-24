@@ -147,6 +147,7 @@ def test_a_round_trip_to_the_moon_comes_back_after_the_stay() -> None:
         ("moon", ["moon-earth-moon"]),  # an exact name wins over every moon whose id starts with moon-
         ("io", ["moon-jupiter-io"]),  # and over Iocaste
         ("jupiter", ["jupiter"]),  # a planet's name alone does not list its moons
+        ("S/2010 J 1", ["moon-jupiter-s2010-j-1"]),  # the IAU form of a provisional name the catalog writes S2010_J_1
         ("the", []),
     ],
 )
