@@ -142,6 +142,18 @@ async function trajectoryApiError(response: Response, operation: string): Promis
   });
 }
 
+/**
+ * A bare 404 or 405 means no trajectory service lives at this origin: `npm run dev`
+ * alone answers the planner's POST that way. The backend's own rejections carry a
+ * code, and a proxy's error page has another status, so neither counts as absent.
+ */
+async function trajectoryHttpFailure(response: Response, operation: string): Promise<Error> {
+  const error = await trajectoryApiError(response, operation);
+  const serviceAbsent = (response.status === 404 || response.status === 405)
+    && error.code === 'trajectory_api_error';
+  return serviceAbsent ? new TrajectoryConnectionError(error) : error;
+}
+
 function isOfflineConnectionFailure(error: unknown): boolean {
   return error instanceof TrajectoryConnectionError;
 }
@@ -225,7 +237,7 @@ export function createTrajectoryClient({
     }
 
     if (!response.ok) {
-      throw await trajectoryApiError(response, 'Trajectory');
+      throw await trajectoryHttpFailure(response, 'Trajectory');
     }
 
     const payload = await response.json();
@@ -260,7 +272,7 @@ export function createTrajectoryClient({
     });
 
     if (!response.ok) {
-      throw await trajectoryApiError(response, 'Lambert');
+      throw await trajectoryHttpFailure(response, 'Lambert');
     }
 
     const payload = await response.json();
@@ -298,7 +310,7 @@ export function createTrajectoryClient({
     });
 
     if (!response.ok) {
-      throw await trajectoryApiError(response, 'Porkchop');
+      throw await trajectoryHttpFailure(response, 'Porkchop');
     }
 
     return {
@@ -333,7 +345,7 @@ export function createTrajectoryClient({
     });
 
     if (!response.ok) {
-      throw await trajectoryApiError(response, 'Mission');
+      throw await trajectoryHttpFailure(response, 'Mission');
     }
 
     const payload = await response.json();
