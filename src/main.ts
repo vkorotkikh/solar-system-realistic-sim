@@ -106,7 +106,14 @@ import {
   renderAsteroidCatalogSourceStatus,
   verifiedAsteroidCatalogStatus,
 } from './frontend/features/asteroids/catalogSourceStatus';
-import { SolarDataAnnouncer, renderSolarDataStatus } from './frontend/features/solar/solarDataStatus';
+import { SolarDataAnnouncer, renderSolarDataStatus, type SolarDataSourceStatus } from './frontend/features/solar/solarDataStatus';
+import { createObservedFieldLayer } from './frontend/features/solar/observedFieldLayer';
+import { createObservedPfssClient } from './frontend/features/solar/observedPfssClient';
+import {
+  createObservedLabelRenderer,
+  deriveObservedLabel,
+  withObservedChipPhrase
+} from './frontend/features/solar/observedPfssStatus';
 
 // ── DOM ──────────────────────────────────────────────────────────────────────
 
@@ -178,6 +185,10 @@ const dom = {
   statusCatalog: elementById<HTMLElement>('status-catalog'),
   statusSolar: elementById<HTMLElement>('status-solar'),
   statusSolarAnnouncer: elementById<HTMLElement>('status-solar-announcer'),
+  observedFieldControl: elementById<HTMLElement>('observed-field-control'),
+  toggleObservedField: elementById<HTMLInputElement>('toggle-observed-field'),
+  observedFieldLabel: elementById<HTMLElement>('observed-field-label'),
+  observedFieldAnnouncer: elementById<HTMLElement>('observed-field-announcer'),
   statusSatellites: elementById<HTMLElement>('status-satellites'),
   zoomSensitivity: elementById<HTMLInputElement>('zoom-sensitivity'),
   zoomSensitivityValue: elementById<HTMLOutputElement>('zoom-sensitivity-value'),
@@ -371,6 +382,12 @@ if (sunTextureCanvas) {
 const sunBody = bodyById.get('sun');
 
 const solarDataAnnouncer = new SolarDataAnnouncer(dom.statusSolarAnnouncer);
+// Real GONG field lines (ADR 0009): built only when the build sets VITE_SOLAR_OBSERVED_PFSS=1.
+const observedFieldLayer = runtimeUiConfig.observedPfss
+  ? createObservedFieldLayer(sunBody ? bodyBaseRadiusAu(sunBody) : 0.01)
+  : null;
+let lastSolarStatus: SolarDataSourceStatus | null = null;
+let observedLinesDrawn = false;
 
 const sunCtrl = createSunController({
   camera,
@@ -385,8 +402,11 @@ const sunCtrl = createSunController({
   observationTextureLoader: solarObservationTextureLoader,
   getSunRadiusAu: () => sunBody ? bodyBaseRadiusAu(sunBody) : 0.01,
   isMagneticFieldEnabled: () => Boolean(dom.toggleMagneticField?.checked),
+  observedFieldLayer,
   onSolarDataStatus: (status) => {
-    renderSolarDataStatus(dom.statusSolar, status);
+    lastSolarStatus = status;
+    // The chip says so while real lines are drawn (G2); its announcer never hears the phrase.
+    renderSolarDataStatus(dom.statusSolar, withObservedChipPhrase(status, observedLinesDrawn));
     if (solarDataAnnouncer.observe(status) && status.state !== 'backend') {
       console.warn(`[solar] ${status.text}${status.remedy ? `\n${status.remedy}` : ''}`);
     }
@@ -1353,10 +1373,55 @@ function updatePlayButton() {
   );
 }
 
-dom.togglePlay.addEventListener('click', () => {
-  simState.paused = !simState.paused;
+/** Idempotent: the observed label's jump button pauses and never resumes. */
+function setPaused(paused: boolean) {
+  simState.paused = paused;
   updatePlayButton();
+}
+
+dom.togglePlay.addEventListener('click', () => {
+  setPaused(!simState.paused);
 }, { signal: startup.signal });
+
+const observedPfssClient = observedFieldLayer ? createObservedPfssClient({ baseUrl: backendBaseUrl }) : null;
+const observedLabelRenderer = observedFieldLayer
+  ? createObservedLabelRenderer(dom.observedFieldLabel, dom.observedFieldAnnouncer, () => {
+    // Checked again on click: if the real time has left the window, nothing changes.
+    const map = observedPfssClient?.state.accepted;
+    const now = currentJulianDate();
+    if (!map || now < map.valid_from_jd_tdb || now > map.valid_until_jd_tdb) return;
+    timeController.jumpToNow();
+    setPaused(true);
+  })
+  : null;
+if (observedPfssClient) {
+  dom.observedFieldControl.hidden = false;
+  dom.toggleObservedField.addEventListener('change', () => {
+    observedPfssClient.setEnabled(dom.toggleObservedField.checked);
+  }, { signal: startup.signal });
+  startup.defer(() => observedPfssClient.dispose());
+}
+
+function updateObservedField() {
+  if (!observedPfssClient || !observedFieldLayer || !observedLabelRenderer) return;
+  observedPfssClient.tick();
+  const label = deriveObservedLabel({
+    client: observedPfssClient.state,
+    syntheticShown: dom.toggleMagneticField.checked,
+    clockJdTdb: simState.julianDate,
+    realJdTdb: currentJulianDate(),
+    paused: Boolean(simState.paused),
+    timeScaleDaysPerSec: simState.timeScaleDaysPerSec,
+    speedText: dom.timeScaleValue.textContent ?? '',
+  });
+  observedFieldLayer.setSidecar(observedPfssClient.state.accepted);
+  observedFieldLayer.setDrawn(label.drawLines);
+  observedLabelRenderer.render(label);
+  if (label.drawLines !== observedLinesDrawn) {
+    observedLinesDrawn = label.drawLines;
+    if (lastSolarStatus) renderSolarDataStatus(dom.statusSolar, withObservedChipPhrase(lastSolarStatus, observedLinesDrawn));
+  }
+}
 
 dom.toggleOrbits.addEventListener('change', () => {
   const vis = dom.toggleOrbits.checked;
@@ -1497,6 +1562,8 @@ const frameLifecycle = createFrameLifecycle({
     { name: 'kuiper', run: () => { kuiperBeltUpdater.update(simState.julianDate); } },
     // Controller gates decorative motion; scientific inputs remain simulation JD.
     { name: 'sun', run: ({ timestamp }) => sunCtrl.update(simState.julianDate, timestamp * 0.001) },
+    // Ahead of render: picks the label's row and whether the real GONG lines are drawn.
+    { name: 'observed-field', run: updateObservedField },
     // Together: the moon offset scales the positions this stage has just rewritten.
     { name: 'metric-display', run: () => { applyMetricDisplayOffsets(model, bodyNodes, sunCtrl.getWarpState()); applyMoonAltitudeDisplay(); } },
     { name: 'solar-refresh', run: () => sunCtrl.maybeRefreshPhysics() },

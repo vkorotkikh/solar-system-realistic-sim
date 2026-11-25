@@ -126,6 +126,11 @@
                 <span class="switch-track" aria-hidden="true"><span></span></span>
                 <span class="switch-copy">Solar magnetic field</span>
               </label>
+              <label class="switch-control" id="observed-field-control" hidden>
+                <input id="toggle-observed-field" type="checkbox" />
+                <span class="switch-track" aria-hidden="true"><span></span></span>
+                <span class="switch-copy">Observed field (GONG)<small class="switch-note">Real NSO/GONG map; drawn when the simulation date is inside the map's window.</small></span>
+              </label>
               <label class="switch-control">
                 <input id="toggle-labels" type="checkbox" checked />
                 <span class="switch-track" aria-hidden="true"><span></span></span>
@@ -157,6 +162,9 @@
                 <span class="switch-copy">Realistic scale<small class="switch-note">Off: the Sun and the structures around it are enlarged and not to scale</small></span>
               </label>
             </fieldset>
+
+            <div id="observed-field-label" class="observed-field-label" tabindex="-1" hidden></div>
+            <span id="observed-field-announcer" class="visually-hidden" role="status"></span>
 
             <p class="switch-note">Corona glow is illustrative; eruptions use decorative time-lapse at either scale.</p>
 

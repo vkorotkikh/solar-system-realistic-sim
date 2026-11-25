@@ -17,6 +17,8 @@ interface TimeControllerState {
 
 export interface TimeController {
   bindUi: () => void;
+  /** Set the clock to now and notify, as Now does, without rewriting the planner's dates. */
+  jumpToNow: () => void;
   advanceLocalTime: (deltaSeconds: number) => void;
   updateHud: () => void;
 }
@@ -67,6 +69,11 @@ export function createTimeController({
   signal
 }: CreateTimeControllerArgs): TimeController {
   const stops = timeScaleStops(minTimeScale, maxTimeScale);
+
+  function jumpToNow() {
+    simState.julianDate = currentJulianDate();
+    onTimeJump?.();
+  }
 
   function bindUi() {
     dom.nowTime?.addEventListener('click', () => {
@@ -123,6 +130,7 @@ export function createTimeController({
 
   return {
     bindUi,
+    jumpToNow,
     advanceLocalTime,
     updateHud
   };
