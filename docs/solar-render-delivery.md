@@ -31,11 +31,13 @@ same-epoch poll with reuse is about 2.8 KB. Deltas are not sent.
 The browser requests the start of the 0.01-day step that holds the clock
 reading (`solarPhysicsRequestJd`, owner decision of 2026-11-03). Polls share a
 step only below 28.8× real time, so the speed slider has a **Real time** stop
-(one simulated second per second) between 0 and +12 h/s. At that stop about 29
+(one simulated second per second) between 0 and its first forward stop: +12 h/s
+on the days-per-second scale, +1 h/s when the "Speed in hours per second" switch
+is on. At that stop about 29
 consecutive 30 s polls ask for the same epoch; after the first, the backend
 serves them from its exact ready-result cache and the geometry reuse above
-applies. Every other stop is too fast: the slowest, ±12 h/s, crosses about
-1,500 steps per poll. A paused clock, or one at 0 d/s, already repeats its
+applies. Every other stop is too fast: the slowest, ±1 h/s on the hours scale,
+crosses about 125 steps per poll, and ±12 h/s about 1,500. A paused clock, or one at 0 d/s, already repeats its
 exact epoch. Tabs or clients whose clocks fall inside the same step can also
 share the backend's cache. The drawn state trails the clock by under 0.01 d
 (14.4 simulated minutes, about 0.14° of solar rotation). An epoch already on the grid, such as 00:00 UTC,

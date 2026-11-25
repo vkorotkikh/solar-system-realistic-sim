@@ -174,3 +174,75 @@ describe('speed slider stops', () => {
     expect(f.label.element.textContent).toBe('Simulation · Real time');
   });
 });
+
+// Owner request 2026-11-13, confirmed 2026-11-20: a switch that puts the slider in hours per
+// second, so slow phenomena (a GONG map's window, a rotation) stay on screen for minutes.
+describe('speed slider unit switch', () => {
+  function bound(rate: number, signal?: AbortSignal) {
+    const input = slider(); const speed = tracked(); const label = tracked();
+    const unit = Object.assign(new EventTarget(), { checked: false });
+    const context = { firstElementChild: { textContent: '' }, lastElementChild: { textContent: '' } };
+    const state = { julianDate: 10, timeScaleDaysPerSec: rate, timeScaleDirty: false, paused: false };
+    const time = createTimeController({
+      dom: { timeScale: input as unknown as HTMLInputElement, timeScaleValue: speed.element, sessionLabel: label.element,
+        timeScaleUnit: unit as unknown as HTMLInputElement, timeScaleContext: context as unknown as HTMLElement },
+      simState: state, minTimeScale: -120, maxTimeScale: 120, currentJulianDate: () => 10, formatJulianAsDate: String, signal });
+    time.bindUi();
+    const moveTo = (index: number) => { input.value = String(index); input.dispatchEvent(new Event('input')); };
+    const setHours = (on: boolean) => { unit.checked = on; unit.dispatchEvent(new Event('change')); };
+    const edges = () => [context.firstElementChild.textContent, context.lastElementChild.textContent];
+    return { input, speed, label, state, time, moveTo, setHours, edges };
+  }
+
+  it('leaves the days scale exactly as it was while the switch is off', () => {
+    const f = bound(4);
+    expect([f.input.min, f.input.max, f.input.value]).toEqual(['0', '243', stopIndex(4)]);
+    expect(f.input.attributes['aria-valuetext']).toBe('+4.0 d/s');
+    expect(f.edges()).toEqual(['−120 reverse', '+120 forward']);
+    expect(f.state).toMatchObject({ timeScaleDaysPerSec: 4, timeScaleDirty: false });
+  });
+
+  it('offers every whole hour per second up to a day per second, plus real time, in hours mode', () => {
+    const f = bound(4); f.setHours(true); const rates: number[] = [];
+    for (let i = Number(f.input.min); i <= Number(f.input.max); i++) { f.moveTo(i); rates.push(f.state.timeScaleDaysPerSec); }
+    const hours = (from: number, to: number) => Array.from({ length: to - from + 1 }, (_, k) => (from + k) / 24);
+    expect(rates).toEqual([...hours(-24, 0), REAL_TIME_DAYS_PER_SEC, ...hours(1, 24)]);
+    expect(timeScaleStops(-120, 120, 'hours')).toEqual(rates);
+  });
+
+  it('moves the speed to the nearest stop of the new unit and says so everywhere', () => {
+    const f = bound(4); f.setHours(true); f.time.updateHud();
+    expect(f.state).toMatchObject({ timeScaleDaysPerSec: 1, timeScaleDirty: true });
+    expect(f.input.value).toBe(f.input.max);
+    expect(f.input.attributes['aria-valuetext']).toBe('+24 h/s');
+    expect(f.speed.element.textContent).toBe('+24 h/s');
+    expect(f.label.element.textContent).toBe('Simulation · +24 h/s');
+    expect(f.edges()).toEqual(['−24 h reverse', '+24 h forward']);
+  });
+
+  it('labels every hours-mode stop in hours, zero and real time included', () => {
+    const f = bound(4); f.setHours(true);
+    for (const [rate, text] of [[3 / 24, '+3 h/s'], [-7 / 24, '-7 h/s'], [0, '0 h/s'], [REAL_TIME_DAYS_PER_SEC, 'Real time'], [-1, '-24 h/s']] as const) {
+      f.state.timeScaleDaysPerSec = rate; f.time.updateHud();
+      expect(f.speed.element.textContent).toBe(text);
+    }
+  });
+
+  it('keeps a speed both units share and restores the days scale when switched back', () => {
+    const f = bound(4); f.setHours(true);
+    f.moveTo(Number(f.input.max) - 12);
+    expect(f.state.timeScaleDaysPerSec).toBe(0.5);
+    f.state.timeScaleDirty = false; f.setHours(false); f.time.updateHud();
+    expect(f.state).toMatchObject({ timeScaleDaysPerSec: 0.5, timeScaleDirty: false });
+    expect([f.input.max, f.input.value]).toEqual(['243', stopIndex(0.5)]);
+    expect(f.speed.element.textContent).toBe('+12 h/s');
+    expect(f.edges()).toEqual(['−120 reverse', '+120 forward']);
+  });
+
+  it('ignores the switch after its owner is cancelled', () => {
+    const owner = new AbortController(); const f = bound(4, owner.signal);
+    owner.abort(); f.setHours(true);
+    expect(f.state).toMatchObject({ timeScaleDaysPerSec: 4, timeScaleDirty: false });
+    expect(f.input.max).toBe('243');
+  });
+});
