@@ -21,8 +21,10 @@ vi.mock('./frontend/features/solar/sunVisuals', async importOriginal => {
     updateTransitionRegionShell: vi.fn()
   };
 });
-vi.mock('./frontend/features/solar/solarMagnetics', () => ({
-  createMagneticFieldLines: () => new Group(), updateMagneticFieldLines: vi.fn()
+vi.mock('./frontend/features/solar/solarMagnetics', async (importOriginal) => ({
+  createMagneticFieldLines: () => new Group(), updateMagneticFieldLines: vi.fn(),
+  // The real disposal, as when it was private to the controller.
+  disposeMagneticFieldGroup: (await importOriginal<typeof import('./frontend/features/solar/solarMagnetics')>()).disposeMagneticFieldGroup
 }));
 
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });

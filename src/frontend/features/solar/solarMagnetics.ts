@@ -7,6 +7,8 @@ import {
     Group,
     Line,
     LineBasicMaterial,
+    type Material,
+    type Object3D,
     Vector3
 } from 'three';
 import { coronalToDisplay } from './solarDisplayScale';
@@ -253,7 +255,60 @@ function traceFieldLine(
     return { points, isOpen, polarity };
 }
 
-export function createMagneticFieldLinesFromPFSS(pfssData: any, sunRadiusAu: number, activity: number, frame?: SolarFrameContext): Group {
+/**
+ * How a set of PFSS lines is drawn. Without a style the synthetic model's lines get their
+ * colours and a seeded opacity jitter. With one, every line of a class has the style's colour and
+ * opacity, which suits measured data: the jitter and the pulse are decoration, not data.
+ */
+export interface MagneticFieldLineStyle {
+    closed: string;
+    /** Open lines whose footpoint field points outward (polarity +1). */
+    openOutward: string;
+    /** Open lines whose footpoint field points inward (polarity -1). */
+    openInward: string;
+    closedOpacity: number;
+    openOpacity: number;
+}
+
+/** Real NSO/GONG lines (ADR 0009). Provisional until the owner has looked at the captures. */
+export const OBSERVED_FIELD_LINE_STYLE: Readonly<MagneticFieldLineStyle> = Object.freeze({
+    closed: '#FFFFFF',
+    openOutward: '#E69F00',
+    openInward: '#56B4E9',
+    closedOpacity: 0.30,
+    openOpacity: 0.60,
+});
+
+/** Free the GPU buffers of every line in a field-line group. */
+export function disposeMagneticFieldGroup(group: Object3D | null | undefined): void {
+    if (!group) return;
+    for (const obj of group.children) {
+        const line = obj as Object3D & {
+            geometry?: { dispose(): void };
+            material?: Material | Material[] | null;
+        };
+        if (line.geometry && typeof line.geometry.dispose === 'function') {
+            line.geometry.dispose();
+        }
+        if (line.material) {
+            if (Array.isArray(line.material)) {
+                for (const material of line.material) {
+                    if (material && typeof material.dispose === 'function') material.dispose();
+                }
+            } else if (typeof line.material.dispose === 'function') {
+                line.material.dispose();
+            }
+        }
+    }
+}
+
+export function createMagneticFieldLinesFromPFSS(
+    pfssData: any,
+    sunRadiusAu: number,
+    activity: number,
+    frame?: SolarFrameContext,
+    style?: Readonly<MagneticFieldLineStyle>
+): Group {
     const group = new Group();
     if (frame) applySolarGeometryFrame(group, frame);
 
@@ -261,9 +316,9 @@ export function createMagneticFieldLinesFromPFSS(pfssData: any, sunRadiusAu: num
         return group;
     }
 
-    const closedColor = new Color('#ffe8d6');
-    const openPosColor = new Color('#5df0b4');
-    const openNegColor = new Color('#ff6f91');
+    const closedColor = new Color(style?.closed ?? '#ffe8d6');
+    const openPosColor = new Color(style?.openOutward ?? '#5df0b4');
+    const openNegColor = new Color(style?.openInward ?? '#ff6f91');
 
     for (let i = 0; i < pfssData.lines.length; i++) {
         const trace = pfssData.lines[i];
@@ -285,13 +340,23 @@ export function createMagneticFieldLinesFromPFSS(pfssData: any, sunRadiusAu: num
         const geometry = new BufferGeometry();
         geometry.setAttribute('position', new Float32BufferAttribute(positions, 3));
 
-        let lineColor = closedColor;
+        const lineColor = isOpen ? (trace.polarity > 0 ? openPosColor : openNegColor) : closedColor;
+        if (style) {
+            const opacity = isOpen ? style.openOpacity : style.closedOpacity;
+            const material = new LineBasicMaterial({
+                color: lineColor, transparent: true, opacity, blending: AdditiveBlending, depthWrite: false
+            });
+            const line = new Line(geometry, material);
+            line.userData.baseOpacity = opacity;
+            line.userData.isOpen = isOpen;
+            group.add(line);
+            continue;
+        }
         const jitter = seededNoise(i * 1.37 + activity * 7.1);
         const pseudoScore = 0.5 + jitter * 0.3;
         let opacity = 0.12 + pseudoScore * 0.16 + jitter * 0.05;
 
         if (isOpen) {
-            lineColor = trace.polarity > 0 ? openPosColor : openNegColor;
             opacity = 0.24 + pseudoScore * 0.24 + jitter * 0.08;
         }
 

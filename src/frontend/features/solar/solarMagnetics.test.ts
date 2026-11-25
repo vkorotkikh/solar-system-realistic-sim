@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { Line, LineBasicMaterial, Vector3 } from 'three';
+import { AdditiveBlending, Line, LineBasicMaterial, Vector3 } from 'three';
 import captured from '../../../../backend/tests/fixtures/solar_frames/synthetic_state_2451552.json';
 import {
     computeMagneticField,
     createMagneticFieldLines,
-    createMagneticFieldLinesFromPFSS
+    createMagneticFieldLinesFromPFSS,
+    disposeMagneticFieldGroup,
+    OBSERVED_FIELD_LINE_STYLE
 } from './solarMagnetics';
 
 const ENLARGED_SUN_AU = 0.24599820128898311;
@@ -208,5 +210,61 @@ describe('magnetic coronal height mapping (B029)', () => {
             0, expect.closeTo(0.28289793148233056, 6), 0
         ]);
         expect(vertex(realisticLine, 1).length()).toBeCloseTo(2.5 * REALISTIC_SUN_AU, 8);
+    });
+});
+
+// "Today's Sun" stage A1 (C22, N23, N26, N35): the observed layer draws real GONG lines with
+// the same builder in its own colours, with no seeded opacity jitter, and shares the disposal.
+describe('field-line style for the observed layer', () => {
+    const colorOf = (line: Line) => (line.material as LineBasicMaterial).color.getHexString();
+    const opacityOf = (line: Line) => (line.material as LineBasicMaterial).opacity;
+    const arc = [[1.005, 0, 0], [1.5, 0.2, 0]];
+    const payload = { lines: [
+        { state: 'closed', polarity: 1, arc }, { state: 'closed', polarity: -1, arc },
+        { state: 'open', polarity: 1, arc }, { state: 'open', polarity: 1, arc },
+        { state: 'open', polarity: -1, arc }, { state: 'open', polarity: -1, arc },
+        { state: 'indeterminate', polarity: 1, arc },
+    ] };
+
+    it('leaves the default (synthetic) style exactly as it was', () => {
+        const before = createMagneticFieldLinesFromPFSS(payload, 1, 0.4);
+        const explicit = createMagneticFieldLinesFromPFSS(payload, 1, 0.4, undefined, undefined);
+        expect((before.children as Line[]).map(colorOf)).toEqual(['ffe8d6', 'ffe8d6', '5df0b4', '5df0b4', 'ff6f91', 'ff6f91']);
+        expect((explicit.children as Line[]).map(opacityOf)).toEqual((before.children as Line[]).map(opacityOf));
+        // The seeded jitter makes two lines of one class differ.
+        expect(opacityOf(before.children[2] as Line)).not.toBe(opacityOf(before.children[3] as Line));
+    });
+
+    it('draws the observed style in its three colours with one opacity per class', () => {
+        const group = createMagneticFieldLinesFromPFSS(payload, 1, 0.4, undefined, OBSERVED_FIELD_LINE_STYLE);
+        const lines = group.children as Line[];
+        expect(lines.map(colorOf)).toEqual(['ffffff', 'ffffff', 'e69f00', 'e69f00', '56b4e9', '56b4e9']);
+        expect(lines.map(opacityOf)).toEqual([0.3, 0.3, 0.6, 0.6, 0.6, 0.6]);
+        for (const line of lines) {
+            expect((line.material as LineBasicMaterial).blending).toBe(AdditiveBlending);
+            expect((line.material as LineBasicMaterial).depthWrite).toBe(false);
+        }
+        // No pulse: the updater is never called on this group, and nothing in it asks for one.
+        expect(lines.every(line => line.userData.pulseRate === undefined)).toBe(true);
+    });
+
+    it('keeps its colours apart from the synthetic set', () => {
+        const synthetic = new Set(['ffe8d6', '5df0b4', 'ff6f91']);
+        for (const colour of [OBSERVED_FIELD_LINE_STYLE.closed, OBSERVED_FIELD_LINE_STYLE.openOutward, OBSERVED_FIELD_LINE_STYLE.openInward]) {
+            expect(synthetic.has(colour.replace('#', '').toLowerCase())).toBe(false);
+        }
+    });
+
+    it('disposes every geometry and material of a group', () => {
+        const group = createMagneticFieldLinesFromPFSS(payload, 1, 0.4, undefined, OBSERVED_FIELD_LINE_STYLE);
+        const disposed: string[] = [];
+        for (const line of group.children as Line[]) {
+            line.geometry.addEventListener('dispose', () => disposed.push('geometry'));
+            (line.material as LineBasicMaterial).addEventListener('dispose', () => disposed.push('material'));
+        }
+        disposeMagneticFieldGroup(group);
+        expect(disposed.filter(kind => kind === 'geometry')).toHaveLength(6);
+        expect(disposed.filter(kind => kind === 'material')).toHaveLength(6);
+        disposeMagneticFieldGroup(null);
     });
 });
