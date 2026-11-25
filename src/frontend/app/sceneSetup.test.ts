@@ -91,6 +91,7 @@ const runtimeUiConfig: RuntimeUiConfig = {
   uiHeight: null,
   renderScale: 1,
   maxPixelRatio: 2,
+  observedPfss: false,
 };
 
 function makeSetup() {
