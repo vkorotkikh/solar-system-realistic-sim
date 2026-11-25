@@ -442,6 +442,7 @@ Nearby-system catalogs, JSON manifests, proper-motion utilities and renderer/nav
 
 - A 5,000-object field with named entries and a procedural remainder, using element-driven orbits
 - Binary companions propagated with the field when the simulation date changes
+- Drawn enlarged with the rest of the scene; with Realistic scale on, every object and companion is drawn at its true size, as the asteroids are, so binary pairs separate when you fly close
 - The separate backend Kuiper engine is not connected to this page
 
 The generated population and binary assumptions are visualization models, not a complete measured catalog or a validation of every mutual orbit.
