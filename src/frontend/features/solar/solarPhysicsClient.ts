@@ -284,7 +284,7 @@ function classifyHttpFailure(status: number, code: string | null): SolarPhysicsF
 }
 
 /** `detail` is `{code, message, retryable}` on structured backend errors and a string on plain ones. */
-async function readErrorDetail(response: Response): Promise<{ code: string | null; message: string; validJdRange?: SolarEpochRange | null }> {
+export async function readErrorDetail(response: Response): Promise<{ code: string | null; message: string; validJdRange?: SolarEpochRange | null }> {
   try {
     const body: unknown = await response.json();
     const detail = body && typeof body === 'object' ? (body as { detail?: unknown }).detail : undefined;
@@ -359,7 +359,7 @@ const MAX_SOLAR_ENCODED_BYTES = 512 * 1024;
 const MAX_SOLAR_DECODED_BYTES = 2 * 1024 * 1024;
 const ENCODED_BUDGET_ERROR = 'Solar physics response exceeds encoded byte budget';
 
-async function readSolarJson(response: Response, signal: AbortSignal): Promise<unknown> {
+export async function readSolarJson(response: Response, signal: AbortSignal): Promise<unknown> {
   signal.throwIfAborted();
   const length = Number(response.headers?.get?.('Content-Length'));
   if (Number.isFinite(length) && length > MAX_SOLAR_DECODED_BYTES) {
