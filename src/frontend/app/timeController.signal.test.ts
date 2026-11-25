@@ -36,6 +36,12 @@ describe('time controller runtime listener ownership', () => {
       paused: true, departure: 'JD25', arrival: 'JD265' }]);
   });
 
+  it('jumpTo sets any date the way the Now button sets the present', () => {
+    const f = fixture(); f.time.jumpTo(2_461_656.5);
+    expect(f.jumps).toEqual([{ julianDate: 2_461_656.5, timeScaleDaysPerSec: 2, timeScaleDirty: false,
+      paused: true, departure: 'JD2461656.5', arrival: 'JD2461896.5' }]);
+  });
+
   it('legacy omitted signal preserves speed input and ignores nonfinite values', () => {
     const f = fixture();
     expect([f.timeScale.min, f.timeScale.max, f.timeScale.value]).toEqual(['0', String(timeScaleStops(-120, 120).length - 1), stopIndex(2)]);

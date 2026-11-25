@@ -1,6 +1,6 @@
 # Sun Model Lab
 
-A Sun-focused browser visualization of the solar system, with local orbital propagation, procedural Sun and planet visuals, asteroid/Kuiper belts, and experimental AGN displays. An optional Python backend provides synthetic solar-state data and separate N-body, trajectory, mission and benchmark APIs. The page includes moons, a mission planner and an optional Earth-satellite layer; the retained nearby-system and cloud interfaces are not exposed.
+A Sun-focused browser visualization of the solar system, with local orbital propagation, procedural Sun and planet visuals, asteroid/Kuiper belts, and experimental AGN displays. An optional Python backend provides synthetic solar-state data and separate N-body, trajectory, mission and benchmark APIs. The page includes moons, a mission planner, an optional Earth-satellite layer and a trip assistant that plans trips from plain-language prompts when the backend has a model configured; the retained nearby-system and cloud interfaces are not exposed.
 
 ## Highlights
 
@@ -244,6 +244,26 @@ The model call is in `backend/planner/agent/provider_anthropic.py`, the only
 file that imports the Anthropic SDK; another provider would be a sibling
 module with the same `call_model` function.
 
+The page's control panel has a **Trip assistant** section. Opening it asks the
+backend whether the agent is on; a page that never opens it sends nothing. With
+no model set, or no backend, the section says so and its controls stay
+disabled; close and reopen it after starting the backend with a model. Type a
+trip and the reply appears in a short conversation with:
+
+- a card whose dates, flight time and delta-v come straight from the planner's
+  trip object, with each burn and the trip's approximations;
+- the route drawn in the scene for legs around the Sun, as an illustrative arc
+  between where the bodies are on the departure and arrival dates (legs around
+  one planet, such as Earth to the Moon, are not drawn yet);
+- buttons for the choices when the planner asks which place you meant;
+- one line per app action it applied. Setting the date also pauses the clock,
+  so the date stays on screen.
+
+The page checks each action again before applying it and skips anything other
+than a camera move to a known body, a date from 1990 to 2050, or one of the
+eight display switches. The conversation lives in the page for the session;
+"New chat" clears it.
+
 ## Project Structure
 
 Inventory of active and retained modules; this is not a live wiring diagram.
@@ -315,6 +335,8 @@ records the runtime owners.
 │   │   │   │   │                              #   solarProminences.ts and solarWind.ts are retained, not wired
 │   │   │   ├── superluminal-modeling/         # SMBH/AGN shockwave engine,
 │   │   │   │   │                              #   propagation, warp slipstream visuals
+│   │   │   ├── planner/                       # Trip assistant: prompt box, agent client, action
+│   │   │   │   │                              #   applier, trip card and route for the agent's replies
 │   │   │   └── trajectory/                    # Planner client and local patched-conic fallback
 │   │   │       ├── index.ts                   #   Backend trajectory client with offline fallback
 │   │   │       └── localPlanner.ts            #   Local route planning and arc construction
