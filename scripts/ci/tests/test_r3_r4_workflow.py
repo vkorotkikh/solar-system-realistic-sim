@@ -267,7 +267,7 @@ def test_provenance_command_hashes_actual_checkout_lock_and_sorted_dist_files(tm
     assert {relative: (tmp_path / "dist" / relative).read_bytes() for relative in assets} == assets
 
 
-def test_existing_frontend_jobs_and_four_browser_projects_remain_blocking():
+def test_existing_frontend_jobs_and_five_browser_projects_remain_blocking():
     jobs = yaml.safe_load(FRONTEND_WORKFLOW.read_text())["jobs"]
     assert {"ui", "browser"} <= jobs.keys()
     for name in ("ui", "browser"):
@@ -284,5 +284,7 @@ def test_existing_frontend_jobs_and_four_browser_projects_remain_blocking():
         "chromium-tab-zoom": "chromium",
         "firefox": "firefox",
         "webkit": "webkit",
+        # The observed-field spec on its flagged dev server (ADR 0009).
+        "chromium-observed": "chromium",
     }
     _command_index(browser["steps"], "npm run test:browser -- --project=${{ matrix.project }}")
