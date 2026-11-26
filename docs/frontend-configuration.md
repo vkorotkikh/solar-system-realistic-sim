@@ -13,6 +13,8 @@ Viewport settings accept query parameters first, then their `VITE_*` environment
 | `renderScale` | `VITE_RENDER_SCALE` | 1 | 0.5-3 |
 | `maxPixelRatio` | `VITE_MAX_PIXEL_RATIO` | 2 | 1-4 |
 
+`VITE_SOLAR_OBSERVED_PFSS` turns on the real GONG field-line layer (ADR 0009). Only `1` turns it on; unset, empty and `0` leave it off; any other value, such as `true`, stops the page at startup with a configuration error. It is read only from the build environment, never from the address bar, so changing it needs a restart of Vite or a new build. With it on, the Display panel shows the **Observed field (GONG)** switch, which asks the backend for `GET /solar/observed/pfss` when switched on and every 30 minutes while on. With it off there is no switch and no request. The backend half is set by `SOLAR_OBSERVED_PFSS_SIDECAR`; see the README's solar section.
+
 Width and height apply independently to the viewport shell, constrained to available width/viewport height. They do not emulate a mobile device or change media-query viewport dimensions. Narrow/short page reflow remains based on the actual CSS viewport. Drawing-buffer pixel ratio is `min(devicePixelRatio, maxPixelRatio) * renderScale`; camera aspect uses the actual canvas CSS dimensions. Invalid supplied numbers fail explicitly rather than silently clamping to a different setting. Resize observation covers both shell and canvas.
 
 `SimulationClient` status: **API/library-only; not integrated into the default UI.** The client and its protocol tests are retained alongside the backend repairs. The default entry point uses local Keplerian propagation; configuring a backend origin does not select a server-authoritative N-body mode. Active solar HTTP clients remain part of the shipped application.
