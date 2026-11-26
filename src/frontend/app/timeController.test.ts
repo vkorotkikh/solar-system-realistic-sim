@@ -174,3 +174,26 @@ describe('speed slider stops', () => {
     expect(f.label.element.textContent).toBe('Simulation · Real time');
   });
 });
+
+// "Today's Sun" stage A1 (C2, N9): the observed label's "Jump to now and pause" button jumps the
+// clock and refreshes the Sun like Now, and leaves the trajectory planner's dates alone.
+describe('jumpToNow for the observed-field button', () => {
+  it('sets the clock to now and notifies, without touching the planner dates, pause or speed', () => {
+    const nowTime = new EventTarget();
+    const plannerDate = { value: 'planned departure' }, plannerArrivalDate = { value: 'planned arrival' };
+    const state = { julianDate: 1, timeScaleDaysPerSec: 4, timeScaleDirty: false, paused: false };
+    const jumps: number[] = [];
+    const time = createTimeController({
+      dom: { nowTime: nowTime as HTMLElement, plannerDate: plannerDate as HTMLInputElement, plannerArrivalDate: plannerArrivalDate as HTMLInputElement },
+      simState: state, minTimeScale: -120, maxTimeScale: 120,
+      currentJulianDate: () => 42, formatJulianAsDate: jd => `JD${jd}`, onTimeJump: () => jumps.push(state.julianDate),
+    });
+    time.bindUi();
+    time.jumpToNow();
+    expect(state).toEqual({ julianDate: 42, timeScaleDaysPerSec: 4, timeScaleDirty: false, paused: false });
+    expect(jumps).toEqual([42]);
+    expect([plannerDate.value, plannerArrivalDate.value]).toEqual(['planned departure', 'planned arrival']);
+    nowTime.dispatchEvent(new Event('click'));
+    expect([plannerDate.value, plannerArrivalDate.value]).toEqual(['JD42', 'JD282']);
+  });
+});

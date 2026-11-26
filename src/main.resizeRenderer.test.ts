@@ -34,7 +34,7 @@ function fixture({ ratio = 2, dpr = 2, scale = 1, max = 2 } = {}) {
   const startup = new AbortController();
   const recovery = { available: true };
   const window = { devicePixelRatio: dpr };
-  const runtimeUiConfig: RuntimeUiConfig = { backendOrigin: '', uiWidth: null, uiHeight: null, renderScale: scale, maxPixelRatio: max };
+  const runtimeUiConfig: RuntimeUiConfig = { backendOrigin: '', uiWidth: null, uiHeight: null, renderScale: scale, maxPixelRatio: max, observedPfss: false };
   let currentRatio = ratio, width = 600, height = 400;
   const renderer = {
     getPixelRatio: vi.fn(() => currentRatio),

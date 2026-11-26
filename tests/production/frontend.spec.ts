@@ -173,6 +173,11 @@ test('compiled artifact loads real bundles, worker, verified catalog and legal n
     await expect(page.locator('#status-zoom')).toHaveText(/^Range · (?!—).+ AU$/);
     await expect(page.locator('#renderer-unavailable')).toBeHidden();
     expect(await page.evaluate(() => '__uiFixture' in window)).toBe(false);
+    // ADR 0009: a default build has no observed-field switch and never asks for the sidecar.
+    // The hidden attribute itself: the Display section is closed, so visibility alone proves nothing.
+    expect(await page.locator('#observed-field-control').evaluate(node => (node as HTMLElement).hidden)).toBe(true);
+    expect(await page.locator('#observed-field-label').evaluate(node => (node as HTMLElement).hidden)).toBe(true);
+    expect(requests.filter(request => new URL(request.url).pathname === '/solar/observed/pfss')).toEqual([]);
 
     evidence.graphics = await page.locator('#space-canvas').evaluate((canvas: HTMLCanvasElement) => {
       const gl = canvas.getContext('webgl2');

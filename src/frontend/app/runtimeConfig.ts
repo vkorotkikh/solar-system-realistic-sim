@@ -1,6 +1,8 @@
 export interface RuntimeUiConfig {
   backendOrigin: string;
   uiWidth: number | null; uiHeight: number | null; renderScale: number; maxPixelRatio: number;
+  /** Build-time opt-in for the real GONG field-line layer (ADR 0009); never read from the URL. */
+  observedPfss: boolean;
 }
 export interface RuntimeConfigCreateArgs { search?: string; env?: Record<string, string | undefined>; pageOrigin?: string }
 export function resolveBackendOrigin(configured: string | undefined, pageOrigin: string): string {
@@ -12,6 +14,13 @@ export function resolveBackendOrigin(configured: string | undefined, pageOrigin:
   }
   if (pageOrigin.startsWith('https:') && url.protocol !== 'https:') throw new Error('HTTPS pages require an HTTPS backend origin');
   return url.origin;
+}
+/** Only "1" turns the observed-field switch on; unset, empty and "0" leave it off. */
+export function resolveObservedPfssFlag(raw: string | undefined): boolean {
+  const value = raw?.trim() ?? '';
+  if (value === '1') return true;
+  if (value === '' || value === '0') return false;
+  throw new Error('VITE_SOLAR_OBSERVED_PFSS must be 1, 0 or unset');
 }
 export function createRuntimeUiConfig({ search = typeof window === 'undefined' ? '' : window.location.search,
   env = import.meta.env, pageOrigin = typeof window === 'undefined' ? 'http://localhost' : window.location.origin }: RuntimeConfigCreateArgs = {}): RuntimeUiConfig {
@@ -29,6 +38,7 @@ export function createRuntimeUiConfig({ search = typeof window === 'undefined' ?
     uiHeight: number('uiHeight', 'VITE_UI_HEIGHT', null, 160, 10_000),
     renderScale: number('renderScale', 'VITE_RENDER_SCALE', 1, .5, 3)!,
     maxPixelRatio: number('maxPixelRatio', 'VITE_MAX_PIXEL_RATIO', 2, 1, 4)!,
+    observedPfss: resolveObservedPfssFlag(env.VITE_SOLAR_OBSERVED_PFSS),
   };
 }
 export function renderPixelRatio(config: RuntimeUiConfig, devicePixelRatio: number) {

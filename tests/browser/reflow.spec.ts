@@ -9,7 +9,9 @@ for(const [width,height] of [[195,422],[320,568],[390,844],[844,390],[1100,800],
     const geometry=await page.evaluate(()=>{const panel=document.getElementById('control-panel')!;const rect=panel.getBoundingClientRect();return {root:document.documentElement.scrollWidth-innerWidth,panel:panel.scrollWidth-panel.clientWidth,right:rect.right};});
     expect(geometry.root).toBeLessThanOrEqual(1);expect(geometry.panel).toBeLessThanOrEqual(1);
     if(width>=320 && width<=1100)expect(width-geometry.right).toBeGreaterThanOrEqual(24);
-    const controls=page.locator('#control-panel button,#control-panel input,#control-panel select,#control-panel summary');
+    // The observed-field switch exists only in a VITE_SOLAR_OBSERVED_PFSS=1 build; elsewhere it stays hidden.
+    // observed-field.spec.ts checks its reach in the flagged build.
+    const controls=page.locator('#control-panel button,#control-panel input:not(#toggle-observed-field),#control-panel select,#control-panel summary');
     for(const element of await controls.all()){
       await element.scrollIntoViewIfNeeded();const rect=await element.boundingBox();expect(rect).not.toBeNull();
       expect(rect!.x).toBeGreaterThanOrEqual(-1);expect(rect!.x+rect!.width).toBeLessThanOrEqual(geometry.right+1);

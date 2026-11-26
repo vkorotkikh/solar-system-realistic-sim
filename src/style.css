@@ -718,6 +718,58 @@ label,
   font-size: 0.7rem;
 }
 
+/* Real GONG field lines (ADR 0009): a label block under the switch list. It wraps at any width
+   and reserves no height, so a change of row moves only what is below it. */
+.observed-field-label {
+  display: grid;
+  gap: var(--space-2);
+  margin: var(--space-2) 0;
+  color: var(--color-text);
+  font-size: 0.8rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.observed-field-label:focus-visible {
+  outline: 2px solid var(--color-accent, #e5a75b);
+  outline-offset: 2px;
+}
+
+.observed-field-label p {
+  margin: 0;
+}
+
+.observed-field-label__headline {
+  font-weight: 600;
+}
+
+.observed-field-label__offset {
+  font-weight: 400;
+  color: var(--color-muted);
+}
+
+.observed-field-label__muted {
+  color: var(--color-muted);
+}
+
+.observed-field-label__legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.observed-field-label__swatch {
+  display: inline-block;
+  width: 14px;
+  height: 3px;
+  border-radius: 2px;
+}
+
+.observed-field-label__details > summary {
+  cursor: pointer;
+  color: var(--color-muted);
+}
+
 .field-stack {
   display: grid;
   gap: 6px;

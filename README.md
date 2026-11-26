@@ -417,15 +417,21 @@ Snapshot transitions use a fixed 1.5-second decorative blend; [rotation and disp
 
 The solar-wind outflow uses illustrative Parker-curve tracers from the source surface, not physical bulk-wind trajectories; near Earth, bulk wind flows [approximately radially](https://www.nasa.gov/solar-system/nasas-parker-solar-probe-sheds-new-light-on-the-sun/). The nearest of the backend's six spiral arms (WSA-inspired where available, otherwise the empirical coronal-hole split) sets each particle's current outward rate and tint: amber for slow wind, cyan-blue for fast. Each particle retains its Parker curvature until it wraps, avoiding jumps on backend polls. It appears only when backend spiral geometry is admitted. Motion follows the decorative clock rather than simulated time, and latitude structure beyond the arms' sector speeds is not modeled. Rendered evidence: [agent-notes/SOLAR_WIND_VISUAL_2026-10-31_EVIDENCE](agent-notes/SOLAR_WIND_VISUAL_2026-10-31_EVIDENCE/README.md).
 
-#### Real GONG field lines (opt-in backend half, stage A1)
+#### Real GONG field lines (opt-in, stage A1)
 
-`scripts/observed_pfss_probe.py` fetches the newest NSO/GONG synoptic map, corrects its flux imbalance the way NASA's WSA does, solves the potential field at degree 90 and writes one file, the observed-PFSS sidecar. The backend serves that file at `GET /solar/observed/pfss`. `/solar/physics` stays synthetic, and the page draws the file only once the frontend switch of the next stage exists. The decisions and their evidence are in [ADR 0009](docs/adr/0009-observed-gong-admission-and-frame-check.md).
+`scripts/observed_pfss_probe.py` fetches the newest NSO/GONG synoptic map, corrects its flux imbalance the way NASA's WSA does, solves the potential field at degree 90 and writes one file, the observed-PFSS sidecar. The backend serves that file at `GET /solar/observed/pfss`, and a build made with `VITE_SOLAR_OBSERVED_PFSS=1` draws its lines on the Sun under a switch in the Display panel. `/solar/physics` stays synthetic. The decisions and their evidence are in [ADR 0009](docs/adr/0009-observed-gong-admission-and-frame-check.md).
+
+Run it, from a checkout whose toolchain already works:
 
 ```bash
 export SOLAR_OBSERVED_PFSS_SIDECAR="$HOME/observed-pfss.json"   # an absolute path
 python scripts/observed_pfss_probe.py                            # a few seconds; prints one JSON line
-curl --compressed http://127.0.0.1:8042/solar/observed/pfss      # after starting the backend with the variable set
+VITE_SOLAR_OBSERVED_PFSS=1 npm run dev:full
 ```
+
+Then open Display, turn on **Observed field (GONG)** and press **Jump to now and pause**. The page starts at today's date and runs at +4 days per second, so the map is in view for only a few seconds unless the clock is paused, at Real time or slow. A smoke test of the route alone is `curl --compressed http://127.0.0.1:8042/solar/observed/pfss`.
+
+What you see: closed lines in white, open lines whose field points outward in orange and inward in blue, with no pulse. The label under the switches gives the map's time and its offset from the simulation date, the degree, the flux correction and the frame check, and says that the map is synoptic (its far side is up to 27 days older) and that it was not checked against NASA's own lines. While the lines are drawn, the Sun chip ends with "real GONG field lines drawn". A map is drawn while the simulation date is within one solar rotation, 27.3 days, of the map's time.
 
 The backend reads `SOLAR_OBSERVED_PFSS_SIDECAR` once at startup, refuses a relative path, and logs the path and whether the file exists. It reads the file on every request, so a later probe run needs no restart. `python scripts/observed_pfss_probe.py --help` lists every flag and gives an hourly cron line. A map is refused when its signed flux is more than 10% of its unsigned flux, and a file is marked as failing its frame check when the map's central meridian and the ephemeris disagree by more than 2°.
 

@@ -9,7 +9,6 @@ import {
 import type {
   BufferGeometry,
   Camera,
-  Material,
   Mesh,
   Object3D,
   Points,
@@ -59,7 +58,7 @@ import {
   updateTransitionRegionShell
 } from './frontend/features/solar/sunVisuals';
 import { SolarFlareManager } from './frontend/features/solar/solarFlares';
-import { createMagneticFieldLines, updateMagneticFieldLines } from './frontend/features/solar/solarMagnetics';
+import { createMagneticFieldLines, disposeMagneticFieldGroup, updateMagneticFieldLines } from './frontend/features/solar/solarMagnetics';
 import {
   clampUnit,
   finiteOrNull,
@@ -81,6 +80,7 @@ import {
   pickAiaObservationChannel,
   type SolarObservationPhysicsStateLike
 } from './frontend/features/solar/solarObservationTexture';
+import type { ObservedFieldLayer } from './frontend/features/solar/observedFieldLayer';
 import {
   describeSolarDataStatus,
   solarStateLagLabelDays,
@@ -100,6 +100,8 @@ export interface CreateSunControllerOptions {
   getSunRadiusAu: () => number;
   isMagneticFieldEnabled: () => boolean;
   onSolarDataStatus?: (status: SolarDataSourceStatus) => void;
+  /** The real GONG field lines (ADR 0009); absent unless VITE_SOLAR_OBSERVED_PFSS=1. */
+  observedFieldLayer?: ObservedFieldLayer | null;
 }
 
 const TWO_PI = Math.PI * 2;
@@ -193,7 +195,8 @@ export function createSunController({
   observationTextureLoader,
   getSunRadiusAu,
   isMagneticFieldEnabled,
-  onSolarDataStatus
+  onSolarDataStatus,
+  observedFieldLayer = null
 }: CreateSunControllerOptions) {
   let sunSurfaceMaterial: ShaderMaterial | null = null;
   let sunCoronaMaterial: ShaderMaterial | null = null;
@@ -425,28 +428,6 @@ export function createSunController({
       : `analytic:${Math.round(clampUnit(activity) * 12)}`;
   }
 
-  function disposeMagneticFieldGroup(group: Object3D | null) {
-    if (!group) return;
-    for (const obj of group.children) {
-      const line = obj as Object3D & {
-        geometry?: { dispose(): void };
-        material?: Material | Material[] | null;
-      };
-      if (line.geometry && typeof line.geometry.dispose === 'function') {
-        line.geometry.dispose();
-      }
-      if (line.material) {
-        if (Array.isArray(line.material)) {
-          for (const material of line.material) {
-            if (material && typeof material.dispose === 'function') material.dispose();
-          }
-        } else if (typeof line.material.dispose === 'function') {
-          line.material.dispose();
-        }
-      }
-    }
-  }
-
   function rebuildMagneticFieldLines(force = false, activityOverride: number | null | undefined = null) {
     if (!sunVisualNode) return;
     const activity = resolveMagneticFieldActivity(
@@ -583,6 +564,10 @@ export function createSunController({
 
     sunGlowSprite = createSunGlow(sunRadiusAu);
     node.add(sunGlowSprite);
+    if (observedFieldLayer) {
+      observedFieldLayer.setScale(sunRadiusAu);
+      node.add(observedFieldLayer.group);
+    }
 
     const coronaMesh = createSunCoronaShell(sunGeometry);
     coronaMesh.scale.setScalar(sunRadiusAu * (coronaMesh.userData.surfaceScale ?? 1.15));
@@ -790,6 +775,7 @@ export function createSunController({
       updateSunFlaresUniforms(sunSurfaceMaterial, solarFlareParamsInSurfaceFrame(solarFlareManager.getActiveFlaresParams()));
     }
 
+    observedFieldLayer?.update(julianDate);
     if (sunMagneticFieldGroup) {
       // Analytic lines live in the turning body frame. Backend lines are frozen at their snapshot
       // epoch and carried with the Sun's rotation, so they stay on the surface between snapshots.
@@ -1031,6 +1017,7 @@ export function createSunController({
     // A scale change redraws the same field and loops: keep the field's activity (the cycle
     // model's after a clear) and the loops a cleared state is still fading out.
     rebuildMagneticFieldLines(true, sunMagneticFieldGroup?.userData.activity);
+    observedFieldLayer?.setScale(r);
     const bv = buildSolarFeatureBlendView(220);
     updateSunCoronalLoopsFromBlendViewImpl(sunCoronalLoopGroup, (solarLayerFrames.loops ?? fadingSolarLayerFrames.loops) ? bv : null, r, 144);
     updateSunParkerSpiralFromPhysicsStateImpl(
@@ -1137,6 +1124,7 @@ export function createSunController({
     sunMagneticFieldGroup?.removeFromParent();
     sunMagneticFieldGroup = null;
     sunMagneticFieldSignature = null;
+    observedFieldLayer?.dispose();
     sunMagneticFieldFrame = null;
     clearSunCoronalLoopsImpl(sunCoronalLoopGroup);
     sunCoronalLoopGroup?.removeFromParent();

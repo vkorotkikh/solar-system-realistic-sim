@@ -24,3 +24,21 @@ it('applies independent viewport dimensions and actual render scale',()=>{
 it.each(['?uiWidth=0','?uiHeight=Infinity','?renderScale=4','?maxPixelRatio=NaN'])('rejects invalid supplied viewport configuration %s',search=>{
   expect(()=>createRuntimeUiConfig({env:{},search,pageOrigin:'http://localhost'})).toThrow();
 });
+
+// "Today's Sun" stage A1 (X8): the observed-field switch is opt-in at build time. Only "1" turns
+// it on; a mistyped value is a configuration error, like the other settings here.
+describe('the observed-field flag', () => {
+  const config = (value: string | undefined) => createRuntimeUiConfig({
+    env: value === undefined ? {} : { VITE_SOLAR_OBSERVED_PFSS: value }, search: '', pageOrigin: 'http://localhost',
+  });
+  it('is on only for 1', () => {
+    expect(config('1').observedPfss).toBe(true);
+    for (const off of [undefined, '', '0', '  ']) expect(config(off).observedPfss).toBe(false);
+  });
+  it.each(['true', 'yes', '2', 'on', ' 1x'])('refuses %j at startup', value => {
+    expect(() => config(value)).toThrow('VITE_SOLAR_OBSERVED_PFSS must be 1, 0 or unset');
+  });
+  it('cannot be turned on from the address bar', () => {
+    expect(createRuntimeUiConfig({ env: {}, search: '?observedPfss=1&VITE_SOLAR_OBSERVED_PFSS=1', pageOrigin: 'http://localhost' }).observedPfss).toBe(false);
+  });
+});
