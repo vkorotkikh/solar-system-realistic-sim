@@ -69,7 +69,7 @@ from pydantic import (
 )
 from starlette.responses import JSONResponse, PlainTextResponse
 
-from solar_delivery import DELIVERY_HEADER, render_solar_response
+from solar_delivery import DELIVERY_HEADER, MAX_DECODED_BYTES, encode_solar_body, render_solar_response
 
 from benchmark import (
     InvalidReportOutputPathError,
@@ -132,6 +132,7 @@ from planner.places import PLACES, find_places, place_json
 from planner.plans import PlanRequest, solve_plan
 from planner.trips import SEARCH_SECONDS as PLANNER_SEARCH_SECONDS, TripSearchRequest, search_trips
 from planner.vehicle import VehicleCheckRequest, check_vehicle
+from sim import observed_pfss_sidecar
 from sim.base import SimulationEngine
 from sim.contracts import attach_runtime_telemetry, normalize_state_update
 from sim.kuiper import KuiperActivationError, KuiperBeltEngine
@@ -224,6 +225,7 @@ async def _app_lifespan(_application: FastAPI):
     # lifespan owns exactly one live runner and synchronously reaps its children
     # before shutdown completes.
     _get_solar_physics_runner()
+    _log_observed_pfss_sidecar()
     try:
         yield
     finally:
@@ -1065,6 +1067,14 @@ SOLAR_REALTIME_RATE_WINDOW_SECONDS = _load_bounded_env_float(
     min_value=1.0,
     max_value=300.0,
 )
+# The observed-PFSS sidecar route (ADR 0009) has its own budget, so toggling the
+# observed layer cannot use up the physics route's; it shares the realtime window.
+SOLAR_OBSERVED_PFSS_RATE_LIMIT_PER_WINDOW = _load_bounded_env_int(
+    "SOLAR_OBSERVED_PFSS_RATE_LIMIT_PER_WINDOW",
+    36,
+    min_value=2,
+    max_value=120,
+)
 SOLAR_REALTIME_CONCURRENT_REQUEST_LIMIT = _load_bounded_env_int(
     "SOLAR_REALTIME_CONCURRENT_REQUEST_LIMIT",
     2,
@@ -1500,6 +1510,8 @@ _solar_realtime_concurrent_guard = threading.BoundedSemaphore(
 )
 _solar_aia_tile_rate_locks: OrderedDict[str, deque[float]] = OrderedDict()
 _solar_aia_tile_rate_lock = threading.Lock()
+_solar_observed_pfss_rate_locks: OrderedDict[str, deque[float]] = OrderedDict()
+_solar_observed_pfss_rate_lock = threading.Lock()
 _solar_aia_tile_concurrent_guard = threading.BoundedSemaphore(SOLAR_AIA_TILE_CONCURRENT_REQUEST_LIMIT)
 _trajectory_plan_concurrent_guard = threading.BoundedSemaphore(TRAJECTORY_PLAN_CONCURRENT_REQUEST_LIMIT)
 _trajectory_lambert_concurrent_guard = threading.BoundedSemaphore(TRAJECTORY_LAMBERT_CONCURRENT_REQUEST_LIMIT)
@@ -2121,6 +2133,17 @@ def _enforce_solar_aia_tile_rate_limit(request: Request) -> None:
         window_seconds=SOLAR_AIA_TILE_RATE_WINDOW_SECONDS,
         max_requests=SOLAR_AIA_TILE_RATE_LIMIT_PER_WINDOW,
         message="Solar AIA tile request rate limit exceeded; retry later.",
+    )
+
+
+def _enforce_solar_observed_pfss_rate_limit(request: Request) -> None:
+    _enforce_solar_rate_limit(
+        request,
+        store=_solar_observed_pfss_rate_locks,
+        lock=_solar_observed_pfss_rate_lock,
+        window_seconds=SOLAR_REALTIME_RATE_WINDOW_SECONDS,
+        max_requests=SOLAR_OBSERVED_PFSS_RATE_LIMIT_PER_WINDOW,
+        message="Solar observed-field request rate limit exceeded; retry later.",
     )
 
 
@@ -3742,6 +3765,102 @@ async def solar_realtime_aia_tile(
     if canonical_image_date is not None:
         response.headers["X-Solar-AIA-Image-Date"] = canonical_image_date
     return response
+
+
+def _load_observed_pfss_sidecar_path(source: Mapping[str, str]) -> Path | None:
+    """Where the observed-PFSS sidecar lives, or None while the route is off."""
+    raw = source.get("SOLAR_OBSERVED_PFSS_SIDECAR", "").strip()
+    if not raw:
+        return None
+    path = Path(raw)
+    # The launcher starts the backend inside backend/, so a relative path would
+    # silently point there.
+    if not path.is_absolute():
+        raise RuntimeError("SOLAR_OBSERVED_PFSS_SIDECAR must be an absolute path.")
+    return path
+
+
+SOLAR_OBSERVED_PFSS_SIDECAR_PATH = _load_observed_pfss_sidecar_path(os.environ)
+# A child of uvicorn's own logger, which uvicorn shows at INFO; a logger outside its tree is
+# shown only from WARNING up, so the startup line would be lost.
+_OBSERVED_PFSS_LOGGER = logging.getLogger("uvicorn.error").getChild("solar.observed")
+# status, fixed message naming the next step, retryable. Never the path or the file's content.
+_OBSERVED_PFSS_REFUSALS: dict[str, tuple[int, str, bool]] = {
+    "solar_observed_sidecar_disabled": (
+        404, "Set SOLAR_OBSERVED_PFSS_SIDECAR on the backend and restart it.", False),
+    "solar_observed_sidecar_unavailable": (503, "Run scripts/observed_pfss_probe.py.", False),
+    "solar_observed_sidecar_invalid": (500, "Run the probe again from this checkout.", False),
+    "solar_observed_sidecar_too_large": (413, "Run the probe with a lower --line-count.", False),
+    "solar_observed_sidecar_gzip_required": (413, "Retry with Accept-Encoding: gzip.", True),
+}
+
+
+def _log_observed_pfss_sidecar() -> None:
+    path = SOLAR_OBSERVED_PFSS_SIDECAR_PATH
+    if path is not None:
+        _OBSERVED_PFSS_LOGGER.info(
+            "observed PFSS sidecar: %s (file %s)", path, "exists" if path.is_file() else "missing")
+
+
+def _observed_pfss_refusal(code: str, reason: str | None = None) -> HTTPException:
+    status_code, message, retryable = _OBSERVED_PFSS_REFUSALS[code]
+    if reason is not None:
+        # One line per refused file: the code and a reason from a fixed list, never an exception's text.
+        _OBSERVED_PFSS_LOGGER.warning(
+            "observed PFSS sidecar refused: %s (%s)", code, reason, extra={"code": code, "reason": reason})
+    return HTTPException(
+        status_code=status_code,
+        detail={"code": code, "message": message, "retryable": retryable},
+    )
+
+
+@app.get("/solar/observed/pfss")
+def solar_observed_pfss(request: Request):
+    """Serve the observed-PFSS sidecar that scripts/observed_pfss_probe.py wrote (ADR 0009).
+
+    A plain function, so FastAPI runs its file read, validation and compression
+    in the threadpool and not on the event loop that serves /solar/physics. The
+    file is read on every request, so a new probe run needs no restart.
+    """
+    _require_optional_solar_api_key(request)
+    _enforce_solar_observed_pfss_rate_limit(request)
+    if request.query_params:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "unknown_query_parameters",
+                "message": "Unknown query parameters for /solar/observed/pfss.",
+                "retryable": False,
+            },
+        )
+    path = SOLAR_OBSERVED_PFSS_SIDECAR_PATH
+    if path is None:
+        raise _observed_pfss_refusal("solar_observed_sidecar_disabled")
+    try:
+        with open(path, "rb") as handle:
+            # One byte past the limit shows an oversize file without reading or parsing it.
+            raw = handle.read(MAX_DECODED_BYTES + 1)
+    except FileNotFoundError:
+        raise _observed_pfss_refusal("solar_observed_sidecar_unavailable", "missing") from None
+    except OSError:
+        raise _observed_pfss_refusal("solar_observed_sidecar_unavailable", "unreadable") from None
+    if len(raw) > MAX_DECODED_BYTES:
+        raise _observed_pfss_refusal("solar_observed_sidecar_too_large", "too_large")
+    try:
+        observed_pfss_sidecar.load_sidecar(raw)
+    except observed_pfss_sidecar.SidecarError as error:
+        raise _observed_pfss_refusal("solar_observed_sidecar_invalid", error.reason) from None
+    encoded, compressed, within_budget = encode_solar_body(raw, request.headers.get("accept-encoding", ""))
+    if not within_budget:
+        raise _observed_pfss_refusal(
+            "solar_observed_sidecar_too_large" if compressed else "solar_observed_sidecar_gzip_required",
+            "too_large",
+        )
+    headers = {"Cache-Control": "no-store", "Vary": "Accept-Encoding"}
+    if compressed:
+        headers["Content-Encoding"] = "gzip"
+    # The bytes that were read and validated, not a re-serialisation of them.
+    return Response(encoded, media_type="application/json", headers=headers)
 
 
 @app.get("/solar/physics")

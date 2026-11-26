@@ -59,6 +59,18 @@ SCALED_FLUX_IMBALANCE_LIMIT = 0.05
 IMPLEMENTED_FLUX_BALANCE_POLICY_VERSIONS = frozenset(
     (FLUX_BALANCE_POLICY_VERSION, SCALED_FLUX_BALANCE_POLICY_VERSION),
 )
+# NASA WSA's own correction (MPCORR method 2) under the owner's cap, ADR 0009.
+# Not in IMPLEMENTED_FLUX_BALANCE_POLICY_VERSIONS: the PFSS cache refuses such
+# snapshots until its validator learns the policy (stage A2).
+WSA_METHOD_2_FLUX_BALANCE_POLICY_VERSION = "wsa-method-2-polarity-scale-v1"
+WSA_METHOD_2_FLUX_IMBALANCE_LIMIT = 0.10
+FLUX_POLICY_ROUNDOFF_OR_TRUSTED = "roundoff-or-trusted"
+FLUX_POLICY_WSA_METHOD_2 = "wsa-method-2"
+_FLUX_QUALITY_FLAGS = {
+    FLUX_BALANCE_POLICY_VERSION: "flux-balanced-roundoff-only",
+    SCALED_FLUX_BALANCE_POLICY_VERSION: "flux-balanced-bounded-polarity-scaling",
+    WSA_METHOD_2_FLUX_BALANCE_POLICY_VERSION: "flux-balanced-wsa-method-2",
+}
 TRUSTED_SCALED_OBSERVATION_SHA256 = (
     "e405550e1f8844bf5556419e7137aa6eb9bce79e0292a628df2c1ece28872ee8"
 )
@@ -866,6 +878,67 @@ def _balance_flux(
     )
 
 
+def _balance_flux_wsa_method_2(
+    field_gauss: np.ndarray,
+) -> tuple[np.ndarray, FluxBalanceMetrics]:
+    """Balance a map the way NASA's WSA does (MPCORR method 2), under a cap.
+
+    With q the signed flux over the unsigned flux, positive pixels are scaled
+    by 1/(1+q) and negative ones by 1/(1-q), which sets both polarity fluxes
+    to their arithmetic mean. That is the existing bounded scaling times the
+    uniform factor 1/(1-q^2), so line geometry is the same; this is the scale
+    NASA's own coefficients carry. No provider corroboration is consulted or
+    claimed.
+    """
+    field = np.asarray(field_gauss, dtype=np.float64)
+    flat = field.ravel(order="C")
+    cell_area = 4.0 * math.pi / flat.size
+    signed = math.fsum(float(value) for value in flat) * cell_area
+    unsigned = math.fsum(abs(float(value)) for value in flat) * cell_area
+    if not math.isfinite(signed) or not math.isfinite(unsigned):
+        raise _reject("flux_unbalanced", "map has non-finite magnetic flux")
+    if not np.any(field > 0.0) or not np.any(field < 0.0):
+        raise _reject(
+            "flux_unbalanced",
+            "map has one polarity only, so polarity scaling cannot balance it",
+        )
+    imbalance_fraction = signed / unsigned
+    if abs(imbalance_fraction) > WSA_METHOD_2_FLUX_IMBALANCE_LIMIT:
+        raise _reject(
+            "flux_unbalanced",
+            f"signed flux is {imbalance_fraction:+.4f} of unsigned flux, above the "
+            f"WSA method-2 cap of {WSA_METHOD_2_FLUX_IMBALANCE_LIMIT:.2f}",
+        )
+    positive_scale = 1.0 / (1.0 + imbalance_fraction)
+    negative_scale = 1.0 / (1.0 - imbalance_fraction)
+    balanced = np.where(
+        field > 0.0,
+        field * positive_scale,
+        np.where(field < 0.0, field * negative_scale, field),
+    )
+    post_flat = balanced.ravel(order="C")
+    post_signed = math.fsum(float(value) for value in post_flat) * cell_area
+    post_unsigned = math.fsum(abs(float(value)) for value in post_flat) * cell_area
+    limit = max(1e-12 * unsigned, 1e-12 * 4.0 * math.pi)
+    # A check on this code, not an admission claim: the scaling balances by construction.
+    if abs(post_signed) > limit:
+        raise _reject("flux_unbalanced", "polarity scaling did not satisfy balance policy")
+    return balanced, FluxBalanceMetrics(
+        pre_signed_flux_g_sr=signed,
+        pre_unsigned_flux_g_sr=unsigned,
+        acceptance_limit_g_sr=limit,
+        removed_mean_g=0.0,
+        removed_g00_g=signed / (4.0 * math.pi),
+        post_signed_flux_g_sr=post_signed,
+        post_unsigned_flux_g_sr=post_unsigned,
+        policy_version=WSA_METHOD_2_FLUX_BALANCE_POLICY_VERSION,
+        positive_scale_factor=positive_scale,
+        negative_scale_factor=negative_scale,
+        signed_imbalance_fraction=imbalance_fraction,
+        scaled_correction_limit_fraction=WSA_METHOD_2_FLUX_IMBALANCE_LIMIT,
+    )
+
+
 def _trusted_correction_for_artifact(
     context: GongParseContext,
     expanded_fits: bytes,
@@ -885,9 +958,19 @@ def parse_gong_fits(
     *,
     context: GongParseContext,
     limits: GongParseLimits = GongParseLimits(),
+    flux_policy: str = FLUX_POLICY_ROUNDOFF_OR_TRUSTED,
 ) -> MagnetogramSnapshot:
-    """Parse one fully identified, expanded GONG zqs primary FITS image."""
+    """Parse one fully identified, expanded GONG zqs primary FITS image.
 
+    ``flux_policy`` chooses how flux imbalance is handled: the default accepts
+    a map at rounding level or the one retained, provider-corroborated map;
+    ``"wsa-method-2"`` applies NASA WSA's polarity scaling under a 10% cap.
+    """
+
+    if flux_policy not in (FLUX_POLICY_ROUNDOFF_OR_TRUSTED, FLUX_POLICY_WSA_METHOD_2):
+        raise ValueError(
+            f"flux_policy must be {FLUX_POLICY_ROUNDOFF_OR_TRUSTED!r} or {FLUX_POLICY_WSA_METHOD_2!r}"
+        )
     if not isinstance(expanded_fits, bytes):
         raise _reject("invalid_fits", "expanded FITS payload must be bytes")
     _validate_context(context)
@@ -948,10 +1031,13 @@ def parse_gong_fits(
     # extrapolate. Weak but real fields are not held to any floor.
     if not np.any(field_gauss):
         raise _reject("zero_field", "every science pixel is exactly zero")
-    balanced, flux = _balance_flux(
-        field_gauss,
-        trusted_correction=_trusted_correction_for_artifact(context, expanded_fits),
-    )
+    if flux_policy == FLUX_POLICY_WSA_METHOD_2:
+        balanced, flux = _balance_flux_wsa_method_2(field_gauss)
+    else:
+        balanced, flux = _balance_flux(
+            field_gauss,
+            trusted_correction=_trusted_correction_for_artifact(context, expanded_fits),
+        )
 
     reference = Time(header_metadata.reference_utc.removesuffix("Z"), format="isot", scale="utc")
     reference_jd_tdb = float(reference.tdb.jd)
@@ -1034,14 +1120,7 @@ def parse_gong_fits(
         normalized_content_sha256=content_hash,
         retrieved_at_utc=context.retrieved_at_utc,
         retrieval_timeout_s=context.retrieval_timeout_s,
-        quality_flags=(
-            "complete-pixels",
-            (
-                "flux-balanced-roundoff-only"
-                if flux.policy_version == FLUX_BALANCE_POLICY_VERSION
-                else "flux-balanced-bounded-polarity-scaling"
-            ),
-        ),
+        quality_flags=("complete-pixels", _FLUX_QUALITY_FLAGS[flux.policy_version]),
         native_fits_bytes=expanded_fits,
     )
     return MagnetogramSnapshot(snapshot_id, balanced, grid, provenance)

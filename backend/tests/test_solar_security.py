@@ -400,6 +400,7 @@ def test_bounded_rate_store_has_lru_cap_expiry_and_deterministic_retry_after() -
         ("_solar_physics_rate_locks", "_enforce_solar_request_rate_limit"),
         ("_solar_realtime_rate_locks", "_enforce_solar_realtime_rate_limit"),
         ("_solar_aia_tile_rate_locks", "_enforce_solar_aia_tile_rate_limit"),
+        ("_solar_observed_pfss_rate_locks", "_enforce_solar_observed_pfss_rate_limit"),
     ],
 )
 def test_each_solar_rate_store_obeys_the_hard_identity_cap(
@@ -540,6 +541,7 @@ def test_network_profile_authenticates_every_http_route_family_except_liveness(
         ("GET", "/info", None),
         ("GET", "/bodies", None),
         ("GET", "/solar/capabilities", None),
+        ("GET", "/solar/observed/pfss", None),
         ("GET", "/nearby-systems?limit=1", None),
         ("GET", "/trajectory/capabilities", None),
         ("GET", "/mission/capabilities", None),

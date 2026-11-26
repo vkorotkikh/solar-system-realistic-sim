@@ -35,6 +35,18 @@ def _gzip_accepted(accept_encoding: str) -> bool:
     return 0 < weights.get('gzip', weights.get('*', 0.0)) <= 1
 
 
+def encode_solar_body(decoded: bytes, accept_encoding: str) -> tuple[bytes, bool, bool]:
+    """Apply the delivery contract to one JSON body.
+
+    Returns the bytes for the wire, whether they are gzip, and whether the body
+    is inside the budget: 2 MiB decoded and 512 KiB on the wire.
+    """
+    compressed = _gzip_accepted(accept_encoding)
+    encoded = gzip.compress(decoded, compresslevel=6, mtime=0) if compressed else decoded
+    within_budget = len(decoded) <= MAX_DECODED_BYTES and len(encoded) <= MAX_ENCODED_BYTES
+    return encoded, compressed, within_budget
+
+
 def render_solar_response(
     state: dict[str, Any], *, geometry_version: str | None, accept_encoding: str,
 ) -> Response:
@@ -65,9 +77,8 @@ def render_solar_response(
         'max_decoded_bytes': MAX_DECODED_BYTES,
     }
     decoded = json.dumps(payload, separators=(',', ':'), allow_nan=False).encode()
-    compressed = _gzip_accepted(accept_encoding)
-    encoded = gzip.compress(decoded, compresslevel=6, mtime=0) if compressed else decoded
-    if len(decoded) > MAX_DECODED_BYTES or len(encoded) > MAX_ENCODED_BYTES:
+    encoded, compressed, within_budget = encode_solar_body(decoded, accept_encoding)
+    if not within_budget:
         raise HTTPException(status_code=413, detail={
             'code': 'solar_delivery_budget_exceeded',
             'message': 'Solar rendering state exceeds the delivery byte budget.',
