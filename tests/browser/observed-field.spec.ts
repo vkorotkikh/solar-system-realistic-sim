@@ -53,6 +53,10 @@ test('the flagged build draws a current map: three tiers, legend colours, chip p
   const { errors, asked } = await openApp(page, baseURL, { status: 200, body: currentSidecar() });
   await expect(page.locator('#observed-field-control')).toBeVisible();
   await expect(page.locator('#observed-field-control')).toContainText("Real NSO/GONG map; drawn when the simulation date is inside the map's window.");
+  // Reachable like the other switches: a 44 px target inside the panel.
+  const target = await page.locator('#observed-field-control').boundingBox();
+  expect(target!.height).toBeGreaterThanOrEqual(44 - 0.001);
+  await expect(page.locator('#observed-field-control')).toBeInViewport();
   expect(asked).toEqual([]);
 
   await page.locator('#toggle-play').click();
@@ -96,6 +100,8 @@ test('outside the window, the jump button works from the keyboard and leaves foc
     expect.arrayContaining(['P', 'BUTTON']));
   expect(await label(page).evaluate(node => node.children[1]?.tagName)).toBe('BUTTON');
 
+  const jumpBox = await jump.boundingBox();
+  expect(jumpBox!.height).toBeGreaterThanOrEqual(44 - 0.001);
   await jump.focus();
   await page.keyboard.press('Enter');
   await expect(label(page).locator('.observed-field-label__headline')).toHaveText(/^Real field lines · GONG map of /);
