@@ -6,7 +6,14 @@ import gzip
 import inspect
 import json
 import logging
+import os
 import random
+import select
+import signal
+import socket
+import subprocess
+import sys
+import time
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -91,17 +98,17 @@ def test_a_relative_path_is_a_startup_error(value: str) -> None:
 
 
 def test_startup_logs_the_path_and_whether_the_file_exists(served: Path, caplog: pytest.LogCaptureFixture) -> None:
-    with caplog.at_level(logging.INFO, logger="solar.observed"):
+    with caplog.at_level(logging.INFO, logger=server._OBSERVED_PFSS_LOGGER.name):
         with TestClient(server.app):
             pass
-    messages = [record.getMessage() for record in caplog.records if record.name == "solar.observed"]
+    messages = [record.getMessage() for record in caplog.records if record.name == server._OBSERVED_PFSS_LOGGER.name]
     assert messages == [f"observed PFSS sidecar: {served} (file exists)"]
     served.unlink()
     caplog.clear()
-    with caplog.at_level(logging.INFO, logger="solar.observed"):
+    with caplog.at_level(logging.INFO, logger=server._OBSERVED_PFSS_LOGGER.name):
         with TestClient(server.app):
             pass
-    assert [record.getMessage() for record in caplog.records if record.name == "solar.observed"] == [
+    assert [record.getMessage() for record in caplog.records if record.name == server._OBSERVED_PFSS_LOGGER.name] == [
         f"observed PFSS sidecar: {served} (file missing)"]
 
 
@@ -150,12 +157,12 @@ def test_any_query_parameter_is_refused(client: TestClient, served: Path) -> Non
 # ── refusals ──────────────────────────────────────────────────────────────────
 
 def _log_reasons(caplog: pytest.LogCaptureFixture) -> list[tuple[str, str]]:
-    return [(record.code, record.reason) for record in caplog.records if record.name == "solar.observed"]
+    return [(record.code, record.reason) for record in caplog.records if record.name == server._OBSERVED_PFSS_LOGGER.name]
 
 
 def test_a_missing_file_is_503(client: TestClient, served: Path, caplog) -> None:
     served.unlink()
-    with caplog.at_level(logging.WARNING, logger="solar.observed"):
+    with caplog.at_level(logging.WARNING, logger=server._OBSERVED_PFSS_LOGGER.name):
         response = client.get(ROUTE)
     assert response.status_code == 503
     assert response.json() == UNAVAILABLE
@@ -165,7 +172,7 @@ def test_a_missing_file_is_503(client: TestClient, served: Path, caplog) -> None
 def test_an_unreadable_file_is_503(client: TestClient, served: Path, caplog) -> None:
     served.unlink()
     served.mkdir()
-    with caplog.at_level(logging.WARNING, logger="solar.observed"):
+    with caplog.at_level(logging.WARNING, logger=server._OBSERVED_PFSS_LOGGER.name):
         response = client.get(ROUTE)
     assert response.status_code == 503
     assert response.json() == UNAVAILABLE
@@ -198,7 +205,7 @@ def test_a_file_that_is_not_a_sidecar_is_500_with_a_fixed_reason_in_the_log(
     client: TestClient, served: Path, caplog, content: bytes, reason: str,
 ) -> None:
     served.write_bytes(content)
-    with caplog.at_level(logging.WARNING, logger="solar.observed"):
+    with caplog.at_level(logging.WARNING, logger=server._OBSERVED_PFSS_LOGGER.name):
         response = client.get(ROUTE)
     assert response.status_code == 500
     assert response.json() == INVALID
@@ -213,7 +220,7 @@ def test_a_file_over_two_mebibytes_is_413_and_is_not_parsed(client: TestClient, 
         raise AssertionError("an oversize file was parsed")
 
     monkeypatch.setattr(sidecar, "load_sidecar", must_not_parse)
-    with caplog.at_level(logging.WARNING, logger="solar.observed"):
+    with caplog.at_level(logging.WARNING, logger=server._OBSERVED_PFSS_LOGGER.name):
         response = client.get(ROUTE)
     assert response.status_code == 413
     assert response.json() == TOO_LARGE
@@ -325,3 +332,47 @@ def test_the_route_serves_what_the_probe_wrote(client: TestClient, tmp_path: Pat
     assert response.status_code == 200
     assert response.content == out.read_bytes()
     assert response.json()["map_reference_utc"] == "2026-10-12T17:44:00Z"
+
+
+# ── the startup line in a real server's log ───────────────────────────────────
+
+@pytest.mark.skipif(os.name != "posix", reason="Owned process-group cleanup requires POSIX")
+def test_the_startup_line_reaches_the_log_of_a_real_server(tmp_path: Path) -> None:
+    # Found 2026-11-25 on the running app: a logger outside uvicorn's tree is not shown, because
+    # uvicorn configures only its own loggers and the root logger prints nothing below WARNING.
+    path = tmp_path / "observed-pfss.json"
+    path.write_bytes(GOLDEN.read_bytes())
+    with socket.socket() as probe:
+        probe.bind(("127.0.0.1", 0))
+        port = probe.getsockname()[1]
+    env = {key: value for key, value in os.environ.items() if not key.startswith("SOLAR_")}
+    env.update(SOLAR_OBSERVED_PFSS_SIDECAR=str(path), PYTHONDONTWRITEBYTECODE="1")
+    child = subprocess.Popen(
+        [sys.executable, "-m", "uvicorn", "server:app", "--app-dir", str(Path(server.__file__).parent),
+         "--host", "127.0.0.1", "--port", str(port)],
+        cwd=tmp_path, env=env, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, start_new_session=True,
+    )
+    lines: list[str] = []
+    deadline = time.monotonic() + 120
+    try:
+        while time.monotonic() < deadline:
+            ready, _, _ = select.select([child.stderr], [], [], 1.0)
+            if not ready:
+                if child.poll() is not None:
+                    break
+                continue
+            line = child.stderr.readline()
+            if not line:
+                break
+            lines.append(line)
+            if "Application startup complete" in line:
+                break
+    finally:
+        os.killpg(child.pid, signal.SIGTERM)
+        try:
+            child.communicate(timeout=10)
+        except subprocess.TimeoutExpired:
+            os.killpg(child.pid, signal.SIGKILL)
+            child.communicate(timeout=10)
+    assert any("Application startup complete" in line for line in lines), lines
+    assert any(f"observed PFSS sidecar: {path} (file exists)" in line for line in lines), lines

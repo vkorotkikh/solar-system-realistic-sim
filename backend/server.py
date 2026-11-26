@@ -3781,7 +3781,9 @@ def _load_observed_pfss_sidecar_path(source: Mapping[str, str]) -> Path | None:
 
 
 SOLAR_OBSERVED_PFSS_SIDECAR_PATH = _load_observed_pfss_sidecar_path(os.environ)
-_OBSERVED_PFSS_LOGGER = logging.getLogger("solar.observed")
+# A child of uvicorn's own logger, which uvicorn shows at INFO; a logger outside its tree is
+# shown only from WARNING up, so the startup line would be lost.
+_OBSERVED_PFSS_LOGGER = logging.getLogger("uvicorn.error").getChild("solar.observed")
 # status, fixed message naming the next step, retryable. Never the path or the file's content.
 _OBSERVED_PFSS_REFUSALS: dict[str, tuple[int, str, bool]] = {
     "solar_observed_sidecar_disabled": (
