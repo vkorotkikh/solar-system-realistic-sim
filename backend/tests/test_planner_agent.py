@@ -401,7 +401,11 @@ def test_a_search_with_no_time_left_is_refused() -> None:
     ("8 km/s", ["8"]),  # a small number with a unit is a quantity, not a count
     ("9 days", ["9"]),
     ("8 trips", []),  # without a unit it is a count
-    ("About 2 days late.", []),  # a quantity that a source rounds to (2.04)
+    ("About 2 km/s at arrival.", []),  # a quantity that a source of its kind rounds to (2.04)
+    ("About 2 days late.", ["2"]),  # but a burn's speed is no duration
+    ("A 300 km orbit.", ["300"]),  # nor is the flight time a distance
+    ("A 9-month trip and a two-day stay.", ["9", "two"]),  # a hyphen joins a number to its unit
+    ("A one-way trip.", []),  # a hyphen with no unit after it leaves a count
     ("A 9 month trip.", ["9"]),  # months, weeks, minutes, AU and g are units too
     ("5 minutes of burn, 3 g at most.", ["5", "3"]),
     ("Eight km/s in burns.", ["Eight"]),  # a number written as a word is checked like digits
@@ -412,10 +416,18 @@ def test_a_search_with_no_time_left_is_refused() -> None:
     ("It takes 7 days.", ["7"]),  # the search's own run time is not a number to quote
 ])
 def test_the_number_check(text, unmatched) -> None:
-    sources = [{"total_delta_v_km_s": 5.76, "burns": [3.71, 2.04], "date": "2026-11-12", "total_days": 300.0,
+    sources = [{"total_delta_v_km_s": 5.76, "burns_km_s": [3.71, 2.04], "date": "2026-11-12", "total_days": 300.0,
                 "name": "Geostationary orbit, 42,164 km from Earth's centre",
                 "searched": {"seconds": 6.9, "transfer_solves": 9_646}}]
     assert unmatched_numbers(text, sources) == unmatched
+
+
+def test_the_users_own_numbers_back_any_unit_and_the_planners_back_only_their_own() -> None:
+    words = ["Earth to Mars with a payload of 6500 and a 30 day stay"]
+    vehicle = {"propellantUsedKg": 12_400.0, "requestedDeltaV_km_s": 3.71, "stages": [{"isp_s": 360.0}]}
+    assert unmatched_numbers("6,500 kg aboard, a 30 day stay, then 30 km/s.", [], words) == ["30"]
+    assert unmatched_numbers("It burns 12,400 kg at 3.71 km/s, with an Isp of 360 s.", [vehicle]) == []
+    assert unmatched_numbers("It burns 360 kg.", [vehicle]) == ["360"]  # 360 is the engine's Isp, not a mass
 
 
 # The request.

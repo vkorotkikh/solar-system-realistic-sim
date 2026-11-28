@@ -3,8 +3,10 @@
 One prompt runs at most six model calls and eight tool calls within 30 seconds.
 The model's final answer is JSON in a fixed shape. Every number in its text
 must be a rounding, at the decimals written, of a number in this prompt's tool
-results, the app state or the user's own words. A whole number of ten or less
-passes as a count unless a unit such as km/s or days follows it. A number
+results, the app state or the user's own words. A number with a unit after it
+must match a result of the same kind (a speed, a duration, a distance, a mass)
+or a unitless number the user wrote. A whole number of ten or less passes as a
+count unless a unit such as km/s or days follows it. A number
 written as a word is checked the same way. A date written YYYY-MM-DD must
 appear as written; a source date's year counts as a number, its month and day
 do not. How a search ran (its seconds and solver count) is not a source. A mismatch gets one corrective retry; if that fails
@@ -193,8 +195,11 @@ class _Answer(BaseModel):
 
 _ISO_DATE = re.compile(r"\b\d{4}-\d{2}-\d{2}\b")
 _NUMBER = re.compile(r"(?<![\w.,])(\d{1,3}(?:,\d{3})+|\d+)(\.\d+)?")
-_UNIT = re.compile(r"\s*(?:km/s|m/s|km/h|km|kg|tonnes?|t|days?|d|hours?|h|minutes?|min|seconds?|s|weeks?|months?"
-                   r"|years?|yr|au|g|degrees?|\u00b0|%)(?![a-z/])", re.IGNORECASE)
+_UNIT = re.compile(r"(?:-|\s+)?(km/s|m/s|km/h|km|kg|tonnes?|t|days?|d|hours?|h|minutes?|min|seconds?|s|weeks?"
+                   r"|months?|years?|yr|au|g|degrees?|\u00b0|%)(?![a-z/])", re.IGNORECASE)
+_UNIT_KINDS = {"km/s": "speed", "m/s": "speed", "km/h": "speed", "km": "distance", "au": "distance", "kg": "mass",
+               "t": "mass", "tonne": "mass", "tonnes": "mass", "g": "acceleration", "degree": "angle",
+               "degrees": "angle", "\u00b0": "angle", "%": "percent"}  # every other unit is a duration
 _ONES = ("zero one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen "
          "seventeen eighteen nineteen").split()
 _TENS = {"twenty": 20, "thirty": 30, "forty": 40, "fifty": 50, "sixty": 60, "seventy": 70, "eighty": 80, "ninety": 90}
@@ -215,45 +220,78 @@ def _word_value(match: re.Match) -> int:
     return value * (100 if hundred else 1)
 
 
-def _collect(value, numbers: set[float], dates: set[str]) -> None:
+def _unit_kind(text: str, end: int) -> str | None:
+    """The kind of quantity the unit written right after a number names, if any."""
+    unit = _UNIT.match(text, end)
+    return _UNIT_KINDS.get(unit.group(1).lower(), "duration") if unit else None
+
+
+def _key_kind(key: str, inherited: str | None) -> str | None:
+    """The kind of a result field from its name's unit suffix, such as total_delta_v_km_s or propellantUsedKg."""
+    name = key.lower()
+    for suffixes, kind in ((("km_s",), "speed"), (("days",), "duration"), (("kg",), "mass"), (("km",), "distance"),
+                           (("isp_s",), "duration")):
+        if name.endswith(suffixes):
+            return kind
+    return inherited
+
+
+def _collect(value, numbers: dict, dates: set[str], kind: str | None = None) -> None:
+    """Every number in the sources, filed under its kind of quantity, or under None when that is unknown."""
     if value is None or isinstance(value, bool):
         return
     if isinstance(value, (int, float)):
-        numbers.add(abs(float(value)))
+        numbers.setdefault(kind, set()).add(abs(float(value)))
     elif isinstance(value, str):
         days = _ISO_DATE.findall(value)
         dates.update(days)
-        numbers.update(float(day[:4]) for day in days)  # a date's year can be quoted alone; its month and day not
-        numbers.update(_parse(match)[1] for match in _NUMBER.finditer(_ISO_DATE.sub(" ", value)))
+        numbers.setdefault(None, set()).update(float(day[:4]) for day in days)  # a year can be quoted alone
+        stripped = _ISO_DATE.sub(" ", value)
+        for match in _NUMBER.finditer(stripped):
+            numbers.setdefault(_unit_kind(stripped, match.end()), set()).add(_parse(match)[1])
+    elif isinstance(value, dict):
+        for key, item in value.items():
+            if key not in _BOOKKEEPING:
+                _collect(item, numbers, dates, _key_kind(key, kind))
     else:
-        items = [item for key, item in value.items() if key not in _BOOKKEEPING] if isinstance(value, dict) else value
-        for item in items:
-            _collect(item, numbers, dates)
+        for item in value:
+            _collect(item, numbers, dates, kind)
 
 
-def unmatched_numbers(text: str, sources: list) -> list[str]:
+def unmatched_numbers(text: str, sources: list, words: list[str] = ()) -> list[str]:
     """Numbers in the text that no source number rounds to, at the decimals written.
 
-    Dates written YYYY-MM-DD must appear in the sources as written. A whole
-    number of ten or less is a count, and passes, unless a unit follows it.
+    `sources` are the planner's results; `words` are the user's own words and
+    the app state. A number with a unit after it must match a source number of
+    the same kind (a speed, a duration, a distance, a mass), or a unitless
+    number in the words. A number without a unit may match any of them; a whole
+    number of ten or less without a unit is a count and passes. Dates written
+    YYYY-MM-DD must appear in the sources or words as written.
     """
-    numbers: set[float] = set()
+    numbers: dict = {}
     dates: set[str] = set()
     _collect(sources, numbers, dates)
+    said: dict = {}
+    _collect(list(words), said, dates)
     unmatched = [day for day in _ISO_DATE.findall(text) if day not in dates]
     stripped = _ISO_DATE.sub(" ", text)
     written_numbers = [_parse(match) + (match.end(),) for match in _NUMBER.finditer(stripped)]
     written_numbers += [(match.group(), _word_value(match), 0, match.end()) for match in _WORD_NUMBER.finditer(stripped)]
     for written, value, places, end in sorted(written_numbers, key=lambda number: number[3]):
-        if places == 0 and value <= MAX_COUNT and not _UNIT.match(stripped, end):
+        kind = _unit_kind(stripped, end)
+        if places == 0 and value <= MAX_COUNT and kind is None:
             continue
+        if kind is None:
+            known = set().union(*numbers.values(), *said.values())
+        else:
+            known = numbers.get(kind, set()) | said.get(kind, set()) | said.get(None, set())
         half_step = 0.5 * 10.0**-places + 1e-9
-        if not any(abs(known - value) <= half_step for known in numbers):
+        if not any(abs(number - value) <= half_step for number in known):
             unmatched.append(written)
     return list(dict.fromkeys(unmatched))
 
 
-def _judge(text: str, toolbox: Toolbox, sources: list) -> tuple[_Answer | None, str | None]:
+def _judge(text: str, toolbox: Toolbox, words: list[str]) -> tuple[_Answer | None, str | None]:
     """The parsed answer, and what is wrong with it, if anything."""
     try:
         data = json.loads(text)
@@ -272,10 +310,11 @@ def _judge(text: str, toolbox: Toolbox, sources: list) -> tuple[_Answer | None, 
                         "Use an id from them, or an empty string.")
     if answer.show_plan and toolbox.plan is None:
         return answer, "No plan was solved in this prompt, so there is no plan to show."
-    unmatched = unmatched_numbers(" ".join([answer.text, *answer.options]), sources)
+    unmatched = unmatched_numbers(" ".join([answer.text, *answer.options]), toolbox.outputs, words)
     if unmatched:
         return answer, ("These numbers are not in this prompt's tool results or the user's words: "
-                        + ", ".join(unmatched) + ". Copy numbers from the tool results, or leave them out.")
+                        + ", ".join(unmatched) + ". Copy numbers from the tool results, with the unit of the field "
+                        "they come from, or leave them out.")
     return answer, None
 
 
@@ -397,7 +436,7 @@ def run_agent(request: AgentRequest, *, model: str, provider: Provider,
             continue
         if reply.stop != "end_turn":
             return stopped(reply.stop if reply.stop in STOP_TEXT else "unexpected_stop")
-        answer, problem = _judge(reply.text, toolbox, sources + toolbox.outputs)
+        answer, problem = _judge(reply.text, toolbox, sources)
         if problem is None:
             result = "corrected" if problems else "passed"
             break
