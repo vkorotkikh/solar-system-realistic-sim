@@ -21,7 +21,9 @@ from anthropic.lib.credentials import WorkloadIdentityError
 
 from .loop import AssistantText, ModelReply, ProviderError, ToolCall, ToolResults, UserText
 
-MAX_TOKENS = 8_000
+# Thinking is always on and its tokens count here: the API guide's non-streaming default, so an
+# answer is not cut off. Only the tokens generated are billed.
+MAX_TOKENS = 16_000
 _log = logging.getLogger(__name__)
 BETAS = ["server-side-fallback-2026-07-01"]
 
@@ -30,6 +32,14 @@ BETAS = ["server-side-fallback-2026-07-01"]
 def _client() -> anthropic.Anthropic:
     # The loop owns the time budget, so the SDK does not retry inside it.
     return anthropic.Anthropic(max_retries=0)
+
+
+def _credentials_error(problem: str) -> ProviderError:
+    """A credentials failure. The cached client is dropped, so the next prompt reads a new `ant auth login`;
+    a new ANTHROPIC_API_KEY reaches only a restarted backend."""
+    _client.cache_clear()
+    return ProviderError("model_credentials", f"{problem} Set ANTHROPIC_API_KEY and restart the backend, or sign "
+                         "in with `ant auth login`.", retryable=False)
 
 
 def _message(turn) -> dict:
@@ -67,20 +77,17 @@ def call_model(*, model: str, system: str, tools, answer_schema: dict, turns, ti
         raise ProviderError("model_rate_limited", "The model provider is rate limiting requests. Retry shortly.",
                             retryable=True) from exc
     except (anthropic.AuthenticationError, anthropic.PermissionDeniedError) as exc:
-        raise ProviderError("model_credentials", "The model provider rejected the credentials. Set "
-                            "ANTHROPIC_API_KEY or sign in with `ant auth login`.", retryable=False) from exc
+        raise _credentials_error("The model provider rejected the credentials.") from exc
     except anthropic.APIStatusError as exc:
         raise ProviderError("model_error", f"The model provider returned HTTP {exc.status_code}.",
                             retryable=exc.status_code >= 500) from exc
     except TypeError as exc:  # anthropic 2.8.0 raises a plain TypeError when it finds no key or profile at all
         if "authentication method" not in str(exc):
             raise
-        raise ProviderError("model_credentials", "The model provider has no credentials. Set ANTHROPIC_API_KEY "
-                            "or sign in with `ant auth login`.", retryable=False) from exc
+        raise _credentials_error("The model provider has no credentials.") from exc
     except (anthropic.CredentialsError, WorkloadIdentityError) as exc:  # a profile that is broken or expired
         _log.warning("Model provider credentials failed to load: %s", exc)
-        raise ProviderError("model_credentials", "The model provider could not load its credentials. Set "
-                            "ANTHROPIC_API_KEY or sign in again with `ant auth login`.", retryable=False) from exc
+        raise _credentials_error("The model provider could not load its credentials.") from exc
     except anthropic.AnthropicError as exc:
         _log.warning("Model provider call failed: %s", exc)  # the detail stays in the server log
         raise ProviderError("model_error", "The model provider call failed.", retryable=False) from exc

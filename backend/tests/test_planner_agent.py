@@ -26,10 +26,11 @@ from pydantic import ValidationError
 
 import server
 from planner.agent import provider_anthropic
+from planner.agent import tools as agent_tools
 from planner.agent.loop import (ANSWER_SCHEMA, MAX_MODEL_CALLS, MAX_TOOL_CALLS, STOP_TEXT, TOOL_LIMIT_NOTE,
                                 AgentRequest, AssistantText, DailyLimit, ModelReply, ProviderError, ToolCall,
                                 ToolResults, UserText, run_agent, unmatched_numbers)
-from planner.agent.tools import TOOLS, Toolbox
+from planner.agent.tools import ANSWER_RESERVE_S, TOOLS, Toolbox
 from planner.trips import TripSearchRequest, search_trips
 from planner.vehicle import VehicleCheckRequest, check_vehicle
 from trajectory.budget import PlanningCancelled
@@ -256,6 +257,60 @@ def test_actions_come_back_in_the_order_queued() -> None:
                                 {"type": "set_date", "date": "2027-09-08"}]
 
 
+
+def test_showing_a_trip_and_the_plan_together_is_corrected() -> None:
+    reply = run(Script(tool("search_trips", **MARS), answer("Here it is.", trip="s1-t1", plan=True), cheapest_answer))
+    assert reply["check"] == {"result": "corrected", "problems": ["Show either one trip or the plan, not both."]}
+
+
+def test_showing_a_plan_that_was_never_solved_is_corrected() -> None:
+    reply = run(Script(answer("Here is the plan.", plan=True), answer("No plan has been solved yet.")))
+    assert reply["check"]["problems"] == ["No plan was solved in this prompt, so there is no plan to show."]
+    assert reply["show"] is None
+
+
+def test_a_plan_answer_that_fails_twice_is_replaced_by_the_plans_own_dates() -> None:
+    invented = answer("It all costs 77.77 km/s.", plan=True)
+    reply = run(Script(tool("solve_plan", trips=[{"key": "cargo", "search": MARS}]), invented, invented))
+    plan = reply["show"]["plan"]
+    assert reply["check"]["result"] == "replaced"
+    assert reply["reply"]["text"] == (f"The plan's first trip leaves {plan['first_departure']['date']} and its "
+                                      f"last trip arrives {plan['last_arrival']['date']}.")
+
+
+def test_an_answer_rejected_on_the_last_model_call_is_replaced_at_once() -> None:
+    script = Script(*[tool("find_place", query="Mars")] * (MAX_MODEL_CALLS - 1), answer("It costs 77.77 km/s."))
+    reply = run(script)
+    assert (reply["check"]["result"], len(reply["check"]["problems"]), reply["usage"]["model_calls"]) == (
+        "replaced", 1, MAX_MODEL_CALLS)
+
+
+def test_a_tool_use_stop_with_no_tool_calls_is_an_unexpected_stop() -> None:
+    reply = run(Script(ModelReply("tool_use")))
+    assert (reply["status"], reply["code"]) == ("stopped", "unexpected_stop")
+
+
+def test_the_current_plan_reaches_the_model_and_its_numbers_count_as_sources() -> None:
+    request = prompt("When does the crew leave?", plan={"trips": [
+        {"key": "cargo", "search": {"to": "mars"}},
+        {"key": "crew", "search": {"to": "mars"}, "after": {"trip": "cargo", "event": "arrives", "gap_days": 45}}]})
+    script = Script(answer("The crew leaves 45 days after the cargo arrives."))
+    reply = run(script, request)
+    assert reply["check"]["result"] == "passed"  # 45 is in the plan the browser sent
+    assert '"gap_days":45.0' in script.calls[0]["turns"][-1].text
+
+
+@pytest.mark.parametrize("extra", [
+    {"app": {"layers": {"comets": True}}},  # not one of the eight switches
+    {"app": {"focused": "x" * 65}},
+    {"messages": [{"role": "user", "text": "Hi"}, {"role": "assistant", "text": "Hello."}] * 20
+     + [{"role": "user", "text": "Earth to Mars"}]},  # 41 messages
+])
+def test_requests_outside_the_contract_are_rejected(extra) -> None:
+    with pytest.raises(ValidationError):
+        AgentRequest.model_validate({"messages": [{"role": "user", "text": "Earth to Mars"}], **extra})
+
+
 # The tools.
 
 @pytest.mark.parametrize(("name", "arguments", "action"), [
@@ -300,6 +355,27 @@ def test_the_vehicle_check_uses_the_burns_of_a_found_trip() -> None:
     assert json.loads(content) == {"trip_id": "s1-t1", "burns_km_s": burns, **json.loads(json.dumps(expected))}
 
 
+def test_an_agent_search_holds_a_shared_search_slot_while_it_runs(monkeypatch) -> None:
+    slots, seen = threading.BoundedSemaphore(1), []
+
+    def search(_request, **_options) -> dict:
+        seen.append(slots.acquire(blocking=False))  # False: this search holds the only slot
+        return {"status": "refused", "code": "no_route", "message": "No route."}
+    monkeypatch.setattr(agent_tools, "search_trips", search)
+    box = Toolbox(deadline=time.monotonic() + 30.0, cancel=threading.Event(), today=TODAY, search_slots=slots)
+    box.run("search_trips", MARS)
+    assert seen == [False] and slots.acquire(blocking=False)  # held during the search, free after it
+
+
+def test_an_agent_search_gives_up_when_the_search_slots_stay_busy() -> None:
+    slots = threading.BoundedSemaphore(1)
+    assert slots.acquire(blocking=False)  # an HTTP search holds the only slot
+    box = Toolbox(deadline=time.monotonic() + ANSWER_RESERVE_S + 1.5, cancel=threading.Event(), today=TODAY,
+                  search_slots=slots)
+    text, is_error = box.run("search_trips", MARS)
+    assert is_error and "busy" in json.loads(text)["error"]
+
+
 def test_a_search_with_no_time_left_is_refused() -> None:
     box = Toolbox(deadline=time.monotonic() + 5.0, cancel=threading.Event(), today=TODAY)  # inside the answer reserve
     content, is_error = box.run("search_trips", MARS)
@@ -319,11 +395,39 @@ def test_a_search_with_no_time_left_is_refused() -> None:
     ("13 options", ["13"]),
     ("An orbit 42,164 km from the centre.", []),  # numbers inside the planner's text count
     ("Trips t1 and s2-t3.", []),  # ids are not numbers
+    ("It takes 12 days.", ["12"]),  # the day of a source date is not a number to quote
+    ("11 options", ["11"]),  # nor is its month
+    ("The 2026 launch window.", []),  # its year is
+    ("8 km/s", ["8"]),  # a small number with a unit is a quantity, not a count
+    ("9 days", ["9"]),
+    ("8 trips", []),  # without a unit it is a count
+    ("About 2 km/s at arrival.", []),  # a quantity that a source of its kind rounds to (2.04)
+    ("About 2 days late.", ["2"]),  # but a burn's speed is no duration
+    ("A 300 km orbit.", ["300"]),  # nor is the flight time a distance
+    ("A 9-month trip and a two-day stay.", ["9", "two"]),  # a hyphen joins a number to its unit
+    ("A one-way trip.", []),  # a hyphen with no unit after it leaves a count
+    ("A 9 month trip.", ["9"]),  # months, weeks, minutes, AU and g are units too
+    ("5 minutes of burn, 3 g at most.", ["5", "3"]),
+    ("Eight km/s in burns.", ["Eight"]),  # a number written as a word is checked like digits
+    ("Six km/s in burns.", []),  # and passes as a rounding (5.76) like digits do
+    ("Nine months in flight.", ["Nine"]),
+    ("Two burns and two trips.", []),  # a word count with no unit stays a count
+    ("Four km/s of burns.", []),  # a word that a source rounds to (3.71)
+    ("It takes 7 days.", ["7"]),  # the search's own run time is not a number to quote
 ])
 def test_the_number_check(text, unmatched) -> None:
-    sources = [{"total_delta_v_km_s": 5.76, "burns": [3.71, 2.04], "date": "2026-11-12", "total_days": 300.0,
-                "name": "Geostationary orbit, 42,164 km from Earth's centre"}]
+    sources = [{"total_delta_v_km_s": 5.76, "burns_km_s": [3.71, 2.04], "date": "2026-11-12", "total_days": 300.0,
+                "name": "Geostationary orbit, 42,164 km from Earth's centre",
+                "searched": {"seconds": 6.9, "transfer_solves": 9_646}}]
     assert unmatched_numbers(text, sources) == unmatched
+
+
+def test_the_users_own_numbers_back_any_unit_and_the_planners_back_only_their_own() -> None:
+    words = ["Earth to Mars with a payload of 6500 and a 30 day stay"]
+    vehicle = {"propellantUsedKg": 12_400.0, "requestedDeltaV_km_s": 3.71, "stages": [{"isp_s": 360.0}]}
+    assert unmatched_numbers("6,500 kg aboard, a 30 day stay, then 30 km/s.", [], words) == ["30"]
+    assert unmatched_numbers("It burns 12,400 kg at 3.71 km/s, with an Isp of 360 s.", [vehicle]) == []
+    assert unmatched_numbers("It burns 360 kg.", [vehicle]) == ["360"]  # 360 is the engine's Isp, not a mass
 
 
 # The request.
@@ -386,7 +490,8 @@ def test_the_agent_answers_only_this_machine_and_the_apps_own_pages(agent_on, pe
 def test_the_endpoint_answers_a_prompt(agent_on) -> None:
     agent_on(Script(tool("search_trips", **MARS), cheapest_answer))
     assert client.get("/planner/capabilities").json()["agent"] == {
-        "enabled": True, "model": "test-model", "max_prompt_chars": 2_000, "max_prompts_per_day": 200}
+        "enabled": True, "model": "test-model", "max_prompt_chars": 2_000, "max_prompts_per_day": 200,
+        "max_request_bytes": 32_768}
     response = client.post("/planner/agent", json=BODY)
     assert response.status_code == 200
     body = response.json()
@@ -412,6 +517,35 @@ def test_provider_failures_become_gateway_errors(agent_on, retryable, status) ->
     assert response.status_code == status
     assert response.json()["detail"] == {"code": "model_error", "message": "The model provider returned HTTP 500.",
                                          "retryable": retryable, "context": {}}
+
+
+def test_a_prompt_that_got_no_model_reply_gives_its_daily_slot_back(agent_on, monkeypatch) -> None:
+    def down(**_call) -> ModelReply:
+        raise ProviderError("model_unreachable", "The model provider could not be reached in time.", retryable=True)
+    agent_on(down, limit=1)
+    assert client.post("/planner/agent", json=BODY).status_code == 503
+    monkeypatch.setattr(server, "PLANNER_AGENT_PROVIDER", Script(answer("Hello.")))
+    assert client.post("/planner/agent", json=BODY).status_code == 200  # the failed prompt cost nothing
+
+
+def test_a_prompt_that_failed_after_a_model_reply_keeps_its_slot(agent_on) -> None:
+    def down(_turns) -> ModelReply:
+        raise ProviderError("model_unreachable", "The model provider could not be reached in time.", retryable=True)
+    agent_on(Script(tool("find_place", query="mars"), down), limit=1)
+    assert client.post("/planner/agent", json=BODY).status_code == 503
+    assert client.post("/planner/agent", json=BODY).status_code == 429  # the first reply was paid for
+
+
+def test_the_endpoint_gives_the_agent_the_http_search_slots(agent_on, monkeypatch) -> None:
+    seen: dict = {}
+
+    def fake_run_agent(_request, **options) -> dict:
+        seen.update(options)
+        return {"status": "ok"}
+    agent_on(Script())
+    monkeypatch.setattr(server, "run_agent", fake_run_agent)
+    assert client.post("/planner/agent", json=BODY).status_code == 200
+    assert seen["search_slots"] is server._planner_search_guard
 
 
 def test_a_busy_agent_answers_503_without_using_a_prompt(agent_on, monkeypatch) -> None:
@@ -507,6 +641,7 @@ def test_the_provider_sends_strict_tools_and_the_answer_schema_and_parses_tool_c
     assert request["betas"] == ["server-side-fallback-2026-07-01"]
     assert request["output_config"] == {"effort": "low", "format": {"type": "json_schema", "schema": {"x": 1}}}
     assert request["cache_control"] == {"type": "ephemeral"} and "tool_choice" not in request
+    assert request["max_tokens"] == 16_000  # thinking is always on; a smaller cap truncates the answer
     assert [(sent["name"], sent["strict"], sent["input_schema"]) for sent in request["tools"]] \
         == [(spec.name, True, spec.input_schema) for spec in TOOLS]
     assert request["messages"] == [
@@ -559,3 +694,25 @@ def test_missing_credentials_are_a_credentials_error_before_any_request(monkeypa
         provider_anthropic.call_model(model="m", system="s", tools=TOOLS, answer_schema={}, turns=(UserText("hi"),),
                                       timeout_s=5.0, client=sdk)
     assert (raised.value.code, raised.value.retryable, sent) == ("model_credentials", False, [])
+
+
+@pytest.mark.parametrize("error", [
+    anthropic.CredentialsError("profile 'default' has expired"),
+    _status(anthropic.AuthenticationError, 401),
+])
+def test_a_credentials_failure_drops_the_cached_client_so_a_new_sign_in_is_used(monkeypatch, error) -> None:
+    built: list = []
+
+    def build(**options):
+        built.append(options)
+        return FakeClient(error)
+
+    monkeypatch.setattr(provider_anthropic.anthropic, "Anthropic", build)
+    provider_anthropic._client.cache_clear()
+    for _ in range(2):
+        with pytest.raises(ProviderError) as raised:
+            provider_anthropic.call_model(model="m", system="s", tools=TOOLS, answer_schema={},
+                                          turns=(UserText("hi"),), timeout_s=5.0)
+        assert raised.value.code == "model_credentials"
+    provider_anthropic._client.cache_clear()
+    assert len(built) == 2  # the second prompt built a fresh client, which reads a new `ant auth login`

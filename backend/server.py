@@ -4695,12 +4695,13 @@ async def planner_vehicle_check(payload: VehicleCheckRequest):
 
 @app.get("/planner/capabilities")
 async def planner_capabilities():
-    """What the planner offers. The frontend hides the prompt box when the agent is off."""
+    """What the planner offers. The prompt box stays disabled while the agent is off."""
     return {"agent": {
         "enabled": PLANNER_AGENT_MODEL is not None,
         "model": PLANNER_AGENT_MODEL,
         "max_prompt_chars": PLANNER_AGENT_MAX_PROMPT_CHARS,
         "max_prompts_per_day": PLANNER_AGENT_DAILY_LIMIT.limit,
+        "max_request_bytes": TRAJECTORY_REQUEST_MAX_BODY_BYTES,  # the whole conversation must fit
     }}
 
 
@@ -4747,6 +4748,7 @@ async def planner_agent(request: Request, payload: AgentRequest):
             cancel_event=owner.cancel_event,
             model=PLANNER_AGENT_MODEL,
             provider=PLANNER_AGENT_PROVIDER,
+            search_slots=_planner_search_guard,
         )
     except asyncio.TimeoutError as exc:
         owner.cancel("endpoint_timeout")
@@ -4756,6 +4758,8 @@ async def planner_agent(request: Request, payload: AgentRequest):
     except PlanningCancelled as exc:
         raise _trajectory_http_exception(503, exc.code, str(exc), retryable=True) from exc
     except ProviderError as exc:
+        if exc.model_replies == 0:  # the model never answered, so the prompt cost nothing
+            PLANNER_AGENT_DAILY_LIMIT.give_back()
         raise _trajectory_http_exception(
             503 if exc.retryable else 502, exc.code, str(exc), retryable=exc.retryable
         ) from exc

@@ -181,6 +181,10 @@ which `scripts/generate_moon_gm.py` derives offline from the pinned JPL table.
 Five named orbits can be a trip's end too: `leo`, `geo`, `llo` (low lunar
 orbit), `nrho` (approximate) and `lmo` (low Mars orbit).
 A change of orbit around one moon, such as `llo` to `nrho`, is refused for now.
+A body that cannot hold its default orbit is reached alongside, 100 km off and
+matching its path, with no capture burn: the 380 moons and 14 asteroids and
+distant bodies with no mass in the catalog, and 18 moons whose 100 km orbit lies
+beyond their Hill radius, such as Phobos.
 A refusal is an answer with `"status": "refused"`, a `code` and a plain
 `message`, not an HTTP error. A plan puts several trips
 on one date axis; a trip can be tied to leave no sooner than `gap_days` after
@@ -213,11 +217,22 @@ and a short app state with every prompt; the backend stores nothing. The reply
 carries the answer text, the planner's own trip or plan to show, the queued
 actions, a `check` of the answer, and the token usage.
 
-Every number in an answer must match the planner's results or the user's own
-words, after rounding, or be a count of ten or less. A failing answer gets one
+Every number in an answer must be a rounding, at the decimals written, of a
+number in the planner's results, the app state or the user's own words. A number
+with a unit after it, such as "5.8 km/s", "270 days" or "a 9-month trip", must
+match a result of the same kind (a speed, a duration, a distance, a mass) or a
+number the user wrote without a unit. A whole number of ten or less passes as a
+count unless a unit follows it, and a number written as a word is checked the
+same way. A date must
+appear in the results as written (its year may be quoted alone, its month and day
+are not numbers), and how a search ran, its seconds and solver count, is not a
+source. A failing answer gets one
 corrective retry, then is replaced by a sentence built from the trip. One
 prompt makes at most 6 model calls and 8 tool calls in 30 seconds, and a
-prompt is at most 2,000 characters.
+prompt is at most 2,000 characters. The whole request, with the conversation,
+is at most 32 KiB (`max_request_bytes` in `GET /planner/capabilities`), so a
+long conversation drops its oldest turns. The agent's searches share the
+planner's two search slots with the HTTP search routes.
 
 In the default local profile the agent answers only a direct loopback request
 from this machine, with a loopback `Host` and, from a browser, an `Origin` listed in
@@ -230,7 +245,7 @@ The agent is off until a model is chosen; there is no default model:
 |---|---|
 | `PLANNER_AGENT_MODEL` | Model id, for example `claude-opus-5-5`. Unset turns the agent off, and `GET /planner/capabilities` reports it off. |
 | `ANTHROPIC_API_KEY` | The API key, or sign in once with `ant auth login`; the Anthropic SDK finds either. |
-| `PLANNER_AGENT_MAX_PROMPTS_PER_DAY` | Prompts answered per UTC day by this backend process, default 200. |
+| `PLANNER_AGENT_MAX_PROMPTS_PER_DAY` | Prompts answered per UTC day by this backend process (each Uvicorn worker counts its own), default 200. A prompt the model never answered does not count. |
 
 ```bash
 PLANNER_AGENT_MODEL=claude-opus-5-5 npm run dev:full
